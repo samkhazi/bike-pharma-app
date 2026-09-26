@@ -7,6 +7,7 @@ import 'data/app_state.dart';
 import 'data/demo_repository.dart';
 import 'data/firebase_repository.dart';
 import 'data/repository.dart';
+import 'firebase_options.dart';
 import 'router.dart';
 
 /// Run with `--dart-define=DEMO=true` to use offline sample data (OTP 123456).
@@ -20,7 +21,7 @@ Future<void> main() async {
     repo = DemoRepository();
   } else {
     try {
-      await Firebase.initializeApp();
+      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
       repo = FirebaseRepository();
     } catch (e) {
       debugPrint('Firebase not configured, falling back to demo data: $e');

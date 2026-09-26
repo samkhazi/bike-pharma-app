@@ -1,0 +1,43 @@
+# Deploys the Firebase backend (rules, indexes, storage rules, Cloud Functions).
+# Runs only when started by hand from the Actions tab.
+# Needs the repository secret FIREBASE_SERVICE_ACCOUNT: the JSON key of a Google Cloud
+# service account in project bike-pharma-automobile (see backend/README.md).
+name: Deploy backend
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "What to deploy (blank = everything, or e.g. firestore:rules,storage)"
+        required: false
+        default: ""
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/functions/package-lock.json
+      - run: npm ci
+        working-directory: backend/functions
+      - run: npm test
+        working-directory: backend/functions
+      - name: Write service account key
+        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$RUNNER_TEMP/sa.json"
+      - name: Deploy
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+          ONLY: ${{ inputs.only }}
+        run: |
+          if [ -n "$ONLY" ]; then
+            npx --yes firebase-tools@latest deploy --project bike-pharma-automobile --only "$ONLY" --non-interactive --force
+          else
+            npx --yes firebase-tools@latest deploy --project bike-pharma-automobile --non-interactive --force
+          fi

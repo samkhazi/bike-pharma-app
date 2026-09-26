@@ -17,19 +17,27 @@ Future<void> _tap(WidgetTester t, String text) async {
 }
 
 Widget _app(AppState state, String initial) {
-  final router = GoRouter(initialLocation: initial, routes: [
-    GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
-    GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
-    GoRoute(path: '/otp', builder: (_, _) => const OtpScreen()),
-    GoRoute(path: '/create-profile', builder: (_, _) => const CreateProfileScreen()),
-    GoRoute(path: '/vehicle-details', builder: (_, _) => const VehicleDetailsScreen()),
-    GoRoute(path: '/home', builder: (_, _) => const Scaffold(body: Text('HOME'))),
-  ]);
-  return ChangeNotifierProvider<AppState>.value(value: state, child: MaterialApp.router(routerConfig: router));
+  final router = GoRouter(
+    initialLocation: initial,
+    routes: [
+      GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
+      GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+      GoRoute(path: '/otp', builder: (_, _) => const OtpScreen()),
+      GoRoute(path: '/create-profile', builder: (_, _) => const CreateProfileScreen()),
+      GoRoute(path: '/vehicle-details', builder: (_, _) => const VehicleDetailsScreen()),
+      GoRoute(
+        path: '/home',
+        builder: (_, _) => const Scaffold(body: Text('HOME')),
+      ),
+    ],
+  );
+  return ChangeNotifierProvider<AppState>.value(
+    value: state,
+    child: MaterialApp.router(routerConfig: router),
+  );
 }
 
 void main() {
-
   testWidgets('splash plays then goes to login when signed out', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -50,19 +58,23 @@ void main() {
     await tester.pumpWidget(_app(state, '/login'));
 
     // Locked button runs away instead of submitting.
-    final before = tester.getTopLeft(find.text('GET OTP'));
+    expect(find.text('10 digit daalo, tab ye rukega.'), findsOneWidget);
+    final before = tester.getCenter(find.text('GET OTP'));
     await tester.tap(find.text('GET OTP'));
-    await tester.pumpAndSettle();
-    expect(tester.getTopLeft(find.text('GET OTP')).dx, greaterThan(before.dx));
-    expect(find.text('Pehle number daalo, tab tak ye bhaagega!'), findsOneWidget);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(tester.getCenter(find.text('GET OTP')).dx, isNot(closeTo(before.dx, 20)));
     expect(state.phone, '');
+    await tester.pump(const Duration(milliseconds: 1500)); // springs back home
+    await tester.pumpAndSettle();
+    expect(tester.getCenter(find.text('GET OTP')).dx, closeTo(before.dx, 1));
 
     await tester.enterText(find.byKey(const Key('phoneField')), '987654321');
     await tester.pumpAndSettle();
-    expect(find.text('Bas 1 digit aur! (9/10)'), findsOneWidget);
+    expect(find.text('Bas 1 digit aur. Ab ye dheema ho gaya.'), findsOneWidget);
     await tester.enterText(find.byKey(const Key('phoneField')), '9876543210');
     await tester.pumpAndSettle();
-    expect(find.text('Ready! Ab button tap karo.'), findsOneWidget);
+    expect(find.text('Locked in. Ab tap karo!'), findsOneWidget);
     await _tap(tester, 'GET OTP');
     await tester.pumpAndSettle();
     expect(state.phone, '+919876543210');

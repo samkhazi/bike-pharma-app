@@ -20,7 +20,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _phone = TextEditingController();
   String? _error;
   bool _loading = false;
-  int _escapes = 0;
 
   @override
   void dispose() {
@@ -31,19 +30,9 @@ class _LoginScreenState extends State<LoginScreen> {
   /// A valid Indian mobile number unlocks the button.
   bool get _valid => RegExp(r'^[6-9]\d{9}$').hasMatch(_phone.text.trim());
 
-  static const _escapeHints = [
-    'Pehle number daalo, tab tak ye bhaagega!',
-    'Arre, itni jaldi? Pehle number daalo.',
-    '10 digit ka number chahiye, boss.',
-    'Button pakadna hai? Number daalo!',
-  ];
-
   void _escaped() {
     final number = _phone.text.trim();
-    setState(() {
-      _escapes++;
-      _error = number.length == 10 ? 'Yeh mobile number sahi nahi lag raha' : null;
-    });
+    setState(() => _error = number.length == 10 ? 'Yeh mobile number sahi nahi lag raha' : null);
   }
 
   Future<void> _continue() async {
@@ -78,13 +67,18 @@ class _LoginScreenState extends State<LoginScreen> {
     final valid = _valid;
     final digits = _phone.text.trim().length;
     final left = 10 - digits;
-    final hint = valid
-        ? 'Ready! Ab button tap karo.'
-        : digits > 0 && left > 0
-        ? (left == 1 ? 'Bas 1 digit aur! ($digits/10)' : 'Aur $left digit daalo ($digits/10)')
-        : _escapes == 0
-        ? 'Enter your number first. Till then it runs away!'
-        : _escapeHints[(_escapes - 1) % _escapeHints.length];
+    // Hints follow the form's progress, like the reference: it calms down as you type.
+    final hint = _loading
+        ? 'OTP bhej rahe hain...'
+        : valid
+        ? 'Locked in. Ab tap karo!'
+        : digits == 0
+        ? '10 digit daalo, tab ye rukega.'
+        : left == 1
+        ? 'Bas 1 digit aur. Ab ye dheema ho gaya.'
+        : left > 0
+        ? 'Aur $left digit. Ye dheema ho raha hai.'
+        : 'Number check karo, ye abhi bhi bhaag raha hai.';
     return Scaffold(
       backgroundColor: const Color(0xFF070707),
       body: Stack(
@@ -162,6 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               key: const Key('getOtpButton'),
                               label: 'GET OTP',
                               unlocked: valid,
+                              calm: digits / 10,
                               loading: _loading,
                               onPressed: _continue,
                               onEscape: _escaped,

@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: "What to deploy (blank = everything, or e.g. firestore:rules,storage)"
+        description: "What to deploy (blank = firestore,functions; e.g. storage)"
         required: false
         default: ""
 
@@ -52,8 +52,6 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
           ONLY: ${{ inputs.only }}
         run: |
-          if [ -n "$ONLY" ]; then
-            npx --yes firebase-tools@latest deploy --project bike-pharma-automobile --only "$ONLY" --non-interactive --force
-          else
-            npx --yes firebase-tools@latest deploy --project bike-pharma-automobile --non-interactive --force
-          fi
+          # Storage needs its bucket created in the console first (Storage > Get started),
+          # so by default deploy the database and functions only.
+          npx --yes firebase-tools@latest deploy --project bike-pharma-automobile --only "${ONLY:-firestore,functions}" --non-interactive --force

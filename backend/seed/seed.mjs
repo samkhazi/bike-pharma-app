@@ -8,7 +8,7 @@
  *
  * Real project (careful, writes live data):
  *   GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json \
- *     node seed/seed.mjs --project bike-pharma-app --live
+ *     node seed/seed.mjs --project bike-pharma-automobile --live
  *
  * Re-running is safe: documents use fixed ids and are overwritten.
  * Optional: --admin <uid> also creates admins/<uid>.
@@ -25,7 +25,7 @@ const argValue = (name) => {
   const i = args.indexOf(name);
   return i >= 0 ? args[i + 1] : undefined;
 };
-const projectId = argValue("--project") ?? process.env.GCLOUD_PROJECT ?? "bike-pharma-app";
+const projectId = argValue("--project") ?? process.env.GCLOUD_PROJECT ?? "bike-pharma-automobile";
 const adminUid = argValue("--admin");
 const live = args.includes("--live");
 

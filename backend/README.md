@@ -19,7 +19,7 @@ backend/
 You need Node.js 22 and the Firebase CLI: `npm install -g firebase-tools`, then `firebase login`.
 
 1. **Create the project.** Go to https://console.firebase.google.com, choose *Add project*,
-   and give it a name. If the project id isn't `bike-pharma-app`, put your id in `.firebaserc`.
+   and give it a name. If the project id isn't `bike-pharma-automobile`, put your id in `.firebaserc`.
 2. **Upgrade to the Blaze (pay as you go) plan.** Cloud Functions and Secret Manager need it.
    Small shops usually stay inside the free allowance. Set a budget alert under
    *Billing > Budgets*.

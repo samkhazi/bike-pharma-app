@@ -1,10 +1,13 @@
 # Deploys the Firebase backend (rules, indexes, storage rules, Cloud Functions).
-# Runs only when started by hand from the Actions tab.
+# Runs only when started by hand (Actions tab, once this file is on main) or by
+# pushing a tag named deploy-backend-* (works from any branch).
 # Needs the repository secret FIREBASE_SERVICE_ACCOUNT: the JSON key of a Google Cloud
 # service account in project bike-pharma-automobile (see backend/README.md).
 name: Deploy backend
 
 on:
+  push:
+    tags: ["deploy-backend-*"]
   workflow_dispatch:
     inputs:
       only:

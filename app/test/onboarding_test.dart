@@ -39,7 +39,7 @@ void main() {
     expect(find.text('SPARE PARTS · ACCESSORIES · SERVICE'), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();
-    expect(find.text('Welcome to'), findsOneWidget);
+    expect(find.text('Sign in'), findsOneWidget);
   });
 
   testWidgets('login -> otp -> create profile -> fetch -> home', (tester) async {
@@ -49,13 +49,18 @@ void main() {
     final state = AppState(DemoRepository());
     await tester.pumpWidget(_app(state, '/login'));
 
-    // Validation
-    await _tap(tester, 'CONTINUE');
-    await tester.pump();
-    expect(find.text('Apna 10-digit mobile number daalo'), findsOneWidget);
+    // Locked button runs away instead of submitting.
+    final before = tester.getTopLeft(find.text('GET OTP'));
+    await tester.tap(find.text('GET OTP'));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(find.text('GET OTP')).dx, greaterThan(before.dx));
+    expect(find.text('Pehle number daalo, tab tak ye bhaagega!'), findsOneWidget);
+    expect(state.phone, '');
 
     await tester.enterText(find.byKey(const Key('phoneField')), '9876543210');
-    await _tap(tester, 'CONTINUE');
+    await tester.pumpAndSettle();
+    expect(find.text('Ready! Ab button tap karo.'), findsOneWidget);
+    await _tap(tester, 'GET OTP');
     await tester.pumpAndSettle();
     expect(state.phone, '+919876543210');
     expect(find.text('Verification Code'), findsOneWidget);

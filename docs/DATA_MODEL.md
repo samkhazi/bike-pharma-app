@@ -1,0 +1,108 @@
+# Data model (Firestore) and backend API
+
+This is the contract between the Flutter app (`app/`) and the Firebase backend (`backend/`).
+Region for Cloud Functions: `asia-south1` (Mumbai).
+
+Money is always stored as **integer paise** (₹1 = 100). Timestamps are Firestore `Timestamp`.
+
+## Collections
+
+### `users/{uid}`
+| field | type | notes |
+|---|---|---|
+| name | string | |
+| phone | string | E.164, from Firebase Auth phone login |
+| activeVehicleId | string? | id in `users/{uid}/vehicles` |
+| createdAt | timestamp | |
+
+### `users/{uid}/vehicles/{vehicleId}`
+| field | type | notes |
+|---|---|---|
+| type | `"bike" \| "scooter"` | |
+| regNo | string? | uppercase, no spaces, e.g. `MH12AB1234` |
+| brand | string | e.g. `Honda` |
+| model | string | e.g. `Shine 125` |
+| year | number | |
+| colour | string? | |
+| emission | `"BS4" \| "BS6"` | |
+| fuel | string? | `Petrol`, `Electric`… |
+| chassisMasked | string? | only last 4 visible, e.g. `ME4JC65XXXXXX4521` |
+| source | `"vahan" \| "manual"` | |
+| fitKey | string | `"<brand>\|<model>"` lowercased, used to filter products |
+
+### `users/{uid}/cart/{productId}`
+`{ qty: number, addedAt: timestamp }`
+
+### `products/{productId}`
+| field | type | notes |
+|---|---|---|
+| name | string | |
+| category | `"spares" \| "accessories"` | |
+| subCategory | string | `Brakes`, `Engine oil`, `Helmets`… |
+| brand | string | part brand |
+| price | int (paise) | selling price |
+| mrp | int (paise) | |
+| stock | int | |
+| images | string[] | Storage URLs |
+| fits | string[] | list of `fitKey`s this part fits |
+| fitsAll | bool | universal accessory (helmet, gloves) |
+| rating | number | |
+| active | bool | |
+
+App rule from Sam: Shop and search show only products where `fitsAll == true` or `fits` contains the customer's active vehicle `fitKey`.
+
+### `orders/{orderId}` (created only by the `placeOrder` function)
+| field | type |
+|---|---|
+| uid | string |
+| items | `{ productId, name, price, qty }[]` |
+| subtotal, deliveryFee, total | int (paise) |
+| address | `{ name, phone, line1, line2?, city, pincode }` |
+| paymentMethod | `"cod" \| "razorpay"` |
+| razorpayOrderId | string? |
+| paid | bool |
+| status | `"pending_payment" \| "placed" \| "packed" \| "shipped" \| "delivered" \| "cancelled"` |
+| createdAt | timestamp |
+
+### `serviceBookings/{bookingId}`
+`{ uid, vehicleId, serviceType, date: "YYYY-MM-DD", slot: "10 AM", pickup: bool, status: "booked"|"in_progress"|"done"|"cancelled", createdAt }`
+
+### `modifyRequests/{requestId}`
+`{ uid, vehicleId, items: string[], note?, status: "new"|"quoted"|"closed", createdAt }`
+
+### `mechanics/{mechanicId}` — id format `BPM-0001`
+| field | type |
+|---|---|
+| name, garageName | string |
+| photos | string[] |
+| specialistBrands, vehicleTypes, services | string[] |
+| rating | number |
+| experienceYears | number |
+| spareBuyerSince | number (year) |
+| address | string |
+| geo | `{ lat, lng }` |
+| phone | string |
+| openHours | string |
+| verified, active | bool |
+
+QR code content for a mechanic: `bikepharma://mechanic/BPM-0231` (the app also accepts the bare id).
+
+### `offers/{offerId}`
+`{ tag, title, subtitle, cta, target: "service"|"shop"|"accessories", order: number, active: bool }`
+
+### `admins/{uid}`
+Presence of the doc = admin (shop owner / staff).
+
+### `counters/mechanics`
+`{ next: number }` used to generate mechanic ids.
+
+## Callable functions
+
+| name | input | output |
+|---|---|---|
+| `lookupVehicle` | `{ regNo }` | `{ regNo, brand, model, year, colour, emission, fuel, chassisMasked }` — calls the RC lookup provider (Surepass); returns `failed-precondition` if no provider key is configured |
+| `placeOrder` | `{ items: {productId, qty}[], address, paymentMethod }` | `{ orderId, total, razorpay?: { orderId, keyId, amount } }` — prices and stock are read on the server, never trusted from the app |
+| `verifyPayment` | `{ orderId, razorpayPaymentId, razorpaySignature }` | `{ paid: true }` |
+| `createMechanic` (admin) | mechanic fields | `{ mechanicId }` |
+
+HTTP function `razorpayWebhook` marks orders paid from Razorpay's `payment.captured` event (signature checked).

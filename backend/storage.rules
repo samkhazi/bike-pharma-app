@@ -1,0 +1,41 @@
+rules_version = '2';
+
+// Bike Pharma Storage rules.
+// Catalogue images (products/, mechanics/, offers/) are readable by signed-in users
+// and uploaded only by admins (a doc in Firestore admins/{uid}).
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return signedIn()
+        && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
+    }
+    function isImageUnder(maxBytes) {
+      return request.resource != null
+        && request.resource.contentType.matches('image/.*')
+        && request.resource.size < maxBytes;
+    }
+
+    match /products/{allPaths=**} {
+      allow read: if signedIn();
+      allow write: if isAdmin() && (request.resource == null || isImageUnder(5 * 1024 * 1024));
+    }
+    match /mechanics/{allPaths=**} {
+      allow read: if signedIn();
+      allow write: if isAdmin() && (request.resource == null || isImageUnder(5 * 1024 * 1024));
+    }
+    match /offers/{allPaths=**} {
+      allow read: if signedIn();
+      allow write: if isAdmin() && (request.resource == null || isImageUnder(5 * 1024 * 1024));
+    }
+
+    // Customer uploads (e.g. photos of their bike for a modify request): own folder only.
+    match /users/{uid}/{allPaths=**} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow write: if signedIn() && request.auth.uid == uid
+        && (request.resource == null || isImageUnder(5 * 1024 * 1024));
+    }
+  }
+}

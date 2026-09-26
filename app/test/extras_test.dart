@@ -5,7 +5,6 @@ import 'package:bike_pharma/screens/extras/bike_doctor_screen.dart';
 import 'package:bike_pharma/screens/extras/mechanic_profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 Widget _wrap(Widget child) => ChangeNotifierProvider(
@@ -14,7 +13,6 @@ Widget _wrap(Widget child) => ChangeNotifierProvider(
     );
 
 void main() {
-  GoogleFonts.config.allowRuntimeFetching = false;
 
   group('computeBikeHealth (estimate)', () {
     final now = DateTime(2026, 9, 26);

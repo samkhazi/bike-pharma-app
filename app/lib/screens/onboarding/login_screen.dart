@@ -60,7 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SingleChildScrollView(
         padding: EdgeInsets.only(bottom: 24 + MediaQuery.of(context).viewInsets.bottom),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          StorePhotoHero(height: heroH),
+          StorePhotoHero(height: heroH, showLogo: true),
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

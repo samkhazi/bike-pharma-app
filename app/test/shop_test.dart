@@ -9,7 +9,6 @@ import 'package:bike_pharma/screens/shop/shop_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 AppState _state() {
@@ -41,7 +40,6 @@ Widget _app(AppState state, String initial) {
 }
 
 void main() {
-  GoogleFonts.config.allowRuntimeFetching = false;
 
   testWidgets('home greets the rider and shows offers + parts', (tester) async {
     _tallView(tester);

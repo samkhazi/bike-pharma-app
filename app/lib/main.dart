@@ -1,6 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import 'core/theme.dart';
@@ -16,8 +15,6 @@ const demoMode = bool.fromEnvironment('DEMO');
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Plus Jakarta Sans is bundled in google_fonts/, so no download is needed.
-  GoogleFonts.config.allowRuntimeFetching = false;
   Repository repo;
   if (demoMode) {
     repo = DemoRepository();

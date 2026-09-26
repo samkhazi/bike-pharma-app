@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../core/theme.dart';
+import 'brand_logo.dart';
 
 /// Dark "store photo" hero used at the top of login and OTP, fading into the
 /// white page. Placeholder until the real store photo is added.
 class StorePhotoHero extends StatelessWidget {
   final double height;
   final Widget? overlay;
-  const StorePhotoHero({super.key, required this.height, this.overlay});
+
+  /// Shows the Bike Pharma logo over the photo instead of the placeholder label.
+  final bool showLogo;
+  const StorePhotoHero({super.key, required this.height, this.overlay, this.showLogo = false});
 
   @override
   Widget build(BuildContext context) {
@@ -18,12 +22,14 @@ class StorePhotoHero extends StatelessWidget {
         const Positioned.fill(child: ColoredBox(color: Color(0xFF2D2D29))),
         Positioned.fill(
           bottom: height * 0.18,
-          child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(Icons.image_outlined, size: 40, color: Color(0xFF8E8E88)),
-            SizedBox(height: 8),
-            Text('Store photo',
-                style: TextStyle(color: Color(0xFFB5B5AE), fontSize: 14, fontWeight: FontWeight.w600)),
-          ]),
+          child: showLogo
+              ? Center(child: BrandLogo(width: (height * 0.62).clamp(180.0, 260.0)))
+              : const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(Icons.image_outlined, size: 40, color: Color(0xFF8E8E88)),
+                  SizedBox(height: 8),
+                  Text('Store photo',
+                      style: TextStyle(color: Color(0xFFB5B5AE), fontSize: 14, fontWeight: FontWeight.w600)),
+                ]),
         ),
         // Fade to white at the bottom.
         Positioned(

@@ -8,7 +8,6 @@ import 'package:bike_pharma/screens/service/modify_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 Future<AppState> _signedIn() async {
@@ -33,7 +32,6 @@ Widget _app(AppState state, String initial) {
 }
 
 void main() {
-  GoogleFonts.config.allowRuntimeFetching = false;
 
   testWidgets('book service books a slot and lands on orders', (tester) async {
     tester.view.physicalSize = const Size(1080, 2400);

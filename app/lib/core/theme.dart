@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Brand colours from the Bike Pharma brand guide and the Figma design.
 class BP {
@@ -28,8 +27,9 @@ ThemeData buildTheme() {
       surface: BP.white,
     ),
     scaffoldBackgroundColor: BP.white,
+    fontFamily: 'PlusJakartaSans', // bundled in fonts/ (OFL licence)
   );
-  final text = GoogleFonts.plusJakartaSansTextTheme(base.textTheme).apply(
+  final text = base.textTheme.apply(
     bodyColor: BP.black,
     displayColor: BP.black,
   );

@@ -8,7 +8,6 @@ import 'package:bike_pharma/screens/onboarding/vehicle_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 Future<void> _tap(WidgetTester t, String text) async {
@@ -30,7 +29,6 @@ Widget _app(AppState state, String initial) {
 }
 
 void main() {
-  GoogleFonts.config.allowRuntimeFetching = false;
 
   testWidgets('splash plays then goes to login when signed out', (tester) async {
     tester.view.physicalSize = const Size(390, 844);

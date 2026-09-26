@@ -57,6 +57,9 @@ void main() {
     expect(find.text('Pehle number daalo, tab tak ye bhaagega!'), findsOneWidget);
     expect(state.phone, '');
 
+    await tester.enterText(find.byKey(const Key('phoneField')), '987654321');
+    await tester.pumpAndSettle();
+    expect(find.text('Bas 1 digit aur! (9/10)'), findsOneWidget);
     await tester.enterText(find.byKey(const Key('phoneField')), '9876543210');
     await tester.pumpAndSettle();
     expect(find.text('Ready! Ab button tap karo.'), findsOneWidget);

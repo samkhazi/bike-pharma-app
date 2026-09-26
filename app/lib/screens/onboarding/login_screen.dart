@@ -48,9 +48,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _continue() async {
     if (!_valid) {
-      setState(() => _error = _phone.text.trim().length != 10
-          ? 'Apna 10-digit mobile number daalo'
-          : 'Yeh mobile number sahi nahi lag raha');
+      setState(
+        () => _error = _phone.text.trim().length != 10
+            ? 'Apna 10-digit mobile number daalo'
+            : 'Yeh mobile number sahi nahi lag raha',
+      );
       return;
     }
     FocusScope.of(context).unfocus();
@@ -74,119 +76,167 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final valid = _valid;
+    final digits = _phone.text.trim().length;
+    final left = 10 - digits;
     final hint = valid
         ? 'Ready! Ab button tap karo.'
+        : digits > 0 && left > 0
+        ? (left == 1 ? 'Bas 1 digit aur! ($digits/10)' : 'Aur $left digit daalo ($digits/10)')
         : _escapes == 0
-            ? 'Enter your number first. Till then it runs away!'
-            : _escapeHints[(_escapes - 1) % _escapeHints.length];
+        ? 'Enter your number first. Till then it runs away!'
+        : _escapeHints[(_escapes - 1) % _escapeHints.length];
     return Scaffold(
       backgroundColor: const Color(0xFF070707),
-      body: Stack(children: [
-        const Positioned.fill(child: _GlowBackground()),
-        SafeArea(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(20, 28, 20, 24 + MediaQuery.of(context).viewInsets.bottom),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Column(children: [
-                  const BrandLogo(width: 210),
-                  const SizedBox(height: 34),
-                  _GlassCard(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Row(children: [
-                        Container(
-                          width: 14,
-                          height: 14,
-                          decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: BP.yellow, width: 2)),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text('BIKE PHARMA',
-                            style: TextStyle(color: BP.yellow, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 2)),
-                      ]),
-                      const SizedBox(height: 16),
-                      const _Divider(),
-                      const SizedBox(height: 18),
-                      const Text('Sign in', style: TextStyle(color: BP.white, fontSize: 28, fontWeight: FontWeight.w800)),
-                      const SizedBox(height: 6),
-                      Text('Welcome back. Just one number stands between you and your ride.',
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14, height: 1.45)),
-                      const SizedBox(height: 22),
-                      const Text('Mobile Number',
-                          style: TextStyle(color: BP.yellow, fontSize: 12, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 8),
-                      _PhoneField(controller: _phone, error: _error, onSubmit: _continue, onChanged: () {
-                        setState(() => _error = null);
-                      }),
-                      if (_error != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8, left: 4),
-                          child: Text(_error!, style: const TextStyle(color: Color(0xFFFF6B61), fontSize: 13)),
-                        ),
-                      const SizedBox(height: 22),
-                      RunawayButton(
-                        key: const Key('getOtpButton'),
-                        label: 'GET OTP',
-                        unlocked: valid,
-                        loading: _loading,
-                        onPressed: _continue,
-                        onEscape: _escaped,
-                      ),
-                      const SizedBox(height: 14),
-                      Center(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 200),
-                          child: Row(key: ValueKey(hint), mainAxisSize: MainAxisSize.min, children: [
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: BoxDecoration(
-                                  color: valid ? const Color(0xFF4CD964) : BP.yellow, shape: BoxShape.circle),
-                            ),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Text(hint,
+      body: Stack(
+        children: [
+          const Positioned.fill(child: _GlowBackground()),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(20, 28, 20, 24 + MediaQuery.of(context).viewInsets.bottom),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Column(
+                    children: [
+                      const BrandLogo(width: 210),
+                      const SizedBox(height: 34),
+                      _GlassCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 14,
+                                  height: 14,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: BP.yellow, width: 2),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'BIKE PHARMA',
                                   style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.55),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500)),
+                                    color: BP.yellow,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 2,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ]),
+                            const SizedBox(height: 16),
+                            const _Divider(),
+                            const SizedBox(height: 18),
+                            const Text(
+                              'Sign in',
+                              style: TextStyle(color: BP.white, fontSize: 28, fontWeight: FontWeight.w800),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Welcome back. Just one number stands between you and your ride.',
+                              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14, height: 1.45),
+                            ),
+                            const SizedBox(height: 22),
+                            const Text(
+                              'Mobile Number',
+                              style: TextStyle(color: BP.yellow, fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 8),
+                            _PhoneField(
+                              controller: _phone,
+                              error: _error,
+                              onSubmit: _continue,
+                              onChanged: () {
+                                setState(() => _error = null);
+                              },
+                            ),
+                            if (_error != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8, left: 4),
+                                child: Text(_error!, style: const TextStyle(color: Color(0xFFFF6B61), fontSize: 13)),
+                              ),
+                            const SizedBox(height: 22),
+                            RunawayButton(
+                              key: const Key('getOtpButton'),
+                              label: 'GET OTP',
+                              unlocked: valid,
+                              loading: _loading,
+                              onPressed: _continue,
+                              onEscape: _escaped,
+                            ),
+                            const SizedBox(height: 14),
+                            Center(
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 200),
+                                child: Row(
+                                  key: ValueKey(hint),
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 6,
+                                      height: 6,
+                                      decoration: BoxDecoration(
+                                        color: valid ? const Color(0xFF4CD964) : BP.yellow,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        hint,
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(alpha: 0.55),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            const _Divider(),
+                            const SizedBox(height: 16),
+                            Center(
+                              child: Text.rich(
+                                TextSpan(
+                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+                                  children: const [
+                                    TextSpan(text: 'New rider? '),
+                                    TextSpan(
+                                      text: 'Your account is created automatically.',
+                                      style: TextStyle(color: BP.yellow, fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 18),
-                      const _Divider(),
-                      const SizedBox(height: 16),
-                      Center(
-                        child: Text.rich(
-                          TextSpan(
-                            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
-                            children: const [
-                              TextSpan(text: 'New rider? '),
-                              TextSpan(
-                                  text: 'Your account is created automatically.',
-                                  style: TextStyle(color: BP.yellow, fontWeight: FontWeight.w600)),
-                            ],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ]),
-                  ),
-                  const SizedBox(height: 26),
-                  Text('GENUINE PARTS  ·  EXPERT SERVICE  ·  BIKE MODIFY',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
+                      const SizedBox(height: 26),
+                      Text(
+                        'GENUINE PARTS  ·  EXPERT SERVICE  ·  BIKE MODIFY',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.35),
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
-                          letterSpacing: 1.5)),
-                ]),
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 }
@@ -197,41 +247,43 @@ class _GlowBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(children: [
-      const Positioned.fill(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0xFF0D0D0B), Color(0xFF050505)],
+    return Stack(
+      children: [
+        const Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF0D0D0B), Color(0xFF050505)],
+              ),
             ),
           ),
         ),
-      ),
-      Positioned.fill(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              center: const Alignment(0, -0.85),
-              radius: 0.75,
-              colors: [BP.yellow.withValues(alpha: 0.20), BP.yellow.withValues(alpha: 0)],
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(0, -0.85),
+                radius: 0.75,
+                colors: [BP.yellow.withValues(alpha: 0.20), BP.yellow.withValues(alpha: 0)],
+              ),
             ),
           ),
         ),
-      ),
-      Positioned.fill(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              center: const Alignment(0, 0.3),
-              radius: 0.7,
-              colors: [BP.yellow.withValues(alpha: 0.07), BP.yellow.withValues(alpha: 0)],
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(0, 0.3),
+                radius: 0.7,
+                colors: [BP.yellow.withValues(alpha: 0.07), BP.yellow.withValues(alpha: 0)],
+              ),
             ),
           ),
         ),
-      ),
-    ]);
+      ],
+    );
   }
 }
 
@@ -277,21 +329,23 @@ class _IndiaFlag extends StatelessWidget {
       child: SizedBox(
         width: 24,
         height: 16,
-        child: Column(children: [
-          Expanded(child: Container(color: const Color(0xFFFF9933))),
-          Expanded(
-            child: Container(
-              color: BP.white,
-              alignment: Alignment.center,
+        child: Column(
+          children: [
+            Expanded(child: Container(color: const Color(0xFFFF9933))),
+            Expanded(
               child: Container(
-                width: 4,
-                height: 4,
-                decoration: const BoxDecoration(color: Color(0xFF000080), shape: BoxShape.circle),
+                color: BP.white,
+                alignment: Alignment.center,
+                child: Container(
+                  width: 4,
+                  height: 4,
+                  decoration: const BoxDecoration(color: Color(0xFF000080), shape: BoxShape.circle),
+                ),
               ),
             ),
-          ),
-          Expanded(child: Container(color: const Color(0xFF138808))),
-        ]),
+            Expanded(child: Container(color: const Color(0xFF138808))),
+          ],
+        ),
       ),
     );
   }
@@ -315,39 +369,47 @@ class _PhoneField extends StatelessWidget {
         border: Border.all(color: edge.withValues(alpha: 0.8), width: 1.5),
         boxShadow: [BoxShadow(color: edge.withValues(alpha: 0.28), blurRadius: 14)],
       ),
-      child: Row(children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 14),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            _IndiaFlag(),
-            SizedBox(width: 10),
-            Text('+91', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: BP.white)),
-          ]),
-        ),
-        Container(width: 1, height: 22, color: Colors.white.withValues(alpha: 0.15)),
-        Expanded(
-          child: TextField(
-            key: const Key('phoneField'),
-            controller: controller,
-            keyboardType: TextInputType.phone,
-            textInputAction: TextInputAction.done,
-            cursorColor: BP.yellow,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
-            onChanged: (_) => onChanged(),
-            onSubmitted: (_) => onSubmit(),
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.5, color: BP.white),
-            decoration: InputDecoration(
-              hintText: 'Enter mobile number',
-              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontWeight: FontWeight.w400),
-              filled: false,
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      child: Row(
+        children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _IndiaFlag(),
+                SizedBox(width: 10),
+                Text(
+                  '+91',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: BP.white),
+                ),
+              ],
             ),
           ),
-        ),
-      ]),
+          Container(width: 1, height: 22, color: Colors.white.withValues(alpha: 0.15)),
+          Expanded(
+            child: TextField(
+              key: const Key('phoneField'),
+              controller: controller,
+              keyboardType: TextInputType.phone,
+              textInputAction: TextInputAction.done,
+              cursorColor: BP.yellow,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
+              onChanged: (_) => onChanged(),
+              onSubmitted: (_) => onSubmit(),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.5, color: BP.white),
+              decoration: InputDecoration(
+                hintText: 'Enter mobile number',
+                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontWeight: FontWeight.w400),
+                filled: false,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

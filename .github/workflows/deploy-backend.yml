@@ -31,6 +31,19 @@ jobs:
         working-directory: backend/functions
       - name: Write service account key
         run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$RUNNER_TEMP/sa.json"
+      - name: Create missing function secrets as "none"
+        # The functions deploy fails if a secret doesn't exist. "none" turns that
+        # feature off (see backend/README.md); set real values later.
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          printf 'none' > "$RUNNER_TEMP/none.txt"
+          for s in SUREPASS_TOKEN RAZORPAY_KEY_ID RAZORPAY_KEY_SECRET RAZORPAY_WEBHOOK_SECRET; do
+            if ! npx --yes firebase-tools@latest functions:secrets:access "$s" --project bike-pharma-automobile >/dev/null 2>&1; then
+              echo "Creating $s = none"
+              npx --yes firebase-tools@latest functions:secrets:set "$s" --data-file "$RUNNER_TEMP/none.txt" --project bike-pharma-automobile --non-interactive --force
+            fi
+          done
       - name: Deploy
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json

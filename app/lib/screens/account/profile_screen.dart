@@ -37,6 +37,8 @@ class ProfileScreen extends StatelessWidget {
       ('Saved addresses', soon),
       ('Wishlist', soon),
       ('Genuine mechanic', () => context.push('/scan')),
+      ('Mechanic section', () => context.push('/mechanic')),
+      if (app.isAdmin) ('Verify mechanics (shop)', () => context.push('/admin/mechanics')),
       ('Bike Doctor', () => context.push('/bike-doctor')),
       ('Help and support', () => _showHelp(context)),
       ('Language: Hindi / English', soon),

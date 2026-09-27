@@ -56,6 +56,25 @@ service cloud.firestore {
         && optTimestamp(d, 'updatedAt');
     }
 
+    function validApplication(d) {
+      return d.keys().hasOnly(['name', 'garageName', 'phone', 'address', 'mapsLink', 'openHours',
+                               'specialistBrands', 'vehicleTypes', 'services', 'experienceYears',
+                               'photos', 'status', 'createdAt', 'updatedAt'])
+        && reqString(d, 'name', 100)
+        && reqString(d, 'garageName', 150)
+        && reqString(d, 'phone', 20)
+        && reqString(d, 'address', 500)
+        && optString(d, 'mapsLink', 500)
+        && optString(d, 'openHours', 100)
+        && d.specialistBrands is list && d.specialistBrands.size() > 0 && d.specialistBrands.size() <= 30
+        && d.vehicleTypes is list && d.vehicleTypes.size() <= 30
+        && d.services is list && d.services.size() > 0 && d.services.size() <= 30
+        && (!('photos' in d) || (d.photos is list && d.photos.size() <= 10))
+        && d.experienceYears is int && d.experienceYears >= 0 && d.experienceYears <= 80
+        && optTimestamp(d, 'createdAt')
+        && optTimestamp(d, 'updatedAt');
+    }
+
     function validCartItem(d) {
       return d.keys().hasOnly(['qty', 'addedAt'])
         && d.qty is int && d.qty >= 1 && d.qty <= 20
@@ -95,6 +114,17 @@ service cloud.firestore {
       allow read: if signedIn()
         && ((resource.data.verified == true && resource.data.active == true) || isAdmin());
       allow write: if isAdmin();
+    }
+
+    // ---------- mechanic signups: the mechanic writes their own, the shop verifies ----------
+    // Approval/rejection only through the reviewMechanicApplication function.
+    match /mechanicApplications/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid) && validApplication(data()) && data().status == 'pending';
+      // Editable while pending, or to resubmit after a rejection (goes back to pending).
+      allow update: if isOwner(uid) && validApplication(data()) && data().status == 'pending'
+        && resource.data.status in ['pending', 'rejected'];
+      allow delete: if false;
     }
 
     // ---------- warranties (written by the shop when a covered part is billed) ----------

@@ -65,6 +65,14 @@
         { "fieldPath": "uid", "order": "ASCENDING" },
         { "fieldPath": "purchasedAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "mechanicApplications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

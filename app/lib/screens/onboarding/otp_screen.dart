@@ -71,6 +71,10 @@ class _OtpScreenState extends State<OtpScreen> {
       await app.repo.verifyOtp(_code.text);
       final complete = await app.loadSession();
       if (!mounted) return;
+      if (app.signingInAsMechanic) {
+        context.go('/mechanic');
+        return;
+      }
       context.go(complete ? '/home' : '/create-profile');
     } catch (e) {
       if (!mounted) return;

@@ -62,6 +62,14 @@ abstract class Repository {
   // Mechanics
   Future<Mechanic?> mechanic(String id);
 
+  // Mechanic signup + shop verification
+  Future<bool> isAdmin();
+  Future<MechanicApplication?> myMechanicApplication();
+  Future<void> submitMechanicApplication(MechanicApplication application);
+  Future<List<MechanicApplication>> pendingMechanicApplications(); // admin
+  /// Admin: approve (returns the new BPM id) or reject a signup.
+  Future<String?> reviewMechanicApplication(String uid, {required bool approve, String? reason, double? lat, double? lng});
+
   // Warranty tracker: warranty-covered parts from this customer's bills
   Future<List<WarrantyItem>> warranties();
 }

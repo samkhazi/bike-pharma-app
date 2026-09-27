@@ -181,6 +181,106 @@ class ShopOrder {
       items.isEmpty ? 'Order' : items.length == 1 ? items.first.name : '${items.first.name} + ${items.length - 1} more';
 }
 
+/// A mechanic's signup, checked by the shop before they get a BPM id.
+class MechanicApplication {
+  final String uid;
+  final String name, garageName, phone, address;
+  final String mapsLink, openHours;
+  final List<String> specialistBrands, vehicleTypes, services, photos;
+  final int experienceYears;
+  final String status; // pending | approved | rejected
+  final String? mechanicId; // set when approved
+  final String? reason; // set when rejected
+  final DateTime? createdAt;
+
+  const MechanicApplication({
+    required this.uid,
+    required this.name,
+    required this.garageName,
+    required this.phone,
+    required this.address,
+    this.mapsLink = '',
+    this.openHours = '',
+    this.specialistBrands = const [],
+    this.vehicleTypes = const [],
+    this.services = const [],
+    this.photos = const [],
+    this.experienceYears = 0,
+    this.status = 'pending',
+    this.mechanicId,
+    this.reason,
+    this.createdAt,
+  });
+
+  bool get isPending => status == 'pending';
+  bool get isApproved => status == 'approved';
+  bool get isRejected => status == 'rejected';
+
+  /// Fields the mechanic writes (status is always sent as pending).
+  Map<String, dynamic> toMap() => {
+        'name': name,
+        'garageName': garageName,
+        'phone': phone,
+        'address': address,
+        'mapsLink': mapsLink,
+        'openHours': openHours,
+        'specialistBrands': specialistBrands,
+        'vehicleTypes': vehicleTypes,
+        'services': services,
+        'photos': photos,
+        'experienceYears': experienceYears,
+        'status': 'pending',
+      };
+
+  factory MechanicApplication.fromMap(String uid, Map<String, dynamic> m, {DateTime? createdAt}) =>
+      MechanicApplication(
+        uid: uid,
+        name: m['name'] ?? '',
+        garageName: m['garageName'] ?? '',
+        phone: m['phone'] ?? '',
+        address: m['address'] ?? '',
+        mapsLink: m['mapsLink'] ?? '',
+        openHours: m['openHours'] ?? '',
+        specialistBrands: List<String>.from(m['specialistBrands'] ?? const []),
+        vehicleTypes: List<String>.from(m['vehicleTypes'] ?? const []),
+        services: List<String>.from(m['services'] ?? const []),
+        photos: List<String>.from(m['photos'] ?? const []),
+        experienceYears: (m['experienceYears'] as num?)?.toInt() ?? 0,
+        status: m['status'] ?? 'pending',
+        mechanicId: m['mechanicId'],
+        reason: m['reason'],
+        createdAt: createdAt,
+      );
+
+  MechanicApplication copyWith({String? status, String? mechanicId, String? reason}) => MechanicApplication(
+        uid: uid,
+        name: name,
+        garageName: garageName,
+        phone: phone,
+        address: address,
+        mapsLink: mapsLink,
+        openHours: openHours,
+        specialistBrands: specialistBrands,
+        vehicleTypes: vehicleTypes,
+        services: services,
+        photos: photos,
+        experienceYears: experienceYears,
+        status: status ?? this.status,
+        mechanicId: mechanicId ?? this.mechanicId,
+        reason: reason ?? this.reason,
+        createdAt: createdAt,
+      );
+}
+
+/// Pulls "lat,lng" out of a Google Maps link or typed coordinates (same rule as the backend).
+({double lat, double lng})? parseLatLng(String input) {
+  final m = RegExp(r'(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)').firstMatch(input);
+  if (m == null) return null;
+  final lat = double.parse(m.group(1)!), lng = double.parse(m.group(2)!);
+  if (lat.abs() > 90 || lng.abs() > 180) return null;
+  return (lat: lat, lng: lng);
+}
+
 enum WarrantyStatus { active, endingSoon, expired }
 
 /// One warranty-covered part, saved against the shop bill it was sold on.

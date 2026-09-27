@@ -101,6 +101,25 @@ The app's Warranty tracker (Profile > Warranty tracker) lists these, shows days 
 
 QR code content for a mechanic: `bikepharma://mechanic/BPM-0231` (the app also accepts the bare id).
 
+The `uid` field links a mechanic to their login when they joined through the app signup.
+
+### `mechanicApplications/{uid}` (mechanic signup, one per login)
+A mechanic signs up from the app's Mechanic section. Nothing is public until the shop verifies it.
+
+| field | type |
+|---|---|
+| name, garageName, phone, address, openHours | string |
+| mapsLink | string (Google Maps link or `lat, lng`; the shop can type the location when verifying) |
+| specialistBrands, vehicleTypes, services | string[] (at least one brand and one service) |
+| photos | string[] |
+| experienceYears | number |
+| status | `"pending"` \| `"approved"` \| `"rejected"` |
+| mechanicId | string, set on approval (`BPM-0416`) |
+| reason | string, the shop's message on rejection |
+| createdAt, updatedAt, reviewedAt | timestamp |
+
+The mechanic can create it and edit it while it is pending or rejected (always saved back as pending). Only the `reviewMechanicApplication` function approves or rejects it; approval creates the `mechanics/{BPM-…}` doc.
+
 ### `offers/{offerId}`
 `{ tag, title, subtitle, cta, target: "service"|"shop"|"accessories", order: number, active: bool }`
 
@@ -118,5 +137,6 @@ Presence of the doc = admin (shop owner / staff).
 | `placeOrder` | `{ items: {productId, qty}[], address, paymentMethod }` | `{ orderId, total, razorpay?: { orderId, keyId, amount } }` — prices and stock are read on the server, never trusted from the app |
 | `verifyPayment` | `{ orderId, razorpayPaymentId, razorpaySignature }` | `{ paid: true }` |
 | `createMechanic` (admin) | mechanic fields | `{ mechanicId }` |
+| `reviewMechanicApplication` (admin) | `{ uid, approve, reason?, geo? }` | `{ status, mechanicId? }` — approve issues the next BPM id and publishes the mechanic; reject stores the reason for the mechanic to see |
 
 HTTP function `razorpayWebhook` marks orders paid from Razorpay's `payment.captured` event (signature checked).

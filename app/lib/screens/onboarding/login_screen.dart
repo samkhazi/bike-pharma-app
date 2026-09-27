@@ -20,6 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _phone = TextEditingController();
   String? _error;
   bool _loading = false;
+  bool _mechanic = false;
 
   @override
   void dispose() {
@@ -54,6 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final phone = '+91${_phone.text.trim()}';
       await app.repo.sendOtp(phone);
       app.phone = phone;
+      app.signingInAsMechanic = _mechanic;
       if (mounted) context.push('/otp');
     } catch (e) {
       if (mounted) showMessage(context, 'OTP nahi bhej paye: $e');
@@ -123,13 +125,15 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 16),
                             const _Divider(),
                             const SizedBox(height: 18),
-                            const Text(
-                              'Sign in',
-                              style: TextStyle(color: BP.white, fontSize: 28, fontWeight: FontWeight.w800),
+                            Text(
+                              _mechanic ? 'Mechanic sign in' : 'Sign in',
+                              style: const TextStyle(color: BP.white, fontSize: 28, fontWeight: FontWeight.w800),
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Welcome back. Just one number stands between you and your ride.',
+                              _mechanic
+                                  ? 'Mobile number se signup karo. Shop verify karke aapko verified ID degi.'
+                                  : 'Welcome back. Just one number stands between you and your ride.',
                               style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14, height: 1.45),
                             ),
                             const SizedBox(height: 22),
@@ -208,6 +212,19 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ],
                                 ),
                                 textAlign: TextAlign.center,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Center(
+                              child: TextButton.icon(
+                                key: const Key('mechanicMode'),
+                                onPressed: () => setState(() => _mechanic = !_mechanic),
+                                style: TextButton.styleFrom(foregroundColor: BP.yellow),
+                                icon: Icon(_mechanic ? Icons.person_outline : Icons.build_outlined, size: 18),
+                                label: Text(
+                                  _mechanic ? 'Customer ho? Yahan sign in karo' : 'Mechanic ho? Mechanic signup',
+                                  style: const TextStyle(fontWeight: FontWeight.w700),
+                                ),
                               ),
                             ),
                           ],

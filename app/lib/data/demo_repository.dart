@@ -169,9 +169,60 @@ class DemoRepository implements Repository {
   @override
   Future<Mechanic?> mechanic(String id) => _delay(id == demoMechanic.id ? demoMechanic : null);
 
+  // Demo: the signed-in user is also the shop admin, so both sides of the
+  // mechanic signup can be tried. One sample signup waits for verification.
+  MechanicApplication? _myApplication;
+  final _applications = <String, MechanicApplication>{'m-imran': demoPendingApplication};
+  int _nextMechanic = 416;
+
+  @override
+  Future<bool> isAdmin() => _delay(true);
+
+  @override
+  Future<MechanicApplication?> myMechanicApplication() => _delay(_myApplication);
+
+  @override
+  Future<void> submitMechanicApplication(MechanicApplication a) async {
+    final uid = _uid ?? 'demo-user';
+    _myApplication = MechanicApplication.fromMap(uid, a.toMap(), createdAt: DateTime.now());
+    _applications[uid] = _myApplication!;
+    await _delay(null);
+  }
+
+  @override
+  Future<List<MechanicApplication>> pendingMechanicApplications() =>
+      _delay(_applications.values.where((a) => a.isPending).toList());
+
+  @override
+  Future<String?> reviewMechanicApplication(String uid,
+      {required bool approve, String? reason, double? lat, double? lng}) async {
+    final a = _applications[uid];
+    if (a == null || !a.isPending) throw Exception('Ye signup already check ho chuka hai');
+    final id = approve ? 'BPM-${(_nextMechanic++).toString().padLeft(4, '0')}' : null;
+    final updated = approve ? a.copyWith(status: 'approved', mechanicId: id) : a.copyWith(status: 'rejected', reason: reason ?? '');
+    _applications[uid] = updated;
+    if (_myApplication?.uid == uid) _myApplication = updated;
+    return _delay(id);
+  }
+
   @override
   Future<List<WarrantyItem>> warranties() => _delay(demoWarranties(DateTime.now()));
 }
+
+final demoPendingApplication = MechanicApplication(
+  uid: 'm-imran',
+  name: 'Imran Sayyed',
+  garageName: 'Speed Point Garage',
+  phone: '+919800000415',
+  address: 'Service road, near toll naka',
+  mapsLink: 'https://maps.google.com/?q=18.5310,73.8740',
+  openHours: '9 AM to 10 PM',
+  specialistBrands: const ['Bajaj', 'KTM', 'TVS'],
+  vehicleTypes: const ['Commuter bikes', 'Sports bikes'],
+  services: const ['Engine overhaul', 'Fuel injection', 'Electrical wiring'],
+  experienceYears: 7,
+  createdAt: DateTime(2026, 9, 27, 11, 20),
+);
 
 /// Sample bills dated relative to [now] so the demo always shows one active,
 /// one ending soon and one expired part.

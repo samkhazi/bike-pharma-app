@@ -11,6 +11,10 @@ class AppState extends ChangeNotifier {
   AppState(this.repo);
 
   String phone = '';
+
+  /// Set on the login screen when a mechanic (not a customer) is signing in.
+  bool signingInAsMechanic = false;
+  bool isAdmin = false;
   UserProfile? profile;
   List<Vehicle> vehicles = [];
   List<Product> catalogue = [];
@@ -38,6 +42,7 @@ class AppState extends ChangeNotifier {
   /// Loads everything after sign in. Returns false if the profile is missing.
   Future<bool> loadSession() async {
     profile = await repo.loadProfile();
+    isAdmin = await repo.isAdmin().catchError((_) => false);
     if (profile == null) return false;
     vehicles = await repo.vehicles();
     await Future.wait([refreshCatalogue(), refreshCart()]);

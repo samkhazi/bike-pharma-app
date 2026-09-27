@@ -58,7 +58,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     if (app.repo.currentUid == null) return '/login';
     try {
       // true = profile + vehicle; false = profile or vehicle missing.
-      return await app.loadSession() ? '/home' : '/create-profile';
+      if (await app.loadSession()) return '/home';
+      // Mechanics sign up without a customer profile.
+      if (app.profile == null && await app.repo.myMechanicApplication() != null) return '/mechanic';
+      return '/create-profile';
     } catch (_) {
       return '/login';
     }

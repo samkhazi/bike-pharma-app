@@ -5,3 +5,4 @@
 export { lookupVehicle } from "./functions/lookupVehicle";
 export { placeOrder, verifyPayment, razorpayWebhook } from "./functions/orders";
 export { createMechanic } from "./functions/createMechanic";
+export { reviewMechanicApplication } from "./functions/reviewMechanicApplication";

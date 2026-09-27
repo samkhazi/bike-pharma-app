@@ -109,3 +109,70 @@ export function validateMechanicInput(input: unknown, currentYear = new Date().g
     },
   };
 }
+
+export interface MechanicApplicationInput {
+  name: string;
+  garageName: string;
+  phone: string;
+  address: string;
+  mapsLink: string;
+  openHours: string;
+  specialistBrands: string[];
+  vehicleTypes: string[];
+  services: string[];
+  experienceYears: number;
+  photos: string[];
+}
+
+/** Validates the signup form a mechanic submits (mechanicApplications/{uid}). */
+export function validateApplicationInput(input: unknown): Result<MechanicApplicationInput> {
+  if (!input || typeof input !== "object") return { ok: false, error: "Signup details are required." };
+  const d = input as Record<string, unknown>;
+  if (!isStr(d.name, 100)) return { ok: false, error: "name is required" };
+  if (!isStr(d.garageName, 150)) return { ok: false, error: "garageName is required" };
+  if (!isStr(d.phone, 20)) return { ok: false, error: "phone is required" };
+  if (!isStr(d.address, 500)) return { ok: false, error: "address is required" };
+  const lists: Record<string, string[]> = {};
+  for (const key of ["specialistBrands", "vehicleTypes", "services", "photos"]) {
+    const l = strList(d[key]);
+    if (!l) return { ok: false, error: `${key} must be a list of text` };
+    lists[key] = l;
+  }
+  if (lists.specialistBrands.length === 0) return { ok: false, error: "pick at least one brand" };
+  if (lists.services.length === 0) return { ok: false, error: "pick at least one service" };
+  const experienceYears = num(d.experienceYears, 0, 80);
+  if (experienceYears === null) return { ok: false, error: "experienceYears must be 0 to 80" };
+  for (const key of ["mapsLink", "openHours"]) {
+    if (d[key] !== undefined && d[key] !== "" && !isStr(d[key], 500)) return { ok: false, error: `${key} must be text` };
+  }
+  return {
+    ok: true,
+    value: {
+      name: (d.name as string).trim(),
+      garageName: (d.garageName as string).trim(),
+      phone: (d.phone as string).trim(),
+      address: (d.address as string).trim(),
+      mapsLink: typeof d.mapsLink === "string" ? d.mapsLink.trim() : "",
+      openHours: typeof d.openHours === "string" ? d.openHours.trim() : "",
+      specialistBrands: lists.specialistBrands,
+      vehicleTypes: lists.vehicleTypes,
+      services: lists.services,
+      experienceYears,
+      photos: lists.photos,
+    },
+  };
+}
+
+/**
+ * Pulls "lat,lng" out of a Google Maps link or a typed "18.52, 73.85".
+ * Returns null when no coordinates are found (short maps.app.goo.gl links have none).
+ */
+export function parseLatLng(input: unknown): { lat: number; lng: number } | null {
+  if (typeof input !== "string") return null;
+  const m = input.match(/(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/);
+  if (!m) return null;
+  const lat = Number(m[1]);
+  const lng = Number(m[2]);
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return { lat, lng };
+}

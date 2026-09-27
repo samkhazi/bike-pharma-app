@@ -258,6 +258,60 @@ class FirebaseRepository implements Repository {
     return m.verified ? m : null;
   }
 
+  // ---------- Mechanic signup + verification ----------
+  @override
+  Future<bool> isAdmin() async {
+    final uid = currentUid;
+    if (uid == null) return false;
+    try {
+      return (await _db.collection('admins').doc(uid).get()).exists;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  MechanicApplication _application(DocumentSnapshot<Map<String, dynamic>> d) =>
+      MechanicApplication.fromMap(d.id, d.data()!, createdAt: (d.data()!['createdAt'] as Timestamp?)?.toDate());
+
+  @override
+  Future<MechanicApplication?> myMechanicApplication() async {
+    final d = await _db.collection('mechanicApplications').doc(_uid).get();
+    return d.exists ? _application(d) : null;
+  }
+
+  @override
+  Future<void> submitMechanicApplication(MechanicApplication a) async {
+    final ref = _db.collection('mechanicApplications').doc(_uid);
+    final existing = await ref.get();
+    await ref.set({
+      ...a.toMap(),
+      'createdAt': existing.exists ? existing.data()!['createdAt'] : FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  @override
+  Future<List<MechanicApplication>> pendingMechanicApplications() async {
+    final q = await _db
+        .collection('mechanicApplications')
+        .where('status', isEqualTo: 'pending')
+        .orderBy('createdAt')
+        .get();
+    return q.docs.map(_application).toList();
+  }
+
+  @override
+  Future<String?> reviewMechanicApplication(String uid,
+      {required bool approve, String? reason, double? lat, double? lng}) async {
+    final r = await _fn.httpsCallable('reviewMechanicApplication').call({
+      'uid': uid,
+      'approve': approve,
+      'reason': ?reason,
+      if (lat != null && lng != null) 'geo': {'lat': lat, 'lng': lng},
+    });
+    return (r.data as Map)['mechanicId'] as String?;
+  }
+
   @override
   Future<List<WarrantyItem>> warranties() async {
     final q = await _db

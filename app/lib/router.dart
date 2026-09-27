@@ -7,6 +7,9 @@ import 'screens/account/warranty_screen.dart';
 import 'screens/extras/bike_doctor_screen.dart';
 import 'screens/extras/mechanic_profile_screen.dart';
 import 'screens/extras/scan_mechanic_screen.dart';
+import 'screens/mechanic/admin_mechanics_screen.dart';
+import 'screens/mechanic/mechanic_home_screen.dart';
+import 'screens/mechanic/mechanic_signup_screen.dart';
 import 'screens/onboarding/create_profile_screen.dart';
 import 'screens/onboarding/login_screen.dart';
 import 'screens/onboarding/otp_screen.dart';
@@ -50,6 +53,9 @@ GoRouter buildRouter() => GoRouter(
         GoRoute(path: '/modify', builder: (_, _) => const ModifyScreen()),
         GoRoute(path: '/bike-doctor', builder: (_, _) => const BikeDoctorScreen()),
         GoRoute(path: '/scan', builder: (_, _) => const ScanMechanicScreen()),
+        GoRoute(path: '/mechanic', builder: (_, _) => const MechanicHomeScreen()),
+        GoRoute(path: '/mechanic-signup', builder: (_, _) => const MechanicSignupScreen()),
+        GoRoute(path: '/admin/mechanics', builder: (_, _) => const AdminMechanicsScreen()),
         GoRoute(path: '/warranty', builder: (_, _) => const WarrantyScreen()),
         GoRoute(path: '/mechanic/:id', builder: (_, s) => MechanicProfileScreen(id: s.pathParameters['id']!)),
       ],

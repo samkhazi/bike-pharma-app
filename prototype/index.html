@@ -1,0 +1,889 @@
+<title>Bike Pharma Prototype</title>
+<meta name="theme-color" content="#121212">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Chakra+Petch:wght@600;700&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --ink:#121212; --ink7:#3A3A3A; --ink5:#6E6E6E; --ink3:#BDBDBD;
+  --y:#FFC20E; --y-deep:#7A5600; --y-soft:#FFF6D6;
+  --paper:#F5F5F2; --card:#FFFFFF; --line:#E8E8E4;
+  --g:#0F9D58; --g-soft:#E7F6EE; --r:#D93025; --r-soft:#FDECEA;
+  --amber:#B7791F; --amber-soft:#FFF3D6; --blue:#2563EB; --blue-soft:#E8F0FE;
+  --stage:#0B0B0B;
+  --ui:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --brand:"Chakra Petch","Plus Jakarta Sans",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--stage);font-family:var(--ui);color:var(--ink);-webkit-font-smoothing:antialiased;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--y);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+/* stage + device */
+.stage{height:100%;display:flex;align-items:center;justify-content:center;gap:40px;padding-inline:16px;position:relative;overflow:hidden}
+.stage::before,.stage::after{content:"";position:absolute;height:6px;width:520px;background:var(--y);transform:rotate(-40deg);opacity:.9}
+.stage::before{top:40px;right:-160px}.stage::after{bottom:-40px;left:-260px}
+.device{position:relative;width:390px;height:min(844px,calc(100% - 32px));border-radius:46px;background:var(--paper);box-shadow:0 0 0 10px #1f1f1f,0 0 0 12px #2c2c2c,0 30px 80px rgba(0,0,0,.6);overflow:hidden;display:flex;flex-direction:column;z-index:1}
+.aside{max-width:300px;color:#d9d9d4;z-index:1}
+.aside h1{font-family:var(--brand);font-size:34px;line-height:1.05;margin:0 0 6px;color:#fff;letter-spacing:.5px}
+.aside h1 span{color:var(--y)}
+.aside p{font-size:13px;line-height:1.6;color:#a9a9a3;margin:0 0 14px}
+.aside .acc{display:grid;gap:6px}
+.aside .acc button{display:flex;justify-content:space-between;gap:10px;text-align:left;background:#1b1b1b;border:1px solid #2b2b2b;border-radius:12px;padding:9px 12px;font-size:12px;color:#eee}
+.aside .acc button:hover{border-color:var(--y)}
+.aside .acc b{color:var(--y);font-weight:700;white-space:nowrap}
+@media (max-width:820px){.aside{display:none}.stage::before,.stage::after{display:none}}
+@media (max-width:500px){
+  .stage{padding:0}
+  .device{width:100%;height:100%;border-radius:0;box-shadow:none}
+}
+
+/* app chrome */
+.status{height:34px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:6px 26px 0;font-size:13px;font-weight:700}
+.status.dark{background:var(--ink);color:#fff}
+.status .bars{display:flex;gap:3px;align-items:flex-end}.status .bars i{width:3px;background:currentColor;border-radius:1px;display:block}
+.status .bat{width:22px;height:11px;border-radius:3px;background:currentColor;margin-left:4px}
+@media (max-width:500px){.status{display:none}}
+.viewport{position:relative;flex:1;min-height:0;overflow:hidden}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--paper)}
+.screen.dark{background:var(--ink);color:#fff}
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.pad{padding:12px 20px 28px;display:flex;flex-direction:column;gap:18px}
+.in-push{animation:push .32s cubic-bezier(.2,.8,.2,1)}
+.in-back{animation:back .32s cubic-bezier(.2,.8,.2,1)}
+.in-fade{animation:fade .28s ease-out}
+@keyframes push{from{transform:translateX(100%)}to{transform:none}}
+@keyframes back{from{transform:translateX(-30%);opacity:.4}to{transform:none;opacity:1}}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.in-push,.in-back,.in-fade{animation:none}}
+
+/* top bar */
+.bar{flex:none;display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--card);border-bottom:1px solid var(--line)}
+.bar h2{flex:1;margin:0;font-size:18px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iconbtn{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--paper);flex:none;position:relative}
+.iconbtn.line{background:var(--card);border:1px solid var(--line)}
+.iconbtn .dot{position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:50%;background:var(--r);border:2px solid var(--card)}
+.iconbtn .cnt{position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;border-radius:9px;background:var(--y);color:var(--ink);font-size:10px;font-weight:800;display:grid;place-items:center;padding:0 4px}
+
+svg.i{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+svg.s16{width:16px;height:16px}svg.s18{width:18px;height:18px}svg.s20{width:20px;height:20px}svg.s28{width:28px;height:28px}svg.s40{width:40px;height:40px}
+
+/* type */
+.h1{font-size:23px;font-weight:800;margin:0;line-height:1.2;text-wrap:balance}
+.h2{font-size:18px;font-weight:700;margin:0}
+.h3{font-size:15px;font-weight:700;margin:0}
+.body{font-size:14px;line-height:1.5}
+.cap{font-size:12px;font-weight:500;color:var(--ink5);line-height:1.4}
+.micro{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.muted{color:var(--ink5)}
+.amt{font-size:28px;font-weight:800;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.link{color:var(--y-deep);font-weight:700;font-size:13px}
+.sec{display:flex;justify-content:space-between;align-items:center}
+.row{display:flex;align-items:center;gap:12px}
+.row.top{align-items:flex-start}
+.grow{flex:1;min-width:0}
+.stack{display:flex;flex-direction:column;gap:12px}
+.stack.g6{gap:6px}.stack.g8{gap:8px}
+.wrap{flex-wrap:wrap}
+
+/* surfaces */
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.card.flush{padding:0;gap:0;overflow:hidden}
+.dark-card{background:var(--ink);color:#fff;border-radius:18px;padding:16px;position:relative;overflow:hidden;display:flex;flex-direction:column;gap:10px}
+.dark-card::before,.dark-card::after{content:"";position:absolute;height:4px;background:var(--y);transform:rotate(-40deg);right:-30px;top:18px;width:110px}
+.dark-card::after{right:-50px;top:34px;width:120px}
+.dark-card > *{position:relative;z-index:1}
+.tile{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;flex:none;background:var(--y-soft);color:var(--ink)}
+.tile.y{background:var(--y)}.tile.k{background:var(--ink);color:var(--y)}.tile.g{background:var(--g-soft);color:var(--g)}.tile.r{background:var(--r-soft);color:var(--r)}.tile.b{background:var(--blue-soft);color:var(--blue)}.tile.n{background:var(--paper);color:var(--ink7)}
+.tile.sm{width:36px;height:36px;border-radius:11px}
+.tile.round{border-radius:50%}
+.hr{height:1px;background:var(--line);width:100%}
+.li{display:flex;align-items:center;gap:12px;padding:13px 16px;text-align:left;width:100%}
+.li + .li{border-top:1px solid var(--line)}
+.li .t{font-weight:700;font-size:14px}
+.li .s{font-size:12px;color:var(--ink5);margin-top:2px}
+.chev{color:var(--ink3)}
+.kv{display:flex;justify-content:space-between;gap:12px;font-size:14px}
+.kv span:first-child{color:var(--ink5)}
+.kv span:last-child{font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.kv.big span:last-child{font-size:17px;font-weight:800}
+
+/* pills & chips */
+.pill{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:4px 10px;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;background:var(--paper);color:var(--ink7)}
+.pill.g{background:var(--g-soft);color:var(--g)}.pill.r{background:var(--r-soft);color:var(--r)}.pill.a{background:var(--amber-soft);color:var(--amber)}.pill.b{background:var(--blue-soft);color:var(--blue)}.pill.y{background:var(--y-soft);color:var(--y-deep)}.pill.k{background:var(--ink);color:var(--y)}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin-inline:-20px;padding-inline:20px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:8px 14px;font-size:12px;font-weight:600;background:var(--card);border:1px solid var(--line);color:var(--ink7)}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.opt{border:1.5px solid var(--line);background:var(--card);border-radius:14px;padding:12px;display:flex;align-items:center;gap:10px;text-align:left;font-size:13px;font-weight:600}
+.opt.on{border-color:var(--y);background:var(--y-soft)}
+.radio{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--ink3);flex:none;background:var(--card)}
+.opt.on .radio,.radio.on{border:6px solid var(--ink)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+
+/* buttons */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;border-radius:14px;background:var(--y);color:var(--ink);font-weight:800;font-size:14px;letter-spacing:.04em;text-transform:uppercase;width:100%;transition:transform .12s ease,filter .12s}
+.btn:active{transform:scale(.97)}
+.btn.dark{background:var(--ink);color:var(--y)}
+.btn.line{background:var(--card);border:1.5px solid var(--ink);color:var(--ink)}
+.btn.red{background:var(--r);color:#fff}
+.btn.sm{height:38px;border-radius:10px;font-size:11px;padding-inline:14px;width:auto}
+.btn[disabled]{opacity:.4;pointer-events:none}
+.foot{flex:none;background:var(--card);border-top:1px solid var(--line);padding:12px 20px 18px;display:flex;flex-direction:column;gap:10px}
+.foot .sum{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--ink5)}
+.foot .sum b{font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums}
+
+/* inputs */
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;font-weight:600;color:var(--ink5)}
+.inp{height:52px;border:1.5px solid var(--line);background:var(--card);border-radius:14px;display:flex;align-items:center;gap:10px;padding:0 14px}
+.inp:focus-within{border-color:var(--ink)}
+.inp input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-size:15px;font-weight:600}
+.inp.err{border-color:var(--r)}
+.errmsg{font-size:12px;color:var(--r);font-weight:600}
+.search{height:48px;border:1px solid var(--line);background:var(--card);border-radius:14px;display:flex;align-items:center;gap:10px;padding:0 14px;color:var(--ink5)}
+.search input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-size:14px}
+
+/* product */
+.pcard{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;display:flex;flex-direction:column;text-align:left}
+.pimg{height:104px;background:var(--paper);display:grid;place-items:center;color:var(--ink3);position:relative}
+.pimg .off{position:absolute;left:8px;top:8px}
+.pimg .fav{position:absolute;right:8px;top:8px;color:var(--ink5)}
+.pimg .fav.on{color:var(--r)}.pimg .fav.on svg{fill:var(--r)}
+.pbody{padding:10px 12px 12px;display:flex;flex-direction:column;gap:3px;flex:1}
+.pname{font-size:13px;font-weight:700;line-height:1.3;min-height:34px}
+.price{display:flex;align-items:center;gap:6px;margin-top:4px}
+.price b{font-size:16px;font-weight:800}
+.price s{font-size:11px;color:var(--ink5)}
+.addbtn{margin-left:auto;width:28px;height:28px;border-radius:9px;background:var(--y);display:grid;place-items:center}
+
+/* bottom nav */
+.nav{flex:none;position:relative;background:var(--card);border-radius:24px 24px 0 0;box-shadow:0 -6px 20px rgba(0,0,0,.06);display:grid;grid-template-columns:repeat(5,1fr);padding:12px 8px 16px;--i:0;z-index:5}
+.nav .bubble{position:absolute;top:-24px;left:calc(8px + (100% - 16px) / 5 * var(--i) + (100% - 16px) / 10 - 28px);width:56px;height:56px;border-radius:50%;background:var(--y);color:var(--ink);display:grid;place-items:center;box-shadow:0 0 0 6px var(--paper),0 8px 18px rgba(255,194,14,.45);transition:left .38s cubic-bezier(.3,1.3,.5,1)}
+.nav .bubble svg{animation:pop .38s ease}
+@keyframes pop{0%{transform:scale(.4) rotate(-40deg);opacity:0}100%{transform:none;opacity:1}}
+.nav button{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--ink5)}
+.nav button.on{color:var(--ink);font-weight:800}
+.nav button.on svg{opacity:0}
+@media (prefers-reduced-motion:reduce){.nav .bubble{transition:none}.nav .bubble svg{animation:none}}
+
+/* toast + sheet */
+.toast{position:absolute;left:50%;bottom:110px;transform:translate(-50%,20px);background:var(--ink);color:#fff;padding:11px 16px;border-radius:12px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:.25s;z-index:30;display:flex;gap:8px;align-items:center;max-width:calc(100% - 40px)}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast svg{color:var(--y)}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:20;display:flex;align-items:flex-end;animation:fade .2s}
+.sheet{background:var(--card);width:100%;border-radius:24px 24px 0 0;padding:20px 20px 24px;display:flex;flex-direction:column;gap:14px;animation:up .28s cubic-bezier(.2,.8,.2,1)}
+@keyframes up{from{transform:translateY(100%)}to{transform:none}}
+
+/* splash + auth */
+.splash{position:absolute;inset:0;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;overflow:hidden;z-index:40;transition:opacity .45s}
+.splash.out{opacity:0;pointer-events:none}
+.splash .st{position:absolute;height:6px;background:var(--y);transform:rotate(-40deg)}
+.splash .st1{width:280px;top:30px;right:-90px;animation:sl1 .9s cubic-bezier(.2,.8,.2,1) both}
+.splash .st2{width:220px;top:62px;right:-90px;animation:sl1 .9s .08s cubic-bezier(.2,.8,.2,1) both}
+.splash .st3{width:280px;bottom:40px;left:-100px;animation:sl2 .9s cubic-bezier(.2,.8,.2,1) both}
+.splash .st4{width:220px;bottom:72px;left:-100px;animation:sl2 .9s .08s cubic-bezier(.2,.8,.2,1) both}
+@keyframes sl1{from{transform:translate(200px,-200px) rotate(-40deg)}}
+@keyframes sl2{from{transform:translate(-200px,200px) rotate(-40deg)}}
+.splash .logo{width:120px;height:120px;animation:spin 1s cubic-bezier(.2,.8,.2,1) both;filter:drop-shadow(0 0 30px rgba(255,194,14,.45))}
+@keyframes spin{from{transform:rotate(-180deg) scale(.3);opacity:0}}
+.wordmark{font-family:var(--brand);font-weight:700;font-size:34px;color:#fff;letter-spacing:1px;line-height:1}
+.wordsub{font-family:var(--brand);font-weight:600;font-size:12px;letter-spacing:.45em;color:var(--y);margin-left:.45em}
+.splash .wordmark,.splash .wordsub{animation:fade .6s .45s both}
+.hero{background:var(--ink);color:#fff;padding:26px 24px 34px;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:8px;flex:none}
+.hero::before,.hero::after{content:"";position:absolute;height:5px;background:var(--y);transform:rotate(-40deg);width:180px;right:-50px;top:26px}
+.hero::after{top:48px;right:-70px;width:200px}
+.hero .logo{width:72px;height:72px}
+.hero .wordmark{font-size:26px}
+.hero .wordsub{font-size:10px}
+.sheet-card{margin-top:-18px;background:var(--card);border-radius:24px 24px 0 0;flex:1;padding:24px 22px;display:flex;flex-direction:column;gap:16px;position:relative}
+.otp{display:flex;gap:8px;justify-content:space-between}
+.otp input{width:46px;height:56px;border:1.5px solid var(--line);border-radius:14px;text-align:center;font-size:22px;font-weight:800;outline:0;background:var(--card)}
+.otp input:focus{border-color:var(--ink);box-shadow:0 0 0 3px var(--y-soft)}
+.hint{background:var(--y-soft);border-radius:12px;padding:10px 12px;font-size:12px;color:var(--y-deep);font-weight:600;display:flex;gap:8px;align-items:center}
+.accs{display:grid;gap:6px}
+.accs button{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--paper);font-size:12px;text-align:left}
+.accs button b{font-weight:800}
+.accs button span{color:var(--ink5)}
+
+/* misc */
+.money{border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:8px;border:1.5px solid}
+.money.w{background:var(--g-soft);border-color:var(--g)}
+.money.c{background:var(--r-soft);border-color:var(--r)}
+.money .lab{display:flex;align-items:center;gap:8px}
+.money.w .lab,.money.w .amt{color:var(--g)}
+.money.c .lab,.money.c .amt{color:var(--r)}
+.stat{border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:3px;background:var(--card);border:1px solid var(--line)}
+.stat .v{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums}
+.stat.y{background:var(--y-soft);border-color:transparent}.stat.g{background:var(--g-soft);border-color:transparent}.stat.g .v{color:var(--g)}.stat.r{background:var(--r-soft);border-color:transparent}.stat.r .v{color:var(--r)}.stat.b{background:var(--blue-soft);border-color:transparent}
+.qa{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11px;font-weight:600;text-align:center;color:var(--ink7)}
+.qa .tile{width:56px;height:56px;border-radius:18px;background:var(--card);border:1px solid var(--line)}
+.qa2{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 6px;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px;font-weight:600;text-align:center}
+.qa2.locked{opacity:.55}
+.tbl{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+.tbl th{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--ink5);text-align:left;padding:10px 8px;background:var(--paper)}
+.tbl td{padding:10px 8px;border-top:1px solid var(--line)}
+.tbl .r{text-align:right}
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:16px;background:var(--card)}
+.cbars{display:flex;align-items:flex-end;gap:8px;height:110px}
+.cbars div{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;font-size:10px;color:var(--ink5)}
+.cbars i{display:block;width:100%;border-radius:6px 6px 2px 2px;background:var(--y-soft)}
+.cbars div:last-child i{background:var(--y)}
+.prog{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.prog i{display:block;height:100%;background:var(--y);border-radius:99px}
+.step{display:flex;gap:12px}
+.step .dotc{display:flex;flex-direction:column;align-items:center}
+.step .dotc b{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--line);color:var(--ink5)}
+.step.done .dotc b{background:var(--g);color:#fff}.step.now .dotc b{background:var(--y);color:var(--ink)}
+.step .dotc i{flex:1;width:2px;background:var(--line);min-height:22px}
+.step.done .dotc i{background:var(--g)}
+.step .txt{padding-bottom:14px}
+.qty{display:inline-flex;align-items:center;gap:14px;border:1px solid var(--line);border-radius:10px;padding:5px 10px;font-weight:800;background:var(--card)}
+.qty button{display:grid;place-items:center}
+.map{height:190px;border-radius:18px;background:
+ linear-gradient(0deg,transparent 48%,#fff 48%,#fff 52%,transparent 52%) 0 0/100% 38px,
+ linear-gradient(90deg,transparent 48%,#fff 48%,#fff 52%,transparent 52%) 0 0/64px 100%,#EDEBE3;position:relative;overflow:hidden}
+.map .pin{position:absolute;width:32px;height:32px;border-radius:50%;background:var(--card);display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.map .pin.on{background:var(--y);animation:bob 1.6s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-4px)}}
+.map .me{position:absolute;left:52%;top:58%;width:16px;height:16px;border-radius:50%;background:var(--blue);border:3px solid #fff;box-shadow:0 0 0 8px rgba(37,99,235,.18)}
+.scanbox{height:260px;border-radius:18px;background:#1c1c1c;display:grid;place-items:center;position:relative;overflow:hidden}
+.scanbox .frame{width:200px;height:200px;border-radius:18px;position:relative;background:
+ linear-gradient(var(--y),var(--y)) 0 0/34px 5px no-repeat,linear-gradient(var(--y),var(--y)) 0 0/5px 34px no-repeat,
+ linear-gradient(var(--y),var(--y)) 100% 0/34px 5px no-repeat,linear-gradient(var(--y),var(--y)) 100% 0/5px 34px no-repeat,
+ linear-gradient(var(--y),var(--y)) 0 100%/34px 5px no-repeat,linear-gradient(var(--y),var(--y)) 0 100%/5px 34px no-repeat,
+ linear-gradient(var(--y),var(--y)) 100% 100%/34px 5px no-repeat,linear-gradient(var(--y),var(--y)) 100% 100%/5px 34px no-repeat}
+.scanbox .line{position:absolute;left:10px;right:10px;height:3px;background:var(--y);box-shadow:0 0 14px var(--y);animation:scan 2s ease-in-out infinite}
+@keyframes scan{0%,100%{top:14px}50%{top:182px}}
+.denied{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:40px 10px}
+.empty{text-align:center;padding:30px 10px;color:var(--ink5);font-size:13px}
+.matrix td,.matrix th{text-align:center;white-space:nowrap}
+.matrix td:first-child,.matrix th:first-child{text-align:left}
+.ok{color:var(--g);font-weight:800}.no{color:var(--ink3)}.lim{color:var(--amber);font-weight:700}
+</style>
+
+<div class="stage">
+  <aside class="aside" aria-label="About this prototype">
+    <h1>BIKE <span>PHARMA</span></h1>
+    <p>Clickable prototype. Log in with a registered mobile number or email; the OTP for every account is <b style="color:#fff">123456</b>. Each ID opens only its own role.</p>
+    <div class="acc" id="sideAccounts"></div>
+    <p style="margin-top:14px">Changes you make (orders, payments, approvals) are saved in this browser, so you can log in as another role and see the effect.</p>
+  </aside>
+  <div class="device" id="device">
+    <div class="status" id="status"><span class="num" id="clock">9:41</span><span style="display:flex;align-items:center"><span class="bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+    <div class="viewport" id="vp"></div>
+    <div class="toast" id="toast"></div>
+  </div>
+</div>
+
+<script>
+/* ---------- icons ---------- */
+const IC={home:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/>',search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',grid:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',cart:'<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2.5 3h2.6l2.3 11.2a1.5 1.5 0 0 0 1.5 1.3h8.7a1.5 1.5 0 0 0 1.5-1.2L21 7H6"/>',user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',heart:'<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/>',qr:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM21 14v.01M14 21h.01M17 21h4v-4"/>',wrench:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',calendar:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',pin:'<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',star:'<path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/>',shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>',tag:'<path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z"/><circle cx="7.5" cy="7.5" r="1.5"/>',bike:'<circle cx="5.5" cy="16.5" r="3.5"/><circle cx="18.5" cy="16.5" r="3.5"/><path d="M14.5 5.5h2.5l3 10M5.5 16.5l4-6.5h6.5l2.5 6.5M9.5 10 8 6.5H5.5"/>',chevR:'<path d="m9 18 6-6-6-6"/>',chevL:'<path d="m15 18-6-6 6-6"/>',chevD:'<path d="m6 9 6 6 6-6"/>',plus:'<path d="M12 5v14M5 12h14"/>',minus:'<path d="M5 12h14"/>',trash:'<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>',wallet:'<path d="M20 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/><path d="M3 7h17a1 1 0 0 1 1 1v4"/><path d="M21 12h-4a2 2 0 0 0 0 4h4z"/>',card:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>',receipt:'<path d="M4 2v20l3-2 2.5 2 2.5-2 2.5 2 2.5-2 3 2V2l-3 2-2.5-2L12 4 9.5 2 7 4z"/><path d="M8 9h8M8 13h8"/>',package:'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/>',truck:'<path d="M1 4h13v12H1zM14 8h4l4 4v4h-8"/><circle cx="5.5" cy="18.5" r="2"/><circle cx="18" cy="18.5" r="2"/>',phone:'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>',navigate:'<path d="m3 11 19-9-9 19-2-8z"/>',filter:'<path d="M3 4h18l-7 8.5V19l-4 2v-8.5z"/>',copy:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',share:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>',download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>',clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',check:'<path d="M20 6 9 17l-5-5"/>',checkC:'<circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/>',alert:'<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>',trend:'<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',users:'<circle cx="9" cy="7" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 3.1a4 4 0 0 1 0 7.8M22 21a7 7 0 0 0-4-6.3"/>',chart:'<path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/>',sliders:'<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',lock:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',scan:'<path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10"/>',up:'<path d="M7 17 17 7M7 7h10v10"/>',down:'<path d="M17 7 7 17M17 17H7V7"/>',x:'<path d="M18 6 6 18M6 6l12 12"/>',edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',eye:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',clip:'<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 12h6M9 16h6"/>',store:'<path d="M3 9 4.5 3h15L21 9M3 9v11a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9M3 9h18M9 21v-6h6v6"/>',gift:'<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/>',award:'<circle cx="12" cy="8" r="6"/><path d="M15.5 12.9 17 22l-5-3-5 3 1.5-9.1"/>',rupee:'<path d="M6 3h12M6 8h12M6 13l8.5 8M6 13h3a5 5 0 0 0 0-10"/>',globe:'<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/>',menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',droplet:'<path d="M12 2.7 6.3 8.4a8 8 0 1 0 11.4 0z"/>',zap:'<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>',disc:'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/>',link:'<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',activity:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',history:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/>'};
+const ic=(n,c='')=>`<svg class="i ${c}" viewBox="0 0 24 24" aria-hidden="true">${IC[n]||''}</svg>`;
+function gearLogo(){let d='';const N=10,ro=46,ri=37;for(let i=0;i<N;i++){const a0=i*2*Math.PI/N,t=2*Math.PI/N;[[ri,a0],[ro,a0+t*.18],[ro,a0+t*.48],[ri,a0+t*.66]].forEach(([r,a],j)=>{d+=(i+j===0?'M':'L')+(50+r*Math.cos(a)).toFixed(1)+' '+(50+r*Math.sin(a)).toFixed(1)+' ';});}
+ d+='Z M50 22 A28 28 0 1 0 50.01 22 Z';
+ return `<svg class="logo" viewBox="0 0 100 100" aria-label="Bike Pharma"><path fill-rule="evenodd" d="${d}" fill="#FFC20E"/><rect x="39" y="30" width="22" height="20" rx="4" fill="#FFC20E"/><rect x="38" y="34" width="24" height="2.5" fill="#121212"/><rect x="38" y="39" width="24" height="2.5" fill="#121212"/><rect x="47.5" y="50" width="5" height="14" fill="#FFC20E"/><circle cx="50" cy="67" r="5" fill="#FFC20E"/></svg>`;}
+const inr=n=>'₹'+Math.round(n).toLocaleString('en-IN');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- accounts ---------- */
+const ACCOUNTS={
+ '8951860708':{role:'customer',name:'Anjali Rao',label:'Customer',sub:'Customer account'},
+ '9008948080':{role:'mechanic',name:'Ravi Kumar',label:'Mechanic',sub:'Ravi Kumar Auto Works · BP-MECH-1025'},
+ 'samkhazi25@gmail.com':{role:'billing',name:'Priya Shetty',label:'Billing Staff',sub:'Staff ID BP-RNR-BIL-001',sid:'BP-RNR-BIL-001'},
+ 'samkhazi26@gmail.com':{role:'sales',name:'Arjun Nayak',label:'Sales Executive',sub:'Staff ID BP-RNR-SAL-004',sid:'BP-RNR-SAL-004'},
+ 'samkhazi27@gmail.com':{role:'manager',name:'Kavya Hegde',label:'Manager',sub:'Staff ID BP-RNR-MGR-001',sid:'BP-RNR-MGR-001'},
+ 'samkhazi28@gmail.com':{role:'inventory',name:'Mohammed Irfan',label:'Inventory Staff',sub:'Staff ID BP-RNR-INV-002',sid:'BP-RNR-INV-002'},
+ 'boltech25@gmail.com':{role:'admin',name:'Rahul Menon',label:'Admin',sub:'Staff ID BP-HQ-ADM-001',sid:'BP-HQ-ADM-001'}};
+const ACC=()=>Object.assign({},ACCOUNTS,(DB&&DB.accounts)||{});
+const LABEL={customer:'Customer',mechanic:'Mechanic',billing:'Billing Staff',sales:'Sales Executive',manager:'Manager',inventory:'Inventory Staff'};
+const normId=v=>{v=String(v).trim().toLowerCase();if(v.includes('@'))return v;const d=v.replace(/\D/g,'');return d.length>10?d.slice(-10):d;};
+
+/* ---------- catalogue ---------- */
+const PRODUCTS=[
+ {id:'p1',name:'Front Brake Pad Set – Sintered',brand:'BOSCH',type:'OEM',cat:'Brake Parts',pn:'BP-BRK-0457',mrp:549,price:449,mp:389,stock:23,war:'6 months',ic:'shield'},
+ {id:'p2',name:'Motul 7100 4T 20W-50 1L',brand:'MOTUL',type:'Genuine',cat:'Lubricants',pn:'LUB-M7100-1',mrp:760,price:689,mp:598,stock:48,war:'—',ic:'droplet'},
+ {id:'p3',name:'Rear Brake Shoe Assembly',brand:'BAJAJ',type:'Genuine',cat:'Brake Parts',pn:'BP-BRK-0310',mrp:345,price:310,mp:262,stock:40,war:'3 months',ic:'shield'},
+ {id:'p4',name:'Front Disc Rotor 260mm',brand:'BREMBO',type:'OES',cat:'Brake Parts',pn:'BP-BRK-0921',mrp:2250,price:1890,mp:1640,stock:15,war:'12 months',ic:'disc'},
+ {id:'p5',name:'Air Filter Element',brand:'BAJAJ',type:'Genuine',cat:'Filters',pn:'BP-FLT-0205',mrp:175,price:155,mp:128,stock:62,war:'3 months',ic:'filter'},
+ {id:'p6',name:'Chain Sprocket Kit',brand:'ROLON',type:'OEM',cat:'Chain & Sprocket',pn:'BP-CHN-0880',mrp:2380,price:2150,mp:1826,stock:9,war:'6 months',ic:'link'},
+ {id:'p7',name:'Clutch Cable – Pulsar',brand:'BAJAJ',type:'Genuine',cat:'Cables',pn:'BP-CBL-0112',mrp:210,price:189,mp:163,stock:0,war:'—',ic:'link'},
+ {id:'p8',name:'LED Headlight H4 35W',brand:'PHILIPS',type:'OES',cat:'Electrical',pn:'BP-ELC-0431',mrp:1699,price:1450,mp:1240,stock:3,war:'12 months',ic:'zap'}];
+const P=id=>PRODUCTS.find(p=>p.id===id);
+const off=p=>Math.round((1-p.price/p.mrp)*100);
+const CATS=[['Engine Parts','wrench'],['Brake Parts','shield'],['Clutch Parts','sliders'],['Electrical','zap'],['Suspension','activity'],['Chain & Sprocket','link'],['Filters','filter'],['Cables','navigate'],['Bearings','globe'],['Tyres','disc'],['Lubricants','droplet'],['Accessories','gift'],['OEM Parts','checkC'],['OES Parts','tag']];
+const MECHS=[{n:'Ravi Kumar Auto Works',i:'RK',sp:'Bajaj · Hero specialist · 12 yrs',r:4.8,rc:212,km:1.2,open:true,code:'BP-MECH-1025'},{n:'Sri Sai Motors',i:'SS',sp:'Honda · TVS · Suzuki · 8 yrs',r:4.6,rc:148,km:2.4,open:true,code:'BP-MECH-0872'},{n:'Bullet Point Garage',i:'BP',sp:'Royal Enfield specialist · 15 yrs',r:4.9,rc:320,km:3.8,open:false,code:'BP-MECH-0640'}];
+const SERVICES=[['General Service','wrench',650],['Oil Change','droplet',150],['Brake Service','shield',350],['Engine Work','sliders',1200],['Electrical','zap',400],['Suspension','activity',800],['Chain Service','link',250],['Tyre Service','disc',200],['Pickup & Drop','truck',99],['Other Repairs','clip',0]];
+
+/* ---------- persistent demo data ---------- */
+function seed(){return{
+ cart:[{id:'p1',q:1},{id:'p2',q:1}],wish:['p4','p8'],coupon:null,
+ orders:[{id:'BP-ORD-2026-09877',d:'14 Sep 2026',items:1,amt:2250,pm:'Card',st:'Delivered'},{id:'BP-ORD-2026-09120',d:'02 Sep 2026',items:2,amt:540,pm:'COD',st:'Processing'}],
+ bookings:[],
+ wl:[{d:'05 Aug',t:'Purchase reward · INV-001',cr:2500},{d:'18 Aug',t:'Loyalty bonus',cr:1500},{d:'02 Sep',t:'Used on INV-009',dr:1000},{d:'10 Sep',t:'Milestone ₹50k reward',cr:3000},{d:'15 Sep',t:'Purchase reward · INV-015',cr:1500},{d:'22 Sep',t:'Used on INV-021',dr:2000}],
+ cl:[{d:'10 Sep',inv:'INV-001',buy:25000},{d:'15 Sep',inv:'INV-015',buy:40000},{d:'20 Sep',ref:'UPI · TXN-8812',pay:25000}],
+ minv:[{id:'INV-001',d:'10 Sep',amt:25000,paid:25000},{id:'INV-015',d:'15 Sep',amt:40000,paid:0,due:'15 Oct'}],
+ approvals:[{id:1,t:'Stock adjustment',d:'BP-RNR-INV-002 · 2 damaged rotors · −₹3,780',ic:'sliders',st:'pending'},{id:2,t:'Return request',d:'INV-2026-00231 · brake lever · ₹210',ic:'history',st:'pending'},{id:3,t:'Extra discount 5%',d:'BP-RNR-SAL-004 · QT-118 Sri Sai Motors',ic:'tag',st:'pending'}],
+ audit:[{who:'BP-RNR-BIL-001',a:'Invoice edited',e:'INV-2026-00251',o:'₹4,500',n:'₹4,250',t:'27 Sep 2026 · 11:48 AM'},{who:'BP-HQ-ADM-001',a:'Wallet adjusted',e:'BP-MECH-0872',o:'₹1,650',n:'₹2,150',t:'27 Sep 2026 · 11:20 AM'},{who:'BP-HQ-ADM-001',a:'Master price changed',e:'BP-BRK-0457 MRP',o:'₹529',n:'₹549',t:'26 Sep 2026 · 6:12 PM'}],
+ bills:[{id:'INV-2026-00251',p:'Walk-in',t:'11:42 AM',pm:'UPI',amt:4250},{id:'INV-2026-00249',p:'Anjali Rao',t:'10:31 AM',pm:'Cash',amt:1376}],
+ stock:{p1:23,p2:48,p3:40,p4:15,p5:62,p6:9,p7:0,p8:3},
+ accounts:{},
+ notifs:0};}
+let DB;
+function load(){try{const s=localStorage.getItem('bp-db');DB=s?JSON.parse(s):seed();}catch(e){DB=seed();}if(!DB.accounts)DB.accounts={};}
+function save(){try{localStorage.setItem('bp-db',JSON.stringify(DB));}catch(e){}}
+function audit(a,e,o,n){const now=new Date();DB.audit.unshift({who:S.user.sid||S.user.label,a,e,o,n,t:now.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+' · '+now.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})});}
+const walletEarned=()=>DB.wl.reduce((a,x)=>a+(x.cr||0),0);
+const walletUsed=()=>DB.wl.reduce((a,x)=>a+(x.dr||0),0);
+const walletBal=()=>walletEarned()-walletUsed();
+const creditBuys=()=>DB.cl.reduce((a,x)=>a+(x.buy||0),0);
+const creditPays=()=>DB.cl.reduce((a,x)=>a+(x.pay||0),0);
+const outstanding=()=>creditBuys()-creditPays();
+const today=()=>new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+
+/* ---------- router ---------- */
+const S={user:null,uid:null,stack:[],ui:{}};
+const NAVS={
+ customer:[['home','Home','home'],['shop','Shop','grid'],['service','Service','wrench'],['orders','Orders','package'],['account','Account','user']],
+ mechanic:[['mhome','Home','home'],['mshop','Shop','cart'],['wallet','Wallet','wallet'],['credit','Credit','receipt'],['maccount','Account','user']],
+ billing:[['bhome','Home','home'],['invoice','Invoice','file'],['receive','Receive','rupee'],['usearch','Search','search'],['saccount','Account','user']],
+ sales:[['shome','Home','home'],['sorder','Order','cart'],['stocklist','Stock','package'],['usearch','Search','search'],['saccount','Account','user']],
+ manager:[['mghome','Home','chart'],['approvals','Approvals','checkC'],['team','Team','users'],['usearch','Search','search'],['saccount','Account','user']],
+ inventory:[['ihome','Home','home'],['grn','Stock in','down'],['stocklist','Stock','package'],['usearch','Search','search'],['saccount','Account','user']],
+ admin:[['ahome','Overview','chart'],['users','Users','users'],['afinance','Finance','rupee'],['audit','Audit','shield'],['more','More','menu']]};
+const HOME={customer:'home',mechanic:'mhome',billing:'bhome',sales:'shome',manager:'mghome',inventory:'ihome',admin:'ahome'};
+function cur(){return S.stack[S.stack.length-1];}
+function go(s,p={}){S.stack.push({s,p});render('push');}
+function back(){if(S.stack.length>1){S.stack.pop();render('back');}}
+function tab(s){S.stack=[{s,p:{}}];render('fade');}
+function reset(s,p={}){S.stack=[{s,p}];render('fade');}
+function refresh(){const vp=document.getElementById('vp');const sc=vp.querySelector('.scroll');const top=sc?sc.scrollTop:0;render('');const sc2=vp.querySelector('.scroll');if(sc2)sc2.scrollTop=top;}
+function render(anim){
+ const {s,p}=cur();const fn=SCREENS[s];const vp=document.getElementById('vp');
+ let html;
+ if(S.user && fn && !allowed(s)) html=deniedScreen(s); else html=fn?fn(p):'<div class="empty">Screen not found</div>';
+ const navs=S.user?NAVS[S.user.role]:null;const idx=navs?navs.findIndex(n=>n[0]===s):-1;
+ const showNav=navs&&idx>-1;
+ vp.innerHTML=`<div class="screen ${anim?'in-'+anim:''}">${html}${showNav?navHTML(navs,idx):''}</div>`;
+ document.getElementById('status').classList.toggle('dark',!!(vp.querySelector('.screen .hero, .screen.darkscr')));
+ if(S.ui.after){const f=S.ui.after;S.ui.after=null;f();}
+}
+function navHTML(navs,idx){return `<nav class="nav" style="--i:${idx}" aria-label="Main">
+ <div class="bubble" aria-hidden="true">${ic(navs[idx][2],'s')}</div>
+ ${navs.map((n,i)=>`<button class="${i===idx?'on':''}" onclick="tab('${n[0]}')" aria-label="${n[1]}"${i===idx?' aria-current="page"':''}>${ic(n[2],'s20')}<span>${n[1]}</span></button>`).join('')}</nav>`;}
+function bar(title,{back:b=true,action='',cls=''}={}){return `<div class="bar ${cls}">${b?`<button class="iconbtn" onclick="back()" aria-label="Back">${ic('chevL')}</button>`:''}<h2>${title}</h2>${action}</div>`;}
+function toast(msg){const t=document.getElementById('toast');t.innerHTML=ic('checkC','s18')+esc(msg);t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2200);}
+function sheet(html){const sc=document.querySelector('#vp .screen');const d=document.createElement('div');d.className='scrim';d.onclick=e=>{if(e.target===d)d.remove();};d.innerHTML=`<div class="sheet">${html}</div>`;sc.appendChild(d);}
+function closeSheet(){document.querySelectorAll('.scrim').forEach(x=>x.remove());}
+
+/* ---------- RBAC (client mirror of backend rules) ---------- */
+const ACCESS={
+ customer:['home','shop','list','product','cart','checkout','placed','orders','service','book','booking','garage','vehicle','warranty','offers','wishlist','notifs','qr','account','addresses'],
+ mechanic:['mhome','mshop','mproduct','wallet','credit','pay','purchases','invoices','rewards','maccount','notifs'],
+ billing:['bhome','invoice','receive','usearch','saccount','masterprice','denied'],
+ sales:['shome','sorder','stocklist','usearch','saccount','masterprice'],
+ manager:['mghome','approvals','team','usearch','saccount','stocklist','rbac'],
+ inventory:['ihome','grn','stocklist','usearch','saccount'],
+ admin:['ahome','users','mfin','afinance','audit','more','usearch','rbac','newstaff','saccount']};
+const DENY={masterprice:['billing','sales']};
+function allowed(s){const r=S.user.role;if(DENY[s]&&DENY[s].includes(r))return false;return ACCESS[r].includes(s);}
+function deniedScreen(s){return bar('Access denied')+`<div class="scroll"><div class="pad"><div class="denied"><div class="tile r round" style="width:72px;height:72px">${ic('lock','s28')}</div><h3 class="h2">Not permitted for ${esc(S.user.label)}</h3><p class="cap" style="max-width:280px">The server checks your role on every request. ${S.user.role==='billing'?'Billing staff cannot open salary, admin settings, master pricing or user-role management.':'Ask an Admin if you need this access.'}</p><button class="btn sm dark" onclick="back()">Go back</button></div></div></div>`;}
+
+/* ---------- AUTH ---------- */
+function splash(){const d=document.createElement('div');d.className='splash';d.innerHTML=`<i class="st st1"></i><i class="st st2"></i><i class="st st3"></i><i class="st st4"></i>${gearLogo()}<div class="wordmark">BIKE PHARMA</div><div class="wordsub">AUTOMOBILES</div>`;document.getElementById('device').appendChild(d);setTimeout(()=>{d.classList.add('out');setTimeout(()=>d.remove(),500);},1700);}
+const SCREENS={};
+SCREENS.login=()=>{const e=S.ui.loginErr;return `<div class="hero">${gearLogo()}<div class="wordmark">BIKE PHARMA</div><div class="wordsub">AUTOMOBILES</div></div>
+<div class="sheet-card scroll">
+ <div class="stack g6"><div class="cap">Namaste!</div><h1 class="h1">Login to Bike Pharma</h1><p class="cap">Enter your registered mobile number or staff email. We’ll send an OTP and open the account type linked to it.</p></div>
+ <form class="field" onsubmit="event.preventDefault();sendOtp()">
+  <label for="loginId">Mobile number or email</label>
+  <div class="inp ${e?'err':''}">${ic('phone','s18')}<input id="loginId" autocomplete="username" inputmode="email" placeholder="98450 12345 or name@email.com" value="${esc(S.ui.loginVal||'')}"></div>
+  ${e?`<div class="errmsg">${esc(e)}</div>`:''}
+  <button class="btn" style="margin-top:8px" type="submit">Send OTP ${ic('chevR','s18')}</button>
+ </form>
+ <div class="row cap" style="gap:8px">${ic('user','s16')}<span class="grow">New customer or mechanic? Enter your mobile number to sign up.</span></div>
+ <div class="stack g8"><div class="micro muted">Test accounts · tap to fill</div><div class="accs">${Object.entries(ACCOUNTS).map(([k,a])=>`<button type="button" onclick="fillLogin('${k}')"><b>${esc(a.label)}</b><span>${esc(k)}</span></button>`).join('')}</div></div>
+ <p class="cap" style="text-align:center">By continuing you agree to the Terms & Privacy Policy.</p>
+</div>`;};
+function fillLogin(k){S.ui.loginVal=k;S.ui.loginErr=null;refresh();const i=document.getElementById('loginId');if(i)i.focus();}
+function sendOtp(){const v=document.getElementById('loginId').value;S.ui.loginVal=v;const id=normId(v);
+ if(!id){S.ui.loginErr='Enter your mobile number or email.';return refresh();}
+ const a=ACC()[id];
+ if(!a){ if(id.includes('@')){S.ui.loginErr='This email isn’t registered. Staff logins are created by the Bike Pharma Admin.';return refresh();}
+   if(id.length!==10){S.ui.loginErr='Enter a 10-digit mobile number.';return refresh();}
+   S.ui.loginErr=null;S.ui.signup={id,role:'customer',name:'',shop:'',area:''};return go('signup');}
+ if(a.status==='pending'){S.ui.loginErr='Your mechanic account is waiting for Bike Pharma verification. You can log in once Admin approves it.';return refresh();}
+ S.ui.loginErr=null;S.ui.signup=null;S.ui.pending=id;S.ui.after=()=>{const f=document.querySelector('.otp input');if(f)f.focus();};go('otp');}
+SCREENS.signup=()=>{const s=S.ui.signup;const m=s.role==='mechanic';return bar('Create account')+`<div class="scroll"><div class="pad">
+ <div class="stack g6"><h1 class="h1">New to Bike Pharma?</h1><p class="cap">+91 ${esc(s.id.slice(0,5))} ${esc(s.id.slice(5))} isn’t registered yet. Sign up as a customer or a mechanic. Staff accounts are created by Admin.</p></div>
+ <div class="grid2">${[['customer','Customer','user','Buy spares, book service'],['mechanic','Mechanic','wrench','Mechanic price, wallet, credit']].map(([k,l,i,d])=>`<button class="opt ${s.role===k?'on':''}" style="flex-direction:column;align-items:flex-start" onclick="S.ui.signup.role='${k}';refresh()"><span class="sec" style="width:100%">${ic(i,'s20')}<span class="radio"></span></span><b>${l}</b><span class="cap">${d}</span></button>`).join('')}</div>
+ <div class="field"><label for="su-name">Your name</label><div class="inp">${ic('user','s18')}<input id="su-name" value="${esc(s.name)}" placeholder="Full name" oninput="S.ui.signup.name=this.value"></div></div>
+ ${m?`<div class="field"><label for="su-shop">Workshop / garage name</label><div class="inp">${ic('store','s18')}<input id="su-shop" value="${esc(s.shop)}" placeholder="e.g. Sri Ganesh Auto Works" oninput="S.ui.signup.shop=this.value"></div></div>
+ <div class="field"><label for="su-area">Area</label><div class="inp">${ic('pin','s18')}<input id="su-area" value="${esc(s.area)}" placeholder="e.g. Vijayanagar, Bengaluru" oninput="S.ui.signup.area=this.value"></div></div>
+ <div class="hint">${ic('shield','s16')} Mechanic accounts are verified by Bike Pharma before first login.</div>`:''}
+ ${S.ui.suErr?`<div class="errmsg">${esc(S.ui.suErr)}</div>`:''}
+</div></div><div class="foot"><button class="btn" onclick="signupNext()">Send OTP ${ic('chevR','s18')}</button></div>`;};
+function signupNext(){const s=S.ui.signup;if(!s.name.trim()){S.ui.suErr='Enter your name.';return refresh();}if(s.role==='mechanic'&&!s.shop.trim()){S.ui.suErr='Enter your workshop name.';return refresh();}
+ S.ui.suErr=null;S.ui.pending=s.id;S.ui.after=()=>{const f=document.querySelector('.otp input');if(f)f.focus();};go('otp');}
+SCREENS.submitted=()=>{const s=S.ui.done||{};return `<div class="scroll"><div class="pad" style="padding-top:48px;gap:20px">
+ <div class="tile y round" style="width:80px;height:80px">${ic('clock','s40')}</div>
+ <div class="stack g6"><h1 class="h1">Application submitted</h1><p class="cap">Thanks, ${esc(s.name||'')}. Bike Pharma will verify ${esc(s.shop||'your workshop')} and assign your mechanic code. You can log in once Admin approves it.</p></div>
+ <div class="card"><div class="kv"><span>Mobile</span><span>+91 ${esc(s.id||'')}</span></div><div class="kv"><span>Status</span><span style="color:var(--amber)">Pending verification</span></div></div>
+ <div class="hint">${ic('users','s16')} Demo tip: log in as Admin (boltech25@gmail.com) → Users → Mechanics to approve it.</div>
+ <button class="btn" onclick="reset('login')">Back to login</button></div></div>`;};
+SCREENS.otp=()=>{const id=S.ui.pending;const masked=id.includes('@')?id:'+91 '+id.slice(0,5)+' '+id.slice(5);return bar('')+`<div class="scroll"><div class="pad" style="gap:22px">
+ <div class="stack g6"><h1 class="h1">Enter OTP</h1><p class="cap">Sent to <b style="color:var(--ink)">${esc(masked)}</b> · <button class="link" onclick="back()">Edit</button></p></div>
+ <div class="otp" role="group" aria-label="6 digit OTP">${[0,1,2,3,4,5].map(i=>`<input id="otp${i}" inputmode="numeric" maxlength="1" aria-label="Digit ${i+1}" oninput="otpIn(this,${i})" onkeydown="otpKey(event,${i})">`).join('')}</div>
+ ${S.ui.otpErr?`<div class="errmsg">${S.ui.otpErr}</div>`:''}
+ <div class="hint">${ic('lock','s16')} Demo OTP for every account: 123456</div>
+ <button class="btn" onclick="verify()">Verify &amp; continue ${ic('chevR','s18')}</button>
+ <button class="link" style="text-align:center" onclick="fillOtp()">Auto-fill OTP</button>
+</div></div>`;};
+function otpIn(el,i){el.value=el.value.replace(/\D/g,'').slice(0,1);if(el.value&&i<5)document.getElementById('otp'+(i+1)).focus();if(i===5&&el.value)verify();}
+function otpKey(e,i){if(e.key==='Backspace'&&!e.target.value&&i>0)document.getElementById('otp'+(i-1)).focus();}
+function fillOtp(){'123456'.split('').forEach((d,i)=>document.getElementById('otp'+i).value=d);setTimeout(verify,250);}
+function verify(){const code=[0,1,2,3,4,5].map(i=>document.getElementById('otp'+i).value).join('');
+ if(code!=='123456'){S.ui.otpErr='That OTP is incorrect. Use 123456 for this demo.';refresh();return;}
+ S.ui.otpErr=null;const id=S.ui.pending;const su=S.ui.signup;
+ if(su&&su.id===id){ if(su.role==='mechanic'){DB.accounts[id]={role:'mechanic',name:su.name.trim(),label:'Mechanic',sub:su.shop.trim()+' · '+(su.area.trim()||'Bengaluru'),shop:su.shop.trim(),status:'pending',joined:today()};save();S.ui.done={...su};S.ui.signup=null;S.stack=[{s:'submitted',p:{}}];return render('push');}
+   DB.accounts[id]={role:'customer',name:su.name.trim(),label:'Customer',sub:'Customer account · joined '+today(),status:'active'};save();S.ui.signup=null;}
+ S.uid=id;S.user=ACC()[id];try{localStorage.setItem('bp-user',id);}catch(e){}
+ S.stack=[{s:'roleok',p:{}}];render('push');}
+SCREENS.roleok=()=>{const u=S.user;return `<div class="scroll"><div class="pad" style="padding-top:48px;gap:20px">
+ <div class="tile g round" style="width:80px;height:80px">${ic('checkC','s40')}</div>
+ <div class="stack g6"><h1 class="h1">Welcome, ${esc(u.name.split(' ')[0])}</h1><p class="cap">We found your registered account. Your role is set by Bike Pharma and can’t be switched here.</p></div>
+ <div class="card"><div class="row"><div class="tile k">${ic(u.role==='customer'?'user':u.role==='mechanic'?'wrench':u.role==='admin'?'shield':'store')}</div><div class="grow"><div class="h3">${esc(u.label)} account</div><div class="cap">${esc(u.sub)}</div></div><span class="pill g">Verified</span></div>
+ <div class="hr"></div><div class="kv"><span>Login ID</span><span>${esc(S.uid)}</span></div><div class="kv"><span>Access</span><span>${esc(accessText(u.role))}</span></div></div>
+ <button class="btn" onclick="reset(HOME[S.user.role])">Open ${esc(u.label)} app ${ic('chevR','s18')}</button>
+</div></div>`;};
+function accessText(r){return {customer:'Buy spares · Service · Warranty',mechanic:'Buy spares · Wallet · Credit',billing:'Invoices · Payments · Returns',sales:'Orders · Quotations · Customers',manager:'Reports · Approvals · Team',inventory:'Stock in/out · GRN · Counts',admin:'Full system control'}[r];}
+function logout(all){S.user=null;S.uid=null;try{localStorage.removeItem('bp-user');}catch(e){}S.ui={};S.stack=[{s:'login',p:{}}];render('fade');toast(all?'Logged out from all devices':'Logged out');}
+
+/* ---------- shared bits ---------- */
+function pcard(p,mech){return `<div class="pcard"><button class="pimg" onclick="go('${mech?'mproduct':'product'}',{id:'${p.id}'})" aria-label="${esc(p.name)}">${ic(p.ic,'s40')}<span class="pill g off">${mech?Math.round((1-p.mp/p.mrp)*100):off(p)}% off</span></button>
+ <button class="pbody" onclick="go('${mech?'mproduct':'product'}',{id:'${p.id}'})"><span class="micro muted">${p.brand} · ${p.type}</span><span class="pname">${esc(p.name)}</span><span class="cap" style="color:var(--blue)">${mech?'Mechanic price':'Fits your Pulsar'}</span></button>
+ <div class="price" style="padding:0 12px 12px"><b class="num">${inr(mech?p.mp:p.price)}</b><s class="num">${inr(p.mrp)}</s>${p.stock===0?'<span class="pill r" style="margin-left:auto">Out</span>':`<button class="addbtn" onclick="${mech?`go('mproduct',{id:'${p.id}'})`:`addCart('${p.id}')`}" aria-label="Add ${esc(p.name)}">${ic('plus','s16')}</button>`}</div></div>`;}
+function li(t,s,trail,icn,onclick,tone=''){return `<button class="li" ${onclick?`onclick="${onclick}"`:''}>${icn?`<div class="tile sm ${tone}">${ic(icn,'s18')}</div>`:''}<div class="grow"><div class="t">${t}</div>${s?`<div class="s">${s}</div>`:''}</div>${trail||''}${onclick?`<span class="chev">${ic('chevR','s18')}</span>`:''}</button>`;}
+function sec(t,a,on){return `<div class="sec"><h3 class="h2">${t}</h3>${a?`<button class="link" ${on?`onclick="${on}"`:''}>${a}</button>`:''}</div>`;}
+function statTile(tone,l,v,n){return `<div class="stat ${tone}"><span class="cap" style="color:inherit">${l}</span><span class="v">${v}</span><span class="cap">${n}</span></div>`;}
+function staffHead(){const u=S.user;return `<div class="row"><div class="tile k round" style="width:48px;height:48px;font-weight:800">${u.name.split(' ').map(x=>x[0]).join('')}</div><div class="grow"><div class="h2">${esc(u.name)}</div><div class="row" style="gap:6px"><span class="cap">${esc(u.sid)}</span><span class="pill k">${esc(u.label)}</span></div></div><button class="iconbtn line" onclick="toast('No new notifications')" aria-label="Notifications">${ic('bell','s20')}</button></div>`;}
+
+/* ---------- CUSTOMER ---------- */
+const cartCount=()=>DB.cart.reduce((a,x)=>a+x.q,0);
+function addCart(id,q=1){const p=P(id);if(p.stock===0){toast('Out of stock');return;}const e=DB.cart.find(x=>x.id===id);if(e)e.q+=q;else DB.cart.push({id,q});save();toast('Added to cart');refresh();}
+function setQty(id,d){const e=DB.cart.find(x=>x.id===id);if(!e)return;e.q+=d;if(e.q<=0)DB.cart=DB.cart.filter(x=>x.id!==id);save();refresh();}
+function toggleWish(id){DB.wish=DB.wish.includes(id)?DB.wish.filter(x=>x!==id):[...DB.wish,id];save();toast(DB.wish.includes(id)?'Saved to wishlist':'Removed from wishlist');refresh();}
+function cartTotals(){const mrp=DB.cart.reduce((a,x)=>a+P(x.id).mrp*x.q,0);const sub=DB.cart.reduce((a,x)=>a+P(x.id).price*x.q,0);const cp=DB.coupon?Math.min(300,Math.round(sub*0.1)):0;const del=sub>=499||!sub?0:40;return{mrp,sub,disc:mrp-sub,cp,del,total:sub-cp+del};}
+SCREENS.home=()=>`<div class="scroll"><div class="pad">
+ <div class="row"><div class="grow"><h1 class="h1">Hello, ${esc(S.user.name.split(' ')[0])}</h1><div class="row cap" style="gap:4px">${ic('pin','s16')}Rajajinagar, Bengaluru</div></div>
+  <button class="iconbtn line" onclick="go('notifs')" aria-label="Notifications">${ic('bell','s20')}<span class="dot"></span></button>
+  <button class="iconbtn line" onclick="go('cart')" aria-label="Cart">${ic('cart','s20')}${cartCount()?`<span class="cnt">${cartCount()}</span>`:''}</button></div>
+ <button class="search" onclick="go('list',{q:''})">${ic('search','s20')}<span class="grow" style="text-align:left">Search parts, part no., bike…</span>${ic('scan','s20')}</button>
+ <button class="dark-card" style="text-align:left" onclick="go('garage')"><div class="row"><div class="tile y">${ic('bike')}</div><div class="grow"><div class="h3">Bajaj Pulsar 150 · 2022</div><div class="cap" style="color:var(--ink3)">KA 02 HM 4521 · 9,800 km</div></div>${ic('chevR','s18')}</div>
+  <span class="row" style="background:var(--y);color:var(--ink);border-radius:12px;padding:10px 12px;gap:8px;font-size:12px;font-weight:700">${ic('clock','s16')}<span class="grow">General service due in 12 days · Book now</span>${ic('chevR','s16')}</span></button>
+ <div class="grid4">${[['Buy Spares','grid',"tab('shop')"],['Find Mechanic','pin',"tab('service')"],['Book Service','wrench',"go('book')"],['My Orders','package',"tab('orders')"],['Offers','tag',"go('offers')"],['Warranty','shield',"go('warranty')"],['Wishlist','heart',"go('wishlist')"],['QR Scanner','qr',"go('qr')"]].map(([l,i,o])=>`<button class="qa" onclick="${o}"><span class="tile">${ic(i)}</span>${l}</button>`).join('')}</div>
+ <button class="card" style="background:var(--y-soft);border:0;flex-direction:row;align-items:center;text-align:left" onclick="go('offers')"><div class="grow stack g6"><span class="pill k" style="align-self:flex-start">Festival offer</span><span class="h3">Up to 25% off brake parts</span><span class="cap">Use code DASARA25 · till 12 Oct</span></div><div class="tile y round" style="width:56px;height:56px">${ic('gift','s28')}</div></button>
+ ${sec('Nearby verified mechanics','Map view',"tab('service')")}
+ ${mechCard(MECHS[0])}
+ ${sec('Recommended for your Pulsar','See all',"go('list',{})")}
+ <div class="grid2">${pcard(P('p1'))}${pcard(P('p2'))}</div>
+</div></div>`;
+function mechCard(m){return `<div class="card"><div class="row"><div class="tile k round" style="width:52px;height:52px;font-weight:800;color:#fff">${m.i}</div><div class="grow"><div class="row" style="gap:6px"><span class="h3">${m.n}</span><span style="color:var(--g)">${ic('shield','s16')}</span></div><div class="cap">${m.sp}</div><div class="row cap" style="gap:6px;color:var(--ink7)"><span style="color:var(--amber)">${ic('star','s16')}</span>${m.r} (${m.rc}) · ${m.km} km <span class="pill ${m.open?'g':'r'}">${m.open?'Open':'Closed'}</span></div></div></div>
+ <div class="grid3"><button class="btn line sm" style="width:100%" onclick="toast('Calling ${m.n}…')">${ic('phone','s16')}Call</button><button class="btn line sm" style="width:100%" onclick="toast('Opening directions')">${ic('navigate','s16')}Route</button><button class="btn sm" style="width:100%" onclick="go('book',{m:'${m.code}'})">${ic('calendar','s16')}Book</button></div></div>`;}
+SCREENS.shop=()=>{const v=S.ui.veh||{b:'Bajaj',m:'Pulsar 150',v:'Twin Disc ABS',y:'2022'};return `<div class="scroll"><div class="pad">
+ <h1 class="h1">Shop spares</h1>
+ <label class="search" for="shopQ">${ic('search','s20')}<input id="shopQ" placeholder="Part name, part no. or brand" onkeydown="if(event.key==='Enter')go('list',{q:this.value})"></label>
+ <div class="card"><div class="row">${ic('bike')}<span class="h3 grow">Find parts that fit your bike</span></div>
+  ${[['1 · Brand','b',['Bajaj','Honda','Hero','TVS','Royal Enfield']],['2 · Model','m',['Pulsar 150','Pulsar 180','Avenger 160']],['3 · Variant','v',['Twin Disc ABS','Single Disc']],['4 · Year','y',['2024','2023','2022','2021','2020']]].map(([l,k,opts])=>`<label class="opt on" style="justify-content:space-between"><span class="stack" style="gap:0"><span class="micro muted">${l}</span><select id="veh-${k}" onchange="setVeh('${k}',this.value)" style="border:0;background:transparent;font-weight:700;font-size:14px;padding:0;appearance:none">${opts.map(o=>`<option ${o===v[k]?'selected':''}>${o}</option>`).join('')}</select></span>${ic('chevD','s18')}</label>`).join('')}
+  <button class="btn sm" style="width:100%" onclick="go('list',{fit:1})">Show compatible parts</button></div>
+ ${sec('Categories')}
+ <div class="grid3">${CATS.map(([c,i])=>`<button class="qa2" onclick="go('list',{cat:'${c}'})"><span class="tile sm">${ic(i,'s20')}</span>${c}</button>`).join('')}</div>
+</div></div>`;};
+function setVeh(k,v){S.ui.veh=Object.assign({b:'Bajaj',m:'Pulsar 150',v:'Twin Disc ABS',y:'2022'},S.ui.veh||{},{[k]:v});}
+SCREENS.list=(p)=>{const v=S.ui.veh||{b:'Bajaj',m:'Pulsar 150',v:'Twin Disc ABS',y:'2022'};const f=S.ui.lf||'All';let items=PRODUCTS.filter(x=>!p.cat||x.cat===p.cat||p.cat==='OEM Parts'&&x.type==='OEM'||p.cat==='OES Parts'&&x.type==='OES');
+ if(p.q)items=items.filter(x=>(x.name+x.brand+x.pn).toLowerCase().includes(p.q.toLowerCase()));if(f!=='All')items=items.filter(x=>f==='In stock'?x.stock>0:x.type===f);
+ return bar(p.cat||(p.q?`“${esc(p.q)}”`:'All parts'),{action:`<button class="iconbtn" onclick="go('cart')" aria-label="Cart">${ic('cart','s20')}${cartCount()?`<span class="cnt">${cartCount()}</span>`:''}</button>`})+`<div class="scroll"><div class="pad">
+ <div class="row" style="background:var(--blue-soft);border-radius:14px;padding:12px">${ic('bike','s18')}<span class="cap grow" style="color:var(--ink7)">Showing parts that fit ${v.b} ${v.m} · ${v.v} · ${v.y}</span><button class="link" onclick="tab('shop')">Change</button></div>
+ <div class="chips">${['All','OEM','OES','Genuine','In stock'].map(c=>`<button class="chip ${c===f?'on':''}" onclick="S.ui.lf='${c}';refresh()">${c}</button>`).join('')}</div>
+ <div class="h3">${items.length} compatible part${items.length===1?'':'s'}</div>
+ ${items.length?`<div class="grid2">${items.map(x=>pcard(x)).join('')}</div>`:'<div class="empty">No parts match. Try another filter.</div>'}
+</div></div>`;};
+SCREENS.product=(p)=>{const x=P(p.id);const fav=DB.wish.includes(x.id);return bar('',{action:`<button class="iconbtn" onclick="toggleWish('${x.id}')" aria-label="Wishlist" style="color:${fav?'var(--r)':'inherit'}">${ic('heart','s20')}</button>`})+`<div class="scroll"><div class="pad">
+ <div class="card" style="height:220px;align-items:center;justify-content:center;color:var(--ink3)">${ic(x.ic,'s40')}<span class="cap">Product photo</span></div>
+ <div class="row" style="gap:8px"><span class="micro muted">${x.brand}</span><span class="pill y">${x.type}</span><span class="pill g">Genuine</span></div>
+ <div class="stack g6"><h1 class="h1">${esc(x.name)}</h1><span class="cap">Part no. ${x.pn}</span></div>
+ <div class="row" style="gap:10px"><span class="amt">${inr(x.price)}</span><s class="muted num">MRP ${inr(x.mrp)}</s><span class="pill g">${off(x)}% off</span></div>
+ <div class="row cap" style="color:${x.stock?'var(--g)':'var(--r)'};gap:6px">${ic('truck','s18')}${x.stock?`In stock (${DB.stock[x.id]}) · Delivery by Tue, 30 Sep`:'Out of stock · Notify me'}</div>
+ <div class="card"><div class="h3">Vehicle compatibility</div>${[['Bajaj Pulsar 150 Twin Disc','Your bike'],['Bajaj Pulsar 180','2018 – 2022'],['Bajaj Avenger Street 160','2019 – 2023']].map(([b,y],i)=>`<div class="row">${ic('checkC','s18')}<span class="grow body">${b}</span>${i?`<span class="cap">${y}</span>`:`<span class="pill b">${y}</span>`}</div>`).join('')}</div>
+ <div class="row" style="background:var(--g-soft);border-radius:16px;padding:14px;color:var(--g)">${ic('shield')}<div class="grow"><div class="h3" style="color:var(--ink)">${x.war} warranty</div><div class="cap">Added to your Warranty dashboard with the invoice</div></div></div>
+ <div class="card"><div class="h3">Specifications</div><div class="kv"><span>Category</span><span>${x.cat}</span></div><div class="kv"><span>Brand</span><span>${x.brand}</span></div><div class="kv"><span>Stock</span><span>${DB.stock[x.id]} units · Rajajinagar</span></div></div>
+ <div class="card"><div class="sec"><span class="h3">Reviews</span><span class="row" style="gap:4px;font-weight:700;font-size:13px"><span style="color:var(--amber)">${ic('star','s16')}</span>4.6 · 128</span></div><p class="body muted" style="margin:0">“Perfect fit on my 2021 Pulsar, braking feels much sharper.” — Kiran M.</p></div>
+</div></div><div class="foot"><div class="grid2"><button class="btn line" onclick="addCart('${x.id}')">Add to cart</button><button class="btn" onclick="addCart('${x.id}');go('cart')" ${x.stock?'':'disabled'}>Buy ${inr(x.price)}</button></div></div>`;};
+SCREENS.cart=()=>{const t=cartTotals();if(!DB.cart.length)return bar('My cart')+`<div class="scroll"><div class="pad"><div class="denied"><div class="tile y round" style="width:72px;height:72px">${ic('cart','s28')}</div><h3 class="h2">Your cart is empty</h3><button class="btn sm" onclick="tab('shop')">Shop spares</button></div></div></div>`;
+ return bar(`My cart (${cartCount()})`)+`<div class="scroll"><div class="pad">
+ ${DB.cart.map(c=>{const x=P(c.id);return `<div class="card" style="flex-direction:row;align-items:flex-start"><div class="tile n" style="width:64px;height:64px;border-radius:14px">${ic(x.ic,'s28')}</div><div class="grow stack g6"><span class="micro muted">${x.brand} · ${x.type}</span><span class="h3">${esc(x.name)}</span><span class="row" style="gap:6px"><b class="num">${inr(x.price)}</b><s class="cap num">${inr(x.mrp)}</s></span><div class="sec"><span class="qty"><button onclick="setQty('${x.id}',-1)" aria-label="Less">${ic('minus','s16')}</button><span class="num">${c.q}</span><button onclick="setQty('${x.id}',1)" aria-label="More">${ic('plus','s16')}</button></span><button onclick="setQty('${x.id}',-99)" aria-label="Remove" class="muted">${ic('trash','s18')}</button></div></div></div>`;}).join('')}
+ ${DB.coupon?`<div class="row" style="border:1.5px dashed var(--g);background:var(--g-soft);border-radius:16px;padding:14px">${ic('tag','s20')}<div class="grow"><div class="h3">${DB.coupon} applied</div><div class="cap">You save ${inr(t.cp)}</div></div><button class="link" style="color:var(--r)" onclick="DB.coupon=null;save();refresh()">Remove</button></div>`:`<button class="row card" style="flex-direction:row" onclick="DB.coupon='DASARA25';save();toast('Coupon applied');refresh()">${ic('tag','s20')}<span class="grow h3" style="text-align:left">Apply coupon DASARA25</span>${ic('chevR','s18')}</button>`}
+ <div class="card"><div class="h3">Order summary</div><div class="kv"><span>Item total (MRP ${inr(t.mrp)})</span><span>${inr(t.sub)}</span></div><div class="kv"><span>Product discount</span><span style="color:var(--g)">− ${inr(t.disc)}</span></div>${t.cp?`<div class="kv"><span>Coupon</span><span style="color:var(--g)">− ${inr(t.cp)}</span></div>`:''}<div class="kv"><span>Delivery</span><span style="color:var(--g)">${t.del?inr(t.del):'FREE'}</span></div><div class="hr"></div><div class="kv big"><span>To pay</span><span>${inr(t.total)}</span></div></div>
+</div></div><div class="foot"><div class="sum">Total · ${cartCount()} items<b>${inr(t.total)}</b></div><button class="btn" onclick="go('checkout')">Proceed to checkout ${ic('chevR','s18')}</button></div>`;};
+SCREENS.checkout=()=>{const t=cartTotals();const a=S.ui.addr||'Home';const pm=S.ui.pm||'UPI';return bar('Checkout')+`<div class="scroll"><div class="pad">
+ ${sec('Delivery address','+ Add new',"go('addresses')")}
+ ${[['Home','#42, 8th Cross, Rajajinagar, Bengaluru 560010'],['Workshop','Shop 7, Magadi Road, Bengaluru 560023']].map(([n,d])=>`<button class="opt ${a===n?'on':''}" onclick="S.ui.addr='${n}';refresh()"><span class="radio"></span><span class="grow stack g6" style="text-align:left"><b>${n}</b><span class="cap">${d}</span></span></button>`).join('')}
+ ${sec('Payment method')}
+ ${[['UPI','Google Pay · PhonePe · Paytm','rupee'],['Card','Visa, Mastercard, RuPay','card'],['Net banking','All major banks','store'],['Cash on delivery','₹20 handling fee','wallet']].map(([n,d,i])=>`<button class="opt ${pm===n?'on':''}" onclick="S.ui.pm='${n}';refresh()"><span class="tile sm">${ic(i,'s18')}</span><span class="grow stack" style="gap:2px;text-align:left"><b>${n}</b><span class="cap">${d}</span></span><span class="radio"></span></button>`).join('')}
+ <div class="row cap" style="justify-content:center">${ic('lock','s16')} Secure payments by Razorpay</div>
+</div></div><div class="foot"><div class="sum">Paying via ${pm}<b>${inr(t.total+(pm==='Cash on delivery'?20:0))}</b></div><button class="btn" onclick="placeOrder()">Pay ${inr(t.total+(pm==='Cash on delivery'?20:0))}</button></div>`;};
+function placeOrder(){const t=cartTotals();const id='BP-ORD-2026-'+(10482+DB.orders.length);DB.orders.unshift({id,d:new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}),items:cartCount(),amt:t.total,pm:S.ui.pm||'UPI',st:'Confirmed'});
+ DB.cart.forEach(c=>DB.stock[c.id]=Math.max(0,DB.stock[c.id]-c.q));S.ui.last={id,amt:t.total,n:cartCount()};DB.cart=[];DB.coupon=null;save();S.stack=[{s:'home',p:{}},{s:'placed',p:{}}];render('push');}
+SCREENS.placed=()=>{const l=S.ui.last||{id:'BP-ORD-2026-10482',amt:1376,n:3};return `<div class="scroll"><div class="pad" style="padding-top:40px;align-items:center;text-align:center">
+ <div class="tile g round" style="width:88px;height:88px;animation:spin .7s cubic-bezier(.2,.8,.2,1)">${ic('checkC','s40')}</div>
+ <h1 class="h1">Order placed!</h1><p class="cap">Order ${l.id} · Paid ${inr(l.amt)} · ${l.n} items</p>
+ <div class="row" style="background:var(--blue-soft);border-radius:16px;padding:14px;width:100%;text-align:left">${ic('truck')}<div class="grow"><div class="h3">Arriving Tue, 30 Sep</div><div class="cap">Delivery to Home · Rajajinagar</div></div></div>
+ <div class="row" style="background:var(--g-soft);border-radius:16px;padding:14px;width:100%;text-align:left;color:var(--g)">${ic('shield')}<div class="grow"><div class="h3" style="color:var(--ink)">Warranty added</div><div class="cap">Find it in your Warranty dashboard</div></div></div>
+</div></div><div class="foot"><button class="btn" onclick="tab('orders')">Track order</button><button class="btn line" onclick="tab('home')">Continue shopping</button></div>`;};
+SCREENS.orders=()=>{const f=S.ui.of||'All';const tone={Confirmed:'b','Out for delivery':'b',Delivered:'g',Processing:'a',Cancelled:'r'};let list=DB.orders;if(f==='Active')list=list.filter(o=>!['Delivered','Cancelled'].includes(o.st));if(f==='Delivered')list=list.filter(o=>o.st==='Delivered');
+ return `<div class="scroll"><div class="pad"><h1 class="h1">My orders</h1><div class="chips">${['All','Active','Delivered'].map(c=>`<button class="chip ${c===f?'on':''}" onclick="S.ui.of='${c}';refresh()">${c}</button>`).join('')}</div>
+ ${DB.bookings.map(b=>`<button class="card" style="text-align:left" onclick="go('booking',{id:'${b.id}'})"><div class="sec"><b>${b.id}</b><span class="pill y">Service booked</span></div><div class="cap">${b.svc.join(' + ')} · ${b.date} ${b.time}</div></button>`).join('')}
+ ${list.map(o=>`<div class="card"><div class="sec"><b class="num">${o.id}</b><span class="pill ${tone[o.st]||''}">${o.st}</span></div><div class="row"><div class="tile n">${ic('package','s20')}</div><div class="grow"><div class="h3">${o.d} · ${o.items} item${o.items>1?'s':''}</div><div class="cap">${inr(o.amt)} · Paid via ${o.pm}</div></div></div><div class="hr"></div><div class="row" style="gap:18px"><button class="link row" style="gap:4px" onclick="toast('Invoice downloaded')">${ic('download','s16')}Invoice</button><button class="link row" style="gap:4px" onclick="go('warranty')">${ic('shield','s16')}Warranty</button><button class="link row" style="gap:4px" onclick="toast('Order status: ${o.st}')">${ic('truck','s16')}Track</button></div></div>`).join('')}
+ </div></div>`;};
+SCREENS.service=()=>{const f=S.ui.mf||'Within 5 km';let list=MECHS;if(f==='Open now')list=list.filter(m=>m.open);if(f==='4.8★ & above')list=list.filter(m=>m.r>=4.8);
+ return `<div class="scroll"><div class="pad"><div class="sec"><h1 class="h1">Find mechanic</h1><button class="iconbtn line" onclick="go('qr')" aria-label="Scan mechanic QR">${ic('qr','s20')}</button></div>
+ <div class="map" aria-label="Map of nearby mechanics">${[[18,20,0],[42,38,1],[70,22,0],[80,66,0],[24,70,0]].map(([x,y,o])=>`<span class="pin ${o?'on':''}" style="left:${x}%;top:${y}%">${ic('wrench','s16')}</span>`).join('')}<span class="me"></span></div>
+ <div class="chips">${['Within 5 km','4.8★ & above','Verified','Open now','Bajaj specialist'].map(c=>`<button class="chip ${c===f?'on':''}" onclick="S.ui.mf='${c}';refresh()">${c}</button>`).join('')}</div>
+ <div class="h3">${list.length} verified mechanics near Rajajinagar</div>${list.map(mechCard).join('')}
+ <button class="btn dark" onclick="go('book')">${ic('calendar','s18')} Book a service</button></div></div>`;};
+SCREENS.book=(p)=>{const b=S.ui.bk||(S.ui.bk={svc:['General Service','Oil Change'],date:'Mon 29',time:'10:30 AM',mode:'Pickup & drop',m:p.m||'BP-MECH-1025'});const m=MECHS.find(x=>x.code===b.m)||MECHS[0];const est=SERVICES.filter(s=>b.svc.includes(s[0])).reduce((a,s)=>a+s[2],0)+(b.mode==='Pickup & drop'?99:0);
+ return bar('Book service')+`<div class="scroll"><div class="pad">
+ <div class="row" style="gap:6px">${[1,2,3,4,5].map(i=>`<i style="flex:1;height:4px;border-radius:2px;background:var(--y);display:block"></i>`).join('')}<i style="flex:1;height:4px;border-radius:2px;background:var(--line);display:block"></i></div>
+ <div class="card" style="flex-direction:row;align-items:center">${ic('bike')}<div class="grow"><div class="h3">Bajaj Pulsar 150</div><div class="cap">KA 02 HM 4521</div></div><button class="link" onclick="go('garage')">Change</button></div>
+ ${sec('Select services')}
+ <div class="grid2">${SERVICES.map(([n,i])=>`<button class="opt ${b.svc.includes(n)?'on':''}" onclick="toggleSvc('${n}')">${ic(i,'s18')}<span class="grow">${n}</span></button>`).join('')}</div>
+ ${sec('Mechanic')}
+ <div class="card" style="flex-direction:row;align-items:center"><div class="tile k round" style="color:#fff;font-weight:800">${m.i}</div><div class="grow"><div class="h3">${m.n}</div><div class="cap">Verified · ${m.r}★ · ${m.km} km</div></div><button class="link" onclick="S.ui.bk.m=S.ui.bk.m==='BP-MECH-1025'?'BP-MECH-0872':'BP-MECH-1025';refresh()">Change</button></div>
+ ${sec('Date & time')}
+ <div class="grid4" style="grid-template-columns:repeat(5,1fr)">${['Sun 28','Mon 29','Tue 30','Wed 01','Thu 02'].map(d=>`<button class="opt ${b.date===d?'on':''}" style="flex-direction:column;gap:2px;padding:8px 2px" onclick="S.ui.bk.date='${d}';refresh()"><span class="cap">${d.split(' ')[0]}</span><b style="font-size:17px">${d.split(' ')[1]}</b></button>`).join('')}</div>
+ <div class="grid4">${['9:00 AM','10:30 AM','12:00 PM','3:30 PM'].map(t=>`<button class="chip ${b.time===t?'on':''}" style="justify-content:center" onclick="S.ui.bk.time='${t}';refresh()">${t}</button>`).join('')}</div>
+ ${sec('How will you come?')}
+ <div class="grid2">${[['Pickup & drop','₹99 · we collect your bike','truck'],['Visit workshop','Free · '+m.km+' km away','store']].map(([n,d,i])=>`<button class="opt ${b.mode===n?'on':''}" style="flex-direction:column;align-items:flex-start" onclick="S.ui.bk.mode='${n}';refresh()"><span class="sec" style="width:100%">${ic(i,'s20')}<span class="radio"></span></span><b>${n}</b><span class="cap">${d}</span></button>`).join('')}</div>
+</div></div><div class="foot"><div class="sum">Estimate · pay after service<b>${inr(est)}</b></div><button class="btn" onclick="confirmBooking(${est})" ${b.svc.length?'':'disabled'}>Confirm booking</button></div>`;};
+function toggleSvc(n){const b=S.ui.bk;b.svc=b.svc.includes(n)?b.svc.filter(x=>x!==n):[...b.svc,n];refresh();}
+function confirmBooking(est){const b=S.ui.bk;const id='BK-'+(3381+DB.bookings.length);DB.bookings.unshift({id,svc:b.svc,date:b.date,time:b.time,mode:b.mode,m:b.m,est});save();S.ui.bk=null;S.stack=[{s:'home',p:{}},{s:'booking',p:{id}}];render('push');toast('Booking confirmed');}
+SCREENS.booking=(p)=>{const b=DB.bookings.find(x=>x.id===p.id)||{id:'BK-3381',svc:['General Service','Oil Change'],date:'Mon 29',time:'10:30 AM',mode:'Pickup & drop',m:'BP-MECH-1025',est:899};const m=MECHS.find(x=>x.code===b.m)||MECHS[0];const stage=S.ui['stage'+b.id]??1;
+ const steps=[['Booking confirmed',`${b.date} · ${b.time}`],['Mechanic assigned',m.n],['Vehicle received',b.mode==='Pickup & drop'?'Picked up from Home':'At workshop'],['Service in progress','Est. ready by 2:30 PM'],['Service completed','Invoice & warranty will appear here']];
+ return bar('Booking '+b.id,{action:`<button class="iconbtn" onclick="toast('Calling ${m.n}…')" aria-label="Call">${ic('phone','s20')}</button>`})+`<div class="scroll"><div class="pad">
+ <div class="dark-card"><span class="pill y" style="align-self:flex-start">${steps[Math.min(stage,4)][0]}</span><div class="h2" style="color:#fff">${b.svc.join(' + ')}</div><div class="cap" style="color:var(--ink3)">Pulsar 150 · ${m.n} · ${b.mode}</div></div>
+ <div class="card" style="gap:0">${steps.map((s,i)=>`<div class="step ${i<stage?'done':i===stage?'now':''}"><div class="dotc"><b>${i<stage?ic('check','s16'):i===stage?ic('clock','s16'):ic('clock','s16')}</b>${i<4?'<i></i>':''}</div><div class="txt"><div class="h3" style="color:${i>stage?'var(--ink5)':'var(--ink)'}">${s[0]}</div><div class="cap">${s[1]}</div></div></div>`).join('')}</div>
+ <button class="btn line sm" style="width:100%" onclick="S.ui['stage${b.id}']=Math.min(5,${stage}+1);refresh()">Simulate next status ${ic('chevR','s16')}</button>
+ <div class="card"><div class="h3">Estimate</div>${SERVICES.filter(s=>b.svc.includes(s[0])).map(s=>`<div class="kv"><span>${s[0]}</span><span>${inr(s[2])}</span></div>`).join('')}${b.mode==='Pickup & drop'?`<div class="kv"><span>Pickup & drop</span><span>${inr(99)}</span></div>`:''}<div class="hr"></div><div class="kv big"><span>Estimated total</span><span>${inr(b.est)}</span></div></div>
+ <div class="grid2"><button class="btn line sm" style="width:100%" onclick="toast('Calling mechanic…')">Call mechanic</button><button class="btn red sm" style="width:100%" onclick="cancelBooking('${b.id}')">Cancel</button></div>
+</div></div>`;};
+function cancelBooking(id){sheet(`<h3 class="h2">Cancel booking ${id}?</h3><p class="cap">The mechanic will be informed. You can book again anytime.</p><div class="grid2"><button class="btn line" onclick="closeSheet()">Keep</button><button class="btn red" onclick="DB.bookings=DB.bookings.filter(x=>x.id!=='${id}');save();closeSheet();tab('orders');toast('Booking cancelled')">Cancel it</button></div>`);}
+SCREENS.garage=()=>bar('My garage',{action:`<button class="iconbtn" onclick="addVehicle()" aria-label="Add vehicle">${ic('plus','s20')}</button>`})+`<div class="scroll"><div class="pad">
+ ${[['Bajaj Pulsar 150 · Twin Disc ABS','KA 02 HM 4521','2022 · 9,800 km',['Insurance valid','g'],['PUC in 9 days','a'],'Next service in 12 days',1],['Honda Activa 6G · STD','KA 04 JX 1180','2020 · 21,450 km',['Insurance expired','r'],['PUC valid','g'],'Service overdue by 5 days',0]].map(([n,r,m,a,b,s,pr])=>`<button class="card" style="text-align:left;${pr?'border:1.5px solid var(--y)':''}" onclick="go('vehicle',{r:'${r}'})"><div class="row"><div class="tile ${pr?'k':'n'}">${ic('bike')}</div><div class="grow"><div class="h3">${n}</div><div class="cap">${m}</div></div>${pr?'<span class="pill y">Primary</span>':''}</div><span class="row" style="gap:8px;background:var(--paper);border-radius:8px;padding:6px 10px;align-self:flex-start"><span class="micro muted">Reg</span><b>${r}</b></span><div class="row" style="gap:8px"><span class="pill ${a[1]}">${a[0]}</span><span class="pill ${b[1]}">${b[0]}</span></div><div class="hr"></div><div class="sec cap"><span style="color:${pr?'var(--ink7)':'var(--r)'}">${s}</span><span class="link">Documents →</span></div></button>`).join('')}
+ <button class="card" style="border:1.5px dashed var(--ink3);align-items:center;background:transparent" onclick="addVehicle()"><span class="tile y round">${ic('plus')}</span><b>Add another vehicle</b><span class="cap">Enter reg. number to auto-fill details</span></button>
+</div></div>`;
+function addVehicle(){sheet(`<h3 class="h2">Add vehicle</h3><div class="field"><label for="regno">Registration number</label><div class="inp"><input id="regno" placeholder="KA 01 AB 1234"></div></div><button class="btn" onclick="closeSheet();toast('Vehicle details fetched · saved to garage')">Fetch details</button><p class="cap">Details come from the Vahan registry. You can edit them after.</p>`);}
+SCREENS.vehicle=(p)=>bar(p.r==='KA 04 JX 1180'?'Activa 6G':'Pulsar 150',{action:`<button class="iconbtn" onclick="toast('Editing enabled')" aria-label="Edit">${ic('edit','s20')}</button>`})+`<div class="scroll"><div class="pad">
+ <div class="card">${[['Registration no.',p.r||'KA 02 HM 4521'],['Engine no.','DHZCKL•••••4821'],['Chassis no.','MD2A11CZ•••••7719'],['Purchase date','14 Mar 2022'],['Insurance','ICICI Lombard · till 12 Mar 2027'],['PUC','Expires 06 Oct 2026']].map(([k,v])=>`<div class="kv"><span>${k}</span><span>${v}</span></div>`).join('')}</div>
+ ${sec('Documents','+ Upload',"toast('Choose a file to upload')")}
+ <div class="card flush">${[['RC (Registration Certificate)','Uploaded 14 Mar 2022 · PDF'],['Insurance','Valid till 12 Mar 2027'],['PUC certificate','Expires 06 Oct 2026'],['Driving licence','KA02 2019 0012345'],['Warranty documents','2 files']].map(([t,s])=>`<div class="li"><div class="tile sm b">${ic('file','s18')}</div><div class="grow"><div class="t">${t}</div><div class="s">${s}</div></div><button aria-label="View" onclick="toast('Opening ${t}')">${ic('eye','s18')}</button><button aria-label="Replace" onclick="toast('Replace ${t}')">${ic('upload','s18')}</button><button aria-label="Delete" style="color:var(--r)" onclick="toast('${t} deleted')">${ic('trash','s18')}</button></div>`).join('')}</div>
+ ${sec('Service history')}
+ <div class="card flush">${[['12 Jun','General service + oil change','₹1,240'],['03 Feb','Front brake pad replacement','₹780'],['18 Sep','Chain & sprocket kit','₹2,150']].map(([d,t,a])=>li(t,d+' · Ravi Kumar Auto Works',`<b class="num">${a}</b>`,'wrench','','n')).join('')}</div>
+</div></div>`;
+SCREENS.warranty=()=>bar('Warranty',{action:`<button class="iconbtn" onclick="go('qr')" aria-label="Scan warranty QR">${ic('qr','s20')}</button>`})+`<div class="scroll"><div class="pad">
+ <div class="grid3">${statTile('g','Active','4','items')}${statTile('y','Expiring','1','in 30 days')}${statTile('','Expired','2','items')}</div>
+ ${[['Front Brake Pad Set','BOSCH · INV-2026-10482','Ends 27 Mar 2027',.05,'Active','g'],['Motul 7100 Engine Oil','INV-2026-09877','Ends 14 Nov 2026',.3,'Active','g'],['Exide Xplore Battery 12V','INV-2024-05512','Ends 15 Oct 2026',.97,'18 days left','a'],['Clutch Plate Kit','INV-2025-01120','Ended 02 Jan 2026',1,'Expired','']].map(([n,s,e,pc,st,t])=>`<div class="card"><div class="row top"><div class="tile sm ${t==='g'?'g':t==='a'?'y':'n'}">${ic('shield','s18')}</div><div class="grow"><div class="h3">${n}</div><div class="cap">${s}</div></div><span class="pill ${t}">${st}</span></div><div class="prog"><i style="width:${pc*100}%;background:${t==='g'?'var(--g)':t==='a'?'var(--y)':'var(--ink3)'}"></i></div><div class="sec cap"><span>${e}</span><button class="link" onclick="toast('Warranty claim started')">Claim</button></div></div>`).join('')}
+</div></div>`;
+SCREENS.offers=()=>bar('Offers')+`<div class="scroll"><div class="pad">
+ <div class="dark-card"><span class="pill y" style="align-self:flex-start">For your Pulsar 150</span><div class="h2" style="color:#fff">Service kit combo — save ₹350</div><div class="cap" style="color:var(--ink3)">Oil + oil filter + air filter + spark plug, matched to your bike.</div><button class="btn sm" style="align-self:flex-start" onclick="tab('shop')">Shop combo</button></div>
+ ${sec('Coupons')}
+ ${[['25%','DASARA25','Festival · Brake parts','Up to ₹300 off · min ₹999'],['₹100','MOTUL100','Brand · Motul lubricants','Flat ₹100 off on 2L+ oils'],['FREE','PICKUPFREE','Service · Pickup & drop','Free pickup on next booking']].map(([b,c,t,d])=>`<div class="card flush" style="flex-direction:row"><div style="background:var(--ink);color:var(--y);width:84px;display:grid;place-items:center;text-align:center;font-weight:800;font-size:20px;padding:12px">${b}<span class="micro" style="color:#fff">off</span></div><div class="grow stack g6" style="padding:12px 14px"><div class="sec"><span class="pill" style="border:1px dashed var(--ink3);background:transparent">${c}</span><button class="link" onclick="DB.coupon='${c}';save();toast('${c} applied to cart')">${DB.coupon===c?'Applied':'Apply'}</button></div><b>${t}</b><span class="cap">${d}</span></div></div>`).join('')}
+</div></div>`;
+SCREENS.wishlist=()=>bar(`Wishlist (${DB.wish.length})`)+`<div class="scroll"><div class="pad">
+ <div class="row" style="background:var(--blue-soft);border-radius:16px;padding:14px">${ic('bell','s20')}<div class="grow"><div class="h3">Price-drop alerts on</div><div class="cap">We’ll tell you when a saved part gets cheaper</div></div></div>
+ ${DB.wish.length?DB.wish.map(id=>{const x=P(id);return `<div class="card" style="flex-direction:row;align-items:flex-start"><div class="tile n" style="width:64px;height:64px;border-radius:14px">${ic(x.ic,'s28')}</div><div class="grow stack g6"><span class="micro muted">${x.brand}</span><b>${esc(x.name)}</b><span class="row" style="gap:6px"><b>${inr(x.price)}</b><s class="cap">${inr(x.mrp)}</s><span class="pill g">${off(x)}% off</span></span><div class="sec"><span class="cap" style="color:${x.stock?'var(--g)':'var(--r)'}">${x.stock?(x.stock<5?'Only '+x.stock+' left':'In stock'):'Out of stock'}</span><button class="btn sm" onclick="addCart('${x.id}')" ${x.stock?'':'disabled'}>Add to cart</button></div></div><button aria-label="Remove" onclick="toggleWish('${x.id}')" class="muted">${ic('x','s18')}</button></div>`;}).join(''):'<div class="empty">Tap the heart on any part to save it here.</div>'}
+</div></div>`;
+SCREENS.qr=()=>`<div class="screen darkscr" style="position:static;flex:1;background:var(--ink);color:#fff"><div class="bar" style="background:var(--ink);border:0;color:#fff"><button class="iconbtn" style="background:#2a2a2a;color:#fff" onclick="back()" aria-label="Close">${ic('x')}</button><h2 style="text-align:center">Scan QR</h2><span style="width:40px"></span></div><div class="scroll"><div class="pad">
+ <div class="scanbox"><div class="frame"><span class="line"></span></div></div>
+ <p class="cap" style="text-align:center;color:var(--ink3)">Point at any Bike Pharma QR code</p>
+ <div class="grid3">${['Product','Warranty','Invoice','Mechanic','Service','Promo'].map(t=>`<button class="chip" style="background:#2a2a2a;border-color:#2a2a2a;color:#fff;justify-content:center" onclick="S.ui.qr='${t}';refresh()">${t}</button>`).join('')}</div>
+ <div class="card" style="color:var(--ink)">${qrResult(S.ui.qr||'Mechanic')}</div></div></div></div>`;
+function qrResult(t){const r={Mechanic:['wrench','Mechanic QR detected','Ravi Kumar Auto Works · BP-MECH-1025',"go('book',{m:'BP-MECH-1025'})",'Book service'],Product:['package','Product QR detected','Front Brake Pad Set · BP-BRK-0457',"go('product',{id:'p1'})",'View product'],Warranty:['shield','Warranty QR detected','Exide battery · ends 15 Oct 2026',"go('warranty')",'Open warranty'],Invoice:['file','Invoice QR detected','INV-2026-09877 · ₹2,250',"tab('orders')",'Open order'],Service:['calendar','Service QR detected','Booking BK-3381',"go('booking',{id:'BK-3381'})",'Track service'],Promo:['tag','Promo QR detected','DASARA25 · 25% off brakes',"go('offers')",'See offer']}[t];
+ return `<div class="row"><div class="tile k round">${ic(r[0],'s20')}</div><div class="grow"><div class="h3">${r[1]}</div><div class="cap">${r[2]}</div></div><span class="pill g">Verified</span></div><button class="btn sm" style="width:100%" onclick="${r[3]}">${r[4]}</button>`;}
+SCREENS.notifs=()=>bar('Notifications')+`<div class="scroll"><div class="pad">
+ <div class="card flush">${(S.user.role==='mechanic'?[['wallet','g','Reward credited','₹1,500 added to wallet for INV-015'],['receipt','r','Payment due 15 Oct','INV-015 · ₹40,000 outstanding'],['tag','','Bulk offer','Buy 20+ brake pads → extra 8% off']]:[['truck','b','Out for delivery','Your order arrives today by 7 PM'],['wrench','','Service in progress','Ravi Kumar Auto Works started work on your Pulsar'],['rupee','g','Payment successful','₹1,376 paid via UPI'],['shield','y','Warranty expiring soon','Exide battery warranty ends 15 Oct'],['tag','','Dasara offer is live','Up to 25% off brake parts']]).map(([i,t,a,b])=>li(a,b,'',i,'',t)).join('')}</div></div></div>`;
+SCREENS.account=()=>`<div class="scroll"><div class="pad">
+ <div class="card" style="flex-direction:row;align-items:center"><div class="tile y round" style="width:56px;height:56px;font-weight:800;font-size:18px">${esc(S.user.name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase())}</div><div class="grow"><div class="h2">${esc(S.user.name)}</div><div class="cap">+91 ${S.uid.slice(0,5)} ${S.uid.slice(5)}</div><span class="pill y">Customer</span></div></div>
+ ${sec('My account')}
+ <div class="card flush">${li('My vehicles','Pulsar 150, Activa 6G','','bike',"go('garage')")}${li('Saved addresses','Home, Office, Workshop','','pin',"go('addresses')")}${li('Warranty','4 active · 1 expiring','','shield',"go('warranty')")}${li('Wishlist',DB.wish.length+' items','','heart',"go('wishlist')")}${li('Offers & coupons','3 available','','tag',"go('offers')")}</div>
+ ${sec('Preferences')}
+ <div class="card flush">${li('Language','English · ಕನ್ನಡ · हिन्दी','<b class="link">'+(S.ui.lang||'English')+'</b>','globe',"S.ui.lang=({English:'ಕನ್ನಡ','ಕನ್ನಡ':'हिन्दी','हिन्दी':'English'})[S.ui.lang||'English'];refresh()")}${li('Notifications','Orders, service, offers','','bell',"go('notifs')")}</div>
+ ${sec('Security')}
+ <div class="card flush">${li('Active sessions','3 devices','','lock',"toast('Pixel 8 · iPad · Chrome')")}${li('Log out from all devices','Ends every session','','logout',"logout(true)",'r')}</div>
+ <button class="btn line" onclick="logout()">Log out</button>
+ <button class="link" style="text-align:center" onclick="resetDemo()">Reset demo data</button>
+</div></div>`;
+SCREENS.addresses=()=>bar('Saved addresses')+`<div class="scroll"><div class="pad">
+ <button class="row card" style="flex-direction:row;background:var(--blue-soft);border:0" onclick="toast('Location found · Rajajinagar')">${ic('navigate')}<span class="grow h3" style="text-align:left">Use current location (GPS)</span></button>
+ ${[['Home','home','#42, 8th Cross, Rajajinagar, Bengaluru 560010',1],['Office','store','Brigade Tech Park, Whitefield, Bengaluru 560066',0],['Workshop','wrench','Shop 7, Magadi Road, Bengaluru 560023',0],['Other','pin','Lakeview Apts, Hebbal, Bengaluru 560024',0]].map(([t,i,a,d])=>`<div class="card" style="${d?'border:1.5px solid var(--y)':''}"><div class="row top"><div class="tile sm">${ic(i,'s18')}</div><div class="grow"><div class="row" style="gap:8px"><b>${t}</b>${d?'<span class="pill y">Default</span>':''}</div><div class="cap">${a}</div></div></div><div class="hr"></div><div class="row" style="gap:18px"><button class="link" style="color:var(--ink7)" onclick="toast('Edit ${t}')">Edit</button><button class="link" style="color:var(--r)" onclick="toast('${t} deleted')">Delete</button>${d?'':`<button class="link" onclick="toast('${t} set as default')">Set default</button>`}</div></div>`).join('')}
+</div></div><div class="foot"><button class="btn" onclick="toast('Add address form')">+ Add new address</button></div>`;
+
+/* ---------- MECHANIC ---------- */
+function moneyCards(extra=true){return `<button class="money w" style="text-align:left" onclick="tab('wallet')"><span class="lab">${ic('wallet','s18')}<span class="micro">Wallet balance</span></span><span class="amt">${inr(walletBal())}</span><span class="cap" style="color:var(--ink7)">Reward / discount balance you have earned. Not your outstanding.</span>${extra?`<span class="sec cap" style="color:var(--g)"><span>Earned ${inr(walletEarned())} · Used ${inr(walletUsed())}</span><span>History →</span></span>`:''}</button>
+ <div class="money c"><span class="lab">${ic('receipt','s18')}<span class="micro">Credit balance · Outstanding</span></span><span class="amt">${inr(outstanding())}</span><span class="cap" style="color:var(--ink7)">Amount you owe Bike Pharma for credit purchases.</span>${extra?`<span class="sec"><span class="cap" style="color:var(--r)">${outstanding()?'Next due 15 Oct 2026':'No dues'}</span><button class="btn red sm" onclick="go('pay')" ${outstanding()?'':'disabled'}>Pay now</button></span>`:''}</div>`;}
+SCREENS.mhome=()=>`<div class="scroll"><div class="pad">
+ <div class="row"><div class="grow"><h1 class="h1">Namaskara, ${esc(S.user.name.split(' ')[0])}</h1><div class="row" style="gap:6px"><span class="cap">${esc(S.user.shop||'Ravi Kumar Auto Works')}</span><span class="pill">Silver</span></div></div><button class="iconbtn line" onclick="go('notifs')" aria-label="Notifications">${ic('bell','s20')}<span class="dot"></span></button></div>
+ ${moneyCards()}
+ <div class="grid2">${statTile('',"Today's purchase",inr(12500),'3 invoices')}${statTile('b','Pending invoice',inr(8000),'INV-021')}</div>
+ <div class="dark-card" style="flex-direction:row;align-items:center"><div class="grow"><div class="micro" style="color:var(--ink3)">Your mechanic code</div><div class="h2" style="color:#fff;font-family:var(--brand);letter-spacing:1px">${S.user.code||'BP-MECH-1025'}</div></div><button class="iconbtn" style="background:#2a2a2a;color:#fff" onclick="copyCode()" aria-label="Copy">${ic('copy','s18')}</button></div>
+ <div class="grid3">${[['Spare Parts','cart',"tab('mshop')"],['Purchases','history',"go('purchases')"],['Invoices','file',"go('invoices')"],['Offers','tag',"tab('maccount')"],['Rewards','award',"tab('maccount')"],['Pay dues','rupee',"go('pay')"]].map(([l,i,o])=>`<button class="qa2" onclick="${o}"><span class="tile sm">${ic(i,'s20')}</span>${l}</button>`).join('')}</div>
+ ${sec('Recent activity')}
+ <div class="card flush">${DB.cl.slice().reverse().slice(0,3).map(x=>x.buy?li('Credit purchase · '+x.inv,x.d,`<b class="num" style="color:var(--r)">+ ${inr(x.buy)}</b>`,'receipt','','r'):li('Payment received',x.d+' · '+(x.ref||''),`<b class="num" style="color:var(--g)">− ${inr(x.pay)}</b>`,'checkC','','g')).join('')}</div>
+</div></div>`;
+function copyCode(){try{navigator.clipboard.writeText('BP-MECH-1025').then(()=>toast('Code copied'),()=>toast('Code: BP-MECH-1025'));}catch(e){toast('Code: BP-MECH-1025');}}
+SCREENS.mshop=()=>{const q=(S.ui.mq||'').toLowerCase();const items=PRODUCTS.filter(x=>(x.name+x.brand+x.pn).toLowerCase().includes(q));return `<div class="scroll"><div class="pad">
+ <h1 class="h1">Spare parts</h1>
+ <label class="search" for="mq">${ic('search','s20')}<input id="mq" placeholder="Part name, part no. or brand" value="${esc(S.ui.mq||'')}" oninput="S.ui.mq=this.value;clearTimeout(window._mq);window._mq=setTimeout(()=>{refresh();const i=document.getElementById('mq');i.focus();i.setSelectionRange(i.value.length,i.value.length)},300)"></label>
+ <div class="row" style="background:var(--blue-soft);border-radius:14px;padding:12px">${ic('tag','s18')}<span class="cap grow" style="color:var(--ink7)">Mechanic pricing applied. Bulk discounts from 10 pcs.</span></div>
+ <div class="grid2">${items.map(x=>pcard(x,true)).join('')}</div></div></div>`;};
+SCREENS.mproduct=(p)=>{const x=P(p.id);const q=S.ui.mqty??10;const tier=q>=25?x.mp-40:q>=10?x.mp-20:x.mp;const tot=tier*q;const mode=S.ui.mmode||'credit';const rew=Math.round(tot*0.03);
+ return bar('',{action:`<span class="pill b">Mechanic price</span>`})+`<div class="scroll"><div class="pad">
+ <div class="card" style="height:160px;align-items:center;justify-content:center;color:var(--ink3)">${ic(x.ic,'s40')}</div>
+ <div class="stack g6"><span class="micro muted">${x.brand} · ${x.type}</span><h1 class="h1">${esc(x.name)}</h1><span class="cap">Part no. ${x.pn} · Stock ${DB.stock[x.id]}</span></div>
+ <div class="card"><div class="row" style="gap:18px"><div><div class="micro" style="color:var(--blue)">Your price</div><div class="amt">${inr(tier)}</div></div><div><div class="micro muted">MRP</div><s class="h3 muted">${inr(x.mrp)}</s></div><span class="pill g">${Math.round((1-tier/x.mrp)*100)}% off</span></div>
+ <div class="hr"></div><b class="h3">Bulk pricing</b><div class="grid3">${[['1–9 pcs',x.mp,q<10],['10–24 pcs',x.mp-20,q>=10&&q<25],['25+ pcs',x.mp-40,q>=25]].map(([l,v,on])=>`<div class="opt ${on?'on':''}" style="flex-direction:column;gap:0"><span class="cap">${l}</span><b>${inr(v)}</b></div>`).join('')}</div></div>
+ <div class="sec"><div><div class="h3">Quantity</div><div class="cap">${DB.stock[x.id]} in stock</div></div><span class="qty" style="font-size:18px"><button onclick="S.ui.mqty=Math.max(1,${q}-1);refresh()" aria-label="Less">${ic('minus','s18')}</button><span class="num">${q}</span><button onclick="S.ui.mqty=${q}+1;refresh()" aria-label="More">${ic('plus','s18')}</button></span></div>
+ <div class="row" style="background:var(--g-soft);border-radius:14px;padding:12px;color:var(--g)">${ic('wallet','s18')}<span class="cap grow" style="color:var(--g)">Earn ${inr(rew)} wallet reward on this purchase</span></div>
+ ${sec('Payment mode')}
+ <button class="opt ${mode==='now'?'on':''}" onclick="S.ui.mmode='now';refresh()"><span class="radio"></span><span class="grow stack" style="gap:2px"><b>Pay now</b><span class="cap">UPI · cash · bank transfer</span></span></button>
+ <button class="opt ${mode==='credit'?'on':''}" onclick="S.ui.mmode='credit';refresh()"><span class="radio"></span><span class="grow stack" style="gap:2px"><b>Buy on credit</b><span class="cap" style="color:var(--r)">Outstanding ${inr(outstanding())} → ${inr(outstanding()+tot)}</span></span></button>
+</div></div><div class="foot"><div class="sum">${q} × ${inr(tier)}<b>${inr(tot)}</b></div><button class="btn" onclick="mBuy('${x.id}',${q},${tot},${rew})" ${x.stock?'':'disabled'}>${mode==='credit'?'Buy on credit':'Pay '+inr(tot)}</button></div>`;};
+function mBuy(id,q,tot,rew){const inv='INV-0'+(21+DB.minv.length);const mode=S.ui.mmode||'credit';
+ if(mode==='credit'){DB.cl.push({d:today(),inv,buy:tot});DB.minv.unshift({id:inv,d:today(),amt:tot,paid:0,due:'30 days'});}else{DB.minv.unshift({id:inv,d:today(),amt:tot,paid:tot});}
+ DB.wl.push({d:today(),t:'Purchase reward · '+inv,cr:rew});DB.stock[id]=Math.max(0,DB.stock[id]-q);save();S.ui.mqty=10;
+ sheet(`<div class="tile g round" style="width:64px;height:64px">${ic('checkC','s28')}</div><h3 class="h2">Order placed · ${inv}</h3><div class="card"><div class="kv"><span>Invoice total</span><span>${inr(tot)}</span></div><div class="kv"><span>${mode==='credit'?'Added to outstanding':'Paid now'}</span><span style="color:${mode==='credit'?'var(--r)':'var(--g)'}">${inr(tot)}</span></div><div class="kv"><span>Wallet reward (separate ledger)</span><span style="color:var(--g)">+ ${inr(rew)}</span></div></div><button class="btn" onclick="closeSheet();tab('mhome')">Back to dashboard</button>`);}
+SCREENS.wallet=()=>`<div class="scroll"><div class="pad"><h1 class="h1">Wallet</h1>
+ <div class="money w"><span class="lab">${ic('wallet','s18')}<span class="micro">Wallet balance</span></span><span class="amt">${inr(walletBal())}</span><div class="grid2"><div class="stat" style="padding:10px"><span class="micro muted">Total earned</span><span class="v" style="color:var(--g)">${inr(walletEarned())}</span></div><div class="stat" style="padding:10px"><span class="micro muted">Used</span><span class="v">${inr(walletUsed())}</span></div></div><span class="cap" style="color:var(--ink7)">Reward / discount balance. Usage follows Bike Pharma reward rules. This is not your credit or outstanding.</span></div>
+ ${sec('Wallet history')}
+ <div class="tblwrap"><table class="tbl"><thead><tr><th>Date</th><th>Description</th><th class="r">Credit</th><th class="r">Debit</th><th class="r">Balance</th></tr></thead><tbody>${(()=>{let b=0;return DB.wl.map(x=>{b+=(x.cr||0)-(x.dr||0);return `<tr><td>${x.d}</td><td>${x.t}</td><td class="r" style="color:var(--g);font-weight:700">${x.cr?'+'+x.cr.toLocaleString('en-IN'):'—'}</td><td class="r">${x.dr?'−'+x.dr.toLocaleString('en-IN'):'—'}</td><td class="r"><b>${b.toLocaleString('en-IN')}</b></td></tr>`;}).reverse().join('');})()}</tbody></table></div>
+ <div class="row" style="background:var(--blue-soft);border-radius:12px;padding:12px">${ic('alert','s18')}<span class="cap grow" style="color:var(--ink7)">Wallet entries live only in the wallet ledger. They never change your outstanding.</span></div>
+</div></div>`;
+SCREENS.credit=()=>`<div class="scroll"><div class="pad"><h1 class="h1">Credit balance</h1>
+ <div class="money c"><span class="lab">${ic('receipt','s18')}<span class="micro">Current outstanding</span></span><span class="amt">${inr(outstanding())}</span><span class="cap" style="color:var(--ink7)">What you owe Bike Pharma. This is not a credit limit.</span></div>
+ <div class="grid2">${statTile('','Total credit purchases',inr(creditBuys()),DB.cl.filter(x=>x.buy).length+' invoices')}${statTile('g','Total payments made',inr(creditPays()),DB.cl.filter(x=>x.pay).length+' payments')}${statTile('','Overdue amount',inr(0),'Nothing overdue')}${statTile('y','Next due date','15 Oct','INV-015')}</div>
+ ${sec('Outstanding ledger')}
+ <div class="tblwrap"><table class="tbl"><thead><tr><th>Date</th><th>Invoice</th><th class="r">Credit buy</th><th class="r">Payment</th><th class="r">Outstanding</th></tr></thead><tbody>${(()=>{let b=0;return DB.cl.map(x=>{b+=(x.buy||0)-(x.pay||0);return `<tr><td>${x.d}</td><td>${x.inv||'—'}</td><td class="r" style="color:var(--r)">${x.buy?inr(x.buy):'—'}</td><td class="r" style="color:var(--g)">${x.pay?inr(x.pay):'—'}</td><td class="r"><b>${inr(b)}</b></td></tr>`;}).join('');})()}</tbody></table></div>
+ ${sec('Invoice status')}
+ <div class="card flush">${DB.minv.map(v=>{const st=v.paid>=v.amt?['Paid','g']:v.paid>0?['Partially paid','a']:['Pending',''];return li(v.id,`${v.d} · ${inr(v.amt)}${v.due&&st[0]!=='Paid'?' · due '+v.due:''}`,`<span class="pill ${st[1]}">${st[0]}</span>`,'file','','n');}).join('')}</div>
+</div></div><div class="foot"><button class="btn red" onclick="go('pay')" ${outstanding()?'':'disabled'}>Pay outstanding</button></div>`;
+SCREENS.pay=()=>{const o=outstanding();const amt=Math.min(o,S.ui.pamt??Math.min(15000,o));const pm=S.ui.ppm||'UPI';return bar('Pay outstanding')+`<div class="scroll"><div class="pad">
+ <div class="row" style="background:var(--r-soft);border-radius:16px;padding:14px"><div class="tile r">${ic('receipt','s20')}</div><div class="grow"><div class="h3">Current outstanding</div><div class="cap">Payable to Bike Pharma</div></div><b class="h2 num" style="color:var(--r)">${inr(o)}</b></div>
+ ${sec('Amount')}
+ <div class="field"><label for="pamt">Amount (₹)</label><div class="inp"><b>₹</b><input id="pamt" inputmode="numeric" value="${amt}" onchange="S.ui.pamt=Math.max(1,Math.min(${o},parseInt(this.value.replace(/\\D/g,''))||0));refresh()"></div></div>
+ <div class="chips">${[5000,10000,20000,o].map((v,i)=>`<button class="chip ${amt===v?'on':''}" onclick="S.ui.pamt=${v};refresh()">${i===3?'Full '+inr(v):inr(v)}</button>`).join('')}</div>
+ ${sec('Payment method')}
+ ${[['UPI','GPay · PhonePe · Paytm · BHIM','rupee'],['Bank transfer','NEFT / IMPS','store'],['Cash at branch','Pay at Rajajinagar counter','wallet']].map(([n,d,i])=>`<button class="opt ${pm===n?'on':''}" onclick="S.ui.ppm='${n}';refresh()"><span class="tile sm">${ic(i,'s18')}</span><span class="grow stack" style="gap:2px"><b>${n}</b><span class="cap">${d}</span></span><span class="radio"></span></button>`).join('')}
+ <div class="row" style="background:var(--blue-soft);border-radius:12px;padding:12px">${ic('receipt','s18')}<span class="cap grow" style="color:var(--ink7)">Every payment creates a transaction record. Your wallet (${inr(walletBal())}) is separate and isn’t used here.</span></div>
+</div></div><div class="foot"><div class="sum">Outstanding after payment<b>${inr(o-amt)}</b></div><button class="btn red" onclick="payOut(${amt},'${pm}')" ${amt>0?'':'disabled'}>Pay ${inr(amt)}</button></div>`;};
+function payOut(amt,pm,by){const ref=pm+' · TXN-'+(88200+DB.cl.length);DB.cl.push({d:today(),ref,pay:amt});let left=amt;DB.minv.slice().reverse().forEach(v=>{const due=v.amt-v.paid;if(due>0&&left>0){const x=Math.min(due,left);v.paid+=x;left-=x;}});
+ audit('Outstanding payment recorded','BP-MECH-1025',inr(outstanding()+amt),inr(outstanding()));save();S.ui.pamt=null;
+ sheet(`<div class="tile g round" style="width:64px;height:64px">${ic('checkC','s28')}</div><h3 class="h2">Payment recorded</h3><div class="card"><div class="kv"><span>Paid</span><span style="color:var(--g)">${inr(amt)}</span></div><div class="kv"><span>Reference</span><span>${ref}</span></div><div class="kv big"><span>New outstanding</span><span style="color:var(--r)">${inr(outstanding())}</span></div></div><button class="btn" onclick="closeSheet();${by?"tab('bhome')":"tab('credit')"}">Done</button>`);}
+SCREENS.purchases=()=>bar('Purchase history')+`<div class="scroll"><div class="pad">
+ <div class="grid3">${statTile('','Purchased',inr(DB.minv.reduce((a,v)=>a+v.amt,0)),'')}${statTile('g','Paid',inr(DB.minv.reduce((a,v)=>a+v.paid,0)),'')}${statTile('r','Outstanding',inr(outstanding()),'')}</div>
+ ${DB.minv.map(v=>{const st=v.paid>=v.amt?['Paid','g']:v.paid>0?['Partially paid','a']:['Pending',''];return `<div class="card"><div class="sec"><b>${v.id}</b><span class="pill ${st[1]}">${st[0]}</span></div><div class="grid2">${[['Date',v.d],['Total',inr(v.amt)],['Payment mode',v.paid===v.amt&&!DB.cl.find(c=>c.inv===v.id)?'Paid now':'Credit'],['Credit amount',DB.cl.find(c=>c.inv===v.id)?inr(v.amt):'₹0'],['Paid amount',inr(v.paid)],['Outstanding',inr(v.amt-v.paid)]].map(([k,x])=>`<div><div class="micro muted">${k}</div><b class="num">${x}</b></div>`).join('')}</div><div class="row" style="gap:18px"><button class="link" onclick="go('invoices')">Invoice</button><button class="link" onclick="tab('mshop')">Reorder</button></div></div>`;}).join('')}
+</div></div>`;
+SCREENS.invoices=()=>bar('Invoices')+`<div class="scroll"><div class="pad">
+ <div class="chips"><button class="chip on">${ic('calendar','s16')}Sep 2026</button><button class="chip">Paid</button><button class="chip">Pending</button><button class="chip">Overdue</button></div>
+ <div class="card flush">${DB.minv.map(v=>`<div class="li"><div class="tile sm n">${ic('file','s18')}</div><div class="grow"><div class="t">${v.id}</div><div class="s">${v.d} · ${inr(v.amt)}</div></div><button aria-label="View" onclick="toast('Opening ${v.id}')">${ic('eye','s18')}</button><button aria-label="Download" onclick="toast('${v.id} downloaded')">${ic('download','s18')}</button><button aria-label="Share" onclick="toast('Share ${v.id}')">${ic('share','s18')}</button></div>`).join('')}</div>
+</div></div>`;
+SCREENS.maccount=()=>`<div class="scroll"><div class="pad"><h1 class="h1">Rewards & account</h1>
+ <div class="dark-card"><div class="micro" style="color:var(--ink3)">Current level</div><div class="h2" style="color:#fff">Silver mechanic</div><div class="row" style="gap:6px">${['Verified','Silver','Gold','Platinum'].map((l,i)=>`<div class="grow stack g6"><i style="height:6px;border-radius:3px;background:${i<2?'var(--y)':'#3a3a3a'};display:block"></i><span class="micro" style="color:${i===1?'#fff':'var(--ink3)'}">${l}</span></div>`).join('')}</div><div class="cap" style="color:var(--ink3)">₹1,15,000 of ₹1,50,000 quarterly purchases to reach Gold</div></div>
+ <div class="card"><div class="micro muted">Unique mechanic code</div><div class="sec"><b class="h1" style="font-family:var(--brand)">${S.user.code||'BP-MECH-1025'}</b><button class="btn sm" onclick="copyCode()">Copy</button></div><div class="row wrap" style="gap:6px"><span class="pill">Referrals · 14</span><span class="pill">Purchase ID</span><span class="pill">Service attribution</span></div></div>
+ ${sec('Offers for you')}
+ <div class="card flush">${[['package','Bulk purchase','Buy 20+ brake pads → extra 8% off'],['tag','Brand · Motul','₹40 off per litre on 20L+'],['gift','Festival · Dasara','Double wallet rewards on all spares'],['award','Milestone reward','Cross ₹1,50,000 → ₹5,000 to wallet']].map(([i,t,d])=>li(t,d,'',i,"tab('mshop')")).join('')}</div>
+ <div class="card flush">${li('Log out from all devices','Ends every session','','logout','logout(true)','r')}</div>
+ <button class="btn line" onclick="logout()">Log out</button><button class="link" style="text-align:center" onclick="resetDemo()">Reset demo data</button>
+</div></div>`;
+
+/* ---------- STAFF ---------- */
+SCREENS.bhome=()=>{const sales=DB.bills.reduce((a,b)=>a+b.amt,0)+80000;return `<div class="scroll"><div class="pad">${staffHead()}
+ <div class="grid2">${statTile('y',"Today's sales",inr(sales),(DB.bills.length+22)+' bills')}${statTile('','Pending payments','3',inr(18600)+' to collect')}${statTile('g','Cash collected',inr(31400),'Counter 1')}${statTile('b','UPI collected',inr(52850),'19 txns')}</div>
+ <button class="row card" style="flex-direction:row;background:var(--r-soft);border:0;text-align:left" onclick="tab('receive')"><div class="tile r">${ic('receipt','s20')}</div><div class="grow"><div class="h3">Mechanic outstanding</div><div class="cap">Ravi Kumar Auto Works · tap to receive</div></div><b style="color:var(--r)" class="num">${inr(outstanding())}</b></button>
+ ${sec('Quick actions')}
+ <div class="grid3">${[['Create invoice','file',"tab('invoice')"],['Receive payment','rupee',"tab('receive')"],['Search party','search',"tab('usearch')"],['Print / share','share',"toast('Invoice shared')"],['Return request','history',"toast('Return request sent to Manager')"],['Master pricing','lock',"go('masterprice')"]].map(([l,i,o])=>`<button class="qa2 ${i==='lock'?'locked':''}" onclick="${o}"><span class="tile sm">${ic(i,'s20')}</span>${l}</button>`).join('')}</div>
+ ${sec('Recent bills')}
+ <div class="card flush">${DB.bills.slice(0,4).map(b=>li(b.id+' · '+b.p,b.t+' · '+b.pm,`<b class="num">${inr(b.amt)}</b>`,'file','',b.pm==='Credit'?'r':'')).join('')}</div>
+ <div class="row cap" style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px">${ic('lock','s16')}<span class="grow">Billing role: no access to salary, admin settings, master pricing or role management.</span></div>
+</div></div>`;};
+SCREENS.masterprice=()=>'';
+SCREENS.invoice=()=>{const inv=S.ui.inv||(S.ui.inv={party:'mech',items:{p1:10,p2:12},pm:'Credit'});const mech=inv.party==='mech';const lines=Object.entries(inv.items).filter(([,q])=>q>0);const tot=lines.reduce((a,[id,q])=>a+(mech?P(id).mp:P(id).price)*q,0);const mrp=lines.reduce((a,[id,q])=>a+P(id).mrp*q,0);
+ return `<div class="scroll"><div class="pad"><h1 class="h1">New invoice</h1>
+ <div class="grid2"><button class="opt ${mech?'on':''}" onclick="S.ui.inv.party='mech';S.ui.inv.pm='Credit';refresh()"><span class="radio"></span>Mechanic</button><button class="opt ${!mech?'on':''}" onclick="S.ui.inv.party='walk';S.ui.inv.pm='UPI';refresh()"><span class="radio"></span>Walk-in customer</button></div>
+ ${mech?`<div class="card" style="border:1.5px solid var(--y)"><div class="row"><div class="tile k round">${ic('wrench','s18')}</div><div class="grow"><div class="h3">Ravi Kumar Auto Works</div><div class="cap">BP-MECH-1025 · +91 90089 48080</div></div><span class="pill b">Mechanic</span></div><div class="grid2"><div class="stat g" style="padding:10px"><span class="micro">Wallet</span><span class="v">${inr(walletBal())}</span></div><div class="stat r" style="padding:10px"><span class="micro">Outstanding</span><span class="v">${inr(outstanding())}</span></div></div></div>`:''}
+ <div class="sec"><h3 class="h2">Items</h3><button class="link" onclick="addInvItem()">+ Add item</button></div>
+ <div class="card flush">${lines.map(([id,q])=>{const x=P(id);const r=mech?x.mp:x.price;return `<div class="li"><div class="grow"><div class="t">${x.name}</div><div class="s">${x.pn} · ${mech?'Mechanic':'Retail'} ${inr(r)}</div></div><span class="qty"><button onclick="S.ui.inv.items['${id}']=${q-1};refresh()" aria-label="Less">${ic('minus','s16')}</button><span class="num">${q}</span><button onclick="S.ui.inv.items['${id}']=${q+1};refresh()" aria-label="More">${ic('plus','s16')}</button></span><b class="num" style="min-width:64px;text-align:right">${inr(r*q)}</b></div>`;}).join('')||'<div class="empty">No items yet</div>'}</div>
+ <div class="row cap">${ic('lock','s16')}<span class="grow">Rates come from master pricing and can’t be edited here.</span></div>
+ <div class="card"><div class="kv"><span>MRP total</span><span>${inr(mrp)}</span></div><div class="kv"><span>Discount</span><span style="color:var(--g)">− ${inr(mrp-tot)}</span></div><div class="kv"><span>GST (incl.)</span><span>${inr(tot*18/118)}</span></div><div class="hr"></div><div class="kv big"><span>Invoice total</span><span>${inr(tot)}</span></div></div>
+ ${sec('Payment mode')}
+ <div class="grid4">${['Cash','UPI',...(mech?['Credit']:[]),'Split'].map(m=>`<button class="chip ${inv.pm===m?'on':''}" style="justify-content:center" onclick="S.ui.inv.pm='${m}';refresh()">${m}</button>`).join('')}</div>
+</div></div><div class="foot"><div class="sum">${inv.pm==='Credit'?'Adds to mechanic outstanding':'Paid via '+inv.pm}<b>${inr(tot)}</b></div><button class="btn" onclick="genInvoice(${tot})" ${tot?'':'disabled'}>Generate invoice</button></div>`;};
+function addInvItem(){sheet(`<h3 class="h2">Add item</h3><div class="card flush">${PRODUCTS.map(x=>li(x.name,x.pn+' · stock '+DB.stock[x.id],'',x.ic,`S.ui.inv.items['${x.id}']=(S.ui.inv.items['${x.id}']||0)+1;closeSheet();refresh()`)).join('')}</div>`);}
+function genInvoice(tot){const inv=S.ui.inv;const id='INV-2026-00'+(252+DB.bills.length);const mech=inv.party==='mech';
+ DB.bills.unshift({id,p:mech?'BP-MECH-1025':'Walk-in',t:new Date().toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'}),pm:inv.pm,amt:tot});
+ Object.entries(inv.items).forEach(([k,q])=>DB.stock[k]=Math.max(0,DB.stock[k]-q));
+ if(mech&&inv.pm==='Credit'){DB.cl.push({d:today(),inv:id,buy:tot});DB.minv.unshift({id,d:today(),amt:tot,paid:0,due:'30 days'});}
+ audit('Invoice created',id,'—',inr(tot));save();S.ui.inv=null;
+ sheet(`<div class="tile g round" style="width:64px;height:64px">${ic('checkC','s28')}</div><h3 class="h2">${id} created</h3><p class="cap">${inr(tot)} · ${inv.pm}${mech&&inv.pm==='Credit'?'. Mechanic outstanding is now '+inr(outstanding())+'.':''}</p><div class="grid2"><button class="btn line" onclick="toast('Invoice shared on WhatsApp')">Share</button><button class="btn" onclick="closeSheet();tab('bhome')">Done</button></div>`);}
+SCREENS.receive=()=>{const o=outstanding();const amt=Math.min(o,S.ui.ramt??Math.min(25000,o));const pm=S.ui.rpm||'UPI';return `<div class="scroll"><div class="pad"><h1 class="h1">Receive payment</h1>
+ <div class="card" style="flex-direction:row;align-items:center"><div class="tile k round">${ic('wrench','s18')}</div><div class="grow"><div class="h3">Ravi Kumar Auto Works</div><div class="cap">BP-MECH-1025</div></div><div style="text-align:right"><div class="micro" style="color:var(--r)">Outstanding</div><b class="h3 num" style="color:var(--r)">${inr(o)}</b></div></div>
+ <div class="field"><label for="ramt">Amount received (₹)</label><div class="inp"><b>₹</b><input id="ramt" inputmode="numeric" value="${amt}" onchange="S.ui.ramt=Math.max(1,Math.min(${o},parseInt(this.value.replace(/\\D/g,''))||0));refresh()"></div></div>
+ <div class="grid4">${['Cash','UPI','Bank','Cheque'].map(m=>`<button class="chip ${pm===m?'on':''}" style="justify-content:center" onclick="S.ui.rpm='${m}';refresh()">${m}</button>`).join('')}</div>
+ <div class="card"><div class="kv"><span>Current outstanding</span><span style="color:var(--r)">${inr(o)}</span></div><div class="kv"><span>This payment</span><span style="color:var(--g)">− ${inr(amt)}</span></div><div class="hr"></div><div class="kv big"><span>New outstanding</span><span style="color:var(--r)">${inr(o-amt)}</span></div></div>
+ <div class="row cap" style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px">${ic('shield','s16')}<span class="grow">Creates a transaction in the outstanding ledger and an audit entry for ${esc(S.user.sid)}. Wallet is not affected.</span></div>
+</div></div><div class="foot"><button class="btn" onclick="S.ui.ramt=null;payOut(${amt},'${pm}',1)" ${amt>0?'':'disabled'}>Record ${inr(amt)} & send receipt</button></div>`;};
+SCREENS.shome=()=>`<div class="scroll"><div class="pad">${staffHead()}
+ <div class="dark-card"><div class="sec"><span class="micro" style="color:var(--ink3)">September target</span><span class="pill y">75% achieved</span></div><div class="row" style="gap:8px;align-items:baseline"><span class="amt" style="color:#fff">₹7,50,000</span><span class="cap" style="color:var(--ink3)">of ₹10,00,000</span></div><div class="prog" style="background:#333"><i style="width:75%"></i></div><span class="cap" style="color:var(--ink3)">₹2,50,000 to go · 3 days left</span></div>
+ <div class="grid2">${statTile('',"Today's sales",inr(42000),'7 orders')}${statTile('b','Visits today','6 / 8','2 remaining')}${statTile('g','New customers','3','this week: 11')}${statTile('y','New mechanics','1','this week: 4')}</div>
+ ${sec('Quick actions')}
+ <div class="grid3">${[['Register customer','user'],['Register mechanic','wrench'],['Product search','search',"tab('usearch')"],['Create order','cart',"tab('sorder')"],['Check stock','package',"tab('stocklist')"],['Quotation','file',"tab('sorder')"]].map(([l,i,o])=>`<button class="qa2" onclick="${o||`toast('${l} form opened')`}"><span class="tile sm">${ic(i,'s20')}</span>${l}</button>`).join('')}</div>
+ ${sec("Today's follow-ups")}
+ <div class="card flush">${[['Sri Sai Motors','Mechanic · quotation QT-118 · 11:30 AM'],['Manjunath K','Customer · tyre enquiry · 2:00 PM'],['Bullet Point Garage','Mechanic · bulk oil order · 4:30 PM']].map(([n,d])=>li(n,d,'','phone',`toast('Calling ${n}…')`)).join('')}</div>
+</div></div>`;
+SCREENS.sorder=()=>`<div class="scroll"><div class="pad"><h1 class="h1">Order / quotation</h1>
+ <div class="card"><div class="h3">Party</div><div class="opt on"><span class="radio"></span><span class="grow">Sri Sai Motors · BP-MECH-0872</span></div></div>
+ <div class="card flush">${['p2','p1','p6'].map((id,i)=>{const x=P(id);const q=[20,10,4][i];return li(x.name,`${q} × ${inr(x.mp)}`,`<b class="num">${inr(x.mp*q)}</b>`,x.ic,'','n');}).join('')}</div>
+ <div class="card"><div class="kv big"><span>Quotation total</span><span>${inr(598*20+389*10+1826*4)}</span></div></div>
+</div></div><div class="foot"><div class="grid2"><button class="btn line" onclick="toast('Quotation QT-119 shared')">Send quote</button><button class="btn" onclick="toast('Order sent to billing')">Create order</button></div></div>`;
+SCREENS.stocklist=()=>`<div class="scroll"><div class="pad"><h1 class="h1">Stock</h1><div class="card flush">${PRODUCTS.map(x=>{const s=DB.stock[x.id];return li(x.name,x.pn+' · Rajajinagar',`<span class="pill ${s===0?'r':s<10?'a':'g'}">${s} pcs</span>`,x.ic,'','n');}).join('')}</div></div></div>`;
+SCREENS.ihome=()=>{const low=PRODUCTS.filter(x=>DB.stock[x.id]<10);return `<div class="scroll"><div class="pad">${staffHead()}
+ <div class="dark-card"><span class="micro" style="color:var(--ink3)">Total stock · Rajajinagar</span><div class="row" style="gap:8px;align-items:baseline"><span class="amt" style="color:#fff">12,480 units</span><span class="cap" style="color:var(--ink3)">₹48.6 L value</span></div></div>
+ <div class="grid2">${statTile('y','Low stock',low.length,'below reorder level')}${statTile('r','Out of stock',PRODUCTS.filter(x=>!DB.stock[x.id]).length,'SKUs')}${statTile('',"Today's entries",'24','in 16 · out 8')}${statTile('b','Pending GRN','1','Bosch Auto Parts')}</div>
+ ${sec('Actions')}
+ <div class="grid3">${[['Stock in','down',"tab('grn')"],['Stock out','up'],['Add product','plus'],['Transfer','truck'],['Scan barcode','scan',"tab('grn')"],['Stock count','clip'],['Damaged','alert'],['Returned','history'],['Adjustments','sliders']].map(([l,i,o])=>`<button class="qa2" onclick="${o||`toast('${l} opened')`}"><span class="tile sm">${ic(i,'s20')}</span>${l}</button>`).join('')}</div>
+ ${sec('Low stock')}
+ <div class="card flush">${low.map(x=>li(x.name,x.pn,`<span class="pill ${DB.stock[x.id]?'a':'r'}">${DB.stock[x.id]} / 20</span>`,x.ic,'','n')).join('')}</div>
+</div></div>`;};
+SCREENS.grn=()=>{const g=S.ui.grn||(S.ui.grn={p1:30,p4:15,p3:40});const exp={p1:30,p4:20,p3:40};return `<div class="scroll"><div class="pad"><h1 class="h1">Stock in · GRN-0412</h1>
+ <div class="card" style="flex-direction:row;align-items:center"><div class="tile b">${ic('truck','s20')}</div><div class="grow"><div class="h3">Bosch Auto Parts – Bengaluru</div><div class="cap">PO-2291 · Invoice SUP-77120</div></div><span class="pill a">Pending</span></div>
+ <div class="scanbox" style="height:150px"><div class="frame" style="width:260px;height:100px"><span class="line" style="animation-duration:1.4s"></span></div></div>
+ ${sec('Items received')}
+ <div class="card flush">${Object.keys(exp).map(id=>{const x=P(id);const q=g[id];return `<div class="li" style="flex-wrap:wrap"><div class="grow"><div class="t">${x.name}</div><div class="s">Expected ${exp[id]} · ${x.pn}</div></div><span class="qty"><button onclick="S.ui.grn['${id}']=Math.max(0,${q}-1);refresh()" aria-label="Less">${ic('minus','s16')}</button><span class="num">${q}</span><button onclick="S.ui.grn['${id}']=${q}+1;refresh()" aria-label="More">${ic('plus','s16')}</button></span><span class="pill ${q===exp[id]?'g':'a'}" style="width:100%;justify-content:center">${q===exp[id]?'Matched':(q<exp[id]?'Short by '+(exp[id]-q):'Excess '+(q-exp[id]))}</span></div>`;}).join('')}</div>
+</div></div><div class="foot"><button class="btn" onclick="postGrn()">Post to stock</button></div>`;};
+function postGrn(){const g=S.ui.grn;Object.entries(g).forEach(([k,q])=>DB.stock[k]+=q);audit('GRN posted','GRN-0412','—',Object.values(g).reduce((a,b)=>a+b,0)+' units');save();S.ui.grn=null;toast('Stock updated');tab('ihome');}
+SCREENS.mghome=()=>`<div class="scroll"><div class="pad">${staffHead()}
+ <div class="chips"><button class="chip on">Today</button><button class="chip">This month</button><button class="chip">${ic('store','s16')}Rajajinagar</button></div>
+ <div class="grid2">${statTile('y',"Today's sales",inr(126400),'38 bills · +12%')}${statTile('','Monthly sales','₹28.4 L','Target ₹35 L')}${statTile('g','Gross margin','22.8%','₹6.47 L')}${statTile('r','Outstanding',inr(644000+outstanding()),'₹1,12,000 overdue')}${statTile('b','Stock value','₹48.6 L','12,480 units')}${statTile('','Pending approvals',DB.approvals.filter(a=>a.st==='pending').length,'tap Approvals')}</div>
+ <div class="card"><div class="sec"><span class="h3">Sales</span><span class="cap">Last 7 days (₹ thousand)</span></div><div class="cbars">${[82,95,70,110,98,120,126].map((v,i)=>`<div><span class="num">${v}</span><i style="height:${v/126*80}%"></i>${'MTWTFSS'[i]}</div>`).join('')}</div></div>
+ ${sec('Top mechanics')}
+ <div class="card flush">${li('Ravi Kumar Auto Works','BP-MECH-1025 · ₹75,000 this month','<span class="pill">Silver</span>','wrench')}${li('Bullet Point Garage','BP-MECH-0640 · ₹68,200','<span class="pill y">Gold</span>','wrench')}</div>
+</div></div>`;
+SCREENS.approvals=()=>`<div class="scroll"><div class="pad"><h1 class="h1">Approvals</h1>
+ ${DB.approvals.map(a=>`<div class="card"><div class="row top"><div class="tile sm">${ic(a.ic,'s18')}</div><div class="grow"><div class="h3">${a.t}</div><div class="cap">${a.d}</div></div>${a.st!=='pending'?`<span class="pill ${a.st==='approved'?'g':'r'}">${a.st}</span>`:''}</div>${a.st==='pending'?`<div class="grid2"><button class="btn line sm" style="width:100%" onclick="decide(${a.id},'rejected')">Reject</button><button class="btn sm" style="width:100%" onclick="decide(${a.id},'approved')">Approve</button></div>`:''}</div>`).join('')}
+ <div class="card"><div class="row top"><div class="tile sm n">${ic('lock','s18')}</div><div class="grow"><div class="h3">Credit limit change</div><div class="cap">BP-MECH-1025 → ₹75,000</div></div></div><div class="row cap" style="background:var(--paper);border-radius:10px;padding:8px 10px">${ic('lock','s16')}Admin approval required · not permitted for Manager</div></div>
+</div></div>`;
+function decide(id,st){const a=DB.approvals.find(x=>x.id===id);a.st=st;audit((st==='approved'?'Approved: ':'Rejected: ')+a.t,a.d.split(' · ')[0],'Pending',st);save();toast(a.t+' '+st);refresh();}
+SCREENS.team=()=>`<div class="scroll"><div class="pad"><h1 class="h1">Team</h1><div class="sec"><span class="h3">Attendance today</span><span class="cap">3 / 4 present</span></div>
+ <div class="card flush">${[['Priya Shetty','Billing · in 9:02 AM','Present','g'],['Arjun Nayak','Sales · field visit','On field','b'],['Mohammed Irfan','Inventory · in 9:15 AM','Present','g'],['Deepak R','Billing · leave','Absent','r']].map(([n,d,s,t])=>li(n,d,`<span class="pill ${t}">${s}</span>`,'user','','n')).join('')}</div>
+ ${sec('Performance')}
+ <div class="card">${[['Arjun Nayak · Sales','75% of target',.75],['Priya Shetty · Billing','24 bills today',.9],['Mohammed Irfan · Inventory','1 GRN pending',.6]].map(([n,r,p])=>`<div class="stack g6"><div class="sec cap"><span style="color:var(--ink)">${n}</span><span>${r}</span></div><div class="prog"><i style="width:${p*100}%"></i></div></div>`).join('')}</div>
+ <button class="btn dark" onclick="toast('Task assigned to Arjun Nayak')">Assign task</button></div></div>`;
+SCREENS.saccount=()=>{const u=S.user;return `<div class="scroll"><div class="pad"><h1 class="h1">Account</h1>
+ <div class="card" style="flex-direction:row;align-items:center"><div class="tile k round" style="width:56px;height:56px;font-weight:800">${u.name.split(' ').map(x=>x[0]).join('')}</div><div class="grow"><div class="h2">${esc(u.name)}</div><div class="cap">${esc(S.uid)}</div><span class="pill k">${esc(u.label)} · ${esc(u.sid)}</span></div></div>
+ <div class="card"><div class="h3">Your permissions</div><div class="cap">${esc(accessText(u.role))}. Assigned by Admin; changes need Admin approval.</div>${u.role!=='admin'?`<button class="link" style="text-align:left" onclick="go('rbac')">View role matrix</button>`:''}</div>
+ <div class="card flush">${li('Log out from all devices','Ends every session','','logout','logout(true)','r')}</div>
+ <button class="btn line" onclick="logout()">Log out</button><button class="link" style="text-align:center" onclick="resetDemo()">Reset demo data</button></div></div>`;};
+
+/* ---------- universal search (role-scoped) ---------- */
+function searchIndex(){const r=S.user.role;const all=[];
+ const cust=[['Anjali Rao','Customer · +91 89518 60708 · KA 02 HM 4521','user'],['Suresh Rao','Customer · +91 98450 14521','user']];
+ const mech=MECHS.map(m=>[m.n,'Mechanic · '+m.code,'wrench']);
+ const staff=Object.entries(ACC()).filter(([,a])=>a.sid).map(([k,a])=>[a.name,a.label+' · '+a.sid+' · '+k,'user']);
+ const inv=[...DB.bills.map(b=>[b.id,b.p+' · '+inr(b.amt),'file']),...DB.minv.map(v=>[v.id,'Mechanic invoice · '+inr(v.amt),'file'])];
+ const ord=DB.orders.map(o=>[o.id,'Order · '+o.st+' · '+inr(o.amt),'package']);
+ const parts=PRODUCTS.map(p=>[p.pn,p.name+' · stock '+DB.stock[p.id],p.ic]);
+ const veh=[['KA 02 HM 4521','Vehicle · Bajaj Pulsar 150 · Anjali Rao','bike'],['KA 04 JX 1180','Vehicle · Honda Activa 6G · Anjali Rao','bike']];
+ const scope={billing:[cust,mech,inv,parts],sales:[cust,mech,ord,parts,veh],manager:[cust,mech,staff,inv,ord,parts,veh],inventory:[parts],admin:[cust,mech,staff,inv,ord,parts,veh]}[r]||[];
+ scope.forEach(g=>all.push(...g));return all;}
+SCREENS.usearch=()=>{const q=(S.ui.sq||'').trim().toLowerCase();const res=q?searchIndex().filter(x=>(x[0]+x[1]).toLowerCase().includes(q)):[];const role=S.user.role;
+ return `<div class="scroll"><div class="pad"><h1 class="h1">Universal search</h1>
+ <label class="search" for="sq" style="border:1.5px solid var(--ink)">${ic('search','s20')}<input id="sq" placeholder="Mobile, name, staff ID, invoice, part no., vehicle" value="${esc(S.ui.sq||'')}" oninput="S.ui.sq=this.value;clearTimeout(window._sq);window._sq=setTimeout(()=>{refresh();const i=document.getElementById('sq');i.focus();i.setSelectionRange(i.value.length,i.value.length)},250)"></label>
+ <div class="row wrap" style="gap:6px">${['4521','Ravi','BP-','INV','BP-BRK'].map(t=>`<button class="chip" onclick="S.ui.sq='${t}';refresh()">${t}</button>`).join('')}</div>
+ <div class="cap">Scope for ${esc(S.user.label)}: ${ {billing:'customers, mechanics, invoices, parts',sales:'customers, mechanics, orders, parts, vehicles',inventory:'parts only',manager:'everything in the branch',admin:'everything'}[role]}</div>
+ ${q?(res.length?`<div class="card flush">${res.map(x=>li(esc(x[0]),esc(x[1]),'',x[2],role==='admin'&&x[1].startsWith('Mechanic')?"go('mfin')":'')).join('')}</div>`:'<div class="empty">No matches in your scope.</div>'):'<div class="empty">Type to search across the records your role can see.</div>'}
+ ${role==='admin'?'':''}</div></div>`;};
+
+/* ---------- ADMIN ---------- */
+SCREENS.ahome=()=>`<div class="scroll"><div class="pad">${staffHead()}
+ <div class="dark-card"><span class="micro" style="color:var(--ink3)">Total sales · September</span><div class="row" style="gap:10px;align-items:baseline"><span class="amt" style="color:#fff">₹84.2 L</span><span class="cap" style="color:#4ade80">▲ 14% vs Aug</span></div></div>
+ <div class="grid2">${statTile('','Total purchases','₹61.5 L','18 suppliers')}${statTile('g','Gross profit','₹19.2 L','22.8% margin')}${statTile('r','Total outstanding','₹14.8 L','mechanics + customers')}${statTile('b','Stock value','₹1.12 Cr','3 branches')}</div>
+ <div class="card" style="flex-direction:row;justify-content:space-around;text-align:center">${[['18,420','Customers'],['642','Mechanics'],['37','Staff']].map(([v,l])=>`<button onclick="tab('users')"><div class="h2 num">${v}</div><div class="micro muted">${l}</div></button>`).join('')}</div>
+ <div class="grid2">${statTile('','Orders','3,214','96 pending')}${statTile('y','Returns','41','12 open')}${statTile('b','Warranty claims','18','7 in review')}${statTile('r','Security alerts','2','review now')}</div>
+ <div class="card"><div class="sec"><span class="h3">Daily sales (₹ L)</span><span class="cap">21–27 Sep</span></div><div class="cbars">${[2.4,2.9,2.6,3.1,3.4,3.8,3.2].map((v,i)=>`<div><span class="num">${v}</span><i style="height:${v/3.8*80}%"></i>${21+i}</div>`).join('')}</div></div>
+</div></div>`;
+SCREENS.users=()=>{const t=S.ui.ut||'Mechanics';return `<div class="scroll"><div class="pad"><h1 class="h1">Users</h1>
+ <div class="grid3" style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:4px;gap:4px">${[['Customers','18,420'],['Mechanics','642'],['Staff','37']].map(([l,n])=>`<button style="border-radius:10px;padding:8px 4px;${t===l?'background:var(--ink);color:#fff':''}" onclick="S.ui.ut='${l}';refresh()"><b>${l}</b><div class="micro" style="opacity:.7">${n}</div></button>`).join('')}</div>
+ ${t==='Mechanics'?`${Object.entries(DB.accounts).filter(([,a])=>a.role==='mechanic'&&a.status==='pending').map(([k,a])=>`<div class="card" style="border:1.5px solid var(--y)"><div class="row top"><div class="tile">${ic('wrench','s20')}</div><div class="grow"><div class="h3">${esc(a.shop)}</div><div class="cap">${esc(a.name)} · +91 ${esc(k)} · signed up ${esc(a.joined)}</div></div><span class="pill a">Pending</span></div><div class="grid2"><button class="btn line sm" style="width:100%" onclick="decideMech('${k}',0)">Reject</button><button class="btn sm" style="width:100%" onclick="decideMech('${k}',1)">Approve & verify</button></div></div>`).join('')}
+ <div class="card" style="border:1.5px solid var(--y)"><div class="row top"><div class="tile">${ic('wrench','s20')}</div><div class="grow"><div class="h3">Speed Motors – Vijayanagar</div><div class="cap">Applied 26 Sep · KYC uploaded</div></div><span class="pill a">Pending</span></div><div class="row cap">Assign code <b style="color:var(--ink)">BP-MECH-1102</b></div><div class="grid2"><button class="btn line sm" style="width:100%" onclick="toast('Application rejected')">Reject</button><button class="btn sm" style="width:100%" onclick="audit('Mechanic approved','BP-MECH-1102','Pending','Verified');save();toast('Approved · code BP-MECH-1102 assigned')">Approve & verify</button></div></div>
+ ${[['Ravi Kumar Auto Works','BP-MECH-1025 · Silver',walletBal(),outstanding(),'Verified','g'],['Sri Sai Motors','BP-MECH-0872 · Silver',2150,125000,'Overdue','r'],['Bullet Point Garage','BP-MECH-0640 · Gold',11800,0,'Verified','g']].map(([n,d,w,o,s,tn])=>`<button class="card" style="text-align:left" onclick="go('mfin',{n:'${n}'})"><div class="row"><div class="grow"><div class="h3">${n}</div><div class="cap">${d}</div></div><span class="pill ${tn}">${s}</span></div><div class="grid2"><div class="stat g" style="padding:8px 10px"><span class="micro">Wallet</span><b class="num">${inr(w)}</b></div><div class="stat r" style="padding:8px 10px"><span class="micro">Outstanding</span><b class="num">${inr(o)}</b></div></div></button>`).join('')}`:
+ t==='Staff'?`<button class="btn" onclick="go('newstaff')">+ Create staff login</button><div class="card flush">${Object.entries(ACC()).filter(([,a])=>a.sid).map(([k,a])=>li(esc(a.name),esc(a.sid+' · '+a.label+' · '+k),'<span class="pill g">Active</span>','user','','n')).join('')}</div>`:
+ `<div class="card flush">${[['Anjali Rao','+91 89518 60708 · 6 orders','Verified','g'],['Suresh Rao','+91 98450 14521 · 2 orders','Verified','g'],['Unknown user','+91 90080 44321 · KYC pending','Suspended','']].map(([n,d,s,tn])=>li(n,d,`<span class="pill ${tn}">${s}</span>`,'user',`toast('View · Edit · Suspend · Block · Verify')`,'n')).join('')}</div>`}
+ </div></div>`;};
+SCREENS.mfin=(p)=>{const ravi=!p.n||p.n==='Ravi Kumar Auto Works';const w=ravi?[walletEarned(),walletUsed(),walletBal(),DB.wl.length]:[6650,4500,2150,14];const o=ravi?[creditBuys(),creditPays(),outstanding(),0]:[450000,325000,125000,25000];
+ return bar(p.n||'Ravi Kumar Auto Works')+`<div class="scroll"><div class="pad">
+ <div class="money w"><span class="sec"><span class="lab">${ic('wallet','s18')}<span class="micro">Wallet · reward ledger</span></span><button class="link" style="color:var(--g)" onclick="adjWallet()">Adjust</button></span><div class="grid2">${[['Earned',w[0]],['Used',w[1]],['Balance',w[2]]].map(([k,v])=>`<div><div class="micro muted">${k}</div><b class="h3 num">${inr(v)}</b></div>`).join('')}<div><div class="micro muted">Transactions</div><b class="h3">${w[3]}</b></div></div></div>
+ <div class="money c"><span class="sec"><span class="lab">${ic('receipt','s18')}<span class="micro">Outstanding · credit ledger</span></span></span><div class="grid2">${[['Total credit purchases',o[0]],['Total payments',o[1]],['Current outstanding',o[2]],['Overdue',o[3]]].map(([k,v])=>`<div><div class="micro muted">${k}</div><b class="h3 num">${inr(v)}</b></div>`).join('')}</div></div>
+ <div class="card"><div class="h3">Credit terms</div><div class="kv"><span>Credit period</span><span>30 days</span></div><div class="kv"><span>Overdue reminders</span><span>WhatsApp + SMS</span></div><div class="kv"><span>Block new credit when overdue</span><span style="color:var(--r)">On</span></div></div>
+ <div class="row cap" style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px">${ic('shield','s16')}<span class="grow">Wallet and outstanding are separate ledgers. Every adjustment is written to the audit log.</span></div>
+</div></div>`;};
+function adjWallet(){sheet(`<h3 class="h2">Adjust wallet · BP-MECH-1025</h3><p class="cap">Adds a reward credit to the wallet ledger only. Outstanding stays ${inr(outstanding())}.</p><div class="grid3">${[250,500,1000].map(v=>`<button class="btn line sm" style="width:100%" onclick="DB.wl.push({d:today(),t:'Admin adjustment',cr:${v}});audit('Wallet adjusted','BP-MECH-1025','${inr(walletBal())}','${inr(walletBal()+v)}');save();closeSheet();refresh();toast('Wallet +${inr(v)}')">+${inr(v)}</button>`).join('')}</div>`);}
+SCREENS.afinance=()=>`<div class="scroll"><div class="pad"><h1 class="h1">Finance</h1>
+ <div class="card"><div class="h3">Profit & loss · Sep</div><div class="kv"><span>Sales</span><span>₹84.2 L</span></div><div class="kv"><span>Purchases</span><span>− ₹61.5 L</span></div><div class="kv"><span>Expenses</span><span>− ₹3.5 L</span></div><div class="hr"></div><div class="kv big"><span>Net profit</span><span style="color:var(--g)">₹19.2 L</span></div></div>
+ <div class="grid2">${statTile('b','Receivables','₹14.8 L','due to Bike Pharma')}${statTile('y','Payables','₹9.3 L','18 suppliers')}${statTile('r','Mechanic outstanding','₹12.9 L','58 overdue')}${statTile('','Customer outstanding','₹1.9 L','COD & B2C credit')}</div>
+ <div class="card"><div class="sec"><span class="h3">Collections</span><b class="num">₹69.9 L</b></div><div class="prog" style="height:10px;background:var(--blue)"><i style="width:38%;background:var(--g)"></i></div><div class="row cap" style="gap:16px"><span style="color:var(--g)">● Cash ₹26.6 L</span><span style="color:var(--blue)">● UPI ₹43.3 L</span></div></div>
+ ${sec('Reports')}
+ <div class="card flush">${['Payment report','Mechanic ageing report','GST sales register','Expense register'].map(t=>li(t,'Tap to download','','file',`toast('${t} downloaded')`,'n')).join('')}</div></div></div>`;
+SCREENS.audit=()=>`<div class="scroll"><div class="pad"><h1 class="h1">Audit log</h1><div class="cap">Every sensitive action, including the ones you make in this demo.</div>
+ ${DB.audit.map(a=>`<div class="card"><div class="row top"><div class="tile sm">${ic('shield','s18')}</div><div class="grow"><div class="h3">${esc(a.a)}</div><div class="cap">${esc(a.who)} · ${esc(a.e)}</div></div></div><div class="row" style="gap:8px"><span class="pill r" style="text-decoration:${a.o==='—'?'none':'line-through'}">${esc(a.o)}</span>${ic('chevR','s16')}<span class="pill g">${esc(a.n)}</span></div><div class="cap">${esc(a.t)}</div></div>`).join('')}</div></div>`;
+SCREENS.more=()=>`<div class="scroll"><div class="pad"><h1 class="h1">More</h1>
+ <div class="card flush">${li('Universal search','Mobile, staff ID, invoice, part no., vehicle','','search',"go('usearch')")}${li('Roles & permissions','RBAC matrix for all 7 roles','','lock',"go('rbac')")}${li('Create staff','Assign role, branch & permissions','','users',"go('newstaff')")}${li('Account','Log out · reset demo','','user',"go('saccount')")}</div></div></div>`;
+const ROLEKEY={Billing:'billing',Sales:'sales',Manager:'manager',Inventory:'inventory'};
+function nextSid(r){const code={Billing:'BIL',Sales:'SAL',Manager:'MGR',Inventory:'INV'}[r];const n=Object.values(ACC()).filter(a=>a.sid&&a.sid.includes('-'+code+'-')).length+1;return 'BP-RNR-'+code+'-'+String(n).padStart(3,'0');}
+SCREENS.newstaff=()=>{const f=S.ui.ns||(S.ui.ns={name:'',login:'',role:'Billing'});const sid=nextSid(f.role);return bar('New staff login')+`<div class="scroll"><div class="pad">
+ <p class="cap">Staff can’t sign up themselves. The login you create here works right away with OTP.</p>
+ <div class="field"><label for="ns1">Full name</label><div class="inp">${ic('user','s18')}<input id="ns1" value="${esc(f.name)}" placeholder="e.g. Deepa Kulkarni" oninput="S.ui.ns.name=this.value"></div></div>
+ <div class="field"><label for="ns2">Login mobile number or email</label><div class="inp">${ic('phone','s18')}<input id="ns2" value="${esc(f.login)}" placeholder="10-digit mobile or email" oninput="S.ui.ns.login=this.value"></div></div>
+ ${sec('Role')}<div class="grid2">${['Billing','Sales','Manager','Inventory'].map(x=>`<button class="opt ${f.role===x?'on':''}" onclick="S.ui.ns.role='${x}';refresh()"><span class="radio"></span>${x}</button>`).join('')}</div>
+ <div class="row" style="background:var(--blue-soft);border-radius:14px;padding:14px">${ic('user')}<div class="grow"><div class="h3">Staff ID (auto)</div><div class="cap">Branch · role · sequence</div></div><b style="color:var(--blue)">${sid}</b></div>
+ <div class="card"><div class="h3">Default permissions · ${LABEL[ROLEKEY[f.role]]}</div><div class="cap">${esc(accessText(ROLEKEY[f.role]))}</div></div>
+ ${S.ui.nsErr?`<div class="errmsg">${esc(S.ui.nsErr)}</div>`:''}
+</div></div><div class="foot"><button class="btn" onclick="createStaff()">Create staff login</button></div>`;};
+function createStaff(){const f=S.ui.ns;const id=normId(f.login);
+ if(!f.name.trim()){S.ui.nsErr='Enter the staff member’s name.';return refresh();}
+ if(!id||(!id.includes('@')&&id.length!==10)){S.ui.nsErr='Enter a valid 10-digit mobile number or an email.';return refresh();}
+ if(ACC()[id]){S.ui.nsErr='This mobile/email already has a Bike Pharma account.';return refresh();}
+ const role=ROLEKEY[f.role];const sid=nextSid(f.role);
+ DB.accounts[id]={role,name:f.name.trim(),label:LABEL[role],sub:'Staff ID '+sid,sid,status:'active'};
+ audit('Staff login created · '+LABEL[role],sid,'—',id);save();S.ui.ns=null;S.ui.nsErr=null;
+ sheet(`<div class="tile g round" style="width:64px;height:64px">${ic('checkC','s28')}</div><h3 class="h2">Login created</h3><div class="card"><div class="kv"><span>Name</span><span>${esc(f.name.trim())}</span></div><div class="kv"><span>Role</span><span>${LABEL[role]}</span></div><div class="kv"><span>Staff ID</span><span>${sid}</span></div><div class="kv"><span>Login</span><span>${esc(id)}</span></div></div><p class="cap">They can log in now with this ${id.includes('@')?'email':'number'} and OTP 123456.</p><button class="btn" onclick="closeSheet();S.ui.ut='Staff';tab('users')">Done</button>`);}
+function decideMech(k,ok){const a=DB.accounts[k];if(ok){const code='BP-MECH-'+(1100+Object.keys(DB.accounts).length);a.status='active';a.code=code;a.sub=a.shop+' · '+code;audit('Mechanic approved',code,'Pending','Verified');toast('Approved · '+code+' assigned');}else{delete DB.accounts[k];audit('Mechanic rejected','+91 '+k,'Pending','Rejected');toast('Application rejected');}save();refresh();}
+SCREENS.rbac=()=>{const R=['Cust','Mech','Bill','Sales','Mgr','Inv','Admin'];const rows=[['Buy Spares','✓','✓','—','—','Opt','—','✓'],['View Own Orders','✓','✓','—','—','—','—','✓'],['Create Invoice','—','—','✓','Opt','✓','—','✓'],['Stock Entry','—','—','—','—','Opt','✓','✓'],['Customer Data','Own','Ltd','✓','✓','✓','Ltd','✓'],['Mechanic Data','—','Own','Ltd','✓','✓','—','✓'],['Sales Reports','—','Own','Ltd','Own','✓','—','✓'],['Staff Management','—','—','—','—','Ltd','—','✓'],['Wallet Mgmt','Own','Own','—','—','Ltd','—','✓'],['Outstanding View','—','Own','Ltd','Ltd','✓','—','✓'],['Outstanding Mgmt','—','Pay','—','—','Ltd','—','✓'],['Product Mgmt','—','—','—','—','Ltd','Ltd','✓'],['Role Management','—','—','—','—','—','—','✓']];
+ return bar('Roles & permissions')+`<div class="scroll"><div class="pad"><p class="cap">Enforced on the server for every request. The app only shows what your role is allowed.</p><div class="tblwrap"><table class="tbl matrix"><thead><tr><th>Feature</th>${R.map(r=>`<th>${r}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map((c,i)=>i?`<td class="${c==='✓'?'ok':c==='—'?'no':'lim'}">${c}</td>`:`<td><b>${c}</b></td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="row wrap cap" style="gap:12px"><span class="ok">✓ Full</span><span class="lim">Own / Ltd / Pay · scoped</span><span class="lim">Opt · branch policy</span><span class="no">— None</span></div></div></div>`;};
+
+function resetDemo(){DB=seed();save();toast('Demo data reset');refresh();}
+
+/* ---------- boot ---------- */
+function start(){load();
+ document.getElementById('sideAccounts').innerHTML=Object.entries(ACCOUNTS).map(([k,a])=>`<button onclick="quickLogin('${k}')"><span>${esc(k)}</span><b>${esc(a.label)}</b></button>`).join('');
+ let saved=null;try{saved=localStorage.getItem('bp-user');}catch(e){}
+ const acc=ACC();if(saved&&acc[saved]&&acc[saved].status!=='pending'){S.uid=saved;S.user=acc[saved];S.stack=[{s:HOME[S.user.role],p:{}}];}else S.stack=[{s:'login',p:{}}];
+ render('');splash();
+ const t2=()=>{const d=new Date();document.getElementById('clock').textContent=(d.getHours()%12||12)+':'+String(d.getMinutes()).padStart(2,'0');};t2();setInterval(t2,30000);}
+function quickLogin(k){S.user=null;S.uid=null;S.ui={loginVal:k};S.stack=[{s:'login',p:{}}];render('fade');}
+start();
+</script>

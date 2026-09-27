@@ -447,7 +447,7 @@ const ACCESS={
  mechanic:['mhome','mshop','mproduct','wallet','credit','pay','purchases','invoices','maccount','notifs'],
  billing:['custview','mechdues','bhome','invoice','receive','usearch','saccount','masterprice','racks','findpart','warreg','scanfind','bills','billview','pendpay'],
  sales:['custview','shome','sorder','stocklist','usearch','saccount','masterprice','racks','scanfind'],
- manager:['mgnew','mgstock','mgpo','mgorders','mginact','mgsales','mgmargin','bills','mgdues','custview','billview','mghome','approvals','team','usearch','saccount','masterprice','stocklist','rbac','racks','warreg','scanfind'],
+ manager:['mgmech','mgmechd','mgnew','mgstock','mgpo','mgorders','mginact','mgsales','mgmargin','bills','mgdues','custview','billview','mghome','approvals','team','usearch','saccount','masterprice','stocklist','rbac','racks','warreg','scanfind'],
  inventory:['mgpo','grnedit','grnview','invlist','ihome','grn','stocklist','usearch','saccount','addproduct','stockmove','racks','warreg','scanfind'],
  admin:['custview','billview','masterprice','invlist','ahome','users','mfin','afinance','audit','more','usearch','rbac','newstaff','saccount','addproduct','stocklist','racks','warreg','scanfind']};
 const DENY={};
@@ -1249,8 +1249,8 @@ SCREENS.mgorders=()=>{const pos=DB.pos||[];const tasks=DB.tasks||[];const tb=S.u
 </div></div>`;};
 function poSend(id){const o=DB.pos.find(x=>x.id===id);o.status='Sent';audit('Purchase order sent',id,'Draft','Sent');save();toast(id+' sent to supplier');refresh();}
 /* mechanics who stopped buying */
-const MECH_EXTRA=[{n:'Shree Ganesh Auto Garage',code:'BP-MECH-0511',ph:'+91 98860 22145',last:46,avg:38000,sp:'Hero · Honda'},{n:'Royal Bike Care',code:'BP-MECH-0733',ph:'+91 99001 47820',last:95,avg:21500,sp:'Royal Enfield'},{n:'Speed Point Two Wheelers',code:'BP-MECH-0918',ph:'+91 97410 55302',last:33,avg:16800,sp:'TVS · Bajaj'}];
-const MECH_LAST={'BP-MECH-1025':[15,62000,'+91 90089 48080'],'BP-MECH-0872':[15,48000,'+91 98441 30872'],'BP-MECH-0640':[71,54000,'+91 99860 10640']};
+const MECH_EXTRA=[{n:'Sai Ram Motors',code:'BP-MECH-0790',ph:'+91 98807 20790',last:1,avg:44000,sp:'Bajaj · Yamaha'},{n:'Shree Ganesh Auto Garage',code:'BP-MECH-0511',ph:'+91 98860 22145',last:46,avg:38000,sp:'Hero · Honda'},{n:'Royal Bike Care',code:'BP-MECH-0733',ph:'+91 99001 47820',last:95,avg:21500,sp:'Royal Enfield'},{n:'Speed Point Two Wheelers',code:'BP-MECH-0918',ph:'+91 97410 55302',last:33,avg:16800,sp:'TVS · Bajaj'}];
+const MECH_LAST={'BP-MECH-1025':[15,62000,'+91 90089 48080'],'BP-MECH-0872':[0,48000,'+91 98441 30872'],'BP-MECH-0640':[71,54000,'+91 99860 10640']};
 const MECH_ALL=()=>[...MECHS.map(m=>({n:m.n,code:m.code,sp:m.sp,last:m.code==='BP-MECH-1025'&&DB.bills.some(b=>b.kind==='mech')?0:MECH_LAST[m.code][0],avg:MECH_LAST[m.code][1],ph:MECH_LAST[m.code][2]})),...MECH_EXTRA];
 const NEW_TODAY=[{n:'Karthik M',code:'9731045522',ph:'+91 97310 45522',type:'Customer',t:'10:05 AM',inv:'INV-2026-00246',amt:1240,src:'Walk-in · saw shop board',cust:1},{n:'Nandi Auto Works',code:'BP-MECH-1102',ph:'+91 90360 11020',type:'Mechanic',t:'10:48 AM',inv:'INV-2026-00247',amt:8600,src:'Referred by Ravi Kumar Auto Works'},{n:'Sneha Kulkarni',code:'9448073310',ph:'+91 94480 73310',type:'CX with Mech',t:'11:20 AM',inv:'INV-2026-00248',amt:2150,src:'Brought by Sri Sai Motors',cust:1}];
 const OLD_MOBS=['8951860708','9845014521'];
@@ -1274,6 +1274,37 @@ SCREENS.mginact=()=>{const list=inactiveM();const lost=list.reduce((a,m)=>a+m.av
   ${task?`<div class="cap" style="color:var(--blue)">Task ${task.id} · ${esc(task.type)} · ${esc(task.toName)} · due ${task.due}</div>`:''}
   <div class="grid2"><button class="btn line sm" style="width:100%" onclick="toast('Calling ${m.ph}…')">${ic('phone','s16')} Call</button><button class="btn sm" style="width:100%" onclick="mgTask('mech','${m.code}')">Assign follow-up</button></div></div>`;}).join('')||'<div class="empty">All mechanics bought something in the last 30 days.</div>'}</div>
 </div></div>`;};
+/* mechanic business report */
+const MB={'BP-MECH-1025':{d:[9800,12400],w:[38200,34100],m:[75000,68500]},'BP-MECH-0872':{d:[7400,3100],w:[21600,29800],m:[51400,72300],cat:{'Brake Parts':[14200,26800],'Lubricants':[18600,19400],'Electrical':[6100,12900],'Chain & Sprocket':[8300,9100],'Filters':[4200,4100]}},'BP-MECH-0790':{d:[0,6200],w:[18900,24500],m:[44800,43200]},'BP-MECH-1102':{d:[8600,0],w:[8600,0],m:[8600,0]},'BP-MECH-0918':{d:[0,0],w:[0,0],m:[0,16800]},'BP-MECH-0511':{d:[0,0],w:[0,0],m:[0,21000]},'BP-MECH-0640':{d:[0,0],w:[0,0],m:[0,0]},'BP-MECH-0733':{d:[0,0],w:[0,0],m:[0,0]}};
+const MB_P={d:['Daily','Today','Yesterday'],w:['Weekly','This week','Last week'],m:['Monthly','This month','Last month']};
+const MB_CATS=[['Brake Parts',.3],['Lubricants',.25],['Electrical',.2],['Chain & Sprocket',.15],['Filters',.1]];
+const mbCat=code=>{const b=MB[code];if(b.cat)return b.cat;const o={};MB_CATS.forEach(([c,f])=>o[c]=[Math.round(b.m[0]*f),Math.round(b.m[1]*f)]);return o;};
+const mbParty=code=>PARTY(code);
+const mbRows=per=>Object.keys(MB).map(code=>{const [c,p]=MB[code][per];return{code,m:mbParty(code),c,p,diff:c-p,pct:p?Math.round((c-p)/p*100):null};});
+const mbDropped=per=>mbRows(per).filter(x=>x.p>0&&x.c<x.p*0.9).sort((a,b)=>a.diff-b.diff);
+const mbTop=per=>mbRows(per==='today'?'d':'m').filter(x=>x.c>0).sort((a,b)=>b.c-a.c).slice(0,3);
+const chg=x=>x.pct===null?(x.c?'<span class="pill g">New</span>':'<span class="pill">—</span>'):`<span class="pill ${x.pct>=0?'g':x.pct<=-10?'r':'a'}">${x.pct>=0?'▲':'▼'} ${Math.abs(x.pct)}%</span>`;
+SCREENS.mgmech=()=>{const per=S.ui.mbp||'m';const [, cl, pl]=MB_P[per];const rows=mbRows(per).sort((a,b)=>b.c-a.c);const drop=mbDropped(per);const tc=rows.reduce((a,x)=>a+x.c,0),tp=rows.reduce((a,x)=>a+x.p,0);const tpct=tp?Math.round((tc-tp)/tp*100):0;
+ return bar('Mechanic business')+`<div class="scroll"><div class="pad">
+ <div class="grid3">${Object.entries(MB_P).map(([k,[l]])=>`<button class="chip ${per===k?'on':''}" style="justify-content:center" onclick="S.ui.mbp='${k}';refresh()">${l}</button>`).join('')}</div>
+ <div class="card" style="background:var(--y-soft);border:0"><div class="micro muted">All mechanics · ${cl.toLowerCase()}</div><div class="row" style="gap:10px;align-items:baseline"><span class="amt num">${inr(tc)}</span><span class="cap" style="color:${tpct>=0?'var(--g)':'var(--r)'}">${tpct>=0?'▲':'▼'} ${Math.abs(tpct)}% vs ${pl.toLowerCase()}</span></div><div class="cap">${pl}: ${inr(tp)}${per==='w'?' · same days (Mon–today)':per==='m'?' · same days (1st–27th)':''}</div></div>
+ ${drop.length?`<div class="sec"><h3 class="h2" style="color:var(--r)">Gave less business (${drop.length})</h3></div>
+ <div class="stack g8">${drop.map(x=>`<button class="card" style="text-align:left;width:100%;border:1.5px solid var(--r);gap:8px" onclick="go('mgmechd',{code:'${x.code}'})"><div class="row"><div class="tile r round">${ic('down','s18')}</div><div class="grow"><div class="h3">${esc(x.m.n)}</div><div class="cap">${x.code}</div></div>${chg(x)}</div>
+  <div class="grid3" style="gap:8px">${[[cl,inr(x.c)],[pl,inr(x.p)],['Less by',inr(-x.diff)]].map(([a,b],i)=>`<div><div class="micro muted">${a}</div><b style="font-size:13px;${i===2?'color:var(--r)':''}">${b}</b></div>`).join('')}</div></button>`).join('')}</div>`:`<div class="row cap" style="background:var(--g-soft);border-radius:10px;padding:10px">${ic('checkC','s16')}<span class="grow">No mechanic gave less business than ${pl.toLowerCase()}.</span></div>`}
+ ${sec('All mechanics · '+cl.toLowerCase())}
+ <div class="card flush">${rows.map((x,i)=>`<button class="li" onclick="go('mgmechd',{code:'${x.code}'})"><div class="tile sm ${i<3&&x.c?'y':'n'}" style="font-weight:800">${i+1}</div><div class="grow"><div class="t">${esc(x.m.n)}</div><div class="s">${pl}: ${inr(x.p)}</div></div><div style="text-align:right"><b class="num">${inr(x.c)}</b><div>${chg(x)}</div></div></button>`).join('')}</div>
+</div></div>`;};
+SCREENS.mgmechd=(p)=>{const code=p.code;const b=MB[code];const m=mbParty(code);const cat=mbCat(code);const isM=MECHS.some(x=>x.code===code);const inv=isM?mechInvs(code):[];
+ const cats=Object.entries(cat).map(([c,[a,z]])=>({c,a,z,d:a-z})).sort((x,y)=>x.d-y.d);
+ return bar(m.n)+`<div class="scroll"><div class="pad">
+ <div class="card"><div class="row"><div class="tile k round">${ic('wrench','s18')}</div><div class="grow"><div class="h3">${esc(m.n)}</div><div class="cap">${code} · ${m.ph||''}</div></div></div><div class="cap">${esc(m.sp||'')}${m.last!==undefined?' · last purchase '+(m.last?m.last+' days ago':'today'):''}${isM?' · outstanding '+inr(mechDue(code)):''}</div></div>
+ ${sec('Business')}
+ <div class="card flush">${Object.entries(MB_P).map(([k,[,cl,pl]])=>{const [c,pv]=b[k];const x={c,p:pv,pct:pv?Math.round((c-pv)/pv*100):null};return `<div class="li"><div class="grow"><div class="t">${cl} vs ${pl.toLowerCase()}</div><div class="s">${inr(c)} vs ${inr(pv)}${pv&&c<pv?' · <b style="color:var(--r)">'+inr(pv-c)+' less</b>':''}</div></div>${chg(x)}</div>`;}).join('')}</div>
+ ${sec('By category · this month vs last month')}
+ <div class="card flush">${cats.map(x=>`<div class="li"><div class="grow"><div class="t">${esc(x.c)}</div><div class="s">${inr(x.a)} vs ${inr(x.z)}</div></div><b class="num" style="color:${x.d<0?'var(--r)':x.d>0?'var(--g)':'var(--ink5)'}">${x.d>0?'+':x.d<0?'−':''}${inr(Math.abs(x.d))}</b></div>`).join('')}</div>
+ ${cats[0]&&cats[0].d<0?`<div class="row cap" style="background:var(--amber-soft);border-radius:10px;padding:10px">${ic('alert','s16')}<span class="grow">Biggest drop: <b>${esc(cats[0].c)}</b> (${inr(-cats[0].d)} less). Ask if they are buying it elsewhere or need a better price.</span></div>`:''}
+ ${inv.length?`${sec('Credit invoices')}<div class="card flush">${inv.map(v=>li(v.id,'Billed '+v.d+' · '+inr(v.amt),v.amt>v.paid?`<b class="num" style="color:var(--r)">${inr(v.amt-v.paid)}</b>`:'<span class="pill g">Paid</span>','file','')).join('')}</div>`:''}
+</div></div><div class="foot"><div class="grid2" style="width:100%"><button class="btn line" onclick="toast('Calling ${m.ph||''}…')">Call</button><button class="btn" onclick="mgTask('mech','${code}')">Follow up</button></div></div>`;};
 const MG_BRANCHES=[{n:'Rajajinagar',a:'No. 14, 5th Block, Rajajinagar, Bengaluru 560010',st:9,mgr:'You',h:'9:00 AM – 8:30 PM'},{n:'Malleshwaram',a:'18th Cross, Malleshwaram, Bengaluru 560055',st:7,mgr:'Kiran Rao',h:'9:00 AM – 8:00 PM'},{n:'Yeshwanthpur',a:'Tumkur Rd, Yeshwanthpur, Bengaluru 560022',st:6,mgr:'Sunil Gowda',h:'9:30 AM – 8:00 PM'}];
 const MG_DATA={today:{sales:126400,bills:38,chg:'+12% vs yesterday',gm:'22.4%',gmv:28300,chart:{t:'Today by hour (₹ thousand)',l:['10','11','12','1','2','3','4','5','6','7'],v:[6,11,14,9,12,16,18,15,13,12]},mech:[['Ravi Kumar Auto Works','BP-MECH-1025',9800,'Silver',''],['Sri Sai Motors','BP-MECH-0872',7400,'Silver',''],['Bullet Point Garage','BP-MECH-0640',5200,'Gold','y']]},
  month:{sales:2840000,bills:1046,chg:'Target ₹35 L · 81%',gm:'22.8%',gmv:647000,target:3500000,chart:{t:'September by week (₹ lakh)',l:['W1','W2','W3','W4'],v:[6.2,7.1,7.4,7.7]},mech:[['Ravi Kumar Auto Works','BP-MECH-1025',75000,'Silver',''],['Bullet Point Garage','BP-MECH-0640',68200,'Gold','y'],['Sri Sai Motors','BP-MECH-0872',51400,'Silver','']]}};
@@ -1314,8 +1345,9 @@ SCREENS.mghome=()=>{const per=S.ui.mgp||'today';const d=MG_DATA[per];const pend=
  ${per==='month'?`<div class="card"><div class="sec"><span class="h3">Monthly target</span><span class="cap">${Math.round(d.sales/d.target*100)}%</span></div><div class="prog"><i style="width:${Math.round(d.sales/d.target*100)}%"></i></div><span class="cap">₹${((d.target-d.sales)/1e5).toFixed(1)} L to go · 3 days left</span></div>`:''}
  <div class="card"><div class="sec"><span class="h3">Sales</span><span class="cap">${d.chart.t}</span></div><div class="cbars">${d.chart.v.map((v,i)=>`<div><span class="num">${v}</span><i style="height:${v/mx*80}%"></i>${d.chart.l[i]}</div>`).join('')}</div></div>
  <button class="card" style="flex-direction:row;align-items:center;text-align:left" onclick="S.ui.wf='All';go('warreg')"><div class="tile g">${ic('shield','s20')}</div><div class="grow"><div class="h3">Warranty Check</div><div class="cap">${DB.warranties.length} warranties issued</div></div>${ic('chevR','s18')}</button>
- ${sec('Top mechanics · '+(per==='today'?'today':'this month'))}
- <div class="card flush">${d.mech.map(([n,c,v,t,tn])=>li(n,c+' · '+inr(v),`<span class="pill ${tn}">${t}</span>`,'wrench',`go('mgdues',{code:'${c}'})`)).join('')}</div>
+ ${(()=>{const pk=per==='today'?'d':'m';const dr=mbDropped(pk);return `<div class="sec"><h3 class="h2">Top mechanics · ${per==='today'?'today':'this month'}</h3><button class="link" onclick="S.ui.mbp='${pk}';go('mgmech')">Full report</button></div>
+ <div class="card flush">${mbTop(per).map(x=>li(esc(x.m.n),x.code+' · '+inr(x.c),chg(x),'wrench',`go('mgmechd',{code:'${x.code}'})`)).join('')}</div>
+ <button class="row card" style="flex-direction:row;text-align:left${dr.length?';border:1.5px solid var(--r)':''}" onclick="S.ui.mbp='${pk}';go('mgmech')"><div class="tile ${dr.length?'r':'g'}">${ic(dr.length?'down':'trend','s20')}</div><div class="grow"><div class="h3">Mechanic business</div><div class="cap">${dr.length?dr.length+' mechanic'+(dr.length>1?'s':'')+' gave less than '+(per==='today'?'yesterday':'last month'):'Daily, weekly & monthly by mechanic'}</div></div><span class="chev">${ic('chevR','s18')}</span></button>`;})()}
 </div></div>`;};
 SCREENS.mgdues=(p={})=>SCREENS.mechdues(p);
 SCREENS.approvals=()=>`<div class="scroll"><div class="pad"><h1 class="h1">Approvals</h1>

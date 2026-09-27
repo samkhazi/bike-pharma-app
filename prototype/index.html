@@ -393,7 +393,8 @@ const ACCESS={
  inventory:['ihome','grn','stocklist','usearch','saccount'],
  admin:['ahome','users','mfin','afinance','audit','more','usearch','rbac','newstaff','saccount']};
 const DENY={masterprice:['billing','sales']};
-function allowed(s){const r=S.user.role;if(DENY[s]&&DENY[s].includes(r))return false;return ACCESS[r].includes(s);}
+const COMMON=['login','otp','signup','submitted','roleok','rbac'];
+function allowed(s){const r=S.user.role;if(DENY[s]&&DENY[s].includes(r))return false;return COMMON.includes(s)||ACCESS[r].includes(s);}
 function lockedInfo(what){sheet(`<div class="row"><div class="tile n round">${ic('lock','s20')}</div><div class="grow"><div class="h3">${what} is Admin only</div><div class="cap">Your role: ${esc(S.user.label)}</div></div></div><p class="cap" style="margin:0">Prices are set by the Admin. Billing staff use these prices on invoices but can’t change them. If a price looks wrong, ask your Manager or Admin.</p><button class="btn dark" onclick="closeSheet()">OK, got it</button>`);}
 function deniedScreen(s){return bar('Admin only')+`<div class="scroll"><div class="pad"><div class="denied"><div class="tile r round" style="width:72px;height:72px">${ic('lock','s28')}</div><h3 class="h2">This section is Admin only</h3><p class="cap" style="max-width:280px">Your role (${esc(S.user.label)}) doesn’t include it. Ask your Admin if you need access.</p><button class="btn sm dark" onclick="back()">Go back</button></div></div></div>`;}
 

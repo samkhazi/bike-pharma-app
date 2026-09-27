@@ -456,9 +456,9 @@ const ACCESS={
  mechanic:['mhome','mshop','mproduct','wallet','credit','pay','purchases','invoices','maccount','notifs'],
  billing:['custview','mechdues','bhome','invoice','receive','usearch','saccount','masterprice','racks','findpart','warreg','scanfind','bills','billview','pendpay'],
  sales:['custview','shome','sorder','stocklist','usearch','saccount','masterprice','racks','scanfind'],
- manager:['mechprofile','mgcards','mgcard','mgtarget','mgver','mgmech','mgmechd','mgnew','mgstock','mgpo','mgorders','mginact','mgsales','mgmargin','bills','mgdues','custview','billview','mghome','approvals','team','usearch','saccount','masterprice','stocklist','rbac','racks','warreg','scanfind'],
+ manager:['mechpay','mechprofile','mgcards','mgcard','mgtarget','mgver','mgmech','mgmechd','mgnew','mgstock','mgpo','mgorders','mginact','mgsales','mgmargin','bills','mgdues','custview','billview','mghome','approvals','team','usearch','saccount','masterprice','stocklist','rbac','racks','warreg','scanfind'],
  inventory:['mgpo','grnedit','grnview','invlist','ihome','grn','stocklist','usearch','saccount','addproduct','stockmove','racks','warreg','scanfind'],
- admin:['mechprofile','mgcard','mgmechd','mgdues','atargets','custview','billview','masterprice','invlist','ahome','users','mfin','afinance','audit','more','usearch','rbac','newstaff','saccount','addproduct','stocklist','racks','warreg','scanfind']};
+ admin:['mechpay','mechprofile','mgcard','mgmechd','mgdues','atargets','custview','billview','masterprice','invlist','ahome','users','mfin','afinance','audit','more','usearch','rbac','newstaff','saccount','addproduct','stocklist','racks','warreg','scanfind']};
 const DENY={};
 const COMMON=['login','otp','signup','submitted','roleok','rbac'];
 function allowed(s){const r=S.user.role;if(DENY[s]&&DENY[s].includes(r))return false;return COMMON.includes(s)||ACCESS[r].includes(s);}
@@ -1416,7 +1416,7 @@ const PAYDAYS={'BP-MECH-1025':12,'BP-MECH-0872':41,'BP-MECH-0790':9,'BP-MECH-064
 function rcard(code){const b=MB[code]||{m:[0,0]};const m=PARTY(code);const v=vInfo(code);const isM=MECHS.some(x=>x.code===code);
  const maxM=Math.max(...Object.values(MB).map(x=>x.m[0]),1);const pct=b.m[1]?Math.round((b.m[0]-b.m[1])/b.m[1]*100):null;
  const its=mechItems(code);const reg=its.filter(i=>i.st[0]!=='New buyer');const onT=reg.filter(i=>i.st[0]==='On time'||i.st[0]==='Due now').length;
- const od=isM?overdueOf(code):[];const out=isM?mechDue(code):0;const pd=PAYDAYS[code];const inactive=(m.last||0)>=30;
+ const od=isM?overdueOf(code):[];const out=isM?mechDue(code):0;const pd=payPath(code).avg??PAYDAYS[code];const inactive=(m.last||0)>=30;
  const c=[];
  c.push({k:'Business',s:Math.round(20*b.m[0]/maxM),d:`${inr(b.m[0])} this month`+(b.m[0]===maxM?' · highest':'')});
  c.push({k:'Growth',s:pct===null?(b.m[0]?12:0):pct>=10?20:pct>=0?15:pct>=-10?10:pct>-30?5:0,d:pct===null?(b.m[0]?'New this month':'No business'):`${pct>=0?'▲':'▼'} ${Math.abs(pct)}% vs last month`});
@@ -1462,7 +1462,7 @@ function brandsOf(code){const o={};(MB_ITEMS[code]||[]).forEach(([pid,,q])=>{con
 SCREENS.mechprofile=(p)=>{const code=p.code;const m=PARTY(code);const inf=MECH_INFO[code]||{};const b=MB[code]||{d:[0,0],w:[0,0],m:[0,0]};const v=vInfo(code);const isM=MECHS.some(x=>x.code===code);const rc=rcard(code);
  const its=mechItems(code).sort((a,c)=>c.r[1]-a.r[1]);const br=brandsOf(code);const cats=Object.entries(mbCat(code)).sort((a,c)=>c[1][0]-a[1][0]);const tr=trend6(code);const mx=Math.max(...tr,1);
  const mn=Array.from({length:6},(_,i)=>{const d=new Date();d.setMonth(d.getMonth()-5+i);return MON[d.getMonth()];});
- const avg3=Math.round((tr[2]+tr[3]+tr[4])/3);const out=isM?mechDue(code):0;const od=isM?overdueOf(code):[];const pd=PAYDAYS[code];
+ const avg3=Math.round((tr[2]+tr[3]+tr[4])/3);const out=isM?mechDue(code):0;const od=isM?overdueOf(code):[];const pd=payPath(code).avg??PAYDAYS[code];
  const pc=(c,p)=>{const x={c,p,pct:p?Math.round((c-p)/p*100):null};return chg(x);};
  const stat=(l,val,sub)=>`<div class="stat" style="padding:10px 12px"><span class="micro muted">${l}</span><b class="num" style="font-size:17px">${val}</b><span>${sub||''}</span></div>`;
  return bar('Mechanic profile')+`<div class="scroll"><div class="pad">
@@ -1481,10 +1481,45 @@ SCREENS.mechprofile=(p)=>{const code=p.code;const m=PARTY(code);const inf=MECH_I
  <div class="card">${mgBars(cats.map(([c,[a]])=>[c,a]),Math.max(1,cats.reduce((a,[,[x]])=>a+x,0)),'var(--blue)')}</div>
  ${sec('Credit & payments')}
  <div class="card"><div class="kv"><span>Outstanding</span><span style="color:${out?'var(--r)':'var(--g)'}">${inr(out)}</span></div><div class="kv"><span>Credit limit</span><span>${v?inr(v.limit):'No credit (not verified)'}</span></div><div class="kv"><span>Overdue</span><span style="color:${od.length?'var(--r)':'var(--g)'}">${od.length?od.length+' invoice'+(od.length>1?'s':'')+' · '+inr(od.reduce((a,x)=>a+x.amt-x.paid,0)):'None'}</span></div><div class="kv"><span>Usually pays in</span><span>${pd?pd+' days':'—'}</span></div>${code==='BP-MECH-1025'?`<div class="kv"><span>Wallet balance</span><span style="color:var(--g)">${inr(walletBal())}</span></div>`:''}</div>
+ <div class="sec"><h3 class="h2">Payment path</h3><button class="link" onclick="go('mechpay',{code:'${code}'})">View all</button></div>
+ ${paySummary(code)}${payPath(code).all.length?payCards(code,2):''}
  ${sec('Workshop')}
  <div class="card"><div class="kv"><span>Speciality</span><span>${esc(m.sp||'—')}</span></div><div class="kv"><span>Bikes mostly serviced</span><span>${esc(inf.bikes||'—')}</span></div><div class="kv"><span>Mechanics / bays</span><span>${inf.staff||'—'} / ${inf.bays||'—'}</span></div><div class="kv"><span>Handled by</span><span>Arjun Nayak · Sales</span></div></div>
  ${allowed('mgcard')?`<div class="grid2"><button class="btn line" onclick="go('mgcard',{code:'${code}'})">Report card · ${rc.g[0]}</button><button class="btn line" onclick="go('mgmechd',{code:'${code}'})">Full business</button></div>`:''}
 </div></div>`;};
+/* payment path: how a mechanic pays */
+const PAY_OLD={'BP-MECH-1025':[{id:'INV-2026-00181',d:'10 Aug',amt:22000,due:'09 Sep',pays:[['24 Aug',22000,'UPI']]},{id:'INV-2026-00162',d:'22 Jul',amt:30000,due:'21 Aug',pays:[['30 Jul',15000,'Cash'],['06 Aug',15000,'UPI']]},{id:'INV-2026-00139',d:'05 Jul',amt:18000,due:'04 Aug',pays:[['16 Jul',18000,'UPI']]}],
+ 'BP-MECH-0872':[{id:'INV-2026-00150',d:'14 Jul',amt:38000,due:'13 Aug',pays:[['25 Aug',20000,'Cash'],['10 Sep',18000,'UPI']],bounce:[['02 Sep',18000]]},{id:'INV-2026-00121',d:'28 Jun',amt:30000,due:'28 Jul',pays:[['12 Aug',30000,'Cheque']]}],
+ 'BP-MECH-0640':[{id:'INV-2026-00098',d:'10 Jun',amt:30000,due:'10 Jul',pays:[['24 Jun',30000,'Bank']]}],
+ 'BP-MECH-0790':[{id:'INV-2026-00236',d:'14 Sep',amt:16000,due:'14 Oct',pays:[['22 Sep',16000,'UPI']]},{id:'INV-2026-00210',d:'25 Aug',amt:20000,due:'24 Sep',pays:[['02 Sep',20000,'UPI']]}]};
+const PAY_CUR={'BP-MECH-1025':{'INV-001':[['20 Sep',25000,'UPI']]},'BP-MECH-0872':{'INV-2026-00207':[['05 Sep',10000,'Cash']]},'BP-MECH-0640':{'INV-2026-00140':[['02 Aug',22000,'Bank']]}};
+const CTR_MODES={'BP-MECH-1025':[['UPI',58],['Cash',22],['Credit',20]],'BP-MECH-0872':[['Credit',55],['Cash',30],['UPI',15]],'BP-MECH-0790':[['UPI',80],['Cash',20]],'BP-MECH-1102':[['Cash',100]],'BP-MECH-0918':[['Cash',70],['UPI',30]],'BP-MECH-0511':[['UPI',60],['Cash',40]],'BP-MECH-0640':[['Bank',45],['UPI',35],['Credit',20]],'BP-MECH-0733':[['Cash',100]]};
+const pd26=s=>new Date(String(s).replace('Sept','Sep')+' 2026');
+const dDiff=(a,b)=>Math.round((pd26(b)-pd26(a))/864e5);
+const plus30=s=>{const d=pd26(s);d.setDate(d.getDate()+30);return String(d.getDate()).padStart(2,'0')+' '+MON[d.getMonth()];};
+function payPath(code){const cur=mechInvs(code).map(v=>({id:v.id,d:v.d,amt:v.amt,due:v.due||plus30(v.d),paid:v.paid,pays:((PAY_CUR[code]||{})[v.id]||[]).slice()}));
+ cur.forEach(v=>{const known=v.pays.reduce((a,p)=>a+p[1],0);if(v.paid>known)v.pays.push([today(),v.paid-known,'Received today']);});
+ const all=[...cur,...(PAY_OLD[code]||[]).map(v=>({...v,paid:v.pays.reduce((a,p)=>a+p[1],0)}))].sort((a,b)=>pd26(b.d)-pd26(a.d));const tdy=today();
+ all.forEach(v=>{const lastPay=v.pays.length?v.pays[v.pays.length-1][0]:null;const full=v.paid>=v.amt;v.days=full?dDiff(v.d,lastPay):null;v.late=full?Math.max(0,dDiff(v.due,lastPay)):null;
+  v.st=full?(v.late?['Paid late','a',`${v.late} days late`]:['Paid on time','g',`in ${v.days} days`]):isOverdue(v)?['Overdue','r',`${dDiff(v.due,tdy)} days`]:v.paid?['Part paid','a',`${inr(v.amt-v.paid)} left`]:['Not due yet','b','due '+v.due];});
+ const done=all.filter(v=>v.days!==null);const onTime=done.filter(v=>!v.late).length;const avg=done.length?Math.round(done.reduce((a,v)=>a+v.days,0)/done.length):null;
+ const bounces=all.reduce((a,v)=>a+(v.bounce||[]).length,0);const lastP=all.flatMap(v=>v.pays).sort((a,b)=>pd26(b[0])-pd26(a[0]))[0];
+ return {all,done,onTime,avg,bounces,lastP};}
+function payTimeline(v){const end=v.days!==null?v.days:dDiff(v.d,today());const span=Math.max(end,dDiff(v.d,v.due),1);const duePos=Math.min(100,dDiff(v.d,v.due)/span*100);
+ const col=v.st[1]==='g'?'var(--g)':v.st[1]==='r'?'var(--r)':v.st[1]==='b'?'var(--blue)':'var(--amber)';
+ return `<div style="position:relative;height:8px;background:var(--line);border-radius:6px;margin:10px 0 4px"><i style="position:absolute;left:0;top:0;bottom:0;width:${Math.min(100,end/span*100)}%;background:${col};border-radius:6px"></i><span title="Due date" style="position:absolute;top:-4px;bottom:-4px;left:calc(${duePos}% - 1px);width:2px;background:var(--ink)"></span>${v.pays.map(p=>`<span title="${p[2]}" style="position:absolute;top:-3px;width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid ${col};left:calc(${Math.min(100,dDiff(v.d,p[0])/span*100)}% - 7px)"></span>`).join('')}</div>
+ <div class="row micro muted" style="justify-content:space-between"><span>Billed ${v.d}</span><span>Due ${v.due}</span></div>`;}
+function payCards(code,limit){const pp=payPath(code);return pp.all.slice(0,limit||99).map(v=>`<div class="card" style="gap:6px"><div class="row"><div class="grow"><div class="h3" style="font-size:15px">${v.id}</div><div class="cap">${inr(v.amt)}${v.bounce?' · <b style="color:var(--r)">cheque bounced '+v.bounce.map(b=>b[0]).join(', ')+'</b>':''}</div></div><div style="text-align:right"><span class="pill ${v.st[1]}">${v.st[0]}</span><div class="micro muted" style="margin-top:3px">${v.st[2]}</div></div></div>${payTimeline(v)}
+ ${v.pays.length?`<div class="stack" style="gap:2px">${v.pays.map(p=>`<div class="kv cap"><span>${ic('checkC','s16')} ${p[0]} · ${esc(p[2])}</span><b class="num" style="color:var(--g)">${inr(p[1])}</b></div>`).join('')}</div>`:'<div class="cap">No payment yet</div>'}</div>`).join('');}
+function paySummary(code){const pp=payPath(code);const modes=CTR_MODES[code]||[];
+ const beh=pp.avg===null?['No credit history yet','b']:pp.all.some(v=>v.st[0]==='Overdue')||pp.avg>35||pp.bounces?['Slow payer','r']:pp.onTime<pp.done.length?['Mostly on time','a']:['Pays on time','g'];
+ return `<div class="card" style="gap:10px"><div class="row"><div class="grow"><div class="h3">Payment behaviour</div><div class="cap">${pp.done.length} invoices fully paid${pp.lastP?' · last paid '+pp.lastP[0]+' by '+esc(pp.lastP[2]):''}</div></div><span class="pill ${beh[1]}">${beh[0]}</span></div>
+ <div class="grid3" style="gap:8px">${[['Avg days to pay',pp.avg===null?'—':pp.avg+' days'],['On time',pp.done.length?Math.round(pp.onTime/pp.done.length*100)+'%':'—'],['Cheque bounce',String(pp.bounces)]].map(([a,b],i)=>`<div><div class="micro muted">${a}</div><b style="font-size:14px;${i===2&&pp.bounces?'color:var(--r)':''}">${b}</b></div>`).join('')}</div>
+ ${modes.length?`<div><div class="micro muted" style="margin-bottom:4px">How they pay (last 3 months)</div><div style="display:flex;height:10px;border-radius:6px;overflow:hidden">${modes.map(([k,v],i)=>`<i style="width:${v}%;background:${['var(--y)','var(--blue)','var(--g)','var(--r)'][i%4]}"></i>`).join('')}</div><div class="row wrap cap" style="gap:10px;margin-top:4px">${modes.map(([k,v],i)=>`<span><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${['var(--y)','var(--blue)','var(--g)','var(--r)'][i%4]}"></i> ${k} ${v}%</span>`).join('')}</div></div>`:''}</div>`;}
+SCREENS.mechpay=(p)=>{const m=PARTY(p.code);const pp=payPath(p.code);
+ return bar('Payment path')+`<div class="scroll"><div class="pad"><div class="cap"><b>${esc(m.n)}</b> · ${p.code}</div>${paySummary(p.code)}
+ <div class="row cap">${ic('chart','s16')}<span class="grow">Bar = days from bill to payment. Black line = due date. Circles = payments.</span></div>
+ ${pp.all.length?payCards(p.code):'<div class="empty">No credit invoices. This mechanic pays at the counter.</div>'}</div></div>`;};
 const MG_BRANCHES=[{n:'Rajajinagar',a:'No. 14, 5th Block, Rajajinagar, Bengaluru 560010',st:9,mgr:'You',h:'9:00 AM – 8:30 PM'},{n:'Malleshwaram',a:'18th Cross, Malleshwaram, Bengaluru 560055',st:7,mgr:'Kiran Rao',h:'9:00 AM – 8:00 PM'},{n:'Yeshwanthpur',a:'Tumkur Rd, Yeshwanthpur, Bengaluru 560022',st:6,mgr:'Sunil Gowda',h:'9:30 AM – 8:00 PM'}];
 const MG_DATA={today:{sales:126400,bills:38,chg:'+12% vs yesterday',gm:'22.4%',gmv:28300,chart:{t:'Today by hour (₹ thousand)',l:['10','11','12','1','2','3','4','5','6','7'],v:[6,11,14,9,12,16,18,15,13,12]},mech:[['Ravi Kumar Auto Works','BP-MECH-1025',9800,'Silver',''],['Sri Sai Motors','BP-MECH-0872',7400,'Silver',''],['Bullet Point Garage','BP-MECH-0640',5200,'Gold','y']]},
  month:{sales:2840000,bills:1046,chg:'Target ₹35 L · 81%',gm:'22.8%',gmv:647000,target:3500000,chart:{t:'September by week (₹ lakh)',l:['W1','W2','W3','W4'],v:[6.2,7.1,7.4,7.7]},mech:[['Ravi Kumar Auto Works','BP-MECH-1025',75000,'Silver',''],['Bullet Point Garage','BP-MECH-0640',68200,'Gold','y'],['Sri Sai Motors','BP-MECH-0872',51400,'Silver','']]}};

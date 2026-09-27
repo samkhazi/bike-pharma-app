@@ -266,6 +266,7 @@ svg.s16{width:16px;height:16px}svg.s18{width:18px;height:18px}svg.s20{width:20px
 .empty{text-align:center;padding:30px 10px;color:var(--ink5);font-size:13px}
 .matrix td,.matrix th{text-align:center;white-space:nowrap}
 .matrix td:first-child,.matrix th:first-child{text-align:left}
+.amb{color:var(--amber)}
 .ok{color:var(--g);font-weight:800}.no{color:var(--ink3)}.lim{color:var(--amber);font-weight:700}
 
 /* brand logo (from Bike Pharma Automobiles) */
@@ -378,7 +379,7 @@ function seed(){return{
  accounts:{},
  notifs:0};}
 let DB;
-function load(){try{const s=localStorage.getItem('bp-db');DB=s?JSON.parse(s):seed();}catch(e){DB=seed();}if(!DB.accounts)DB.accounts={};}
+function load(){try{const s=localStorage.getItem('bp-db');DB=s?JSON.parse(s):seed();}catch(e){DB=seed();}if(!DB.accounts)DB.accounts={};(DB.newProducts||[]).forEach(p=>{if(!P(p.id))PRODUCTS.push(p);});}
 function save(){try{localStorage.setItem('bp-db',JSON.stringify(DB));}catch(e){}}
 function audit(a,e,o,n){const now=new Date();DB.audit.unshift({who:S.user.sid||S.user.label,a,e,o,n,t:now.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+' · '+now.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})});}
 const walletEarned=()=>DB.wl.reduce((a,x)=>a+(x.cr||0),0);
@@ -431,8 +432,8 @@ const ACCESS={
  billing:['bhome','invoice','receive','usearch','saccount','masterprice','denied'],
  sales:['shome','sorder','stocklist','usearch','saccount','masterprice'],
  manager:['mghome','approvals','team','usearch','saccount','stocklist','rbac'],
- inventory:['ihome','grn','stocklist','usearch','saccount'],
- admin:['ahome','users','mfin','afinance','audit','more','usearch','rbac','newstaff','saccount']};
+ inventory:['ihome','grn','stocklist','usearch','saccount','addproduct','stockmove'],
+ admin:['ahome','users','mfin','afinance','audit','more','usearch','rbac','newstaff','saccount','addproduct','stocklist']};
 const DENY={masterprice:['billing','sales']};
 const COMMON=['login','otp','signup','submitted','roleok','rbac'];
 function allowed(s){const r=S.user.role;if(DENY[s]&&DENY[s].includes(r))return false;return COMMON.includes(s)||ACCESS[r].includes(s);}
@@ -804,12 +805,12 @@ SCREENS.sorder=()=>`<div class="scroll"><div class="pad"><h1 class="h1">Order / 
  <div class="card flush">${['p2','p1','p6'].map((id,i)=>{const x=P(id);const q=[20,10,4][i];return li(x.name,`${q} × ${inr(x.mp)}`,`<b class="num">${inr(x.mp*q)}</b>`,x.ic,'','n');}).join('')}</div>
  <div class="card"><div class="kv big"><span>Quotation total</span><span>${inr(598*20+389*10+1826*4)}</span></div></div>
 </div></div><div class="foot"><div class="grid2"><button class="btn line" onclick="toast('Quotation QT-119 shared')">Send quote</button><button class="btn" onclick="toast('Order sent to billing')">Create order</button></div></div>`;
-SCREENS.stocklist=()=>`<div class="scroll"><div class="pad"><h1 class="h1">Stock</h1><div class="card flush">${PRODUCTS.map(x=>{const s=DB.stock[x.id];return li(x.name,x.pn+' · Rajajinagar',`<span class="pill ${s===0?'r':s<10?'a':'g'}">${s} pcs</span>`,x.ic,'','n');}).join('')}</div></div></div>`;
+SCREENS.stocklist=()=>`${S.user.role==='admin'?bar('Products & stock'):''}<div class="scroll"><div class="pad"><div class="sec"><h1 class="h1">Stock</h1>${['inventory','admin'].includes(S.user.role)?`<button class="btn sm" onclick="S.ui.ap=null;S.ui.apErr=null;go('addproduct')">+ Add product</button>`:''}</div><div class="card flush">${PRODUCTS.map(x=>{const s=DB.stock[x.id];return li(esc(x.name),x.pn+' · Rajajinagar'+(x.pending?' · <b class="amb">Pending pricing</b>':''),`<span class="pill ${s===0?'r':s<10?'a':'g'}">${s} pcs</span>`,x.ic,'','n');}).join('')}</div></div></div>`;
 SCREENS.ihome=()=>{const low=PRODUCTS.filter(x=>DB.stock[x.id]<10);return `<div class="scroll"><div class="pad">${staffHead()}
  <div class="dark-card"><span class="micro" style="color:var(--ink3)">Total stock · Rajajinagar</span><div class="row" style="gap:8px;align-items:baseline"><span class="amt" style="color:#fff">12,480 units</span><span class="cap" style="color:var(--ink3)">₹48.6 L value</span></div></div>
  <div class="grid2">${statTile('y','Low stock',low.length,'below reorder level')}${statTile('r','Out of stock',PRODUCTS.filter(x=>!DB.stock[x.id]).length,'SKUs')}${statTile('',"Today's entries",'24','in 16 · out 8')}${statTile('b','Pending GRN','1','Bosch Auto Parts')}</div>
  ${sec('Actions')}
- <div class="grid3">${[['Stock in','down',"tab('grn')"],['Stock out','up'],['Add product','plus'],['Transfer','truck'],['Scan barcode','scan',"tab('grn')"],['Stock count','clip'],['Damaged','alert'],['Returned','history'],['Adjustments','sliders']].map(([l,i,o])=>`<button class="qa2" onclick="${o||`toast('${l} opened')`}"><span class="tile sm">${ic(i,'s20')}</span>${l}</button>`).join('')}</div>
+ <div class="grid3">${[['Stock in','down',"tab('grn')"],['Stock out','up',"S.ui.mv=null;go('stockmove',{type:'out'})"],['Add product','plus',"S.ui.ap=null;S.ui.apErr=null;go('addproduct')"],['Transfer','truck',"S.ui.mv=null;go('stockmove',{type:'transfer'})"],['Scan barcode','scan',"tab('grn')"],['Stock count','clip',"S.ui.mv=null;go('stockmove',{type:'count'})"],['Damaged','alert',"S.ui.mv=null;go('stockmove',{type:'damaged'})"],['Returned','history',"S.ui.mv=null;go('stockmove',{type:'returned'})"],['Adjustments','sliders',"S.ui.mv=null;go('stockmove',{type:'adjust'})"]].map(([l,i,o])=>`<button class="qa2" onclick="${o||`toast('${l} opened')`}"><span class="tile sm">${ic(i,'s20')}</span>${l}</button>`).join('')}</div>
  ${sec('Low stock')}
  <div class="card flush">${low.map(x=>li(x.name,x.pn,`<span class="pill ${DB.stock[x.id]?'a':'r'}">${DB.stock[x.id]} / 20</span>`,x.ic,'','n')).join('')}</div>
 </div></div>`;};
@@ -820,6 +821,77 @@ SCREENS.grn=()=>{const g=S.ui.grn||(S.ui.grn={p1:30,p4:15,p3:40});const exp={p1:
  <div class="card flush">${Object.keys(exp).map(id=>{const x=P(id);const q=g[id];return `<div class="li" style="flex-wrap:wrap"><div class="grow"><div class="t">${x.name}</div><div class="s">Expected ${exp[id]} · ${x.pn}</div></div><span class="qty"><button onclick="S.ui.grn['${id}']=Math.max(0,${q}-1);refresh()" aria-label="Less">${ic('minus','s16')}</button><span class="num">${q}</span><button onclick="S.ui.grn['${id}']=${q}+1;refresh()" aria-label="More">${ic('plus','s16')}</button></span><span class="pill ${q===exp[id]?'g':'a'}" style="width:100%;justify-content:center">${q===exp[id]?'Matched':(q<exp[id]?'Short by '+(exp[id]-q):'Excess '+(q-exp[id]))}</span></div>`;}).join('')}</div>
 </div></div><div class="foot"><button class="btn" onclick="postGrn()">Post to stock</button></div>`;};
 function postGrn(){const g=S.ui.grn;Object.entries(g).forEach(([k,q])=>DB.stock[k]+=q);audit('GRN posted','GRN-0412','—',Object.values(g).reduce((a,b)=>a+b,0)+' units');save();S.ui.grn=null;toast('Stock updated');tab('ihome');}
+/* ---------- product master + stock movements ---------- */
+const BRANDS_V={Bajaj:['Pulsar 150','Pulsar 180','Avenger 160','Platina 110'],Honda:['Shine 125','Activa 6G','Unicorn 160'],Hero:['Splendor Plus','HF Deluxe','Glamour'],TVS:['Apache RTR 160','Jupiter','XL100'],'Royal Enfield':['Classic 350','Bullet 350','Hunter 350'],Yamaha:['FZ-S','R15','Ray ZR'],Suzuki:['Access 125','Gixxer']};
+function apNew(){return{name:'',brand:'',cat:'Brake Parts',type:'OEM',pn:'',barcode:'',unit:'pcs',fits:[],universal:false,vb:'Bajaj',vm:'Pulsar 150',vy1:'2019',vy2:'2024',mrp:'',price:'',mp:'',wp:'',gst:'18',hsn:'8714',open:'',reorder:'10',bin:'',war:'6 months',spec:'',photos:[]};}
+const apField=(k,label,ph,o={})=>`<div class="field"><label for="ap-${k}">${label}${o.req?' <span style="color:var(--r)">*</span>':''}</label><div class="inp ${S.ui.apErr&&S.ui.apErr[k]?'err':''}" ${o.locked?'style="background:var(--paper)"':''}>${o.pre?`<b>${o.pre}</b>`:''}<input id="ap-${k}" ${o.num?'inputmode="decimal"':''} value="${esc(S.ui.ap[k])}" placeholder="${ph}" ${o.locked?'disabled':''} oninput="S.ui.ap.${k}=this.value">${o.locked?ic('lock','s16'):''}</div>${S.ui.apErr&&S.ui.apErr[k]?`<div class="errmsg">${S.ui.apErr[k]}</div>`:''}</div>`;
+SCREENS.addproduct=()=>{const a=S.ui.ap||(S.ui.ap=apNew());const admin=S.user.role==='admin';const lockP=!admin;
+ return bar('Add product')+`<div class="scroll"><div class="pad">
+ <p class="cap">Fields marked <span style="color:var(--r)">*</span> are required. ${admin?'You can set all prices.':'Selling prices are set by Admin; you enter MRP from the pack.'}</p>
+ ${sec('Photos')}
+ <div class="row wrap" style="gap:10px">${a.photos.map((u,i)=>`<div style="position:relative;width:76px;height:76px;border-radius:14px;overflow:hidden;border:1px solid var(--line)"><img src="${u}" alt="Product photo ${i+1}" style="width:100%;height:100%;object-fit:cover"><button onclick="S.ui.ap.photos.splice(${i},1);refresh()" aria-label="Remove photo" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;display:grid;place-items:center">${ic('x','s16')}</button></div>`).join('')}
+  <label style="width:76px;height:76px;border-radius:14px;border:1.5px dashed var(--ink3);display:grid;place-items:center;text-align:center;font-size:11px;font-weight:700;color:var(--ink5);cursor:pointer">${ic('upload','s20')}Add photo<input type="file" accept="image/*" multiple style="display:none" onchange="apPhotos(this.files)"></label></div>
+ <div class="card">${apField('name','Product name','e.g. Front Brake Pad Set – Sintered',{req:1})}
+  <div class="grid2">${apField('brand','Brand','e.g. BOSCH',{req:1})}<div class="field"><label for="ap-cat">Category <span style="color:var(--r)">*</span></label><div class="inp"><select id="ap-cat" style="border:0;background:transparent;flex:1;font-weight:600" onchange="S.ui.ap.cat=this.value">${CATS.filter(c=>!c[0].includes('Parts ')||1).map(c=>`<option ${a.cat===c[0]?'selected':''}>${c[0]}</option>`).join('')}</select></div></div></div>
+  <div class="field"><label>Part type</label><div class="grid4">${['OEM','OES','Genuine','Aftermarket'].map(t=>`<button class="chip ${a.type===t?'on':''}" style="justify-content:center;padding-inline:4px" onclick="S.ui.ap.type='${t}';refresh()">${t}</button>`).join('')}</div></div>
+  <div class="grid2">${apField('pn','Part number','BP-BRK-0457',{req:1})}<div class="field"><label for="ap-unit">Unit</label><div class="inp"><select id="ap-unit" style="border:0;background:transparent;flex:1;font-weight:600" onchange="S.ui.ap.unit=this.value">${['pcs','set','pair','litre','kit'].map(u=>`<option ${a.unit===u?'selected':''}>${u}</option>`).join('')}</select></div></div></div>
+  <div class="field"><label for="ap-barcode">Barcode / QR</label><div class="row" style="gap:8px"><div class="inp grow"><input id="ap-barcode" value="${esc(a.barcode)}" placeholder="Scan or type" oninput="S.ui.ap.barcode=this.value"></div><button class="btn line sm" onclick="S.ui.ap.barcode='890'+Math.floor(1e9+Math.random()*9e9);refresh()">Generate</button></div></div></div>
+ ${sec('Vehicle compatibility')}
+ <div class="card">
+  <button class="opt ${a.universal?'on':''}" onclick="S.ui.ap.universal=!S.ui.ap.universal;refresh()"><span class="radio"></span><span class="grow">Universal part (fits all bikes)</span></button>
+  ${a.universal?'':`<div class="grid2"><div class="field"><label for="ap-vb">Brand</label><div class="inp"><select id="ap-vb" style="border:0;background:transparent;flex:1;font-weight:600" onchange="S.ui.ap.vb=this.value;S.ui.ap.vm=BRANDS_V[this.value][0];refresh()">${Object.keys(BRANDS_V).map(b=>`<option ${a.vb===b?'selected':''}>${b}</option>`).join('')}</select></div></div><div class="field"><label for="ap-vm">Model</label><div class="inp"><select id="ap-vm" style="border:0;background:transparent;flex:1;font-weight:600" onchange="S.ui.ap.vm=this.value">${BRANDS_V[a.vb].map(m=>`<option ${a.vm===m?'selected':''}>${m}</option>`).join('')}</select></div></div></div>
+  <div class="grid2"><div class="field"><label for="ap-vy1">Year from</label><div class="inp"><input id="ap-vy1" inputmode="numeric" value="${a.vy1}" oninput="S.ui.ap.vy1=this.value"></div></div><div class="field"><label for="ap-vy2">Year to</label><div class="inp"><input id="ap-vy2" inputmode="numeric" value="${a.vy2}" oninput="S.ui.ap.vy2=this.value"></div></div></div>
+  <button class="btn line sm" style="width:100%" onclick="S.ui.ap.fits.push(S.ui.ap.vb+' '+S.ui.ap.vm+' ('+S.ui.ap.vy1+'–'+S.ui.ap.vy2+')');refresh()">+ Add this bike</button>
+  ${a.fits.length?`<div class="row wrap" style="gap:6px">${a.fits.map((f,i)=>`<span class="pill b">${esc(f)}<button onclick="S.ui.ap.fits.splice(${i},1);refresh()" aria-label="Remove">${ic('x','s16')}</button></span>`).join('')}</div>`:`<div class="${S.ui.apErr&&S.ui.apErr.fits?'errmsg':'cap'}">${S.ui.apErr&&S.ui.apErr.fits?S.ui.apErr.fits:'Add at least one bike, or mark it universal.'}</div>`}`}
+ </div>
+ ${sec('Pricing & tax')}
+ <div class="card">${apField('mrp','MRP (printed on pack)','0',{req:1,num:1,pre:'₹'})}
+  <div class="grid2">${apField('price','Customer price','Admin sets',{num:1,pre:'₹',locked:lockP})}${apField('mp','Mechanic price','Admin sets',{num:1,pre:'₹',locked:lockP})}</div>
+  <div class="grid2">${apField('wp','Wholesale price','Admin sets',{num:1,pre:'₹',locked:lockP})}<div class="field"><label for="ap-gst">GST</label><div class="inp"><select id="ap-gst" style="border:0;background:transparent;flex:1;font-weight:600" onchange="S.ui.ap.gst=this.value">${['5','12','18','28'].map(g=>`<option value="${g}" ${a.gst===g?'selected':''}>${g}%</option>`).join('')}</select></div></div></div>
+  ${apField('hsn','HSN code','8714')}
+  ${lockP?`<div class="row cap" style="background:var(--paper);border-radius:10px;padding:10px">${ic('lock','s16')}<span class="grow">Product goes live after Admin sets customer, mechanic and wholesale prices.</span></div>`:''}</div>
+ ${sec('Stock')}
+ <div class="card"><div class="grid2">${apField('open','Opening stock','0',{req:1,num:1})}${apField('reorder','Reorder level','10',{num:1})}</div>
+  <div class="grid2">${apField('bin','Bin / rack location','A3-12')}<div class="field"><label>Branch</label><div class="inp" style="background:var(--paper)"><b>Rajajinagar</b></div></div></div></div>
+ ${sec('Warranty & details')}
+ <div class="card"><div class="field"><label>Warranty</label><div class="chips" style="margin:0;padding:0">${['None','3 months','6 months','12 months','24 months'].map(w=>`<button class="chip ${a.war===w?'on':''}" onclick="S.ui.ap.war='${w}';refresh()">${w}</button>`).join('')}</div></div>
+  <div class="field"><label for="ap-spec">Specifications</label><textarea id="ap-spec" rows="3" style="border:1.5px solid var(--line);border-radius:14px;padding:12px;font:inherit;font-size:14px;resize:vertical" placeholder="Material, size, position (front/rear), pack contents…" oninput="S.ui.ap.spec=this.value">${esc(a.spec)}</textarea></div></div>
+ ${S.ui.apErr?'<div class="errmsg">Please fix the highlighted fields.</div>':''}
+</div></div><div class="foot"><div class="grid2"><button class="btn line" onclick="S.ui.ap=null;S.ui.apErr=null;back()">Cancel</button><button class="btn" onclick="saveProduct()">Save product</button></div></div>`;};
+function apPhotos(files){[...files].slice(0,5).forEach(f=>{const r=new FileReader();r.onload=()=>{S.ui.ap.photos.push(r.result);refresh();};r.readAsDataURL(f);});}
+function saveProduct(){const a=S.ui.ap;const e={};const n=v=>parseFloat(String(v).replace(/[^\d.]/g,''));
+ if(!a.name.trim())e.name='Enter the product name.';if(!a.brand.trim())e.brand='Enter the brand.';
+ if(!a.pn.trim())e.pn='Enter the part number.';else if(PRODUCTS.some(p=>p.pn.toLowerCase()===a.pn.trim().toLowerCase()))e.pn='This part number already exists.';
+ if(!(n(a.mrp)>0))e.mrp='Enter the MRP.';if(a.open===''||!(n(a.open)>=0))e.open='Enter opening stock (0 if none).';
+ if(!a.universal&&!a.fits.length)e.fits='Add at least one compatible bike, or mark it universal.';
+ const admin=S.user.role==='admin';if(admin){['price','mp'].forEach(k=>{if(!(n(a[k])>0))e[k]='Set this price.';});}
+ if(Object.keys(e).length){S.ui.apErr=e;return refresh();}
+ const id='n'+Date.now();const mrp=n(a.mrp);const icMap={'Brake Parts':'shield','Lubricants':'droplet','Filters':'filter','Electrical':'zap','Chain & Sprocket':'link','Cables':'link','Tyres':'disc','Suspension':'activity','Engine Parts':'wrench','Clutch Parts':'sliders','Accessories':'gift'};
+ const p={id,name:a.name.trim(),brand:a.brand.trim().toUpperCase(),type:a.type,cat:a.cat,pn:a.pn.trim().toUpperCase(),mrp,price:admin?n(a.price):mrp,mp:admin?n(a.mp):mrp,stock:n(a.open),war:a.war==='None'?'—':a.war,ic:icMap[a.cat]||'package',fits:a.universal?['Universal']:a.fits,bin:a.bin,barcode:a.barcode,pending:!admin};
+ DB.newProducts=DB.newProducts||[];DB.newProducts.push(p);PRODUCTS.push(p);DB.stock[id]=p.stock;
+ audit('Product added'+(admin?'':' · pending pricing'),p.pn,'—',p.stock+' '+a.unit);save();S.ui.ap=null;S.ui.apErr=null;
+ sheet(`<div class="tile g round" style="width:64px;height:64px">${ic('checkC','s28')}</div><h3 class="h2">${esc(p.name)} added</h3><div class="card"><div class="kv"><span>Part no.</span><span>${esc(p.pn)}</span></div><div class="kv"><span>Opening stock</span><span>${p.stock} ${a.unit}</span></div><div class="kv"><span>Fits</span><span>${esc(p.fits.join(', '))}</span></div><div class="kv"><span>Status</span><span style="color:${admin?'var(--g)':'var(--amber)'}">${admin?'Live':'Waiting for Admin pricing'}</span></div></div><button class="btn" onclick="closeSheet();tab('stocklist')">View stock list</button>`);}
+const MOVES={out:['Stock out','up','Issue stock for a sale, workshop use or branch return.'],transfer:['Stock transfer','truck','Move stock to another Bike Pharma branch.'],count:['Stock count','clip','Physically count a bin and correct the system quantity.'],damaged:['Damaged stock','alert','Write off damaged pieces. Needs Manager approval.'],returned:['Returned stock','history','Add back a part returned by a customer or mechanic.'],adjust:['Stock adjustment','sliders','Correct a mismatch. Needs Manager approval.']};
+SCREENS.stockmove=(p)=>{const t=p.type;const m=MOVES[t];const f=S.ui.mv||(S.ui.mv={pid:'p1',q:1,to:'Vijayanagar',counted:'',reason:'',ref:''});const x=P(f.pid);const sys=DB.stock[f.pid];
+ return bar(m[0])+`<div class="scroll"><div class="pad"><p class="cap">${m[2]}</p>
+ <div class="field"><label for="mv-p">Product</label><div class="inp"><select id="mv-p" style="border:0;background:transparent;flex:1;font-weight:600" onchange="S.ui.mv.pid=this.value;refresh()">${PRODUCTS.map(y=>`<option value="${y.id}" ${y.id===f.pid?'selected':''}>${esc(y.name)} · ${y.pn}</option>`).join('')}</select></div></div>
+ <div class="card" style="flex-direction:row;align-items:center"><div class="tile n">${ic(x.ic,'s20')}</div><div class="grow"><div class="h3">${esc(x.name)}</div><div class="cap">${x.pn}${x.bin?' · Bin '+esc(x.bin):''}</div></div><div style="text-align:right"><div class="micro muted">In system</div><b class="h3 num">${sys}</b></div></div>
+ ${t==='count'?`<div class="field"><label for="mv-c">Counted quantity</label><div class="inp"><input id="mv-c" inputmode="numeric" value="${esc(f.counted)}" placeholder="${sys}" oninput="S.ui.mv.counted=this.value" onchange="refresh()"></div></div>${f.counted!==''?`<div class="kv"><span>Variance</span><span style="color:${(+f.counted-sys)===0?'var(--g)':'var(--r)'}">${(+f.counted-sys)>0?'+':''}${+f.counted-sys}</span></div>`:''}`:
+ `<div class="sec"><span class="h3">Quantity</span><span class="qty" style="font-size:18px"><button onclick="S.ui.mv.q=Math.max(1,${f.q}-1);refresh()" aria-label="Less">${ic('minus','s18')}</button><span class="num">${f.q}</span><button onclick="S.ui.mv.q=${f.q}+1;refresh()" aria-label="More">${ic('plus','s18')}</button></span></div>`}
+ ${t==='transfer'?`<div class="field"><label>To branch</label><div class="grid3">${['Vijayanagar','Basavanagudi','Hebbal'].map(b=>`<button class="chip ${f.to===b?'on':''}" style="justify-content:center" onclick="S.ui.mv.to='${b}';refresh()">${b}</button>`).join('')}</div></div>`:''}
+ <div class="field"><label for="mv-r">Reason / note</label><div class="inp"><input id="mv-r" value="${esc(f.reason)}" placeholder="${{out:'e.g. Workshop job card JC-221',transfer:'e.g. Branch request',count:'e.g. Monthly count',damaged:'e.g. Cracked in transit',returned:'e.g. Wrong part ordered',adjust:'e.g. Entry error'}[t]}" oninput="S.ui.mv.reason=this.value"></div></div>
+ <div class="field"><label for="mv-ref">Reference no.</label><div class="inp"><input id="mv-ref" value="${esc(f.ref)}" placeholder="Invoice / challan / job card" oninput="S.ui.mv.ref=this.value"></div></div>
+ ${['damaged','adjust'].includes(t)?`<div class="hint">${ic('users','s16')} Sent to Manager for approval before stock changes.</div>`:''}
+ ${S.ui.mvErr?`<div class="errmsg">${S.ui.mvErr}</div>`:''}
+</div></div><div class="foot"><button class="btn" onclick="saveMove('${t}')">${['damaged','adjust'].includes(t)?'Send for approval':'Save'}</button></div>`;};
+function saveMove(t){const f=S.ui.mv;const x=P(f.pid);const sys=DB.stock[f.pid];const m=MOVES[t];
+ if(['out','transfer','damaged'].includes(t)&&f.q>sys){S.ui.mvErr=`Only ${sys} in stock. Reduce the quantity.`;return refresh();}
+ if(t==='count'&&(f.counted===''||isNaN(+f.counted))){S.ui.mvErr='Enter the counted quantity.';return refresh();}
+ S.ui.mvErr=null;let msg;
+ if(['damaged','adjust'].includes(t)){DB.approvals.unshift({id:Date.now(),t:m[0],d:`${S.user.sid} · ${x.name} · ${t==='damaged'?'−':'±'}${f.q}${f.reason?' · '+f.reason:''}`,ic:m[1],st:'pending',move:{pid:f.pid,q:t==='damaged'?-f.q:-f.q}});msg='Sent to Manager for approval';}
+ else{const before=sys;if(t==='out'||t==='transfer')DB.stock[f.pid]-=f.q;if(t==='returned')DB.stock[f.pid]+=f.q;if(t==='count')DB.stock[f.pid]=+f.counted;
+  audit(m[0]+(t==='transfer'?' → '+f.to:''),x.pn,before+' pcs',DB.stock[f.pid]+' pcs');msg=`${m[0]} saved · ${x.pn} now ${DB.stock[f.pid]} pcs`;}
+ save();S.ui.mv=null;toast(msg);tab('ihome');}
 SCREENS.mghome=()=>`<div class="scroll"><div class="pad">${staffHead()}
  <div class="chips"><button class="chip on">Today</button><button class="chip">This month</button><button class="chip">${ic('store','s16')}Rajajinagar</button></div>
  <div class="grid2">${statTile('y',"Today's sales",inr(126400),'38 bills · +12%')}${statTile('','Monthly sales','₹28.4 L','Target ₹35 L')}${statTile('g','Gross margin','22.8%','₹6.47 L')}${statTile('r','Outstanding',inr(644000+outstanding()),'₹1,12,000 overdue')}${statTile('b','Stock value','₹48.6 L','12,480 units')}${statTile('','Pending approvals',DB.approvals.filter(a=>a.st==='pending').length,'tap Approvals')}</div>
@@ -831,7 +903,7 @@ SCREENS.approvals=()=>`<div class="scroll"><div class="pad"><h1 class="h1">Appro
  ${DB.approvals.map(a=>`<div class="card"><div class="row top"><div class="tile sm">${ic(a.ic,'s18')}</div><div class="grow"><div class="h3">${a.t}</div><div class="cap">${a.d}</div></div>${a.st!=='pending'?`<span class="pill ${a.st==='approved'?'g':'r'}">${a.st}</span>`:''}</div>${a.st==='pending'?`<div class="grid2"><button class="btn line sm" style="width:100%" onclick="decide(${a.id},'rejected')">Reject</button><button class="btn sm" style="width:100%" onclick="decide(${a.id},'approved')">Approve</button></div>`:''}</div>`).join('')}
  <div class="card"><div class="row top"><div class="tile sm n">${ic('lock','s18')}</div><div class="grow"><div class="h3">Credit limit change</div><div class="cap">BP-MECH-1025 → ₹75,000</div></div></div><div class="row cap" style="background:var(--paper);border-radius:10px;padding:8px 10px">${ic('lock','s16')}Admin approval required · not permitted for Manager</div></div>
 </div></div>`;
-function decide(id,st){const a=DB.approvals.find(x=>x.id===id);a.st=st;audit((st==='approved'?'Approved: ':'Rejected: ')+a.t,a.d.split(' · ')[0],'Pending',st);save();toast(a.t+' '+st);refresh();}
+function decide(id,st){const a=DB.approvals.find(x=>x.id===id);a.st=st;if(st==='approved'&&a.move){DB.stock[a.move.pid]=Math.max(0,DB.stock[a.move.pid]+a.move.q);}audit((st==='approved'?'Approved: ':'Rejected: ')+a.t,a.d.split(' · ')[0],'Pending',st);save();toast(a.t+' '+st);refresh();}
 SCREENS.team=()=>`<div class="scroll"><div class="pad"><h1 class="h1">Team</h1><div class="sec"><span class="h3">Attendance today</span><span class="cap">3 / 4 present</span></div>
  <div class="card flush">${[['Priya Shetty','Billing · in 9:02 AM','Present','g'],['Arjun Nayak','Sales · field visit','On field','b'],['Mohammed Irfan','Inventory · in 9:15 AM','Present','g'],['Deepak R','Billing · leave','Absent','r']].map(([n,d,s,t])=>li(n,d,`<span class="pill ${t}">${s}</span>`,'user','','n')).join('')}</div>
  ${sec('Performance')}
@@ -895,7 +967,7 @@ SCREENS.afinance=()=>`<div class="scroll"><div class="pad"><h1 class="h1">Financ
 SCREENS.audit=()=>`<div class="scroll"><div class="pad"><h1 class="h1">Audit log</h1><div class="cap">Every sensitive action, including the ones you make in this demo.</div>
  ${DB.audit.map(a=>`<div class="card"><div class="row top"><div class="tile sm">${ic('shield','s18')}</div><div class="grow"><div class="h3">${esc(a.a)}</div><div class="cap">${esc(a.who)} · ${esc(a.e)}</div></div></div><div class="row" style="gap:8px"><span class="pill r" style="text-decoration:${a.o==='—'?'none':'line-through'}">${esc(a.o)}</span>${ic('chevR','s16')}<span class="pill g">${esc(a.n)}</span></div><div class="cap">${esc(a.t)}</div></div>`).join('')}</div></div>`;
 SCREENS.more=()=>`<div class="scroll"><div class="pad"><h1 class="h1">More</h1>
- <div class="card flush">${li('Universal search','Mobile, staff ID, invoice, part no., vehicle','','search',"go('usearch')")}${li('Roles & permissions','RBAC matrix for all 7 roles','','lock',"go('rbac')")}${li('Create staff','Assign role, branch & permissions','','users',"go('newstaff')")}${li('Account','Log out · reset demo','','user',"go('saccount')")}</div></div></div>`;
+ <div class="card flush">${li('Universal search','Mobile, staff ID, invoice, part no., vehicle','','search',"go('usearch')")}${li('Roles & permissions','RBAC matrix for all 7 roles','','lock',"go('rbac')")}${li('Create staff','Assign role, branch & permissions','','users',"go('newstaff')")}${li('Products & stock','Add products, set prices','','package',"go('stocklist')")}${li('Account','Log out · reset demo','','user',"go('saccount')")}</div></div></div>`;
 const ROLEKEY={Billing:'billing',Sales:'sales',Manager:'manager',Inventory:'inventory'};
 function nextSid(r){const code={Billing:'BIL',Sales:'SAL',Manager:'MGR',Inventory:'INV'}[r];const n=Object.values(ACC()).filter(a=>a.sid&&a.sid.includes('-'+code+'-')).length+1;return 'BP-RNR-'+code+'-'+String(n).padStart(3,'0');}
 SCREENS.newstaff=()=>{const f=S.ui.ns||(S.ui.ns={name:'',login:'',role:'Billing'});const sid=nextSid(f.role);return bar('New staff login')+`<div class="scroll"><div class="pad">
@@ -919,7 +991,7 @@ function decideMech(k,ok){const a=DB.accounts[k];if(ok){const code='BP-MECH-'+(1
 SCREENS.rbac=()=>{const R=['Cust','Mech','Bill','Sales','Mgr','Inv','Admin'];const rows=[['Buy Spares','✓','✓','—','—','Opt','—','✓'],['View Own Orders','✓','✓','—','—','—','—','✓'],['Create Invoice','—','—','✓','Opt','✓','—','✓'],['Stock Entry','—','—','—','—','Opt','✓','✓'],['Customer Data','Own','Ltd','✓','✓','✓','Ltd','✓'],['Mechanic Data','—','Own','Ltd','✓','✓','—','✓'],['Sales Reports','—','Own','Ltd','Own','✓','—','✓'],['Staff Management','—','—','—','—','Ltd','—','✓'],['Wallet Mgmt','Own','Own','—','—','Ltd','—','✓'],['Outstanding View','—','Own','Ltd','Ltd','✓','—','✓'],['Outstanding Mgmt','—','Pay','—','—','Ltd','—','✓'],['Product Mgmt','—','—','—','—','Ltd','Ltd','✓'],['Role Management','—','—','—','—','—','—','✓']];
  return bar('Roles & permissions')+`<div class="scroll"><div class="pad"><p class="cap">Enforced on the server for every request. The app only shows what your role is allowed.</p><div class="tblwrap"><table class="tbl matrix"><thead><tr><th>Feature</th>${R.map(r=>`<th>${r}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map((c,i)=>i?`<td class="${c==='✓'?'ok':c==='—'?'no':'lim'}">${c}</td>`:`<td><b>${c}</b></td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="row wrap cap" style="gap:12px"><span class="ok">✓ Full</span><span class="lim">Own / Ltd / Pay · scoped</span><span class="lim">Opt · branch policy</span><span class="no">— None</span></div></div></div>`;};
 
-function resetDemo(){DB=seed();save();toast('Demo data reset');refresh();}
+function resetDemo(){PRODUCTS.length=8;DB=seed();save();toast('Demo data reset');refresh();}
 
 /* ---------- boot ---------- */
 function start(){load();

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -7,8 +8,10 @@ import '../../core/theme.dart';
 import '../../data/app_state.dart';
 import '../../models/models.dart';
 import '../../widgets/common.dart';
+import '../team/team_widgets.dart';
 
-/// Shop owner only: new mechanic signups waiting for verification.
+/// Bike Pharma team only: new mechanic signups waiting for verification.
+/// Customers and mechanics never see this (and the backend refuses them).
 class AdminMechanicsScreen extends StatefulWidget {
   const AdminMechanicsScreen({super.key});
 
@@ -23,7 +26,7 @@ class _AdminMechanicsScreenState extends State<AdminMechanicsScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    if (context.read<AppState>().isTeam) _load();
   }
 
   Future<void> _load() async {
@@ -120,14 +123,24 @@ class _AdminMechanicsScreenState extends State<AdminMechanicsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final app = context.watch<AppState>();
+    if (!app.isTeam) {
+      return const AccessDenied(title: 'Verify mechanics', message: 'Ye screen sirf Bike Pharma team ke liye hai.');
+    }
     final items = _items;
+    // Opened from the team home; a direct link has nothing to go back to.
+    final canBack = context.canPop();
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
             PageHeader(
               title: 'Verify mechanics',
-              subtitle: items == null ? null : '${items.length} signup verification ke liye',
+              subtitle: items == null
+                  ? 'Bike Pharma team'
+                  : 'Bike Pharma team · ${items.length} signup verification ke liye',
+              back: canBack,
+              trailing: canBack ? null : const LogoutButton(),
             ),
             Expanded(
               child: items == null

@@ -24,6 +24,9 @@ abstract class Repository {
   Future<void> signOut();
   String? get currentUid;
 
+  /// The signed-in mobile number in E.164, e.g. +919876543210.
+  String? get currentPhone;
+
   // Profile + vehicles
   Future<UserProfile?> loadProfile();
   Future<void> saveProfile({required String name, required String phone});
@@ -62,13 +65,26 @@ abstract class Repository {
   // Mechanics
   Future<Mechanic?> mechanic(String id);
 
-  // Mechanic signup + shop verification
-  Future<bool> isAdmin();
+  // Roles: the team list (team/{phone}) decides staff and owner. Null for
+  // customers and mechanics.
+  Future<StaffRole?> staffRole();
+  Future<List<TeamMember>> teamMembers(); // team
+  Future<void> saveTeamMember(TeamMember member); // owner
+  Future<void> removeTeamMember(String phone); // owner
+
+  // Mechanic signup + team verification
   Future<MechanicApplication?> myMechanicApplication();
   Future<void> submitMechanicApplication(MechanicApplication application);
-  Future<List<MechanicApplication>> pendingMechanicApplications(); // admin
-  /// Admin: approve (returns the new BPM id) or reject a signup.
+  Future<List<MechanicApplication>> pendingMechanicApplications(); // team
+  /// Team: approve (returns the new BPM id) or reject a signup.
   Future<String?> reviewMechanicApplication(String uid, {required bool approve, String? reason, double? lat, double? lng});
+
+  // Mechanic discounts: set by the owner per verified mechanic, applied by the
+  // server when that mechanic orders. Customers never get them.
+  Future<List<MechanicDiscount>> mechanicDiscounts(); // owner
+  Future<void> setMechanicDiscount(MechanicDiscount discount); // owner
+  /// The signed-in mechanic's own discount percent (0 if none).
+  Future<int> myMechanicDiscount();
 
   // Warranty tracker: warranty-covered parts from this customer's bills
   Future<List<WarrantyItem>> warranties();

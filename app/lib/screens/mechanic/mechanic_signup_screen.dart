@@ -21,8 +21,8 @@ const mechanicServices = [
   'Modification',
 ];
 
-/// Mechanic signup form. Goes to the shop for verification; nothing is public
-/// until the shop approves it and a BPM id is issued.
+/// Mechanic signup form. Goes to the Bike Pharma team for verification;
+/// nothing is public until the team approves it and a BPM id is issued.
 class MechanicSignupScreen extends StatefulWidget {
   const MechanicSignupScreen({super.key});
 
@@ -109,7 +109,7 @@ class _MechanicSignupScreenState extends State<MechanicSignupScreen> {
         ),
       );
       if (!mounted) return;
-      showMessage(context, 'Signup bhej diya. Shop verify karegi.');
+      showMessage(context, 'Signup bhej diya. Bike Pharma team verify karegi.');
       context.canPop() ? context.pop() : context.go('/mechanic');
     } catch (e) {
       if (mounted) showMessage(context, 'Signup nahi bhej paye. Dobara try karo.');

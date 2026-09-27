@@ -1,12 +1,14 @@
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { FieldValue, Transaction } from "firebase-admin/firestore";
-import { db, isAdmin, requireAuth } from "../config";
+import { authPhone, db, isAdmin, requireAuth } from "../config";
 import { formatMechanicId, validateMechanicInput } from "../lib/mechanics";
 
-/** Admin only. Creates mechanics/BPM-xxxx using the counters/mechanics counter. */
+/** Bike Pharma team only. Creates mechanics/BPM-xxxx using the counters/mechanics counter. */
 export const createMechanic = onCall(async (req): Promise<{ mechanicId: string }> => {
   const uid = requireAuth(req);
-  if (!(await isAdmin(uid))) throw new HttpsError("permission-denied", "Only the shop admin can add mechanics.");
+  if (!(await isAdmin(uid, authPhone(req)))) {
+    throw new HttpsError("permission-denied", "Only the Bike Pharma team can add mechanics.");
+  }
 
   const input = validateMechanicInput(req.data);
   if (!input.ok) throw new HttpsError("invalid-argument", input.error);

@@ -12,8 +12,26 @@ service cloud.firestore {
     function isOwner(uid) {
       return signedIn() && request.auth.uid == uid;
     }
+    // Bike Pharma team, by role. Owner: admins/{uid}, or team/{+91...} with
+    // role "owner". Staff: any other team/{+91...} entry (added by mobile number).
+    // Customers and mechanics are never on these lists.
+    function authPhone() {
+      return (signedIn() && 'phone_number' in request.auth.token) ? request.auth.token.phone_number : '';
+    }
+    function teamPath() {
+      return /databases/$(database)/documents/team/$(authPhone());
+    }
+    function onTeamList() {
+      return authPhone() != '' && exists(teamPath());
+    }
+    function isShopOwner() {
+      return signedIn()
+        && (exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+            || (onTeamList() && get(teamPath()).data.role == 'owner'));
+    }
     function isAdmin() {
-      return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return signedIn()
+        && (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) || onTeamList());
     }
     function data() {
       return request.resource.data;
@@ -72,6 +90,23 @@ service cloud.firestore {
         && (!('photos' in d) || (d.photos is list && d.photos.size() <= 10))
         && d.experienceYears is int && d.experienceYears >= 0 && d.experienceYears <= 80
         && optTimestamp(d, 'createdAt')
+        && optTimestamp(d, 'updatedAt');
+    }
+
+    function validTeamMember(phone, d) {
+      return phone.matches('^[+]91[6-9][0-9]{9}$')
+        && d.keys().hasOnly(['name', 'role', 'addedBy', 'addedAt'])
+        && reqString(d, 'name', 80)
+        && d.role in ['owner', 'staff']
+        && optString(d, 'addedBy', 128)
+        && optTimestamp(d, 'addedAt');
+    }
+
+    function validDiscount(d) {
+      return d.keys().hasOnly(['percent', 'uid', 'updatedBy', 'updatedAt'])
+        && d.percent is int && d.percent >= 0 && d.percent <= 50
+        && optString(d, 'uid', 128)
+        && optString(d, 'updatedBy', 128)
         && optTimestamp(d, 'updatedAt');
     }
 
@@ -183,6 +218,27 @@ service cloud.firestore {
     match /admins/{adminUid} {
       allow read: if isAdmin() || isOwner(adminUid);
       allow write: if false;
+    }
+
+    // Team members by mobile number (doc id like +919876543210). The owner
+    // adds and removes them; a member can check their own entry. An owner can't
+    // remove themselves or drop their own owner role (so the shop always has one).
+    match /team/{phone} {
+      allow read: if isAdmin() || (authPhone() != '' && authPhone() == phone);
+      allow create, update: if isShopOwner() && validTeamMember(phone, data())
+        && (phone != authPhone() || data().role == 'owner');
+      allow delete: if isShopOwner() && phone != authPhone();
+    }
+
+    // Discount percent per verified mechanic id (mechanics/{id}), set by the
+    // owner. placeOrder applies it on the server; the mechanic can read their
+    // own (their approved signup carries the id).
+    match /mechanicDiscounts/{mechanicId} {
+      allow read: if isAdmin()
+        || (signedIn()
+            && get(/databases/$(database)/documents/mechanicApplications/$(request.auth.uid)).data.get('mechanicId', '') == mechanicId);
+      allow create, update: if isShopOwner() && validDiscount(data());
+      allow delete: if isShopOwner();
     }
 
     match /counters/{counterId} {

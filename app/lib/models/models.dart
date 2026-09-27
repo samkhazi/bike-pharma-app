@@ -129,8 +129,63 @@ class Product {
 class CartLine {
   final Product product;
   final int qty;
-  const CartLine(this.product, this.qty);
-  int get total => product.price * qty;
+
+  /// What this buyer pays per piece: the shop price, or the mechanic price
+  /// for a verified mechanic with a discount.
+  final int unitPrice;
+  CartLine(this.product, this.qty, [int? unitPrice]) : unitPrice = unitPrice ?? product.price;
+  int get total => unitPrice * qty;
+}
+
+/// Who is signed in. One app, and the login number decides the profile:
+/// customer (default), mechanic (signed up as a mechanic), team (Bike Pharma
+/// staff: verify mechanics, later inventory and billing) or owner (everything,
+/// plus team members and mechanic discounts).
+enum UserRole { customer, mechanic, team, owner }
+
+/// Staff roles on the team list (team/{phone}).
+enum StaffRole { staff, owner }
+
+class TeamMember {
+  final String phone; // +91XXXXXXXXXX
+  final String name;
+  final StaffRole role;
+  const TeamMember({required this.phone, required this.name, required this.role});
+
+  Map<String, dynamic> toMap() => {'name': name, 'role': role.name};
+
+  factory TeamMember.fromMap(String phone, Map<String, dynamic> m) => TeamMember(
+        phone: phone,
+        name: (m['name'] ?? '') as String,
+        role: m['role'] == 'owner' ? StaffRole.owner : StaffRole.staff,
+      );
+}
+
+/// Highest mechanic discount the owner can set, in percent.
+const maxMechanicDiscount = 50;
+
+/// Price after a mechanic's discount, rounded to the nearest rupee and never
+/// above the list price (prices are paise). Integer maths so it matches
+/// mechanicPrice() in backend/functions/src/lib/orders.ts exactly.
+int mechanicPrice(int price, int percent) {
+  if (percent <= 0) return price;
+  final p = percent.clamp(0, maxMechanicDiscount);
+  final rounded = ((price * (100 - p) + 5000) ~/ 10000) * 100;
+  return rounded < price ? rounded : price;
+}
+
+/// A verified mechanic with the discount the owner set for them.
+class MechanicDiscount {
+  final String mechanicId, garageName, name;
+  final String? uid;
+  final int percent;
+  const MechanicDiscount({
+    required this.mechanicId,
+    required this.garageName,
+    required this.name,
+    required this.percent,
+    this.uid,
+  });
 }
 
 class Address {
@@ -348,6 +403,9 @@ class Mechanic {
   final int experienceYears, spareBuyerSince;
   final bool verified;
 
+  /// The mechanic's login, when they joined through the app signup.
+  final String? uid;
+
   const Mechanic({
     required this.id,
     required this.name,
@@ -365,6 +423,7 @@ class Mechanic {
     this.experienceYears = 0,
     this.spareBuyerSince = 0,
     this.verified = false,
+    this.uid,
   });
 
   String get initials =>
@@ -389,6 +448,7 @@ class Mechanic {
       experienceYears: (m['experienceYears'] ?? 0) as int,
       spareBuyerSince: (m['spareBuyerSince'] ?? 0) as int,
       verified: m['verified'] ?? false,
+      uid: m['uid'] as String?,
     );
   }
 }

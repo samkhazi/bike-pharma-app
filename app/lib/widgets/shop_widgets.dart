@@ -116,6 +116,8 @@ class ProductCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = product;
     final state = context.read<AppState>();
+    final price = state.priceFor(p);
+    final mechanicDeal = price < p.price;
     return SizedBox(
       width: width,
       child: Material(
@@ -145,8 +147,14 @@ class ProductCard extends StatelessWidget {
                   ),
               ]),
               const SizedBox(height: 10),
-              const Text('FITS YOUR BIKE',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: BP.green, letterSpacing: 0.4)),
+              Text(
+                mechanicDeal
+                    ? 'MECHANIC PRICE'
+                    : state.isMechanic
+                    ? 'ALL BIKES'
+                    : 'FITS YOUR BIKE',
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: BP.green, letterSpacing: 0.4),
+              ),
               const SizedBox(height: 4),
               Text(p.name,
                   maxLines: 2,
@@ -156,11 +164,11 @@ class ProductCard extends StatelessWidget {
               Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    if (p.mrp > p.price)
+                    if (p.mrp > price)
                       Text(rupees(p.mrp),
                           style: const TextStyle(
                               fontSize: 11, color: BP.grey, decoration: TextDecoration.lineThrough)),
-                    Text(rupees(p.price), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                    Text(rupees(price), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                   ]),
                 ),
                 Material(

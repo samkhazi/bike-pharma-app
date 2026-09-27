@@ -105,7 +105,9 @@ class _ProductScreenState extends State<ProductScreen> {
 
     final state = context.watch<AppState>();
     final vehicle = state.activeVehicle;
-    final fits = p.fitsVehicle(vehicle);
+    // Mechanics buy for every bike, so the fit check is only for customers.
+    final fits = state.isMechanic || p.fitsVehicle(vehicle);
+    final price = state.priceFor(p);
     final outOfStock = p.stock <= 0;
     final inCart = state.cart[p.id] ?? 0;
 
@@ -142,14 +144,14 @@ class _ProductScreenState extends State<ProductScreen> {
                 ]),
                 const SizedBox(height: 10),
                 Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                  Text(rupees(p.price), style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
-                  if (p.mrp > p.price) ...[
+                  Text(rupees(price), style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+                  if (p.mrp > price) ...[
                     const SizedBox(width: 10),
                     Text(rupees(p.mrp),
                         style: const TextStyle(
                             fontSize: 16, color: BP.grey, decoration: TextDecoration.lineThrough)),
                   ],
-                  if (p.discountPercent > 0) ...[
+                  if (p.discountPercent > 0 && price == p.price) ...[
                     const SizedBox(width: 10),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -161,7 +163,10 @@ class _ProductScreenState extends State<ProductScreen> {
                   ],
                 ]),
                 const SizedBox(height: 18),
-                _FitsCard(vehicle: vehicle, fits: fits),
+                if (state.isMechanic)
+                  _MechanicPriceCard(discount: state.mechanicDiscount, shopPrice: p.price)
+                else
+                  _FitsCard(vehicle: vehicle, fits: fits),
                 const SizedBox(height: 10),
                 Row(children: [
                   Icon(outOfStock ? Icons.remove_shopping_cart_outlined : Icons.inventory_2_outlined,
@@ -232,7 +237,7 @@ class _ProductScreenState extends State<ProductScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: PrimaryButton(
-                label: outOfStock ? 'SOLD OUT' : 'BUY ${rupees(p.price * _qty)}',
+                label: outOfStock ? 'SOLD OUT' : 'BUY ${rupees(price * _qty)}',
                 arrow: false,
                 loading: _busy,
                 onPressed: outOfStock || !fits ? null : () => _add(buyNow: true),
@@ -299,6 +304,34 @@ class _Gallery extends StatelessWidget {
                 ),
               ),
           ]),
+        ),
+      ]),
+    );
+  }
+}
+
+/// Mechanics see their own price instead of the customer's fit check.
+class _MechanicPriceCard extends StatelessWidget {
+  final int discount, shopPrice;
+  const _MechanicPriceCard({required this.discount, required this.shopPrice});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('mechanicPriceCard'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: BP.softYellow, borderRadius: BorderRadius.circular(16)),
+      child: Row(children: [
+        const Icon(Icons.build_circle_outlined, color: BP.black),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            discount > 0
+                ? 'Mechanic price: aapka $discount% discount laga hai (shop price ${rupees(shopPrice)}).'
+                : 'Mechanic account: discount set hone tak shop price lagega.',
+            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, height: 1.35),
+          ),
         ),
       ]),
     );

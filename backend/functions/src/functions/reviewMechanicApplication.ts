@@ -1,11 +1,11 @@
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { FieldValue } from "firebase-admin/firestore";
-import { db, isAdmin, requireAuth } from "../config";
+import { authPhone, db, isAdmin, requireAuth } from "../config";
 import { parseLatLng, validateApplicationInput } from "../lib/mechanics";
 import { allocateMechanic } from "./createMechanic";
 
 /**
- * Admin only. Approves or rejects a mechanic signup (mechanicApplications/{uid}).
+ * Bike Pharma team only. Approves or rejects a mechanic signup (mechanicApplications/{uid}).
  * Approving creates mechanics/BPM-xxxx (verified, active) and stores the new id
  * on the application so the mechanic sees it in the app.
  *
@@ -13,7 +13,9 @@ import { allocateMechanic } from "./createMechanic";
  */
 export const reviewMechanicApplication = onCall(async (req): Promise<{ status: string; mechanicId?: string }> => {
   const adminUid = requireAuth(req);
-  if (!(await isAdmin(adminUid))) throw new HttpsError("permission-denied", "Only the shop admin can verify mechanics.");
+  if (!(await isAdmin(adminUid, authPhone(req)))) {
+    throw new HttpsError("permission-denied", "Only the Bike Pharma team can verify mechanics.");
+  }
 
   const d = (req.data ?? {}) as Record<string, unknown>;
   if (typeof d.uid !== "string" || !d.uid) throw new HttpsError("invalid-argument", "uid is required");

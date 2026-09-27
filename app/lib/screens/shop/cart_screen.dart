@@ -148,7 +148,7 @@ class _LineCard extends StatelessWidget {
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(rupees(line.total), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
                       if (line.qty > 1)
-                        Text('${rupees(p.price)} each',
+                        Text('${rupees(line.unitPrice)} each',
                             style: const TextStyle(fontSize: 11, color: BP.grey, fontWeight: FontWeight.w500)),
                     ]),
                   ),

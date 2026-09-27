@@ -8,7 +8,7 @@ import '../../data/app_state.dart';
 import '../../models/models.dart';
 import '../../widgets/common.dart';
 
-/// Mechanic section: signup status while the shop verifies, then the
+/// Mechanic section: signup status while the Bike Pharma team verifies, then the
 /// mechanic's verified ID card and QR code.
 class MechanicHomeScreen extends StatefulWidget {
   const MechanicHomeScreen({super.key});
@@ -20,7 +20,7 @@ class MechanicHomeScreen extends StatefulWidget {
 class _MechanicHomeScreenState extends State<MechanicHomeScreen> {
   late Future<MechanicApplication?> _future = _fetch();
 
-  Future<MechanicApplication?> _fetch() => context.read<AppState>().repo.myMechanicApplication();
+  Future<MechanicApplication?> _fetch() => context.read<AppState>().refreshMechanic();
 
   void _reload() => setState(() {
     _future = _fetch();
@@ -31,9 +31,16 @@ class _MechanicHomeScreenState extends State<MechanicHomeScreen> {
     if (mounted) _reload();
   }
 
+  Future<void> _logOut() async {
+    await context.read<AppState>().signOut();
+    if (mounted) context.go('/login');
+  }
+
   @override
   Widget build(BuildContext context) {
-    final app = context.watch<AppState>();
+    // Mechanics who signed in only as a mechanic land here with nothing to go
+    // back to, so they log out from here.
+    final canBack = context.canPop();
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -41,8 +48,20 @@ class _MechanicHomeScreenState extends State<MechanicHomeScreen> {
             PageHeader(
               title: 'Mechanic section',
               subtitle: 'Bike Pharma verified mechanics',
-              back: context.canPop(),
-              trailing: IconButton(onPressed: _reload, icon: const Icon(Icons.refresh), tooltip: 'Refresh'),
+              back: canBack,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(onPressed: _reload, icon: const Icon(Icons.refresh), tooltip: 'Refresh'),
+                  if (!canBack)
+                    IconButton(
+                      key: const Key('mechanicLogout'),
+                      onPressed: _logOut,
+                      icon: const Icon(Icons.logout),
+                      tooltip: 'Log out',
+                    ),
+                ],
+              ),
             ),
             Expanded(
               child: FutureBuilder<MechanicApplication?>(
@@ -66,24 +85,6 @@ class _MechanicHomeScreenState extends State<MechanicHomeScreen> {
                         _IdCard(a: a)
                       else
                         _Status(a: a, onEdit: _openSignup),
-                      if (app.isAdmin) ...[
-                        const SizedBox(height: 20),
-                        ListTile(
-                          key: const Key('openVerify'),
-                          tileColor: BP.black,
-                          textColor: BP.white,
-                          iconColor: BP.yellow,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(BP.radius)),
-                          leading: const Icon(Icons.verified_user),
-                          title: const Text('Verify mechanics', style: TextStyle(fontWeight: FontWeight.w800)),
-                          subtitle: const Text(
-                            'Shop owner: naye signups check karo',
-                            style: TextStyle(color: Colors.white70),
-                          ),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () => context.push('/admin/mechanics'),
-                        ),
-                      ],
                     ],
                   );
                 },
@@ -127,7 +128,7 @@ class _Intro extends StatelessWidget {
               ),
               SizedBox(height: 8),
               Text(
-                'Signup karo. Shop aapki details aur garage check karke verify karegi.',
+                'Signup karo. Bike Pharma team aapki details aur garage check karke verify karegi.',
                 style: TextStyle(color: Colors.white70, height: 1.4),
               ),
             ],
@@ -173,7 +174,7 @@ class _Status extends StatelessWidget {
     final rejected = a.isRejected;
     final steps = [
       ('Signup bheja', true),
-      ('Shop details aur garage check kar rahi hai', !rejected),
+      ('Bike Pharma team details aur garage check kar rahi hai', !rejected),
       ('Verified ID aur QR code milega', false),
     ];
     return Column(
@@ -197,7 +198,7 @@ class _Status extends StatelessWidget {
               Text(
                 rejected
                     ? (a.reason?.isNotEmpty == true
-                          ? 'Shop ka message: ${a.reason}'
+                          ? 'Bike Pharma team ka message: ${a.reason}'
                           : 'Details theek karke dobara bhejo.')
                     : 'Bike Pharma team aapki details check karke call karegi. Verify hote hi yahan ID dikhegi.',
                 style: const TextStyle(height: 1.4),
@@ -330,8 +331,53 @@ class _IdCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
-        PrimaryButton(label: 'MERA PUBLIC PROFILE', onPressed: () => context.push('/mechanic/$id')),
+        _ShopCard(discount: context.watch<AppState>().mechanicDiscount),
+        const SizedBox(height: 14),
+        OutlinedButton.icon(
+          onPressed: () => context.push('/mechanic/$id'),
+          icon: const Icon(Icons.person_outline),
+          label: const Text('Mera public profile'),
+        ),
       ],
+    );
+  }
+}
+
+/// Verified mechanics shop all parts at their own price. The discount is set
+/// by the owner and applied by the server, so customers never get it.
+class _ShopCard extends StatelessWidget {
+  final int discount;
+  const _ShopCard({required this.discount});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: BP.softYellow, borderRadius: BorderRadius.circular(18)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            discount > 0 ? 'Aapka mechanic discount: $discount%' : 'Mechanic discount abhi set nahi hua',
+            key: const Key('mechanicDiscount'),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            discount > 0
+                ? 'Har part pe mechanic price dikhega. Ye sirf aapke login pe milta hai.'
+                : 'Bike Pharma owner aapka discount set karenge. Tab tak shop price lagega.',
+            style: const TextStyle(fontSize: 13, color: BP.grey, height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          PrimaryButton(
+            key: const Key('mechanicShop'),
+            label: discount > 0 ? 'MECHANIC PRICE PE PARTS LO' : 'PARTS DEKHO',
+            onPressed: () => context.go('/shop'),
+          ),
+        ],
+      ),
     );
   }
 }

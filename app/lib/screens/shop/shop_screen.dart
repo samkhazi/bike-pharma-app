@@ -268,7 +268,11 @@ class _ShopScreenState extends State<ShopScreen> {
               ),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                sliver: SliverToBoxAdapter(child: _BikeBar(vehicle: vehicle, onChange: _pickVehicle)),
+                sliver: SliverToBoxAdapter(
+                  child: state.isMechanic
+                      ? _MechanicBar(discount: state.mechanicDiscount)
+                      : _BikeBar(vehicle: vehicle, onChange: _pickVehicle),
+                ),
               ),
               if (subs.length > 1)
                 SliverToBoxAdapter(
@@ -391,6 +395,39 @@ class _BikeBar extends StatelessWidget {
           ]),
         ),
       ),
+    );
+  }
+}
+
+/// Shown to mechanics instead of the bike picker: they see every part, at
+/// their own discount.
+class _MechanicBar extends StatelessWidget {
+  final int discount;
+  const _MechanicBar({required this.discount});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('mechanicBar'),
+      padding: const EdgeInsets.fromLTRB(14, 12, 16, 12),
+      decoration: BoxDecoration(color: BP.black, borderRadius: BorderRadius.circular(16)),
+      child: Row(children: [
+        const Icon(Icons.build_circle_outlined, color: BP.yellow, size: 28),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Mechanic account · sab bikes ke parts',
+                style: TextStyle(fontSize: 12, color: Color(0xFFBDBDBD), fontWeight: FontWeight.w500)),
+            const SizedBox(height: 2),
+            Text(
+              discount > 0 ? 'Aapka discount: $discount% har part pe' : 'Discount abhi set nahi hua',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: BP.white),
+            ),
+          ]),
+        ),
+      ]),
     );
   }
 }

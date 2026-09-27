@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
 import '../../data/app_state.dart';
+import '../../data/demo_repository.dart';
 import '../../widgets/common.dart';
 import '../../widgets/brand_logo.dart';
 import '../../widgets/runaway_button.dart';
@@ -227,6 +228,16 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                             ),
+                            if (context.read<AppState>().repo is DemoRepository)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Text(
+                                  'Test numbers: customer 89518 60708 · mechanic 90089 48080\nteam 99999 99999 · owner 88888 88888',
+                                  key: const Key('demoNumbers'),
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 11, height: 1.4),
+                                ),
+                              ),
                           ],
                         ),
                       ),

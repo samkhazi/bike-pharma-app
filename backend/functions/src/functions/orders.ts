@@ -9,7 +9,14 @@ import {
   RAZORPAY_KEY_SECRET,
   RAZORPAY_WEBHOOK_SECRET,
 } from "../config";
-import { computeTotals, isPaymentMethod, validateAddress, validateOrderItems } from "../lib/orders";
+import {
+  computeTotals,
+  discountPercent,
+  isPaymentMethod,
+  mechanicPrice,
+  validateAddress,
+  validateOrderItems,
+} from "../lib/orders";
 import { verifyRazorpaySignature, verifyRazorpayWebhookSignature } from "../lib/razorpay";
 import { createRazorpayOrder } from "./razorpayApi";
 
@@ -18,6 +25,30 @@ interface OrderItem {
   name: string;
   price: number;
   qty: number;
+  /** The product's normal price, stored only when a mechanic discount lowered `price`. */
+  listPrice?: number;
+}
+
+/**
+ * The owner's discount for this caller if they are a verified, active mechanic
+ * (mechanicApplications/{uid} approved -> mechanics/{id} -> mechanicDiscounts/{id}).
+ * Null for everyone else, so customers never get it.
+ */
+async function mechanicDiscountFor(uid: string): Promise<{ mechanicId: string; percent: number } | null> {
+  const application = await db.doc(`mechanicApplications/${uid}`).get();
+  const mechanicId = application.get("mechanicId");
+  if (application.get("status") !== "approved" || typeof mechanicId !== "string" || !mechanicId) return null;
+  const [mechanic, discount] = await db.getAll(db.doc(`mechanics/${mechanicId}`), db.doc(`mechanicDiscounts/${mechanicId}`));
+  if (
+    !mechanic.exists ||
+    mechanic.get("uid") !== uid ||
+    mechanic.get("verified") !== true ||
+    mechanic.get("active") !== true
+  ) {
+    return null;
+  }
+  const percent = discountPercent(discount.get("percent"));
+  return percent > 0 ? { mechanicId, percent } : null;
 }
 
 interface PlaceOrderResult {
@@ -28,6 +59,7 @@ interface PlaceOrderResult {
 
 /**
  * Creates an order. Prices and stock are read on the server inside a transaction.
+ * A verified mechanic pays their own discounted price; everyone else pays the list price.
  * COD orders start as "placed"; Razorpay orders start as "pending_payment".
  */
 export const placeOrder = onCall(
@@ -53,6 +85,7 @@ export const placeOrder = onCall(
       }
     }
 
+    const mechanic = await mechanicDiscountFor(uid);
     const orderRef = db.collection("orders").doc();
 
     const { orderItems, totals } = await db.runTransaction(async (tx) => {
@@ -76,7 +109,10 @@ export const placeOrder = onCall(
           logger.error("Product has an invalid price", { productId, price: p.price });
           throw new HttpsError("failed-precondition", `${p.name} cannot be ordered right now.`, { productId });
         }
-        orderItems.push({ productId, name: String(p.name ?? ""), price: p.price, qty });
+        const price = mechanic ? mechanicPrice(p.price, mechanic.percent) : p.price;
+        const item: OrderItem = { productId, name: String(p.name ?? ""), price, qty };
+        if (price !== p.price) item.listPrice = p.price;
+        orderItems.push(item);
         stockUpdates.push({ ref: snap.ref, stock: stock - qty });
       });
 
@@ -89,6 +125,7 @@ export const placeOrder = onCall(
         ...totals,
         address: address.value,
         paymentMethod,
+        ...(mechanic ? { mechanicId: mechanic.mechanicId, mechanicDiscountPercent: mechanic.percent } : {}),
         razorpayOrderId: null,
         paid: false,
         status: paymentMethod === "cod" ? "placed" : "pending_payment",

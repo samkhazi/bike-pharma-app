@@ -26,6 +26,9 @@ class FirebaseRepository implements Repository {
   @override
   String? get currentUid => _auth.currentUser?.uid;
 
+  @override
+  String? get currentPhone => _auth.currentUser?.phoneNumber;
+
   // ---------- Auth ----------
   @override
   Future<void> sendOtp(String phone) async {
@@ -258,21 +261,95 @@ class FirebaseRepository implements Repository {
     return m.verified ? m : null;
   }
 
-  // ---------- Mechanic signup + verification ----------
+  // ---------- Roles: team list by mobile number ----------
+  /// Owner: admins/{uid} or team/{phone} with role "owner". Staff: any other
+  /// team/{phone}. Customers and mechanics are never on these lists, and the
+  /// rules refuse them the read.
   @override
-  Future<bool> isAdmin() async {
-    final uid = currentUid;
-    if (uid == null) return false;
+  Future<StaffRole?> staffRole() async {
+    final user = _auth.currentUser;
+    if (user == null) return null;
+    Future<Map<String, dynamic>?> read(String collection, String id) async {
+      try {
+        final d = await _db.collection(collection).doc(id).get();
+        return d.exists ? d.data() : null;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    if (await read('admins', user.uid) != null) return StaffRole.owner;
+    final phone = user.phoneNumber;
+    if (phone == null || phone.isEmpty) return null;
+    final member = await read('team', phone);
+    if (member == null) return null;
+    return TeamMember.fromMap(phone, member).role;
+  }
+
+  @override
+  Future<List<TeamMember>> teamMembers() async {
+    final q = await _db.collection('team').get();
+    final list = q.docs.map((d) => TeamMember.fromMap(d.id, d.data())).toList();
+    list.sort((a, b) => a.role == b.role ? a.name.compareTo(b.name) : (a.role == StaffRole.owner ? -1 : 1));
+    return list;
+  }
+
+  @override
+  Future<void> saveTeamMember(TeamMember m) => _db.collection('team').doc(m.phone).set({
+        ...m.toMap(),
+        'addedBy': _uid,
+        'addedAt': FieldValue.serverTimestamp(),
+      });
+
+  @override
+  Future<void> removeTeamMember(String phone) => _db.collection('team').doc(phone).delete();
+
+  // ---------- Mechanic discounts (owner sets, server applies) ----------
+  @override
+  Future<List<MechanicDiscount>> mechanicDiscounts() async {
+    final results = await Future.wait([
+      _db.collection('mechanics').where('verified', isEqualTo: true).get(),
+      _db.collection('mechanicDiscounts').get(),
+    ]);
+    final percents = {for (final d in results[1].docs) d.id: ((d.data()['percent'] ?? 0) as num).toInt()};
+    final list = [
+      for (final d in results[0].docs)
+        MechanicDiscount(
+          mechanicId: d.id,
+          garageName: (d.data()['garageName'] ?? '') as String,
+          name: (d.data()['name'] ?? '') as String,
+          uid: d.data()['uid'] as String?,
+          percent: percents[d.id] ?? 0,
+        ),
+    ]..sort((a, b) => a.mechanicId.compareTo(b.mechanicId));
+    return list;
+  }
+
+  @override
+  Future<void> setMechanicDiscount(MechanicDiscount d) => _db.collection('mechanicDiscounts').doc(d.mechanicId).set({
+        'percent': d.percent,
+        'uid': ?d.uid,
+        'updatedBy': _uid,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+  @override
+  Future<int> myMechanicDiscount() async {
+    final a = await myMechanicApplication();
+    final id = a != null && a.isApproved ? a.mechanicId : null;
+    if (id == null) return 0;
     try {
-      return (await _db.collection('admins').doc(uid).get()).exists;
+      final d = await _db.collection('mechanicDiscounts').doc(id).get();
+      return d.exists ? ((d.data()!['percent'] ?? 0) as num).toInt() : 0;
     } catch (_) {
-      return false;
+      return 0; // no discount set yet (the rules refuse reading a missing doc)
     }
   }
 
   MechanicApplication _application(DocumentSnapshot<Map<String, dynamic>> d) =>
       MechanicApplication.fromMap(d.id, d.data()!, createdAt: (d.data()!['createdAt'] as Timestamp?)?.toDate());
 
+  // ---------- Mechanic signup + verification ----------
   @override
   Future<MechanicApplication?> myMechanicApplication() async {
     final d = await _db.collection('mechanicApplications').doc(_uid).get();

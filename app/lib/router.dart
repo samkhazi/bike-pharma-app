@@ -22,6 +22,9 @@ import 'screens/shop/checkout_screen.dart';
 import 'screens/shop/home_screen.dart';
 import 'screens/shop/product_screen.dart';
 import 'screens/shop/shop_screen.dart';
+import 'screens/team/mechanic_discounts_screen.dart';
+import 'screens/team/team_home_screen.dart';
+import 'screens/team/team_members_screen.dart';
 import 'widgets/bubble_nav.dart';
 
 const tabPaths = ['/home', '/shop', '/service', '/orders', '/profile'];
@@ -56,6 +59,10 @@ GoRouter buildRouter() => GoRouter(
         GoRoute(path: '/mechanic', builder: (_, _) => const MechanicHomeScreen()),
         GoRoute(path: '/mechanic-signup', builder: (_, _) => const MechanicSignupScreen()),
         GoRoute(path: '/admin/mechanics', builder: (_, _) => const AdminMechanicsScreen()),
+        // Bike Pharma team and owner. Each screen also refuses anyone without access.
+        GoRoute(path: '/team', builder: (_, _) => const TeamHomeScreen()),
+        GoRoute(path: '/team/members', builder: (_, _) => const TeamMembersScreen()),
+        GoRoute(path: '/team/discounts', builder: (_, _) => const MechanicDiscountsScreen()),
         GoRoute(path: '/warranty', builder: (_, _) => const WarrantyScreen()),
         GoRoute(path: '/mechanic/:id', builder: (_, s) => MechanicProfileScreen(id: s.pathParameters['id']!)),
       ],

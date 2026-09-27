@@ -8,6 +8,8 @@ export const DELIVERY_FEE = 4900; // Rs 49
 export const MAX_QTY_PER_ITEM = 20;
 export const MAX_LINES = 50;
 
+export const MAX_MECHANIC_DISCOUNT = 50;
+
 export type PaymentMethod = "cod" | "razorpay";
 
 export interface Address {
@@ -35,6 +37,21 @@ export function computeTotals(lines: Array<{ price: number; qty: number }>): Tot
   }
   const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
   return { subtotal, deliveryFee, total: subtotal + deliveryFee };
+}
+
+/** A stored discount percent; anything invalid counts as no discount. Capped at MAX_MECHANIC_DISCOUNT. */
+export function discountPercent(v: unknown): number {
+  return typeof v === "number" && Number.isInteger(v) && v > 0 ? Math.min(v, MAX_MECHANIC_DISCOUNT) : 0;
+}
+
+/**
+ * A verified mechanic's price per piece: `percent` off, rounded to the nearest
+ * rupee, never above the list price. Same maths as mechanicPrice in the app.
+ */
+export function mechanicPrice(price: number, percent: number): number {
+  const p = discountPercent(percent);
+  if (p === 0) return price;
+  return Math.min(price, Math.floor((price * (100 - p) + 5000) / 10000) * 100);
 }
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };

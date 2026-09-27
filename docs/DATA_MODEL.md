@@ -69,13 +69,14 @@ The app's Warranty tracker (Profile > Warranty tracker) lists these, shows days 
 | field | type |
 |---|---|
 | uid | string |
-| items | `{ productId, name, price, qty }[]` |
+| items | `{ productId, name, price, qty, listPrice? }[]` (`price` is what this buyer paid per piece; `listPrice` is stored only when a mechanic discount lowered it) |
 | subtotal, deliveryFee, total | int (paise) |
 | address | `{ name, phone, line1, line2?, city, pincode }` |
 | paymentMethod | `"cod" \| "razorpay"` |
 | razorpayOrderId | string? |
 | paid | bool |
 | status | `"pending_payment" \| "placed" \| "packed" \| "shipped" \| "delivered" \| "cancelled"` |
+| mechanicId, mechanicDiscountPercent | string, int — only on a verified mechanic's discounted order |
 | createdAt | timestamp |
 
 ### `serviceBookings/{bookingId}`
@@ -123,8 +124,40 @@ The mechanic can create it and edit it while it is pending or rejected (always s
 ### `offers/{offerId}`
 `{ tag, title, subtitle, cta, target: "service"|"shop"|"accessories", order: number, active: bool }`
 
+### Profiles (roles)
+One app, four profiles. The login number decides which one opens:
+
+| profile | who | how the backend knows |
+|---|---|---|
+| customer | anyone | default |
+| mechanic | signed up in the Mechanic section | `mechanicApplications/{uid}` exists; verified once `status == "approved"` |
+| team (staff) | shop staff: verify mechanics, later inventory and billing | `team/{phone}` with `role: "staff"` |
+| owner | the shop owner: everything the team has, plus team members and mechanic discounts | `admins/{uid}`, or `team/{phone}` with `role: "owner"` |
+
+Functions check this with `staffRole()` / `isAdmin()` in `functions/src/config.ts`; the rules use `isShopOwner()` / `isAdmin()`.
+
 ### `admins/{uid}`
-Presence of the doc = admin (shop owner / staff).
+Presence of the doc = owner. Created by hand in the Firebase console (first owner); after that the owner can add more owners by number in `team`.
+
+### `team/{phone}` — id is the E.164 number, e.g. `+919876543210`
+| field | type |
+|---|---|
+| name | string |
+| role | `"owner"` \| `"staff"` |
+| addedBy | string (uid) |
+| addedAt | timestamp |
+
+Only an owner writes it. An owner can't remove their own number or drop their own owner role. A member can read their own entry, which is how the app knows to open the team profile after OTP login.
+
+### `mechanicDiscounts/{mechanicId}` — id is the `BPM-…` id
+| field | type |
+|---|---|
+| percent | int, 0 to 50 |
+| uid | string? (the mechanic's login, for reference) |
+| updatedBy | string (uid) |
+| updatedAt | timestamp |
+
+Only an owner writes it. `placeOrder` applies it on the server when the caller is that verified, active mechanic (`mechanicApplications/{uid}.mechanicId` → `mechanics/{id}` with the same `uid`, `verified` and `active`), so customers never get it. Price per piece = list price less `percent`, rounded to the nearest rupee and never above the list price (`mechanicPrice()` in `functions/src/lib/orders.ts` and `app/lib/models/models.dart`). The mechanic can read their own entry to see the price in the app.
 
 ### `counters/mechanics`
 `{ next: number }` used to generate mechanic ids.
@@ -134,9 +167,9 @@ Presence of the doc = admin (shop owner / staff).
 | name | input | output |
 |---|---|---|
 | `lookupVehicle` | `{ regNo }` | `{ regNo, brand, model, year, colour, emission, fuel, chassisMasked }` — calls the RC lookup provider (Surepass); returns `failed-precondition` if no provider key is configured |
-| `placeOrder` | `{ items: {productId, qty}[], address, paymentMethod }` | `{ orderId, total, razorpay?: { orderId, keyId, amount } }` — prices and stock are read on the server, never trusted from the app |
+| `placeOrder` | `{ items: {productId, qty}[], address, paymentMethod }` | `{ orderId, total, razorpay?: { orderId, keyId, amount } }` — prices and stock are read on the server, never trusted from the app; a verified mechanic gets their `mechanicDiscounts` percent |
 | `verifyPayment` | `{ orderId, razorpayPaymentId, razorpaySignature }` | `{ paid: true }` |
-| `createMechanic` (admin) | mechanic fields | `{ mechanicId }` |
-| `reviewMechanicApplication` (admin) | `{ uid, approve, reason?, geo? }` | `{ status, mechanicId? }` — approve issues the next BPM id and publishes the mechanic; reject stores the reason for the mechanic to see |
+| `createMechanic` (team) | mechanic fields | `{ mechanicId }` |
+| `reviewMechanicApplication` (team) | `{ uid, approve, reason?, geo? }` | `{ status, mechanicId? }` — approve issues the next BPM id and publishes the mechanic; reject stores the reason for the mechanic to see |
 
 HTTP function `razorpayWebhook` marks orders paid from Razorpay's `payment.captured` event (signature checked).

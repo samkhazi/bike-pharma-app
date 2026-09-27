@@ -40,7 +40,28 @@ export function requireAuth(req: CallableRequest<unknown>): string {
   return uid;
 }
 
-export async function isAdmin(uid: string): Promise<boolean> {
-  const snap = await db.doc(`admins/${uid}`).get();
-  return snap.exists;
+/** The caller's verified mobile number from Firebase phone sign-in, e.g. "+919876543210". */
+export function authPhone(req: CallableRequest<unknown>): string | null {
+  const p = req.auth?.token?.phone_number;
+  return typeof p === "string" ? p : null;
+}
+
+export type StaffRole = "owner" | "staff";
+
+/**
+ * The caller's Bike Pharma team role. Owner: admins/{uid}, or team/{phone}
+ * with role "owner". Staff: any other team/{phone} (added by mobile number).
+ * Customers and mechanics are on neither list, so they get null.
+ */
+export async function staffRole(uid: string, phone?: string | null): Promise<StaffRole | null> {
+  if ((await db.doc(`admins/${uid}`).get()).exists) return "owner";
+  if (!phone || !/^\+\d{8,15}$/.test(phone)) return null;
+  const member = await db.doc(`team/${phone}`).get();
+  if (!member.exists) return null;
+  return member.get("role") === "owner" ? "owner" : "staff";
+}
+
+/** Bike Pharma team check (staff or owner). */
+export async function isAdmin(uid: string, phone?: string | null): Promise<boolean> {
+  return (await staffRole(uid, phone)) !== null;
 }

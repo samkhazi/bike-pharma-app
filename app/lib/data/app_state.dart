@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../core/money.dart';
 import '../models/models.dart';
+import 'demo_repository.dart';
 import 'repository.dart';
 
 /// App-wide state shared by all screens: who is signed in, their bike, the
@@ -14,7 +15,19 @@ class AppState extends ChangeNotifier {
 
   /// Set on the login screen when a mechanic (not a customer) is signing in.
   bool signingInAsMechanic = false;
-  bool isAdmin = false;
+
+  /// Which profile is open. The login number decides it: the team list
+  /// (backend) gives team/owner, a mechanic signup gives mechanic, anyone
+  /// else is a customer.
+  UserRole role = UserRole.customer;
+
+  /// Bike Pharma team or owner: verify mechanics (later inventory, billing).
+  bool get isTeam => role == UserRole.team || role == UserRole.owner;
+  bool get isOwner => role == UserRole.owner;
+  bool get isMechanic => role == UserRole.mechanic;
+
+  /// The signed-in verified mechanic's discount percent (0 for everyone else).
+  int mechanicDiscount = 0;
   UserProfile? profile;
   List<Vehicle> vehicles = [];
   List<Product> catalogue = [];
@@ -30,24 +43,67 @@ class AppState extends ChangeNotifier {
     return n.isEmpty ? 'Rider' : n.split(' ').first;
   }
 
-  /// Sam's rule: customers only see parts that fit their own bike.
+  /// Sam's rule: customers only see parts that fit their own bike. Mechanics
+  /// work on every bike, so they see all parts.
   List<Product> productsFor({String? category}) => catalogue
       .where((p) => category == null || p.category == category)
-      .where((p) => p.fitsVehicle(activeVehicle))
+      .where((p) => isMechanic || p.fitsVehicle(activeVehicle))
       .toList();
+
+  /// What the signed-in buyer pays per piece. Only a verified mechanic with a
+  /// discount gets less; the server applies the same rule when ordering.
+  int priceFor(Product p) => isMechanic ? mechanicPrice(p.price, mechanicDiscount) : p.price;
 
   Product? productById(String id) => catalogue.where((p) => p.id == id).firstOrNull;
 
   // ---------- session ----------
   /// Loads everything after sign in. Returns false if the profile is missing.
   Future<bool> loadSession() async {
+    // After an app restart the login screen never ran, so take the number from auth.
+    final signedIn = repo.currentPhone;
+    if (signedIn != null && signedIn.isNotEmpty) phone = signedIn;
     profile = await repo.loadProfile();
-    isAdmin = await repo.isAdmin().catchError((_) => false);
+    final staff = await repo.staffRole().catchError((_) => null);
+    mechanicDiscount = 0;
+    if (staff != null) {
+      role = staff == StaffRole.owner ? UserRole.owner : UserRole.team;
+    } else {
+      final application = await repo.myMechanicApplication().catchError((_) => null);
+      role = application != null ? UserRole.mechanic : UserRole.customer;
+      if (application?.isApproved == true) {
+        mechanicDiscount = await repo.myMechanicDiscount().catchError((_) => 0);
+      }
+    }
+    notifyListeners();
     if (profile == null) return false;
     vehicles = await repo.vehicles();
     await Future.wait([refreshCatalogue(), refreshCart()]);
     notifyListeners();
     return vehicles.isNotEmpty;
+  }
+
+  /// Where to go right after sign in: the team to mechanic verification,
+  /// mechanics to their section, customers to the shop or onboarding.
+  Future<String> landingRoute() async {
+    final complete = await loadSession();
+    if (isTeam) return '/team';
+    final demoMechanic = repo is DemoRepository && repo.currentPhone == demoMechanicPhone;
+    if (signingInAsMechanic || demoMechanic) {
+      role = UserRole.mechanic;
+      notifyListeners();
+    }
+    if (isMechanic) return '/mechanic';
+    return complete ? '/home' : '/create-profile';
+  }
+
+  /// Re-reads the signed-in mechanic's signup and discount (after signup, or
+  /// when the team verifies them or the owner changes the discount).
+  Future<MechanicApplication?> refreshMechanic() async {
+    final a = await repo.myMechanicApplication();
+    if (a != null && !isTeam) role = UserRole.mechanic;
+    mechanicDiscount = a?.isApproved == true ? await repo.myMechanicDiscount().catchError((_) => 0) : 0;
+    notifyListeners();
+    return a;
   }
 
   Future<void> refreshCatalogue() async {
@@ -81,6 +137,10 @@ class AppState extends ChangeNotifier {
     profile = null;
     vehicles = [];
     cart = {};
+    phone = '';
+    role = UserRole.customer;
+    mechanicDiscount = 0;
+    signingInAsMechanic = false;
     notifyListeners();
   }
 
@@ -94,7 +154,7 @@ class AppState extends ChangeNotifier {
 
   List<CartLine> get cartLines => [
         for (final e in cart.entries)
-          if (productById(e.key) != null) CartLine(productById(e.key)!, e.value),
+          if (productById(e.key) != null) CartLine(productById(e.key)!, e.value, priceFor(productById(e.key)!)),
       ];
 
   int get cartSubtotal => cartLines.fold(0, (s, l) => s + l.total);

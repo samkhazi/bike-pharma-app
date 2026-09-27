@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   computeTotals,
   DELIVERY_FEE,
+  discountPercent,
+  MAX_MECHANIC_DISCOUNT,
+  mechanicPrice,
   isPaymentMethod,
   normalizeIndianPhone,
   validateAddress,
@@ -82,5 +85,43 @@ describe("validateOrderItems", () => {
     expect(isPaymentMethod("cod")).toBe(true);
     expect(isPaymentMethod("razorpay")).toBe(true);
     expect(isPaymentMethod("upi")).toBe(false);
+  });
+});
+
+describe("mechanicPrice", () => {
+  it("takes the percent off and rounds to the rupee, like the app", () => {
+    expect(mechanicPrice(44900, 10)).toBe(40400); // Rs 404.10 -> Rs 404
+    expect(mechanicPrice(5000, 50)).toBe(2500);
+    expect(mechanicPrice(14900, 15)).toBe(12700); // Rs 126.65 -> Rs 127
+    expect(mechanicPrice(44900, 15)).toBe(38200); // Rs 381.65 -> Rs 382
+  });
+  it("caps at the maximum discount", () => {
+    expect(mechanicPrice(10000, 80)).toBe(5000);
+    expect(MAX_MECHANIC_DISCOUNT).toBe(50);
+  });
+  it("gives no discount for zero, negative or bad percents", () => {
+    expect(mechanicPrice(44900, 0)).toBe(44900);
+    expect(mechanicPrice(44900, -5)).toBe(44900);
+    expect(mechanicPrice(44900, 12.5)).toBe(44900);
+    expect(mechanicPrice(44900, Number.NaN)).toBe(44900);
+  });
+  it("never charges more than the list price", () => {
+    expect(mechanicPrice(99, 1)).toBe(99);
+  });
+});
+
+describe("discountPercent", () => {
+  it.each([
+    [10, 10],
+    [50, 50],
+    [75, 50],
+    [0, 0],
+    [-3, 0],
+    [2.5, 0],
+    ["10", 0],
+    [undefined, 0],
+    [null, 0],
+  ])("%j -> %j", (input, want) => {
+    expect(discountPercent(input)).toBe(want);
   });
 });

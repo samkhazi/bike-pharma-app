@@ -3,16 +3,45 @@ import 'dart:async';
 import '../models/models.dart';
 import 'repository.dart';
 
+/// Test numbers for the demo app (Sam, 2026-09-27). Any other number signs in
+/// as a new customer.
+const demoCustomerPhone = '+918951860708';
+const demoMechanicPhone = '+919008948080';
+
+/// Signs in as a Bike Pharma team member (verify mechanics; later inventory and billing).
+const demoTeamPhone = '+919999999999';
+
+/// Signs in as the owner: everything the team has, plus team members and mechanic discounts.
+const demoOwnerPhone = '+918888888888';
+
+/// One signed-in number's data, so switching numbers switches accounts.
+class _DemoAccount {
+  UserProfile? profile;
+  final List<Vehicle> vehicles = [];
+  final Map<String, int> cart = {};
+  final List<ShopOrder> orders = [];
+  final List<ServiceBooking> bookings = [];
+}
+
 /// Offline repository with sample data, used for demos and when Firebase is
 /// not configured yet (`--dart-define=DEMO=true`). OTP is always 123456.
 class DemoRepository implements Repository {
   String? _uid;
-  UserProfile? _profile;
-  final List<Vehicle> _vehicles = [];
-  final Map<String, int> _cart = {};
-  final List<ShopOrder> _orders = [];
-  final List<ServiceBooking> _bookings = [];
+  String? _phone;
+  String? _pendingPhone;
+  final _accounts = <String, _DemoAccount>{};
   int _seq = 1;
+
+  _DemoAccount get _me => _accounts.putIfAbsent(_uid ?? 'demo-user', _DemoAccount.new);
+  UserProfile? get _profile => _me.profile;
+  set _profile(UserProfile? p) => _me.profile = p;
+  List<Vehicle> get _vehicles => _me.vehicles;
+  Map<String, int> get _cart => _me.cart;
+  List<ShopOrder> get _orders => _me.orders;
+  List<ServiceBooking> get _bookings => _me.bookings;
+
+  @override
+  String? get currentPhone => _phone;
 
   Future<T> _delay<T>(T v) => Future.delayed(const Duration(milliseconds: 250), () => v);
 
@@ -20,18 +49,24 @@ class DemoRepository implements Repository {
   String? get currentUid => _uid;
 
   @override
-  Future<void> sendOtp(String phone) => _delay(null);
+  Future<void> sendOtp(String phone) {
+    _pendingPhone = phone;
+    return _delay(null);
+  }
 
   @override
   Future<String> verifyOtp(String code) async {
     await _delay(null);
     if (code != '123456') throw Exception('Wrong OTP. Demo OTP is 123456');
-    return _uid = 'demo-user';
+    _phone = _pendingPhone;
+    final digits = _phone?.replaceAll(RegExp(r'\D'), '') ?? '';
+    return _uid = digits.isEmpty ? 'demo-user' : 'demo-$digits';
   }
 
   @override
   Future<void> signOut() async {
     _uid = null;
+    _phone = null;
   }
 
   @override
@@ -57,7 +92,7 @@ class DemoRepository implements Repository {
   @override
   Future<void> setActiveVehicle(String vehicleId) async {
     final p = _profile;
-    _profile = UserProfile(uid: p?.uid ?? 'demo-user', name: p?.name ?? '', phone: p?.phone ?? '', activeVehicleId: vehicleId);
+    _profile = UserProfile(uid: _uid ?? 'demo-user', name: p?.name ?? '', phone: p?.phone ?? '', activeVehicleId: vehicleId);
   }
 
   @override
@@ -106,9 +141,11 @@ class DemoRepository implements Repository {
     required String paymentMethod,
   }) async {
     await _delay(null);
+    // Like the server: only a verified mechanic's own discount, never a customer's.
+    final discount = await myMechanicDiscount();
     final lines = items.entries.map((e) {
       final p = demoProducts.firstWhere((p) => p.id == e.key);
-      return OrderItem(productId: p.id, name: p.name, price: p.price, qty: e.value);
+      return OrderItem(productId: p.id, name: p.name, price: mechanicPrice(p.price, discount), qty: e.value);
     }).toList();
     final subtotal = lines.fold<int>(0, (s, l) => s + l.price * l.qty);
     final fee = subtotal >= 49900 ? 0 : 4900;
@@ -167,41 +204,143 @@ class DemoRepository implements Repository {
   Future<void> requestModify({required String vehicleId, required List<String> items, String? note}) => _delay(null);
 
   @override
-  Future<Mechanic?> mechanic(String id) => _delay(id == demoMechanic.id ? demoMechanic : null);
+  Future<Mechanic?> mechanic(String id) {
+    if (id == demoMechanic.id) return _delay(demoMechanic);
+    // Mechanics the team verified in this demo get a public profile too.
+    final a = _applications.values.where((a) => a.isApproved && a.mechanicId == id).firstOrNull;
+    if (a == null) return _delay(null);
+    final geo = parseLatLng(a.mapsLink);
+    return _delay(Mechanic(
+      id: id,
+      name: a.name,
+      garageName: a.garageName,
+      address: a.address,
+      phone: a.phone,
+      openHours: a.openHours,
+      photos: a.photos,
+      specialistBrands: a.specialistBrands,
+      vehicleTypes: a.vehicleTypes,
+      services: a.services,
+      experienceYears: a.experienceYears,
+      spareBuyerSince: DateTime.now().year,
+      lat: geo?.lat ?? 0,
+      lng: geo?.lng ?? 0,
+      verified: true,
+      uid: a.uid,
+    ));
+  }
 
-  // Demo: the signed-in user is also the shop admin, so both sides of the
-  // mechanic signup can be tried. One sample signup waits for verification.
-  MechanicApplication? _myApplication;
-  final _applications = <String, MechanicApplication>{'m-imran': demoPendingApplication};
-  int _nextMechanic = 416;
+  // Team list by mobile number, like team/{phone} in Firestore.
+  final _team = <String, TeamMember>{
+    demoOwnerPhone: const TeamMember(phone: demoOwnerPhone, name: 'Owner (demo)', role: StaffRole.owner),
+    demoTeamPhone: const TeamMember(phone: demoTeamPhone, name: 'Team member (demo)', role: StaffRole.staff),
+  };
+
+  StaffRole? get _staffRole => _uid == null ? null : _team[_phone]?.role;
+  bool get _isTeam => _staffRole != null;
+  bool get _isOwner => _staffRole == StaffRole.owner;
+
+  void _requireTeam() {
+    if (!_isTeam) throw Exception('Sirf Bike Pharma team ye kar sakti hai');
+  }
+
+  void _requireOwner() {
+    if (!_isOwner) throw Exception('Sirf owner ye kar sakta hai');
+  }
 
   @override
-  Future<bool> isAdmin() => _delay(true);
+  Future<StaffRole?> staffRole() => _delay(_staffRole);
 
   @override
-  Future<MechanicApplication?> myMechanicApplication() => _delay(_myApplication);
+  Future<List<TeamMember>> teamMembers() async {
+    _requireTeam();
+    final list = _team.values.toList()..sort((a, b) => a.role == b.role ? a.name.compareTo(b.name) : (a.role == StaffRole.owner ? -1 : 1));
+    return _delay(list);
+  }
 
   @override
-  Future<void> submitMechanicApplication(MechanicApplication a) async {
-    final uid = _uid ?? 'demo-user';
-    _myApplication = MechanicApplication.fromMap(uid, a.toMap(), createdAt: DateTime.now());
-    _applications[uid] = _myApplication!;
+  Future<void> saveTeamMember(TeamMember m) async {
+    _requireOwner();
+    if (!RegExp(r'^\+91[6-9]\d{9}$').hasMatch(m.phone)) throw Exception('Sahi 10 digit number daalo');
+    if (m.phone == _phone && m.role != StaffRole.owner) throw Exception('Apna owner access khud nahi hata sakte');
+    _team[m.phone] = m;
     await _delay(null);
   }
 
   @override
-  Future<List<MechanicApplication>> pendingMechanicApplications() =>
-      _delay(_applications.values.where((a) => a.isPending).toList());
+  Future<void> removeTeamMember(String phone) async {
+    _requireOwner();
+    if (phone == _phone) throw Exception('Apna number khud nahi hata sakte');
+    _team.remove(phone);
+    await _delay(null);
+  }
+
+  // Discount percent per verified mechanic id, set by the owner.
+  final _discounts = <String, int>{demoMechanic.id: 10};
+
+  List<(String id, String garage, String name, String? uid)> get _verifiedMechanics => [
+        (demoMechanic.id, demoMechanic.garageName, demoMechanic.name, null),
+        for (final a in _applications.values)
+          if (a.isApproved && a.mechanicId != null) (a.mechanicId!, a.garageName, a.name, a.uid),
+      ];
+
+  @override
+  Future<List<MechanicDiscount>> mechanicDiscounts() async {
+    _requireOwner();
+    return _delay([
+      for (final m in _verifiedMechanics)
+        MechanicDiscount(mechanicId: m.$1, garageName: m.$2, name: m.$3, uid: m.$4, percent: _discounts[m.$1] ?? 0),
+    ]);
+  }
+
+  @override
+  Future<void> setMechanicDiscount(MechanicDiscount d) async {
+    _requireOwner();
+    if (d.percent < 0 || d.percent > maxMechanicDiscount) throw Exception('Discount 0 se $maxMechanicDiscount% ke beech rakho');
+    _discounts[d.mechanicId] = d.percent;
+    await _delay(null);
+  }
+
+  @override
+  Future<int> myMechanicDiscount() {
+    final a = _applications[_uid ?? 'demo-user'];
+    final id = a != null && a.isApproved ? a.mechanicId : null;
+    return _delay(id == null ? 0 : (_discounts[id] ?? 0));
+  }
+
+  // Mechanic signups, keyed by the mechanic's uid. Only the team (and owner)
+  // can list and verify them, like the real backend.
+  // One sample signup waits for verification.
+  final _applications = <String, MechanicApplication>{'m-imran': demoPendingApplication};
+  int _nextMechanic = 416;
+
+  @override
+  Future<MechanicApplication?> myMechanicApplication() => _delay(_applications[_uid ?? 'demo-user']);
+
+  @override
+  Future<void> submitMechanicApplication(MechanicApplication a) async {
+    final uid = _uid ?? 'demo-user';
+    final existing = _applications[uid];
+    if (existing != null && existing.isApproved) throw Exception('Aap already verified ho');
+    _applications[uid] = MechanicApplication.fromMap(uid, a.toMap(), createdAt: existing?.createdAt ?? DateTime.now());
+    await _delay(null);
+  }
+
+  @override
+  Future<List<MechanicApplication>> pendingMechanicApplications() async {
+    _requireTeam();
+    return _delay(_applications.values.where((a) => a.isPending).toList());
+  }
 
   @override
   Future<String?> reviewMechanicApplication(String uid,
       {required bool approve, String? reason, double? lat, double? lng}) async {
+    _requireTeam();
     final a = _applications[uid];
     if (a == null || !a.isPending) throw Exception('Ye signup already check ho chuka hai');
     final id = approve ? 'BPM-${(_nextMechanic++).toString().padLeft(4, '0')}' : null;
     final updated = approve ? a.copyWith(status: 'approved', mechanicId: id) : a.copyWith(status: 'rejected', reason: reason ?? '');
     _applications[uid] = updated;
-    if (_myApplication?.uid == uid) _myApplication = updated;
     return _delay(id);
   }
 

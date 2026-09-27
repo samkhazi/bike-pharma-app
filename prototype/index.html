@@ -456,9 +456,9 @@ const ACCESS={
  mechanic:['mhome','mshop','mproduct','wallet','credit','pay','purchases','invoices','maccount','notifs'],
  billing:['custview','mechdues','bhome','invoice','receive','usearch','saccount','masterprice','racks','findpart','warreg','scanfind','bills','billview','pendpay'],
  sales:['custview','shome','sorder','stocklist','usearch','saccount','masterprice','racks','scanfind'],
- manager:['mgcards','mgcard','mgtarget','mgver','mgmech','mgmechd','mgnew','mgstock','mgpo','mgorders','mginact','mgsales','mgmargin','bills','mgdues','custview','billview','mghome','approvals','team','usearch','saccount','masterprice','stocklist','rbac','racks','warreg','scanfind'],
+ manager:['mechprofile','mgcards','mgcard','mgtarget','mgver','mgmech','mgmechd','mgnew','mgstock','mgpo','mgorders','mginact','mgsales','mgmargin','bills','mgdues','custview','billview','mghome','approvals','team','usearch','saccount','masterprice','stocklist','rbac','racks','warreg','scanfind'],
  inventory:['mgpo','grnedit','grnview','invlist','ihome','grn','stocklist','usearch','saccount','addproduct','stockmove','racks','warreg','scanfind'],
- admin:['atargets','custview','billview','masterprice','invlist','ahome','users','mfin','afinance','audit','more','usearch','rbac','newstaff','saccount','addproduct','stocklist','racks','warreg','scanfind']};
+ admin:['mechprofile','mgcard','mgmechd','mgdues','atargets','custview','billview','masterprice','invlist','ahome','users','mfin','afinance','audit','more','usearch','rbac','newstaff','saccount','addproduct','stocklist','racks','warreg','scanfind']};
 const DENY={};
 const COMMON=['login','otp','signup','submitted','roleok','rbac'];
 function allowed(s){const r=S.user.role;if(DENY[s]&&DENY[s].includes(r))return false;return COMMON.includes(s)||ACCESS[r].includes(s);}
@@ -1291,7 +1291,8 @@ SCREENS.mginact=()=>{const list=inactiveM();const lost=list.reduce((a,m)=>a+m.av
 const MB={'BP-MECH-1025':{d:[9800,12400],w:[38200,34100],m:[75000,68500]},'BP-MECH-0872':{d:[7400,3100],w:[21600,29800],m:[51400,72300],cat:{'Brake Parts':[14200,26800],'Lubricants':[18600,19400],'Electrical':[6100,12900],'Chain & Sprocket':[8300,9100],'Filters':[4200,4100]}},'BP-MECH-0790':{d:[0,6200],w:[18900,24500],m:[44800,43200]},'BP-MECH-1102':{d:[8600,0],w:[8600,0],m:[8600,0]},'BP-MECH-0918':{d:[0,0],w:[0,0],m:[0,16800]},'BP-MECH-0511':{d:[0,0],w:[0,0],m:[0,21000]},'BP-MECH-0640':{d:[0,0],w:[0,0],m:[0,0]},'BP-MECH-0733':{d:[0,0],w:[0,0],m:[0,0]}};
 const MB_P={d:['Daily','Today','Yesterday'],w:['Weekly','This week','Last week'],m:['Monthly','This month','Last month']};
 const MB_CATS=[['Brake Parts',.3],['Lubricants',.25],['Electrical',.2],['Chain & Sprocket',.15],['Filters',.1]];
-const mbCat=code=>{const b=MB[code];if(b.cat)return b.cat;const o={};MB_CATS.forEach(([c,f])=>o[c]=[Math.round(b.m[0]*f),Math.round(b.m[1]*f)]);return o;};
+const mbCat=code=>{const b=MB[code];if(b.cat)return b.cat;const w={};(typeof MB_ITEMS!=='undefined'&&MB_ITEMS[code]||[]).forEach(([pid,,q])=>{const x=P(pid);if(x)w[x.cat]=(w[x.cat]||0)+q*x.mp;});const tw=Object.values(w).reduce((a,v)=>a+v,0);
+ const sh=tw?Object.entries(w).map(([c,v])=>[c,v/tw]):MB_CATS;const o={};sh.forEach(([c,f])=>o[c]=[Math.round(b.m[0]*f/100)*100,Math.round(b.m[1]*f/100)*100]);return o;};
 const mbParty=code=>PARTY(code);
 const mbRows=per=>Object.keys(MB).map(code=>{const [c,p]=MB[code][per];return{code,m:mbParty(code),c,p,diff:c-p,pct:p?Math.round((c-p)/p*100):null};});
 const mbDropped=per=>mbRows(per).filter(x=>x.p>0&&x.c<x.p*0.9).sort((a,b)=>a.diff-b.diff);
@@ -1446,6 +1447,44 @@ SCREENS.mgcard=(p)=>{const r=rcard(p.code);const col=`var(--${r.g[1]==='b'?'blue
  ${r.weak.length?`<div class="card" style="background:var(--r-soft);border:0;gap:6px"><div class="h3" style="color:var(--r)">Needs work</div><div class="cap">${r.weak.join(' · ')}</div></div>`:''}
  ${sec('What to do')}<div class="card flush">${r.rec.map(t=>li(esc(t),'','','checkC','','')).join('')}</div>
 </div></div><div class="foot"><div class="grid2" style="width:100%"><button class="btn line" onclick="go('mgmechd',{code:'${r.code}'})">Business details</button><button class="btn" onclick="toast('Report card shared with ${esc(r.m.n)} on WhatsApp')">Share</button></div></div>`;};
+/* full mechanic profile (from search) */
+const MECH_INFO={'BP-MECH-1025':{owner:'Ravi Kumar',area:'Rajajinagar 2nd Block',joined:'Mar 2024',staff:3,bays:2,bikes:'Pulsar, Splendor, Platina',wa:1},
+ 'BP-MECH-0872':{owner:'Srinivas S',area:'Basaveshwaranagar',joined:'Aug 2024',staff:2,bays:2,bikes:'Activa, Shine, Jupiter',wa:1},
+ 'BP-MECH-0790':{owner:'Ramesh Babu',area:'Malleshwaram 8th Cross',joined:'Jun 2023',staff:4,bays:3,bikes:'Pulsar, FZ, R15',wa:1},
+ 'BP-MECH-1102':{owner:'Nandish K',area:'Mahalakshmi Layout',joined:'Sep 2026',staff:1,bays:1,bikes:'Pulsar, Platina',wa:1},
+ 'BP-MECH-0918':{owner:'Prakash T',area:'Yeshwanthpur',joined:'Nov 2024',staff:2,bays:1,bikes:'Apache, Jupiter, XL100',wa:0},
+ 'BP-MECH-0511':{owner:'Ganesh Rao',area:'Vijayanagar',joined:'Feb 2025',staff:2,bays:2,bikes:'Splendor, Shine, HF Deluxe',wa:1},
+ 'BP-MECH-0640':{owner:'Imran Pasha',area:'Rajajinagar 5th Block',joined:'Jan 2023',staff:5,bays:4,bikes:'Classic 350, Bullet, Hunter',wa:1},
+ 'BP-MECH-0733':{owner:'Joseph D',area:'Malleshwaram',joined:'Apr 2025',staff:2,bays:2,bikes:'Classic 350, Meteor',wa:0}};
+const trend6=code=>{const b=MB[code]||{m:[0,0]};const a=Math.max(b.m[1],b.m[0]);const seed=code.charCodeAt(code.length-1)%5;const base=[.86,.97,1.04,.92,1.0].map((f,i)=>Math.round(a*f*(1+((seed+i)%3-1)*.04)/100)*100);
+ const inact=PARTY(code).last>=30;return [...base.slice(0,4).map((v,i)=>inact&&i>=4-Math.floor(PARTY(code).last/30)?0:v),Math.round(b.m[1]*30/27/100)*100,b.m[0]];};
+function brandsOf(code){const o={};(MB_ITEMS[code]||[]).forEach(([pid,,q])=>{const x=P(pid);if(!x)return;const k=x.pack||x.brand;o[k]=(o[k]||0)+q*x.mp;});const t=Object.values(o).reduce((a,v)=>a+v,0)||1;return Object.entries(o).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,v,Math.round(v/t*100)]);}
+SCREENS.mechprofile=(p)=>{const code=p.code;const m=PARTY(code);const inf=MECH_INFO[code]||{};const b=MB[code]||{d:[0,0],w:[0,0],m:[0,0]};const v=vInfo(code);const isM=MECHS.some(x=>x.code===code);const rc=rcard(code);
+ const its=mechItems(code).sort((a,c)=>c.r[1]-a.r[1]);const br=brandsOf(code);const cats=Object.entries(mbCat(code)).sort((a,c)=>c[1][0]-a[1][0]);const tr=trend6(code);const mx=Math.max(...tr,1);
+ const mn=Array.from({length:6},(_,i)=>{const d=new Date();d.setMonth(d.getMonth()-5+i);return MON[d.getMonth()];});
+ const avg3=Math.round((tr[2]+tr[3]+tr[4])/3);const out=isM?mechDue(code):0;const od=isM?overdueOf(code):[];const pd=PAYDAYS[code];
+ const pc=(c,p)=>{const x={c,p,pct:p?Math.round((c-p)/p*100):null};return chg(x);};
+ const stat=(l,val,sub)=>`<div class="stat" style="padding:10px 12px"><span class="micro muted">${l}</span><b class="num" style="font-size:17px">${val}</b><span>${sub||''}</span></div>`;
+ return bar('Mechanic profile')+`<div class="scroll"><div class="pad">
+ <div class="dark-card" style="gap:10px"><div class="row"><div class="tile y round" style="width:52px;height:52px;font-weight:800;color:var(--ink)">${esc(m.n.split(' ').slice(0,2).map(w=>w[0]).join(''))}</div><div class="grow"><div class="h3" style="color:#fff">${esc(m.n)}</div><div class="cap" style="color:var(--ink3)">${code}${inf.owner?' · '+esc(inf.owner):''}</div></div></div>
+  <div class="row wrap" style="gap:6px"><span class="pill y">Grade ${rc.g[0]}${rc.isNew?'':' · '+rc.score+'/100'}</span>${v?`<span class="pill b">✓ Verified ${v.tier}</span>`:'<span class="pill a">Not verified</span>'}${blockedPill(code)}${m.last>=30?`<span class="pill r">No purchase ${m.last} days</span>`:''}</div>
+  <div class="grid2" style="gap:8px">${[['Mobile',m.ph||'—'],['Area',inf.area||'—'],['Customer since',inf.joined||'—'],['Last purchase',m.last===undefined?'—':agoTxt(m.last)]].map(([a,c])=>`<div><div class="micro" style="color:var(--ink3)">${a}</div><b style="color:#fff;font-size:13px">${esc(c)}</b></div>`).join('')}</div>
+  <div class="grid3" style="gap:8px"><button class="btn sm" style="width:100%" onclick="toast('Calling ${m.ph}…')">${ic('phone','s16')} Call</button><button class="btn sm line" style="width:100%;background:#fff" onclick="toast('${inf.wa?'Opening WhatsApp…':'Not on WhatsApp'}')">WhatsApp</button><button class="btn sm line" style="width:100%;background:#fff" onclick="mgTask('mech','${code}')">Task</button></div></div>
+ ${sec('Business')}
+ <div class="grid2">${stat('Today',inr(b.d[0]),pc(b.d[0],b.d[1]))}${stat('This week',inr(b.w[0]),pc(b.w[0],b.w[1]))}${stat('This month',inr(b.m[0]),pc(b.m[0],b.m[1]))}${stat('Avg / month',inr(avg3),'<span class="cap">last 3 months</span>')}</div>
+ <div class="card"><div class="sec"><span class="h3">Last 6 months</span><span class="cap">₹ thousand</span></div><div class="cbars">${tr.map((x,i)=>`<div><span class="num">${Math.round(x/1000)}</span><i style="height:${Math.max(2,x/mx*80)}%"></i>${mn[i]}</div>`).join('')}</div></div>
+ ${its.length?`<div class="sec"><h3 class="h2">Buys most</h3><span class="cap">by number of times</span></div>
+ <div class="card flush">${its.slice(0,5).map(({r,x,st})=>`<div class="li"><div class="tile sm n">${ic(x.ic,'s18')}</div><div class="grow"><div class="t">${esc(x.name)}</div><div class="s">${r[1]}× · ${r[2]} pcs · ${r[4]?'every '+r[4]+' days':'first time'} · last ${agoTxt(r[3])}</div></div><span class="pill ${st[1]}">${st[0]}</span></div>`).join('')}</div>`:''}
+ ${br.length?`<div class="sec"><h3 class="h2">Comes to us for</h3><span class="cap">brand share of purchases</span></div>
+ <div class="card">${br.map(([k,val,pct])=>`<div class="stack" style="gap:4px"><div class="kv"><span><b>${esc(k)}</b></span><span class="num">${inrS(val)} <span class="cap">${pct}%</span></span></div><div class="prog" style="height:6px"><i style="width:${pct}%"></i></div></div>`).join('')}<div class="cap">Top brand: <b>${esc(br[0][0])}</b> — keep it in stock for them.</div></div>`:''}
+ ${sec('Category · this month')}
+ <div class="card">${mgBars(cats.map(([c,[a]])=>[c,a]),Math.max(1,cats.reduce((a,[,[x]])=>a+x,0)),'var(--blue)')}</div>
+ ${sec('Credit & payments')}
+ <div class="card"><div class="kv"><span>Outstanding</span><span style="color:${out?'var(--r)':'var(--g)'}">${inr(out)}</span></div><div class="kv"><span>Credit limit</span><span>${v?inr(v.limit):'No credit (not verified)'}</span></div><div class="kv"><span>Overdue</span><span style="color:${od.length?'var(--r)':'var(--g)'}">${od.length?od.length+' invoice'+(od.length>1?'s':'')+' · '+inr(od.reduce((a,x)=>a+x.amt-x.paid,0)):'None'}</span></div><div class="kv"><span>Usually pays in</span><span>${pd?pd+' days':'—'}</span></div>${code==='BP-MECH-1025'?`<div class="kv"><span>Wallet balance</span><span style="color:var(--g)">${inr(walletBal())}</span></div>`:''}</div>
+ ${sec('Workshop')}
+ <div class="card"><div class="kv"><span>Speciality</span><span>${esc(m.sp||'—')}</span></div><div class="kv"><span>Bikes mostly serviced</span><span>${esc(inf.bikes||'—')}</span></div><div class="kv"><span>Mechanics / bays</span><span>${inf.staff||'—'} / ${inf.bays||'—'}</span></div><div class="kv"><span>Handled by</span><span>Arjun Nayak · Sales</span></div></div>
+ ${allowed('mgcard')?`<div class="grid2"><button class="btn line" onclick="go('mgcard',{code:'${code}'})">Report card · ${rc.g[0]}</button><button class="btn line" onclick="go('mgmechd',{code:'${code}'})">Full business</button></div>`:''}
+</div></div>`;};
 const MG_BRANCHES=[{n:'Rajajinagar',a:'No. 14, 5th Block, Rajajinagar, Bengaluru 560010',st:9,mgr:'You',h:'9:00 AM – 8:30 PM'},{n:'Malleshwaram',a:'18th Cross, Malleshwaram, Bengaluru 560055',st:7,mgr:'Kiran Rao',h:'9:00 AM – 8:00 PM'},{n:'Yeshwanthpur',a:'Tumkur Rd, Yeshwanthpur, Bengaluru 560022',st:6,mgr:'Sunil Gowda',h:'9:30 AM – 8:00 PM'}];
 const MG_DATA={today:{sales:126400,bills:38,chg:'+12% vs yesterday',gm:'22.4%',gmv:28300,chart:{t:'Today by hour (₹ thousand)',l:['10','11','12','1','2','3','4','5','6','7'],v:[6,11,14,9,12,16,18,15,13,12]},mech:[['Ravi Kumar Auto Works','BP-MECH-1025',9800,'Silver',''],['Sri Sai Motors','BP-MECH-0872',7400,'Silver',''],['Bullet Point Garage','BP-MECH-0640',5200,'Gold','y']]},
  month:{sales:2840000,bills:1046,chg:'Target ₹35 L · 81%',gm:'22.8%',gmv:647000,target:3500000,chart:{t:'September by week (₹ lakh)',l:['W1','W2','W3','W4'],v:[6.2,7.1,7.4,7.7]},mech:[['Ravi Kumar Auto Works','BP-MECH-1025',75000,'Silver',''],['Bullet Point Garage','BP-MECH-0640',68200,'Gold','y'],['Sri Sai Motors','BP-MECH-0872',51400,'Silver','']]}};
@@ -1513,7 +1552,7 @@ SCREENS.saccount=()=>{const u=S.user;return `<div class="scroll"><div class="pad
 function searchIndex(){const r=S.user.role;const all=[];
  const cv=r!=='inventory';const cust=[['Anjali Rao','Customer · +91 89518 60708 · 8951860708 · KA 02 HM 4521','user',cv?"go('custview',{mob:'8951860708',n:'Anjali Rao'})":''],['Suresh Rao','Customer · +91 98450 14521 · 9845014521','user',cv?"go('custview',{mob:'9845014521',n:'Suresh Rao'})":''],
   ...Object.entries(ACC()).filter(([k,a])=>a.role==='customer'&&!['8951860708','9845014521'].includes(k)).map(([k,a])=>[a.name||'+91 '+k,'Customer · +91 '+k,'user',cv?`go('custview',{mob:'${k}'})`:''])];
- const mech=MECHS.map(m=>[m.n,'Mechanic · '+m.code+' · outstanding '+inr(mechDue(m.code)),'wrench',r==='admin'?`go('mfin',{n:'${m.n}'})`:r==='billing'?`go('mechdues',{code:'${m.code}'})`:'']);
+ const full=r==='manager'||r==='admin';const mech=(full?Object.keys(MB):MECHS.map(m=>m.code)).map(c=>{const m=PARTY(c);const inf=MECH_INFO[c]||{};return [m.n,'Mechanic · '+c+' · '+(m.ph||'')+(inf.owner?' · '+inf.owner:'')+(inf.area?' · '+inf.area:'')+(MECHS.some(x=>x.code===c)?' · outstanding '+inr(mechDue(c)):''),'wrench',full?`go('mechprofile',{code:'${c}'})`:r==='billing'?`go('mechdues',{code:'${c}'})`:''];});
  const staff=Object.entries(ACC()).filter(([,a])=>a.sid).map(([k,a])=>[a.name,a.label+' · '+a.sid+' · '+k,'user']);
  const bv=['billing','manager','admin'].includes(r);const inv=[...DB.bills.map(b=>[b.id,b.p+' · '+inr(b.amt)+' · '+b.pm,'file',bv?`go('billview',{id:'${b.id}'})`:'']),...MECHS.flatMap(m=>mechInvs(m.code).filter(v=>!DB.bills.some(b=>b.id===v.id)).map(v=>[v.id,m.n+' · credit · '+inr(v.amt)+(v.amt>v.paid?' · due '+inr(v.amt-v.paid):' · paid'),'file',r==='billing'?`go('mechdues',{code:'${m.code}'})`:'']))];
  const ord=DB.orders.map(o=>[o.id,'Order · '+o.st+' · '+inr(o.amt),'package']);

@@ -32,6 +32,7 @@ class ProfileScreen extends StatelessWidget {
 
     final menu = <(String, VoidCallback)>[
       ('My orders', () => context.go('/orders')),
+      ('Warranty tracker', () => context.push('/warranty')),
       ('Service history', () => context.go('/orders')),
       ('Saved addresses', soon),
       ('Wishlist', soon),

@@ -51,6 +51,20 @@ Money is always stored as **integer paise** (₹1 = 100). Timestamps are Firesto
 
 App rule from Sam: Shop and search show only products where `fitsAll == true` or `fits` contains the customer's active vehicle `fitKey`.
 
+### `warranties/{warrantyId}` (written by the shop / admin when a warranty-covered part is billed)
+
+| field | type | notes |
+|---|---|---|
+| uid | string | customer who bought it |
+| billNo | string | shop bill number, e.g. `BP-24117` |
+| productName, brand | string | |
+| serial | string? | serial number printed on the part (batteries etc.) |
+| vehicle | string? | e.g. `Honda Shine 125 · BS6` |
+| purchasedAt | timestamp | bill date; warranty starts here |
+| months | number | warranty length |
+
+The app's Warranty tracker (Profile > Warranty tracker) lists these, shows days left, and lets the customer start a claim on WhatsApp.
+
 ### `orders/{orderId}` (created only by the `placeOrder` function)
 | field | type |
 |---|---|

@@ -181,6 +181,51 @@ class ShopOrder {
       items.isEmpty ? 'Order' : items.length == 1 ? items.first.name : '${items.first.name} + ${items.length - 1} more';
 }
 
+enum WarrantyStatus { active, endingSoon, expired }
+
+/// One warranty-covered part, saved against the shop bill it was sold on.
+class WarrantyItem {
+  final String id;
+  final String billNo;
+  final String productName, brand;
+  final String? serial;
+  final String? vehicle; // e.g. "Honda Shine 125 · BS6"
+  final DateTime purchasedAt;
+  final int months;
+
+  const WarrantyItem({
+    required this.id,
+    required this.billNo,
+    required this.productName,
+    required this.brand,
+    required this.purchasedAt,
+    required this.months,
+    this.serial,
+    this.vehicle,
+  });
+
+  DateTime get endsAt => DateTime(purchasedAt.year, purchasedAt.month + months, purchasedAt.day);
+
+  int daysLeft([DateTime? now]) {
+    final n = now ?? DateTime.now();
+    return endsAt.difference(DateTime(n.year, n.month, n.day)).inDays;
+  }
+
+  WarrantyStatus status([DateTime? now]) {
+    final d = daysLeft(now);
+    if (d < 0) return WarrantyStatus.expired;
+    if (d <= 30) return WarrantyStatus.endingSoon;
+    return WarrantyStatus.active;
+  }
+
+  /// 0..1 share of the warranty period already used.
+  double used([DateTime? now]) {
+    final total = endsAt.difference(purchasedAt).inDays;
+    if (total <= 0) return 1;
+    return (1 - daysLeft(now) / total).clamp(0.0, 1.0);
+  }
+}
+
 class ServiceBooking {
   final String id, vehicleId, serviceType, date, slot, status;
   final bool pickup;

@@ -1,6 +1,7 @@
 import 'package:bike_pharma/data/app_state.dart';
 import 'package:bike_pharma/data/demo_repository.dart';
 import 'package:bike_pharma/models/models.dart';
+import 'package:bike_pharma/screens/account/warranty_screen.dart';
 import 'package:bike_pharma/screens/extras/bike_doctor_screen.dart';
 import 'package:bike_pharma/screens/extras/mechanic_profile_screen.dart';
 import 'package:flutter/material.dart';
@@ -91,5 +92,45 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pumpAndSettle();
     expect(find.text('Ye mechanic verified nahi hai ya ID galat hai'), findsOneWidget);
+  });
+
+  group('Warranty tracker', () {
+    final now = DateTime(2026, 9, 27);
+
+    test('status follows days left', () {
+      WarrantyItem item(int daysAgo, int months) => WarrantyItem(
+            id: 'x',
+            billNo: 'BP-1',
+            productName: 'Battery',
+            brand: 'Exide',
+            months: months,
+            purchasedAt: now.subtract(Duration(days: daysAgo)),
+          );
+      expect(item(10, 24).status(now), WarrantyStatus.active);
+      expect(item(170, 6).status(now), WarrantyStatus.endingSoon);
+      expect(item(200, 6).status(now), WarrantyStatus.expired);
+      expect(item(200, 6).used(now), 1);
+      expect(item(0, 12).used(now), 0);
+    });
+
+    test('demo data has one of each status', () {
+      final s = demoWarranties(now).map((w) => w.status(now)).toSet();
+      expect(s, {WarrantyStatus.active, WarrantyStatus.endingSoon, WarrantyStatus.expired});
+    });
+
+    testWidgets('lists parts with days left and a claim button', (tester) async {
+      tester.view.physicalSize = const Size(1080, 3200);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(_wrap(const WarrantyScreen()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Warranty tracker'), findsOneWidget);
+      expect(find.text('Battery 12V 5Ah'), findsOneWidget);
+      expect(find.text('ENDING SOON'), findsOneWidget);
+      expect(find.text('EXPIRED'), findsOneWidget);
+      expect(find.byKey(const Key('claim-w2')), findsOneWidget);
+      expect(find.byKey(const Key('claim-w4')), findsNothing); // expired: no claim
+    });
   });
 }

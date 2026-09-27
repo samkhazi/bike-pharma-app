@@ -61,4 +61,7 @@ abstract class Repository {
 
   // Mechanics
   Future<Mechanic?> mechanic(String id);
+
+  // Warranty tracker: warranty-covered parts from this customer's bills
+  Future<List<WarrantyItem>> warranties();
 }

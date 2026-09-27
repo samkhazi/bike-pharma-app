@@ -168,6 +168,23 @@ class DemoRepository implements Repository {
 
   @override
   Future<Mechanic?> mechanic(String id) => _delay(id == demoMechanic.id ? demoMechanic : null);
+
+  @override
+  Future<List<WarrantyItem>> warranties() => _delay(demoWarranties(DateTime.now()));
+}
+
+/// Sample bills dated relative to [now] so the demo always shows one active,
+/// one ending soon and one expired part.
+List<WarrantyItem> demoWarranties(DateTime now) {
+  final today = DateTime(now.year, now.month, now.day);
+  DateTime ago(int days) => today.subtract(Duration(days: days));
+  const bike = 'Honda Shine 125 · BS6';
+  return [
+    WarrantyItem(id: 'w1', billNo: 'BP-25302', productName: 'Full Face Helmet', brand: 'Steelbird', months: 12, purchasedAt: ago(40), vehicle: bike),
+    WarrantyItem(id: 'w2', billNo: 'BP-24117', productName: 'Battery 12V 5Ah', brand: 'Exide Xplore', serial: 'EXB5-7Q2291', months: 24, purchasedAt: ago(214), vehicle: bike),
+    WarrantyItem(id: 'w3', billNo: 'BP-24117', productName: 'Self Starter Relay', brand: 'Minda', serial: 'MR-55120', months: 8, purchasedAt: ago(225), vehicle: bike),
+    WarrantyItem(id: 'w4', billNo: 'BP-24117', productName: 'Headlight Bulb 35/35W', brand: 'Philips', months: 6, purchasedAt: ago(214), vehicle: bike),
+  ];
 }
 
 const _shine = 'honda|shine 125';

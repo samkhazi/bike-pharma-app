@@ -257,4 +257,26 @@ class FirebaseRepository implements Repository {
     final m = Mechanic.fromMap(d.id, d.data()!);
     return m.verified ? m : null;
   }
+
+  @override
+  Future<List<WarrantyItem>> warranties() async {
+    final q = await _db
+        .collection('warranties')
+        .where('uid', isEqualTo: _uid)
+        .orderBy('purchasedAt', descending: true)
+        .get();
+    return q.docs.map((d) {
+      final m = d.data();
+      return WarrantyItem(
+        id: d.id,
+        billNo: m['billNo'] ?? '',
+        productName: m['productName'] ?? '',
+        brand: m['brand'] ?? '',
+        serial: m['serial'],
+        vehicle: m['vehicle'],
+        purchasedAt: (m['purchasedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        months: (m['months'] as num?)?.toInt() ?? 0,
+      );
+    }).toList();
+  }
 }

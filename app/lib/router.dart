@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import 'screens/account/orders_screen.dart';
 import 'screens/account/profile_screen.dart';
+import 'screens/account/warranty_screen.dart';
 import 'screens/extras/bike_doctor_screen.dart';
 import 'screens/extras/mechanic_profile_screen.dart';
 import 'screens/extras/scan_mechanic_screen.dart';
@@ -49,6 +50,7 @@ GoRouter buildRouter() => GoRouter(
         GoRoute(path: '/modify', builder: (_, _) => const ModifyScreen()),
         GoRoute(path: '/bike-doctor', builder: (_, _) => const BikeDoctorScreen()),
         GoRoute(path: '/scan', builder: (_, _) => const ScanMechanicScreen()),
+        GoRoute(path: '/warranty', builder: (_, _) => const WarrantyScreen()),
         GoRoute(path: '/mechanic/:id', builder: (_, s) => MechanicProfileScreen(id: s.pathParameters['id']!)),
       ],
     );

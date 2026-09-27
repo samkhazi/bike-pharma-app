@@ -368,6 +368,9 @@ const MECHS=[{n:'Ravi Kumar Auto Works',i:'RK',sp:'Bajaj · Hero specialist · 1
 const SERVICES=[['General Service','wrench',650],['Oil Change','droplet',150],['Brake Service','shield',350],['Engine Work','sliders',1200],['Electrical','zap',400],['Suspension','activity',800],['Chain Service','link',250],['Tyre Service','disc',200],['Pickup & Drop','truck',99],['Other Repairs','clip',0]];
 
 /* ---------- persistent demo data ---------- */
+const SEED_BILLS=[{id:'INV-2026-00251',p:'Walk-in',kind:'walk',t:'11:42 AM',pm:'UPI',amt:449,items:[{pid:'p1',q:1,r:449,mrp:549}]},
+ {id:'INV-2026-00250',p:'BP-MECH-1025',kind:'mech',pname:'Ravi Kumar Auto Works',t:'11:05 AM',pm:'Cash',amt:7176,items:[{pid:'p2',q:12,r:598,mrp:760}]},
+ {id:'INV-2026-00249',p:'Anjali Rao',kind:'cust',mob:'8951860708',t:'10:31 AM',pm:'Cash',amt:310,items:[{pid:'p5',q:2,r:155,mrp:175}]}];
 function seed(){return{
  cart:[{id:'p1',q:1},{id:'p2',q:1}],wish:['p4','p8'],coupon:null,
  orders:[{id:'BP-ORD-2026-09877',d:'14 Sep 2026',items:1,amt:2250,pm:'Card',st:'Delivered'},{id:'BP-ORD-2026-09120',d:'02 Sep 2026',items:2,amt:540,pm:'COD',st:'Processing'}],
@@ -376,8 +379,8 @@ function seed(){return{
  cl:[{d:'10 Sep',inv:'INV-001',buy:25000},{d:'15 Sep',inv:'INV-015',buy:40000},{d:'20 Sep',ref:'UPI · TXN-8812',pay:25000}],
  minv:[{id:'INV-001',d:'10 Sep',amt:25000,paid:25000},{id:'INV-015',d:'15 Sep',amt:40000,paid:0,due:'15 Oct'}],
  approvals:[{id:1,t:'Stock adjustment',d:'BP-RNR-INV-002 · 2 damaged rotors · −₹3,780',ic:'sliders',st:'pending'},{id:2,t:'Return request',d:'INV-2026-00231 · brake lever · ₹210',ic:'history',st:'pending'},{id:3,t:'Extra discount 5%',d:'BP-RNR-SAL-004 · QT-118 Sri Sai Motors',ic:'tag',st:'pending'}],
- audit:[{who:'BP-RNR-BIL-001',a:'Invoice edited',e:'INV-2026-00251',o:'₹4,500',n:'₹4,250',t:'27 Sep 2026 · 11:48 AM'},{who:'BP-HQ-ADM-001',a:'Wallet adjusted',e:'BP-MECH-0872',o:'₹1,650',n:'₹2,150',t:'27 Sep 2026 · 11:20 AM'},{who:'BP-HQ-ADM-001',a:'Master price changed',e:'BP-BRK-0457 MRP',o:'₹529',n:'₹549',t:'26 Sep 2026 · 6:12 PM'}],
- bills:[{id:'INV-2026-00251',p:'Walk-in',t:'11:42 AM',pm:'UPI',amt:4250},{id:'INV-2026-00249',p:'Anjali Rao',t:'10:31 AM',pm:'Cash',amt:1376}],
+ audit:[{who:'BP-RNR-BIL-001',a:'Invoice edited',e:'INV-2026-00251',o:'₹474',n:'₹449',t:'27 Sep 2026 · 11:48 AM'},{who:'BP-HQ-ADM-001',a:'Wallet adjusted',e:'BP-MECH-0872',o:'₹1,650',n:'₹2,150',t:'27 Sep 2026 · 11:20 AM'},{who:'BP-HQ-ADM-001',a:'Master price changed',e:'BP-BRK-0457 MRP',o:'₹529',n:'₹549',t:'26 Sep 2026 · 6:12 PM'}],
+ bills:SEED_BILLS.map(b=>({...b,items:b.items.map(i=>({...i}))})),
  stock:{p1:23,p2:48,p3:40,p4:15,p5:62,p6:9,p7:0,p8:3},
  accounts:{},
  moves:[{t:'9:10 AM',type:'in',pid:'p5',q:20,ref:'GRN-0411',note:'Stock in · Bajaj distributor'},{t:'9:10 AM',type:'in',pid:'p2',q:24,ref:'GRN-0411',note:'Stock in · Bajaj distributor'},{t:'10:31 AM',type:'out',pid:'p5',q:2,ref:'INV-2026-00249',note:'Billed · Anjali Rao'},{t:'11:05 AM',type:'out',pid:'p2',q:12,ref:'INV-2026-00250',note:'Billed · BP-MECH-1025'},{t:'11:20 AM',type:'in',pid:'p3',q:1,ref:'RET-0087',note:'Returned · wrong part'},{t:'11:42 AM',type:'out',pid:'p1',q:1,ref:'INV-2026-00251',note:'Billed · Walk-in'}],grns:[{id:'GRN-0411',supplier:'Bajaj Auto Spares Distributor',inv:'BAS-5510',billAmt:'14680',date:'27 Sep',status:'posted',postedAt:'27 Sep · 9:10 AM by BP-RNR-INV-002',note:'',items:[{pid:'p5',exp:20,q:20,rate:110},{pid:'p2',exp:24,q:24,rate:520}]},{id:'GRN-0412',supplier:'Bosch Auto Parts – Bengaluru',inv:'SUP-77120',billAmt:'45400',date:'27 Sep · 9:40 AM',status:'pending',note:'',items:[{pid:'p1',exp:30,q:30,rate:300},{pid:'p4',exp:20,q:15,rate:1400},{pid:'p3',exp:40,q:40,rate:210}]}],
@@ -385,7 +388,7 @@ function seed(){return{
  bins:{p1:'A-3-12',p2:'L-2-01',p3:'A-3-14',p4:'A-4-02',p5:'F-1-05',p6:'C-2-08',p7:'C-1-04',p8:'E-1-02'},
  notifs:0};}
 let DB;
-function load(){try{const s=localStorage.getItem('bp-db');DB=s?JSON.parse(s):seed();}catch(e){DB=seed();}if(!DB.accounts)DB.accounts={};if(!DB.moves){DB.moves=seed().moves;}if(!DB.grns){DB.grns=seed().grns;if(DB.grnPending===false)DB.grns[1].status='posted';}if(!DB.warranties)DB.warranties=seed().warranties;if(!DB.bins)DB.bins={p1:'A-3-12',p2:'L-2-01',p3:'A-3-14',p4:'A-4-02',p5:'F-1-05',p6:'C-2-08',p7:'C-1-04',p8:'E-1-02'};(DB.newProducts||[]).forEach(p=>{if(!P(p.id))PRODUCTS.push(p);});}
+function load(){try{const s=localStorage.getItem('bp-db');DB=s?JSON.parse(s):seed();}catch(e){DB=seed();}if(!DB.accounts)DB.accounts={};if(!DB.moves){DB.moves=seed().moves;}if(!DB.grns){DB.grns=seed().grns;if(DB.grnPending===false)DB.grns[1].status='posted';}if(!DB.warranties)DB.warranties=seed().warranties;DB.bills.forEach(b=>{if(!b.items){const sb=SEED_BILLS.find(x=>x.id===b.id);if(sb)Object.assign(b,JSON.parse(JSON.stringify(sb)));else b.items=[];}});SEED_BILLS.forEach(sb=>{if(!DB.bills.some(b=>b.id===sb.id))DB.bills.push(JSON.parse(JSON.stringify(sb)));});if(!DB.bins)DB.bins={p1:'A-3-12',p2:'L-2-01',p3:'A-3-14',p4:'A-4-02',p5:'F-1-05',p6:'C-2-08',p7:'C-1-04',p8:'E-1-02'};(DB.newProducts||[]).forEach(p=>{if(!P(p.id))PRODUCTS.push(p);});}
 function save(){try{localStorage.setItem('bp-db',JSON.stringify(DB));}catch(e){}}
 function audit(a,e,o,n){const now=new Date();DB.audit.unshift({who:S.user.sid||S.user.label,a,e,o,n,t:now.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+' · '+now.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})});}
 const walletEarned=()=>DB.wl.reduce((a,x)=>a+(x.cr||0),0);
@@ -435,7 +438,7 @@ function closeSheet(){document.querySelectorAll('.scrim').forEach(x=>x.remove())
 const ACCESS={
  customer:['home','shop','list','product','cart','checkout','placed','orders','service','book','booking','garage','vehicle','warranty','offers','wishlist','notifs','qr','account','addresses'],
  mechanic:['mhome','mshop','mproduct','wallet','credit','pay','purchases','invoices','maccount','notifs'],
- billing:['bhome','invoice','receive','usearch','saccount','masterprice','racks','findpart','warreg','scanfind'],
+ billing:['bhome','invoice','receive','usearch','saccount','masterprice','racks','findpart','warreg','scanfind','bills','billview','pendpay'],
  sales:['shome','sorder','stocklist','usearch','saccount','masterprice','racks','scanfind'],
  manager:['mghome','approvals','team','usearch','saccount','stocklist','rbac','racks','warreg','scanfind'],
  inventory:['grnedit','grnview','invlist','ihome','grn','stocklist','usearch','saccount','addproduct','stockmove','racks','warreg','scanfind'],
@@ -765,13 +768,13 @@ SCREENS.maccount=()=>`<div class="scroll"><div class="pad"><h1 class="h1">Reward
 </div></div>`;
 
 /* ---------- STAFF ---------- */
-SCREENS.bhome=()=>{const sales=DB.bills.reduce((a,b)=>a+b.amt,0)+80000;return `<div class="scroll"><div class="pad">${staffHead()}
- <div class="grid2">${statTile('y',"Today's sales",inr(sales),(DB.bills.length+22)+' bills')}${statTile('','Pending payments','3',inr(18600)+' to collect')}${statTile('g','Cash collected',inr(31400),'Counter 1')}${statTile('b','UPI collected',inr(52850),'19 txns')}</div>
+SCREENS.bhome=()=>{const sales=DB.bills.reduce((a,b)=>a+b.amt,0);const pend=pendingInv();const c=collected('Cash'),u=collected('UPI');return `<div class="scroll"><div class="pad">${staffHead()}
+ <div class="grid2">${tileBtn('y',"Today's sales",inr(sales),DB.bills.length+' bill'+(DB.bills.length===1?'':'s'),"S.ui.bf=null;go('bills',{f:'All'})")}${tileBtn('','Pending payments',String(pend.length),inr(pend.reduce((a,v)=>a+v.amt-v.paid,0))+' to collect',"go('pendpay')")}${tileBtn('g','Cash collected',inr(c.total),c.rows.length+' entr'+(c.rows.length===1?'y':'ies'),"S.ui.bf=null;go('bills',{f:'Cash'})")}${tileBtn('b','UPI collected',inr(u.total),u.rows.length+' txn'+(u.rows.length===1?'':'s'),"S.ui.bf=null;go('bills',{f:'UPI'})")}</div>
  <button class="row card" style="flex-direction:row;background:var(--r-soft);border:0;text-align:left" onclick="tab('receive')"><div class="tile r">${ic('receipt','s20')}</div><div class="grow"><div class="h3">Mechanic outstanding</div><div class="cap">Ravi Kumar Auto Works · tap to receive</div></div><b style="color:var(--r)" class="num">${inr(outstanding())}</b></button>
  ${sec('Quick actions')}
  <div class="grid3">${[['Create invoice','file',"tab('invoice')"],['Receive payment','rupee',"tab('receive')"],['Scan to find','scan',"S.ui.scanHit=null;S.ui.scanMiss=null;go('scanfind')"],['Find Part','pin',"S.ui.fp=null;S.ui.fpA=null;go('findpart')"],['Warranty register','shield',"S.ui.wf='All';S.ui.wq='';go('warreg')"],['Master pricing','lock',"lockedInfo('Master pricing')"]].map(([l,i,o])=>`<button class="qa2 ${i==='lock'?'locked':''}" onclick="${o}"><span class="tile sm ${i==='lock'?'n':''}">${ic(i,'s20')}</span>${l}${i==='lock'?'<span class="pill">Admin only</span>':''}</button>`).join('')}</div>
  ${sec('Recent bills')}
- <div class="card flush">${DB.bills.slice(0,4).map(b=>li(b.id+' · '+b.p,b.t+' · '+b.pm,`<b class="num">${inr(b.amt)}</b>`,'file','',b.pm==='Credit'?'r':'')).join('')}</div>
+ <div class="card flush">${DB.bills.slice(0,4).map(billLi).join('')}</div>${DB.bills.length>4?`<button class="link" style="align-self:center" onclick="S.ui.bf=null;go('bills',{f:'All'})">View all ${DB.bills.length} bills</button>`:''}
  <div class="row cap" style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px">${ic('lock','s16')}<span class="grow">Billing role: no access to salary, admin settings, master pricing or role management.</span></div>
 </div></div>`;};
 SCREENS.masterprice=()=>'';
@@ -790,13 +793,40 @@ SCREENS.invoice=()=>{const inv=S.ui.inv||(S.ui.inv={party:'cust',mob:'8951860708
  <div class="grid4">${['Cash','UPI',...(mech?['Credit']:[]),'Split'].map(m=>`<button class="chip ${inv.pm===m?'on':''}" style="justify-content:center" onclick="S.ui.inv.pm='${m}';refresh()">${m}</button>`).join('')}</div>
 </div></div><div class="foot"><div class="sum">${inv.pm==='Credit'?'Adds to mechanic outstanding':'Paid via '+inv.pm}<b>${inr(tot)}</b></div><button class="btn" onclick="genInvoice(${tot})" ${tot?'':'disabled'}>Generate invoice</button></div>`;};
 function addInvItem(){sheet(`<h3 class="h2">Add item</h3><div class="card flush">${PRODUCTS.map(x=>li(x.name,x.pn+' · stock '+DB.stock[x.id],'',x.ic,`S.ui.inv.items['${x.id}']=(S.ui.inv.items['${x.id}']||0)+1;closeSheet();refresh()`)).join('')}</div>`);}
+const KIND_L={cust:'Customer',cxm:'CX with Mech',mech:'Mechanic',walk:'Walk-in'};
+const billLi=b=>li(b.id+' · '+esc(b.p),b.t+' · '+b.pm+(b.kind?' · '+KIND_L[b.kind]:''),`<b class="num">${inr(b.amt)}</b>`,'file',`go('billview',{id:'${b.id}'})`,b.pm==='Credit'?'r':'');
+const pendingInv=()=>DB.minv.filter(v=>v.amt>v.paid);
+function collected(pm){const rows=[...DB.bills.filter(b=>b.pm===pm).map(b=>({b,t:b.t,amt:b.amt})),...DB.cl.filter(x=>x.pay&&x.d===today()&&String(x.ref).startsWith(pm+' ')).map(x=>({rc:x,t:x.d,amt:x.pay}))];return{rows,total:rows.reduce((a,x)=>a+x.amt,0)};}
+SCREENS.bills=(p)=>{const f=S.ui.bf||p.f||'All';const list=f==='All'?DB.bills:DB.bills.filter(b=>b.pm===f);const col=f==='Cash'||f==='UPI'?collected(f):null;const recs=col?col.rows.filter(x=>x.rc):[];
+ return bar(f==='All'?"Today's bills":f+' collected')+`<div class="scroll"><div class="pad">
+ <div class="row wrap" style="gap:8px">${['All','Cash','UPI','Credit','Split'].map(m=>`<button class="chip ${f===m?'on':''}" onclick="S.ui.bf='${m}';refresh()">${m}</button>`).join('')}</div>
+ <div class="card"><div class="kv"><span>${f==='All'?'Bills today':f+' bills'}</span><span>${list.length}</span></div><div class="kv"><span>Bill amount</span><span>${inr(list.reduce((a,b)=>a+b.amt,0))}</span></div>${recs.length?`<div class="kv"><span>Mechanic payments received</span><span>${inr(recs.reduce((a,x)=>a+x.amt,0))}</span></div>`:''}${col?`<div class="hr"></div><div class="kv big"><span>Total ${f} collected</span><span>${inr(col.total)}</span></div>`:''}</div>
+ <div class="card flush">${list.map(billLi).join('')||'<div class="empty">No '+f+' bills today</div>'}</div>
+ ${recs.length?`${sec('Payments received from mechanics')}<div class="card flush">${recs.map(x=>li(esc(x.rc.ref),'Ravi Kumar Auto Works · outstanding ledger','<b class="num" style="color:var(--g)">'+inr(x.amt)+'</b>','rupee','','g')).join('')}</div>`:''}
+ ${f==='Split'?'<div class="cap">Split bills are paid partly by cash and partly by UPI, so they are not added to the Cash or UPI totals.</div>':''}
+</div></div>`;};
+SCREENS.billview=(p)=>{const b=DB.bills.find(x=>x.id===p.id);if(!b)return bar('Bill')+'<div class="empty">Bill not found</div>';const items=b.items||[];const mrp=items.reduce((a,i)=>a+i.mrp*i.q,0);const ws=DB.warranties.filter(w=>w.inv===b.id);
+ return bar(b.id)+`<div class="scroll"><div class="pad">
+ <div class="card"><div class="row"><div class="tile ${b.pm==='Credit'?'r':'y'} round">${ic('receipt','s20')}</div><div class="grow"><div class="h3">${esc(b.pname||b.p)}</div><div class="cap">${b.kind?KIND_L[b.kind]:''}${b.mob?' · +91 '+b.mob:''}${b.kind==='mech'?' · BP-MECH-1025':''}</div></div><span class="pill ${b.pm==='Credit'?'r':'g'}">${b.pm}</span></div>
+  ${b.via?`<div class="cap" style="color:var(--blue)">Brought by ${esc(b.via)} · customer price applied</div>`:''}
+  <div class="kv"><span>Date & time</span><span>${today()} · ${b.t}</span></div><div class="kv"><span>Rate type</span><span>${b.kind==='mech'?'Mechanic price':'Customer price'}</span></div></div>
+ ${sec('Items')}
+ <div class="card flush">${items.length?items.map(i=>{const x=P(i.pid)||{name:i.pid,pn:''};return `<button class="li" onclick="S.ui.scanHit='${i.pid}';S.ui.scanMiss=null;go('scanfind')"><div class="grow"><div class="t">${esc(x.name)}</div><div class="s">${x.pn} · ${i.q} × ${inr(i.r)} · MRP ${inr(i.mrp)}</div></div><b class="num">${inr(i.r*i.q)}</b></button>`;}).join(''):'<div class="empty">Item details are not available for this bill</div>'}</div>
+ <div class="card">${items.length?`<div class="kv"><span>MRP total</span><span>${inr(mrp)}</span></div><div class="kv"><span>Discount</span><span style="color:var(--g)">− ${inr(mrp-b.amt)}</span></div>`:''}<div class="kv"><span>GST (incl.)</span><span>${inr(b.amt*18/118)}</span></div><div class="hr"></div><div class="kv big"><span>Invoice total</span><span>${inr(b.amt)}</span></div></div>
+ ${ws.length?`${sec('Warranty')}<div class="card flush">${ws.map(w=>li(esc(w.name),w.days+' days · till '+fmtD(addDays(w.start,w.days)),'','shield','','g')).join('')}</div>`:''}
+</div></div><div class="foot"><div class="grid2" style="width:100%"><button class="btn line" onclick="toast('Invoice shared on WhatsApp')">Share</button><button class="btn" onclick="toast('Sent to thermal printer')">Print</button></div></div>`;};
+SCREENS.pendpay=()=>{const pend=pendingInv();const due=pend.reduce((a,v)=>a+v.amt-v.paid,0);
+ return bar('Pending payments')+`<div class="scroll"><div class="pad">
+ <div class="card"><div class="kv big"><span>To collect</span><span style="color:var(--r)">${inr(due)}</span></div><div class="cap">Unpaid credit invoices. Nothing is sold without a bill, so every rupee here is linked to an invoice.</div></div>
+ <div class="card flush">${pend.map(v=>li(v.id+' · Ravi Kumar Auto Works',v.d+(v.due?' · due '+v.due:'')+(v.paid?' · paid '+inr(v.paid):''),`<b class="num" style="color:var(--r)">${inr(v.amt-v.paid)}</b>`,'receipt',DB.bills.some(b=>b.id===v.id)?`go('billview',{id:'${v.id}'})`:'','r')).join('')||'<div class="empty">No pending payments</div>'}</div>
+</div></div>${pend.length?`<div class="foot"><button class="btn" onclick="tab('receive')">Receive payment</button></div>`:''}`;};
 function genInvoice(tot){const inv=S.ui.inv;const id='INV-2026-00'+(252+DB.bills.length);const mech=inv.party==='mech';const mob=normId(inv.mob||'');
  const cx=inv.party==='cust'||inv.party==='cxm';const vm=inv.party==='cxm'?MECHS.find(m=>m.code===inv.via):null;
  if(inv.party==='cxm'&&!vm){toast('Choose the mechanic who brought the customer');return;}
  if(cx&&mob.length!==10){toast('Enter the customer’s 10-digit mobile number');return;}
  const acc=ACC()[mob];const party=mech?'BP-MECH-1025':cx?mob:'Walk-in';const pname=mech?'Ravi Kumar Auto Works':cx?(acc&&acc.name||'+91 '+mob):'Walk-in';
  const wlist=issueWarranties(Object.entries(inv.items).filter(([,q])=>q>0),party,pname,id,vm?'Counter bill · via '+vm.n:'Counter bill');
- DB.bills.unshift({id,p:cx?pname+(vm?' · via '+vm.code:''):mech?'BP-MECH-1025':'Walk-in',t:new Date().toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'}),pm:inv.pm,amt:tot});
+ DB.bills.unshift({id,kind:inv.party,pname,mob:cx?mob:'',via:vm?vm.n:'',items:Object.entries(inv.items).filter(([,q])=>q>0).map(([k,q])=>({pid:k,q,r:mech?P(k).mp:P(k).price,mrp:P(k).mrp})),p:cx?pname+(vm?' · via '+vm.code:''):mech?'BP-MECH-1025':'Walk-in',t:new Date().toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'}),pm:inv.pm,amt:tot});
  Object.entries(inv.items).forEach(([k,q])=>{if(q>0){DB.stock[k]=Math.max(0,DB.stock[k]-q);logMove('out',k,q,id,'Billed · '+pname);}});
  if(mech&&inv.pm==='Credit'){DB.cl.push({d:today(),inv:id,buy:tot});DB.minv.unshift({id,d:today(),amt:tot,paid:0,due:'30 days'});}
  audit('Invoice created',id,'—',inr(tot)+(vm?' · CX with Mech '+vm.code:''));save();S.ui.inv=null;

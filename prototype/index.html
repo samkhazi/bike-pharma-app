@@ -1066,7 +1066,6 @@ SCREENS.team=()=>`<div class="scroll"><div class="pad"><h1 class="h1">Team</h1><
  <button class="btn dark" onclick="toast('Task assigned to Arjun Nayak')">Assign task</button></div></div>`;
 SCREENS.saccount=()=>{const u=S.user;return `<div class="scroll"><div class="pad"><h1 class="h1">Account</h1>
  <div class="card" style="flex-direction:row;align-items:center"><div class="tile k round" style="width:56px;height:56px;font-weight:800">${u.name.split(' ').map(x=>x[0]).join('')}</div><div class="grow"><div class="h2">${esc(u.name)}</div><div class="cap">${esc(S.uid)}</div><span class="pill k">${esc(u.label)} · ${esc(u.sid)}</span></div></div>
- <div class="card"><div class="h3">Your permissions</div><div class="cap">${esc(accessText(u.role))}. Assigned by Admin; changes need Admin approval.</div>${u.role!=='admin'?`<button class="link" style="text-align:left" onclick="go('rbac')">View role matrix</button>`:''}</div>
  <div class="card flush">${li('Log out from all devices','Ends every session','','logout','logout(true)','r')}</div>
  <button class="btn line" onclick="logout()">Log out</button><button class="link" style="text-align:center" onclick="resetDemo()">Reset demo data</button></div></div>`;};
 

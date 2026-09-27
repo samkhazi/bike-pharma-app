@@ -124,9 +124,9 @@ svg.s16{width:16px;height:16px}svg.s18{width:18px;height:18px}svg.s20{width:20px
 .opt.on{border-color:var(--y);background:var(--y-soft)}
 .radio{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--ink3);flex:none;background:var(--card)}
 .opt.on .radio,.radio.on{border:6px solid var(--ink)}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
 
 /* buttons */
 .btn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;border-radius:14px;background:var(--y);color:var(--ink);font-weight:800;font-size:14px;letter-spacing:.04em;text-transform:uppercase;width:100%;transition:transform .12s ease,filter .12s}
@@ -141,10 +141,13 @@ svg.s16{width:16px;height:16px}svg.s18{width:18px;height:18px}svg.s20{width:20px
 .foot .sum b{font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums}
 
 /* inputs */
-.field{display:flex;flex-direction:column;gap:6px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .field label{font-size:12px;font-weight:600;color:var(--ink5)}
 .inp{height:52px;border:1.5px solid var(--line);background:var(--card);border-radius:14px;display:flex;align-items:center;gap:10px;padding:0 14px}
 .inp:focus-within{border-color:var(--ink)}
+.inp{min-width:0}
+.inp input,.inp select{width:100%}
 .inp input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-size:15px;font-weight:600}
 .inp.err{border-color:var(--r)}
 .errmsg{font-size:12px;color:var(--r);font-weight:600}
@@ -848,8 +851,8 @@ SCREENS.addproduct=()=>{const a=S.ui.ap||(S.ui.ap=apNew());const admin=S.user.ro
  </div>
  ${sec('Pricing & tax')}
  <div class="card">${apField('mrp','MRP (printed on pack)','0',{req:1,num:1,pre:'₹'})}
-  <div class="grid2">${apField('price','Customer price','Admin sets',{num:1,pre:'₹',locked:lockP})}${apField('mp','Mechanic price','Admin sets',{num:1,pre:'₹',locked:lockP})}</div>
-  <div class="grid2">${apField('wp','Wholesale price','Admin sets',{num:1,pre:'₹',locked:lockP})}<div class="field"><label for="ap-gst">GST</label><div class="inp"><select id="ap-gst" style="border:0;background:transparent;flex:1;font-weight:600" onchange="S.ui.ap.gst=this.value">${['5','12','18','28'].map(g=>`<option value="${g}" ${a.gst===g?'selected':''}>${g}%</option>`).join('')}</select></div></div></div>
+  <div class="grid2">${apField('price','Customer price','By Admin',{num:1,pre:'₹',locked:lockP})}${apField('mp','Mechanic price','By Admin',{num:1,pre:'₹',locked:lockP})}</div>
+  <div class="grid2">${apField('wp','Wholesale price','By Admin',{num:1,pre:'₹',locked:lockP})}<div class="field"><label for="ap-gst">GST</label><div class="inp"><select id="ap-gst" style="border:0;background:transparent;flex:1;font-weight:600" onchange="S.ui.ap.gst=this.value">${['5','12','18','28'].map(g=>`<option value="${g}" ${a.gst===g?'selected':''}>${g}%</option>`).join('')}</select></div></div></div>
   ${apField('hsn','HSN code','8714')}
   ${lockP?`<div class="row cap" style="background:var(--paper);border-radius:10px;padding:10px">${ic('lock','s16')}<span class="grow">Product goes live after Admin sets customer, mechanic and wholesale prices.</span></div>`:''}</div>
  ${sec('Stock')}

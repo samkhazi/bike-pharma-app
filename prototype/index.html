@@ -380,9 +380,10 @@ function seed(){return{
  bills:[{id:'INV-2026-00251',p:'Walk-in',t:'11:42 AM',pm:'UPI',amt:4250},{id:'INV-2026-00249',p:'Anjali Rao',t:'10:31 AM',pm:'Cash',amt:1376}],
  stock:{p1:23,p2:48,p3:40,p4:15,p5:62,p6:9,p7:0,p8:3},
  accounts:{},
+ bins:{p1:'A-3-12',p2:'L-2-01',p3:'A-3-14',p4:'A-4-02',p5:'F-1-05',p6:'C-2-08',p7:'C-1-04',p8:'E-1-02'},
  notifs:0};}
 let DB;
-function load(){try{const s=localStorage.getItem('bp-db');DB=s?JSON.parse(s):seed();}catch(e){DB=seed();}if(!DB.accounts)DB.accounts={};(DB.newProducts||[]).forEach(p=>{if(!P(p.id))PRODUCTS.push(p);});}
+function load(){try{const s=localStorage.getItem('bp-db');DB=s?JSON.parse(s):seed();}catch(e){DB=seed();}if(!DB.accounts)DB.accounts={};if(!DB.bins)DB.bins={p1:'A-3-12',p2:'L-2-01',p3:'A-3-14',p4:'A-4-02',p5:'F-1-05',p6:'C-2-08',p7:'C-1-04',p8:'E-1-02'};(DB.newProducts||[]).forEach(p=>{if(!P(p.id))PRODUCTS.push(p);});}
 function save(){try{localStorage.setItem('bp-db',JSON.stringify(DB));}catch(e){}}
 function audit(a,e,o,n){const now=new Date();DB.audit.unshift({who:S.user.sid||S.user.label,a,e,o,n,t:now.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+' · '+now.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})});}
 const walletEarned=()=>DB.wl.reduce((a,x)=>a+(x.cr||0),0);
@@ -432,11 +433,11 @@ function closeSheet(){document.querySelectorAll('.scrim').forEach(x=>x.remove())
 const ACCESS={
  customer:['home','shop','list','product','cart','checkout','placed','orders','service','book','booking','garage','vehicle','warranty','offers','wishlist','notifs','qr','account','addresses'],
  mechanic:['mhome','mshop','mproduct','wallet','credit','pay','purchases','invoices','rewards','maccount','notifs'],
- billing:['bhome','invoice','receive','usearch','saccount','masterprice','denied'],
- sales:['shome','sorder','stocklist','usearch','saccount','masterprice'],
- manager:['mghome','approvals','team','usearch','saccount','stocklist','rbac'],
- inventory:['ihome','grn','stocklist','usearch','saccount','addproduct','stockmove'],
- admin:['ahome','users','mfin','afinance','audit','more','usearch','rbac','newstaff','saccount','addproduct','stocklist']};
+ billing:['bhome','invoice','receive','usearch','saccount','masterprice','denied','racks'],
+ sales:['shome','sorder','stocklist','usearch','saccount','masterprice','racks'],
+ manager:['mghome','approvals','team','usearch','saccount','stocklist','rbac','racks'],
+ inventory:['ihome','grn','stocklist','usearch','saccount','addproduct','stockmove','racks'],
+ admin:['ahome','users','mfin','afinance','audit','more','usearch','rbac','newstaff','saccount','addproduct','stocklist','racks']};
 const DENY={masterprice:['billing','sales']};
 const COMMON=['login','otp','signup','submitted','roleok','rbac'];
 function allowed(s){const r=S.user.role;if(DENY[s]&&DENY[s].includes(r))return false;return COMMON.includes(s)||ACCESS[r].includes(s);}
@@ -764,7 +765,7 @@ SCREENS.bhome=()=>{const sales=DB.bills.reduce((a,b)=>a+b.amt,0)+80000;return `<
  <div class="grid2">${statTile('y',"Today's sales",inr(sales),(DB.bills.length+22)+' bills')}${statTile('','Pending payments','3',inr(18600)+' to collect')}${statTile('g','Cash collected',inr(31400),'Counter 1')}${statTile('b','UPI collected',inr(52850),'19 txns')}</div>
  <button class="row card" style="flex-direction:row;background:var(--r-soft);border:0;text-align:left" onclick="tab('receive')"><div class="tile r">${ic('receipt','s20')}</div><div class="grow"><div class="h3">Mechanic outstanding</div><div class="cap">Ravi Kumar Auto Works · tap to receive</div></div><b style="color:var(--r)" class="num">${inr(outstanding())}</b></button>
  ${sec('Quick actions')}
- <div class="grid3">${[['Create invoice','file',"tab('invoice')"],['Receive payment','rupee',"tab('receive')"],['Search party','search',"tab('usearch')"],['Print / share','share',"toast('Invoice shared')"],['Return request','history',"toast('Return request sent to Manager')"],['Master pricing','lock',"lockedInfo('Master pricing')"]].map(([l,i,o])=>`<button class="qa2 ${i==='lock'?'locked':''}" onclick="${o}"><span class="tile sm ${i==='lock'?'n':''}">${ic(i,'s20')}</span>${l}${i==='lock'?'<span class="pill">Admin only</span>':''}</button>`).join('')}</div>
+ <div class="grid3">${[['Create invoice','file',"tab('invoice')"],['Receive payment','rupee',"tab('receive')"],['Search party','search',"tab('usearch')"],['Find rack','pin',"S.ui.rq='';go('racks')"],['Return request','history',"toast('Return request sent to Manager')"],['Master pricing','lock',"lockedInfo('Master pricing')"]].map(([l,i,o])=>`<button class="qa2 ${i==='lock'?'locked':''}" onclick="${o}"><span class="tile sm ${i==='lock'?'n':''}">${ic(i,'s20')}</span>${l}${i==='lock'?'<span class="pill">Admin only</span>':''}</button>`).join('')}</div>
  ${sec('Recent bills')}
  <div class="card flush">${DB.bills.slice(0,4).map(b=>li(b.id+' · '+b.p,b.t+' · '+b.pm,`<b class="num">${inr(b.amt)}</b>`,'file','',b.pm==='Credit'?'r':'')).join('')}</div>
  <div class="row cap" style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px">${ic('lock','s16')}<span class="grow">Billing role: no access to salary, admin settings, master pricing or role management.</span></div>
@@ -775,7 +776,7 @@ SCREENS.invoice=()=>{const inv=S.ui.inv||(S.ui.inv={party:'mech',items:{p1:10,p2
  <div class="grid2"><button class="opt ${mech?'on':''}" onclick="S.ui.inv.party='mech';S.ui.inv.pm='Credit';refresh()"><span class="radio"></span>Mechanic</button><button class="opt ${!mech?'on':''}" onclick="S.ui.inv.party='walk';S.ui.inv.pm='UPI';refresh()"><span class="radio"></span>Walk-in customer</button></div>
  ${mech?`<div class="card" style="border:1.5px solid var(--y)"><div class="row"><div class="tile k round">${ic('wrench','s18')}</div><div class="grow"><div class="h3">Ravi Kumar Auto Works</div><div class="cap">BP-MECH-1025 · +91 90089 48080</div></div><span class="pill b">Mechanic</span></div><div class="grid2"><div class="stat g" style="padding:10px"><span class="micro">Wallet</span><span class="v">${inr(walletBal())}</span></div><div class="stat r" style="padding:10px"><span class="micro">Outstanding</span><span class="v">${inr(outstanding())}</span></div></div></div>`:''}
  <div class="sec"><h3 class="h2">Items</h3><button class="link" onclick="addInvItem()">+ Add item</button></div>
- <div class="card flush">${lines.map(([id,q])=>{const x=P(id);const r=mech?x.mp:x.price;return `<div class="li"><div class="grow"><div class="t">${x.name}</div><div class="s">${x.pn} · ${mech?'Mechanic':'Retail'} ${inr(r)}</div></div><span class="qty"><button onclick="S.ui.inv.items['${id}']=${q-1};refresh()" aria-label="Less">${ic('minus','s16')}</button><span class="num">${q}</span><button onclick="S.ui.inv.items['${id}']=${q+1};refresh()" aria-label="More">${ic('plus','s16')}</button></span><b class="num" style="min-width:64px;text-align:right">${inr(r*q)}</b></div>`;}).join('')||'<div class="empty">No items yet</div>'}</div>
+ <div class="card flush">${lines.map(([id,q])=>{const x=P(id);const r=mech?x.mp:x.price;return `<div class="li"><div class="grow"><div class="t">${x.name}</div><div class="s">${x.pn} · ${mech?'Mechanic':'Retail'} ${inr(r)} · Rack ${binOf(id)}</div></div><span class="qty"><button onclick="S.ui.inv.items['${id}']=${q-1};refresh()" aria-label="Less">${ic('minus','s16')}</button><span class="num">${q}</span><button onclick="S.ui.inv.items['${id}']=${q+1};refresh()" aria-label="More">${ic('plus','s16')}</button></span><b class="num" style="min-width:64px;text-align:right">${inr(r*q)}</b></div>`;}).join('')||'<div class="empty">No items yet</div>'}</div>
  <div class="row cap">${ic('lock','s16')}<span class="grow">Rates come from master pricing and can’t be edited here.</span></div>
  <div class="card"><div class="kv"><span>MRP total</span><span>${inr(mrp)}</span></div><div class="kv"><span>Discount</span><span style="color:var(--g)">− ${inr(mrp-tot)}</span></div><div class="kv"><span>GST (incl.)</span><span>${inr(tot*18/118)}</span></div><div class="hr"></div><div class="kv big"><span>Invoice total</span><span>${inr(tot)}</span></div></div>
  ${sec('Payment mode')}
@@ -808,12 +809,12 @@ SCREENS.sorder=()=>`<div class="scroll"><div class="pad"><h1 class="h1">Order / 
  <div class="card flush">${['p2','p1','p6'].map((id,i)=>{const x=P(id);const q=[20,10,4][i];return li(x.name,`${q} × ${inr(x.mp)}`,`<b class="num">${inr(x.mp*q)}</b>`,x.ic,'','n');}).join('')}</div>
  <div class="card"><div class="kv big"><span>Quotation total</span><span>${inr(598*20+389*10+1826*4)}</span></div></div>
 </div></div><div class="foot"><div class="grid2"><button class="btn line" onclick="toast('Quotation QT-119 shared')">Send quote</button><button class="btn" onclick="toast('Order sent to billing')">Create order</button></div></div>`;
-SCREENS.stocklist=()=>`${S.user.role==='admin'?bar('Products & stock'):''}<div class="scroll"><div class="pad"><div class="sec"><h1 class="h1">Stock</h1>${['inventory','admin'].includes(S.user.role)?`<button class="btn sm" onclick="S.ui.ap=null;S.ui.apErr=null;go('addproduct')">+ Add product</button>`:''}</div><div class="card flush">${PRODUCTS.map(x=>{const s=DB.stock[x.id];return li(esc(x.name),x.pn+' · Rajajinagar'+(x.pending?' · <b class="amb">Pending pricing</b>':''),`<span class="pill ${s===0?'r':s<10?'a':'g'}">${s} pcs</span>`,x.ic,'','n');}).join('')}</div></div></div>`;
+SCREENS.stocklist=()=>`${S.user.role==='admin'?bar('Products & stock'):''}<div class="scroll"><div class="pad"><div class="sec"><h1 class="h1">Stock</h1>${['inventory','admin'].includes(S.user.role)?`<button class="btn sm" onclick="S.ui.ap=null;S.ui.apErr=null;go('addproduct')">+ Add product</button>`:''}</div><div class="card flush">${PRODUCTS.map(x=>{const s=DB.stock[x.id];return li(esc(x.name),x.pn+' · Rack '+binOf(x.id)+(x.pending?' · <b class="amb">Pending pricing</b>':''),`<span class="pill ${s===0?'r':s<10?'a':'g'}">${s} pcs</span>`,x.ic,canEditRack()?`rackEdit('${x.id}')`:'','n');}).join('')}</div><button class="btn line sm" style="width:100%" onclick="S.ui.rq='';go('racks')">View by rack</button></div></div>`;
 SCREENS.ihome=()=>{const low=PRODUCTS.filter(x=>DB.stock[x.id]<10);return `<div class="scroll"><div class="pad">${staffHead()}
  <div class="dark-card"><span class="micro" style="color:var(--ink3)">Total stock · Rajajinagar</span><div class="row" style="gap:8px;align-items:baseline"><span class="amt" style="color:#fff">12,480 units</span><span class="cap" style="color:var(--ink3)">₹48.6 L value</span></div></div>
  <div class="grid2">${statTile('y','Low stock',low.length,'below reorder level')}${statTile('r','Out of stock',PRODUCTS.filter(x=>!DB.stock[x.id]).length,'SKUs')}${statTile('',"Today's entries",'24','16 in · 8 billed')}${statTile('b','Pending GRN','1','Bosch Auto Parts')}</div>
  ${sec('Actions')}
- <div class="grid3">${[['Stock in','down',"tab('grn')"],['Add product','plus',"S.ui.ap=null;S.ui.apErr=null;go('addproduct')"],['Transfer','truck',"S.ui.mv=null;go('stockmove',{type:'transfer'})"],['Scan barcode','scan',"tab('grn')"],['Stock count','clip',"S.ui.mv=null;go('stockmove',{type:'count'})"],['Damaged','alert',"S.ui.mv=null;go('stockmove',{type:'damaged'})"],['Returned','history',"S.ui.mv=null;go('stockmove',{type:'returned'})"],['Adjustments','sliders',"S.ui.mv=null;go('stockmove',{type:'adjust'})"]].map(([l,i,o])=>`<button class="qa2" onclick="${o||`toast('${l} opened')`}"><span class="tile sm">${ic(i,'s20')}</span>${l}</button>`).join('')}</div>
+ <div class="grid3">${[['Stock in','down',"tab('grn')"],['Add product','plus',"S.ui.ap=null;S.ui.apErr=null;go('addproduct')"],['Transfer','truck',"S.ui.mv=null;go('stockmove',{type:'transfer'})"],['Scan barcode','scan',"tab('grn')"],['Rack locations','pin',"S.ui.rq='';go('racks')"],['Stock count','clip',"S.ui.mv=null;go('stockmove',{type:'count'})"],['Damaged','alert',"S.ui.mv=null;go('stockmove',{type:'damaged'})"],['Returned','history',"S.ui.mv=null;go('stockmove',{type:'returned'})"],['Adjustments','sliders',"S.ui.mv=null;go('stockmove',{type:'adjust'})"]].map(([l,i,o])=>`<button class="qa2" onclick="${o||`toast('${l} opened')`}"><span class="tile sm">${ic(i,'s20')}</span>${l}</button>`).join('')}</div>
  ${sec('Low stock')}
  <div class="card flush">${low.map(x=>li(x.name,x.pn,`<span class="pill ${DB.stock[x.id]?'a':'r'}">${DB.stock[x.id]} / 20</span>`,x.ic,'','n')).join('')}</div>
 </div></div>`;};
@@ -824,6 +825,30 @@ SCREENS.grn=()=>{const g=S.ui.grn||(S.ui.grn={p1:30,p4:15,p3:40});const exp={p1:
  <div class="card flush">${Object.keys(exp).map(id=>{const x=P(id);const q=g[id];return `<div class="li" style="flex-wrap:wrap"><div class="grow"><div class="t">${x.name}</div><div class="s">Expected ${exp[id]} · ${x.pn}</div></div><span class="qty"><button onclick="S.ui.grn['${id}']=Math.max(0,${q}-1);refresh()" aria-label="Less">${ic('minus','s16')}</button><span class="num">${q}</span><button onclick="S.ui.grn['${id}']=${q}+1;refresh()" aria-label="More">${ic('plus','s16')}</button></span><span class="pill ${q===exp[id]?'g':'a'}" style="width:100%;justify-content:center">${q===exp[id]?'Matched':(q<exp[id]?'Short by '+(exp[id]-q):'Excess '+(q-exp[id]))}</span></div>`;}).join('')}</div>
 </div></div><div class="foot"><button class="btn" onclick="postGrn()">Post to stock</button></div>`;};
 function postGrn(){const g=S.ui.grn;Object.entries(g).forEach(([k,q])=>DB.stock[k]+=q);audit('GRN posted','GRN-0412','—',Object.values(g).reduce((a,b)=>a+b,0)+' units');save();S.ui.grn=null;toast('Stock updated');tab('ihome');}
+
+/* ---------- rack locations ---------- */
+const binOf=id=>(DB.bins&&DB.bins[id])||'Not set';
+const canEditRack=()=>['inventory','admin'].includes(S.user.role);
+function rackPill(id){const b=binOf(id);return `<span class="pill ${b==='Not set'?'a':'k'}" style="gap:4px">${ic('pin','s16')}${b==='Not set'?'No rack':'Rack '+b}</span>`;}
+SCREENS.racks=()=>{const q=(S.ui.rq||'').trim().toLowerCase();const edit=canEditRack();
+ const items=PRODUCTS.filter(x=>!q||(x.name+' '+x.pn+' '+x.brand+' '+binOf(x.id)).toLowerCase().includes(q));
+ const groups={};items.forEach(x=>{const b=binOf(x.id);const k=b==='Not set'?'No rack assigned':'Rack '+b.split('-')[0];(groups[k]=groups[k]||[]).push(x);});
+ const keys=Object.keys(groups).sort((a,b)=>a.startsWith('No')?-1:b.startsWith('No')?1:a.localeCompare(b));
+ return bar('Rack locations')+`<div class="scroll"><div class="pad">
+ <p class="cap">Every part’s place in the store, as <b style="color:var(--ink)">Rack-Shelf-Bin</b> (e.g. A-3-12 = Rack A, Shelf 3, Bin 12).${edit?' Tap a part to change its rack.':''}</p>
+ <label class="search" for="rq">${ic('search','s20')}<input id="rq" placeholder="Part name, part no. or rack (A-3)" value="${esc(S.ui.rq||'')}" oninput="S.ui.rq=this.value;clearTimeout(window._rq);window._rq=setTimeout(()=>{refresh();const i=document.getElementById('rq');i.focus();i.setSelectionRange(i.value.length,i.value.length)},250)"></label>
+ ${keys.length?keys.map(k=>`<div class="stack g8"><div class="sec"><span class="h3">${k}</span><span class="cap">${groups[k].length} part${groups[k].length>1?'s':''}</span></div><div class="card flush">${groups[k].map(x=>`<button class="li" onclick="${edit?`rackEdit('${x.id}')`:`toast('${esc(x.name)} · Rack ${binOf(x.id)}')`}"><div class="tile sm n">${ic(x.ic,'s18')}</div><div class="grow"><div class="t">${esc(x.name)}</div><div class="s">${x.pn} · ${DB.stock[x.id]} pcs</div></div>${rackPill(x.id)}</button>`).join('')}</div></div>`).join(''):'<div class="empty">No part matches. Try the part number or a rack like A-3.</div>'}
+</div></div>`;};
+function rackEdit(id){const x=P(id);const cur=binOf(id);const [r,sh,bn]=cur==='Not set'?['A','1','01']:cur.split('-');
+ const opt=(arr,v)=>arr.map(a=>`<option ${a===v?'selected':''}>${a}</option>`).join('');
+ sheet(`<div class="row"><div class="tile n">${ic(x.ic,'s20')}</div><div class="grow"><div class="h3">${esc(x.name)}</div><div class="cap">${x.pn} · now ${cur==='Not set'?'no rack':'Rack '+cur}</div></div></div>
+ <div class="grid3">${[['Rack','rk-r',[...'ABCDEFGHIJKL'],r],['Shelf','rk-s',['1','2','3','4','5','6'],sh],['Bin','rk-b',Array.from({length:30},(_,i)=>String(i+1).padStart(2,'0')),bn]].map(([l,id2,arr,v])=>`<div class="field"><label for="${id2}">${l}</label><div class="inp"><select id="${id2}" style="border:0;background:transparent;flex:1;font-weight:700;font-size:16px" onchange="rackPreview()">${opt(arr,v)}</select></div></div>`).join('')}</div>
+ <div class="hint" id="rk-prev">${ic('pin','s16')} New location: Rack ${r}-${sh}-${bn}</div>
+ <div class="grid2"><button class="btn line" onclick="closeSheet()">Cancel</button><button class="btn" onclick="rackSave('${id}')">Save rack</button></div>`);}
+function rackPreview(){const v=['rk-r','rk-s','rk-b'].map(i=>document.getElementById(i).value).join('-');document.getElementById('rk-prev').innerHTML=ic('pin','s16')+' New location: Rack '+v;}
+function rackSave(id){const v=['rk-r','rk-s','rk-b'].map(i=>document.getElementById(i).value).join('-');const old=binOf(id);if(v===old){closeSheet();return;}
+ const clash=PRODUCTS.find(y=>y.id!==id&&binOf(y.id)===v);DB.bins[id]=v;audit('Rack changed',P(id).pn,old,v);save();closeSheet();toast(`${P(id).pn} moved to Rack ${v}`+(clash?` · shares bin with ${clash.pn}`:''));refresh();}
+
 /* ---------- product master + stock movements ---------- */
 const BRANDS_V={Bajaj:['Pulsar 150','Pulsar 180','Avenger 160','Platina 110'],Honda:['Shine 125','Activa 6G','Unicorn 160'],Hero:['Splendor Plus','HF Deluxe','Glamour'],TVS:['Apache RTR 160','Jupiter','XL100'],'Royal Enfield':['Classic 350','Bullet 350','Hunter 350'],Yamaha:['FZ-S','R15','Ray ZR'],Suzuki:['Access 125','Gixxer']};
 const COLOURS=[['Any',''],['Black','#121212'],['Red','#D93025'],['Blue','#2563EB'],['White','#FFFFFF'],['Grey','#8A8A8A'],['Silver','#C9CDD2'],['Yellow','#FFC20E'],['Green','#0F9D58'],['Orange','#F97316']];
@@ -864,7 +889,7 @@ SCREENS.addproduct=()=>{const a=S.ui.ap||(S.ui.ap=apNew());const admin=S.user.ro
   ${lockP?`<div class="row cap" style="background:var(--paper);border-radius:10px;padding:10px">${ic('lock','s16')}<span class="grow">Product goes live after Admin sets customer, mechanic and wholesale prices.</span></div>`:''}</div>
  ${sec('Stock')}
  <div class="card"><div class="grid2">${apField('open','Opening stock','0',{req:1,num:1})}${apField('reorder','Reorder level','10',{num:1})}</div>
-  <div class="grid2">${apField('bin','Bin / rack location','A3-12')}<div class="field"><label>Branch</label><div class="inp" style="background:var(--paper)"><b>Rajajinagar</b></div></div></div></div>
+  <div class="grid2">${apField('bin','Rack-Shelf-Bin','e.g. A-3-12')}<div class="field"><label>Branch</label><div class="inp" style="background:var(--paper)"><b>Rajajinagar</b></div></div></div></div>
  ${sec('Warranty & details')}
  <div class="card"><div class="field"><label>Warranty</label><div class="chips" style="margin:0;padding:0">${['None','3 months','6 months','12 months','24 months'].map(w=>`<button class="chip ${a.war===w?'on':''}" onclick="S.ui.ap.war='${w}';refresh()">${w}</button>`).join('')}</div></div>
   <div class="field"><label for="ap-spec">Specifications</label><textarea id="ap-spec" rows="3" style="border:1.5px solid var(--line);border-radius:14px;padding:12px;font:inherit;font-size:14px;resize:vertical" placeholder="Material, size, position (front/rear), pack contents…" oninput="S.ui.ap.spec=this.value">${esc(a.spec)}</textarea></div></div>
@@ -880,14 +905,14 @@ function saveProduct(){const a=S.ui.ap;const e={};const n=v=>parseFloat(String(v
  if(Object.keys(e).length){S.ui.apErr=e;return refresh();}
  const id='n'+Date.now();const mrp=n(a.mrp);const icMap={'Brake Parts':'shield','Lubricants':'droplet','Filters':'filter','Electrical':'zap','Chain & Sprocket':'link','Cables':'link','Tyres':'disc','Suspension':'activity','Engine Parts':'wrench','Clutch Parts':'sliders','Accessories':'gift'};
  const p={id,name:a.name.trim(),brand:a.brand.trim().toUpperCase(),type:a.type,cat:a.cat,pn:a.pn.trim().toUpperCase(),pack:a.type==='Aftermarket'?a.pack.trim().toUpperCase():'',mrp,price:admin?n(a.price):mrp,mp:admin?n(a.mp):mrp,stock:n(a.open),war:a.war==='None'?'—':a.war,ic:icMap[a.cat]||'package',fits:a.universal?['Universal']:a.fits,bin:a.bin,barcode:a.barcode,pending:!admin};
- DB.newProducts=DB.newProducts||[];DB.newProducts.push(p);PRODUCTS.push(p);DB.stock[id]=p.stock;
+ if(a.bin.trim())DB.bins[id]=a.bin.trim().toUpperCase();DB.newProducts=DB.newProducts||[];DB.newProducts.push(p);PRODUCTS.push(p);DB.stock[id]=p.stock;
  audit('Product added'+(admin?'':' · pending pricing'),p.pn,'—',p.stock+' '+a.unit);save();S.ui.ap=null;S.ui.apErr=null;
  sheet(`<div class="tile g round" style="width:64px;height:64px">${ic('checkC','s28')}</div><h3 class="h2">${esc(p.name)} added</h3><div class="card"><div class="kv"><span>Part no.</span><span>${esc(p.pn)}</span></div>${p.pack?`<div class="kv"><span>Aftermarket · packed by</span><span>${esc(p.pack)}</span></div>`:''}<div class="kv"><span>Opening stock</span><span>${p.stock} ${a.unit}</span></div><div class="kv"><span>Fits</span><span>${esc(p.fits.join(', '))}</span></div><div class="kv"><span>Status</span><span style="color:${admin?'var(--g)':'var(--amber)'}">${admin?'Live':'Waiting for Admin pricing'}</span></div></div><button class="btn" onclick="closeSheet();tab('stocklist')">View stock list</button>`);}
 const MOVES={transfer:['Stock transfer','truck','Move stock to another Bike Pharma branch.'],count:['Stock count','clip','Physically count a bin and correct the system quantity.'],damaged:['Damaged stock','alert','Write off damaged pieces. Needs Manager approval.'],returned:['Returned stock','history','Add back a part returned by a customer or mechanic.'],adjust:['Stock adjustment','sliders','Correct a mismatch. Needs Manager approval.']};
 SCREENS.stockmove=(p)=>{const t=p.type;const m=MOVES[t];const f=S.ui.mv||(S.ui.mv={pid:'p1',q:1,to:'Vijayanagar',counted:'',reason:'',ref:''});const x=P(f.pid);const sys=DB.stock[f.pid];
  return bar(m[0])+`<div class="scroll"><div class="pad"><p class="cap">${m[2]}</p>
  <div class="field"><label for="mv-p">Product</label><div class="inp"><select id="mv-p" style="border:0;background:transparent;flex:1;font-weight:600" onchange="S.ui.mv.pid=this.value;refresh()">${PRODUCTS.map(y=>`<option value="${y.id}" ${y.id===f.pid?'selected':''}>${esc(y.name)} · ${y.pn}</option>`).join('')}</select></div></div>
- <div class="card" style="flex-direction:row;align-items:center"><div class="tile n">${ic(x.ic,'s20')}</div><div class="grow"><div class="h3">${esc(x.name)}</div><div class="cap">${x.pn}${x.bin?' · Bin '+esc(x.bin):''}</div></div><div style="text-align:right"><div class="micro muted">In system</div><b class="h3 num">${sys}</b></div></div>
+ <div class="card" style="flex-direction:row;align-items:center"><div class="tile n">${ic(x.ic,'s20')}</div><div class="grow"><div class="h3">${esc(x.name)}</div><div class="cap">${x.pn} · Rack ${binOf(x.id)}</div></div><div style="text-align:right"><div class="micro muted">In system</div><b class="h3 num">${sys}</b></div></div>
  ${t==='count'?`<div class="field"><label for="mv-c">Counted quantity</label><div class="inp"><input id="mv-c" inputmode="numeric" value="${esc(f.counted)}" placeholder="${sys}" oninput="S.ui.mv.counted=this.value" onchange="refresh()"></div></div>${f.counted!==''?`<div class="kv"><span>Variance</span><span style="color:${(+f.counted-sys)===0?'var(--g)':'var(--r)'}">${(+f.counted-sys)>0?'+':''}${+f.counted-sys}</span></div>`:''}`:
  `<div class="sec"><span class="h3">Quantity</span><span class="qty" style="font-size:18px"><button onclick="S.ui.mv.q=Math.max(1,${f.q}-1);refresh()" aria-label="Less">${ic('minus','s18')}</button><span class="num">${f.q}</span><button onclick="S.ui.mv.q=${f.q}+1;refresh()" aria-label="More">${ic('plus','s18')}</button></span></div>`}
  ${t==='transfer'?`<div class="field"><label>To branch</label><div class="grid3">${['Vijayanagar','Basavanagudi','Hebbal'].map(b=>`<button class="chip ${f.to===b?'on':''}" style="justify-content:center" onclick="S.ui.mv.to='${b}';refresh()">${b}</button>`).join('')}</div></div>`:''}
@@ -934,7 +959,7 @@ function searchIndex(){const r=S.user.role;const all=[];
  const staff=Object.entries(ACC()).filter(([,a])=>a.sid).map(([k,a])=>[a.name,a.label+' · '+a.sid+' · '+k,'user']);
  const inv=[...DB.bills.map(b=>[b.id,b.p+' · '+inr(b.amt),'file']),...DB.minv.map(v=>[v.id,'Mechanic invoice · '+inr(v.amt),'file'])];
  const ord=DB.orders.map(o=>[o.id,'Order · '+o.st+' · '+inr(o.amt),'package']);
- const parts=PRODUCTS.map(p=>[p.pn,p.name+' · stock '+DB.stock[p.id],p.ic]);
+ const parts=PRODUCTS.map(p=>[p.pn,p.name+' · stock '+DB.stock[p.id]+' · Rack '+binOf(p.id),p.ic]);
  const veh=[['KA 02 HM 4521','Vehicle · Bajaj Pulsar 150 · Anjali Rao','bike'],['KA 04 JX 1180','Vehicle · Honda Activa 6G · Anjali Rao','bike']];
  const scope={billing:[cust,mech,inv,parts],sales:[cust,mech,ord,parts,veh],manager:[cust,mech,staff,inv,ord,parts,veh],inventory:[parts],admin:[cust,mech,staff,inv,ord,parts,veh]}[r]||[];
  scope.forEach(g=>all.push(...g));return all;}

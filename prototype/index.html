@@ -433,12 +433,12 @@ function closeSheet(){document.querySelectorAll('.scrim').forEach(x=>x.remove())
 /* ---------- RBAC (client mirror of backend rules) ---------- */
 const ACCESS={
  customer:['home','shop','list','product','cart','checkout','placed','orders','service','book','booking','garage','vehicle','warranty','offers','wishlist','notifs','qr','account','addresses'],
- mechanic:['mhome','mshop','mproduct','wallet','credit','pay','purchases','invoices','rewards','maccount','notifs'],
- billing:['bhome','invoice','receive','usearch','saccount','masterprice','denied','racks','warreg'],
- sales:['shome','sorder','stocklist','usearch','saccount','masterprice','racks'],
- manager:['mghome','approvals','team','usearch','saccount','stocklist','rbac','racks','warreg'],
- inventory:['ihome','grn','stocklist','usearch','saccount','addproduct','stockmove','racks','warreg'],
- admin:['ahome','users','mfin','afinance','audit','more','usearch','rbac','newstaff','saccount','addproduct','stocklist','racks','warreg']};
+ mechanic:['mhome','mshop','mproduct','wallet','credit','pay','purchases','invoices','maccount','notifs'],
+ billing:['bhome','invoice','receive','usearch','saccount','masterprice','racks','warreg','scanfind'],
+ sales:['shome','sorder','stocklist','usearch','saccount','masterprice','racks','scanfind'],
+ manager:['mghome','approvals','team','usearch','saccount','stocklist','rbac','racks','warreg','scanfind'],
+ inventory:['ihome','grn','stocklist','usearch','saccount','addproduct','stockmove','racks','warreg','scanfind'],
+ admin:['ahome','users','mfin','afinance','audit','more','usearch','rbac','newstaff','saccount','addproduct','stocklist','racks','warreg','scanfind']};
 const DENY={masterprice:['billing','sales']};
 const COMMON=['login','otp','signup','submitted','roleok','rbac'];
 function allowed(s){const r=S.user.role;if(DENY[s]&&DENY[s].includes(r))return false;return COMMON.includes(s)||ACCESS[r].includes(s);}
@@ -768,7 +768,7 @@ SCREENS.bhome=()=>{const sales=DB.bills.reduce((a,b)=>a+b.amt,0)+80000;return `<
  <div class="grid2">${statTile('y',"Today's sales",inr(sales),(DB.bills.length+22)+' bills')}${statTile('','Pending payments','3',inr(18600)+' to collect')}${statTile('g','Cash collected',inr(31400),'Counter 1')}${statTile('b','UPI collected',inr(52850),'19 txns')}</div>
  <button class="row card" style="flex-direction:row;background:var(--r-soft);border:0;text-align:left" onclick="tab('receive')"><div class="tile r">${ic('receipt','s20')}</div><div class="grow"><div class="h3">Mechanic outstanding</div><div class="cap">Ravi Kumar Auto Works · tap to receive</div></div><b style="color:var(--r)" class="num">${inr(outstanding())}</b></button>
  ${sec('Quick actions')}
- <div class="grid3">${[['Create invoice','file',"tab('invoice')"],['Receive payment','rupee',"tab('receive')"],['Search party','search',"tab('usearch')"],['Find rack','pin',"S.ui.rq='';go('racks')"],['Warranty register','shield',"S.ui.wf='All';S.ui.wq='';go('warreg')"],['Master pricing','lock',"lockedInfo('Master pricing')"]].map(([l,i,o])=>`<button class="qa2 ${i==='lock'?'locked':''}" onclick="${o}"><span class="tile sm ${i==='lock'?'n':''}">${ic(i,'s20')}</span>${l}${i==='lock'?'<span class="pill">Admin only</span>':''}</button>`).join('')}</div>
+ <div class="grid3">${[['Create invoice','file',"tab('invoice')"],['Receive payment','rupee',"tab('receive')"],['Scan to find','scan',"S.ui.scanHit=null;S.ui.scanMiss=null;go('scanfind')"],['Find rack','pin',"S.ui.rq='';go('racks')"],['Warranty register','shield',"S.ui.wf='All';S.ui.wq='';go('warreg')"],['Master pricing','lock',"lockedInfo('Master pricing')"]].map(([l,i,o])=>`<button class="qa2 ${i==='lock'?'locked':''}" onclick="${o}"><span class="tile sm ${i==='lock'?'n':''}">${ic(i,'s20')}</span>${l}${i==='lock'?'<span class="pill">Admin only</span>':''}</button>`).join('')}</div>
  ${sec('Recent bills')}
  <div class="card flush">${DB.bills.slice(0,4).map(b=>li(b.id+' · '+b.p,b.t+' · '+b.pm,`<b class="num">${inr(b.amt)}</b>`,'file','',b.pm==='Credit'?'r':'')).join('')}</div>
  <div class="row cap" style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px">${ic('lock','s16')}<span class="grow">Billing role: no access to salary, admin settings, master pricing or role management.</span></div>
@@ -822,7 +822,7 @@ SCREENS.ihome=()=>{const low=PRODUCTS.filter(x=>DB.stock[x.id]<10);return `<div 
  <div class="dark-card"><span class="micro" style="color:var(--ink3)">Total stock · Rajajinagar</span><div class="row" style="gap:8px;align-items:baseline"><span class="amt" style="color:#fff">12,480 units</span><span class="cap" style="color:var(--ink3)">₹48.6 L value</span></div></div>
  <div class="grid2">${statTile('y','Low stock',low.length,'below reorder level')}${statTile('r','Out of stock',PRODUCTS.filter(x=>!DB.stock[x.id]).length,'SKUs')}${statTile('',"Today's entries",'24','16 in · 8 billed')}${statTile('b','Pending GRN','1','Bosch Auto Parts')}</div>
  ${sec('Actions')}
- <div class="grid3">${[['Stock in','down',"tab('grn')"],['Add product','plus',"S.ui.ap=null;S.ui.apErr=null;go('addproduct')"],['Transfer','truck',"S.ui.mv=null;go('stockmove',{type:'transfer'})"],['Scan barcode','scan',"tab('grn')"],['Rack locations','pin',"S.ui.rq='';go('racks')"],['Warranty register','shield',"S.ui.wf='All';go('warreg')"],['Stock count','clip',"S.ui.mv=null;go('stockmove',{type:'count'})"],['Damaged','alert',"S.ui.mv=null;go('stockmove',{type:'damaged'})"],['Returned','history',"S.ui.mv=null;go('stockmove',{type:'returned'})"],['Adjustments','sliders',"S.ui.mv=null;go('stockmove',{type:'adjust'})"]].map(([l,i,o])=>`<button class="qa2" onclick="${o||`toast('${l} opened')`}"><span class="tile sm">${ic(i,'s20')}</span>${l}</button>`).join('')}</div>
+ <div class="grid3">${[['Stock in','down',"tab('grn')"],['Add product','plus',"S.ui.ap=null;S.ui.apErr=null;go('addproduct')"],['Transfer','truck',"S.ui.mv=null;go('stockmove',{type:'transfer'})"],['Scan to find','scan',"S.ui.scanHit=null;S.ui.scanMiss=null;go('scanfind')"],['Rack locations','pin',"S.ui.rq='';go('racks')"],['Warranty register','shield',"S.ui.wf='All';go('warreg')"],['Stock count','clip',"S.ui.mv=null;go('stockmove',{type:'count'})"],['Damaged','alert',"S.ui.mv=null;go('stockmove',{type:'damaged'})"],['Returned','history',"S.ui.mv=null;go('stockmove',{type:'returned'})"],['Adjustments','sliders',"S.ui.mv=null;go('stockmove',{type:'adjust'})"]].map(([l,i,o])=>`<button class="qa2" onclick="${o||`toast('${l} opened')`}"><span class="tile sm">${ic(i,'s20')}</span>${l}</button>`).join('')}</div>
  ${sec('Low stock')}
  <div class="card flush">${low.map(x=>li(x.name,x.pn,`<span class="pill ${DB.stock[x.id]?'a':'r'}">${DB.stock[x.id]} / 20</span>`,x.ic,'','n')).join('')}</div>
 </div></div>`;};
@@ -853,6 +853,37 @@ SCREENS.warreg=()=>{const f=S.ui.wf||'All';const q=(S.ui.wq||'').trim().toLowerC
  <label class="search" for="wq">${ic('search','s20')}<input id="wq" placeholder="Mobile, invoice, part no. or name" value="${esc(S.ui.wq||'')}" oninput="S.ui.wq=this.value;clearTimeout(window._wq);window._wq=setTimeout(()=>{refresh();const i=document.getElementById('wq');i.focus();i.setSelectionRange(i.value.length,i.value.length)},250)"></label>
  <div class="chips">${['All','Active','Expiring','Expired'].map(c=>`<button class="chip ${c===f?'on':''}" onclick="S.ui.wf='${c}';refresh()">${c}</button>`).join('')}</div>
  ${list.length?list.map(w=>warCard(w,1)).join(''):'<div class="empty">No warranties match.</div>'}</div></div>`;};
+
+
+/* ---------- scan to find ---------- */
+const SEED_BARCODES={p1:'8901234504571',p2:'3374650071002',p3:'8901234503109',p4:'8055104092103',p5:'8901234502058',p6:'8906003808806',p7:'8901234501126',p8:'8711500431123'};
+const SEED_FITS={p1:['Bajaj Pulsar 150 · BS6/BS4 · Any colour','Bajaj Pulsar 180 · BS4 · Any colour','Bajaj Avenger 160 · BS6 · Any colour'],p2:['Universal'],p3:['Bajaj Pulsar 150 · BS6/BS4 · Any colour','Bajaj Platina 110 · BS6 · Any colour'],p4:['Bajaj Pulsar 150 · BS6 · Any colour'],p5:['Bajaj Pulsar 150 · BS6/BS4 · Any colour'],p6:['Bajaj Pulsar 150 · BS6/BS4/BS3 · Any colour'],p7:['Bajaj Pulsar 150 · BS6/BS4 · Any colour'],p8:['Universal']};
+const barcodeOf=x=>x.barcode||SEED_BARCODES[x.id]||'—';
+const fitsOf=x=>x.fits||SEED_FITS[x.id]||['Not set'];
+function findByCode(c){c=String(c||'').trim().toLowerCase();if(!c)return null;return PRODUCTS.find(x=>barcodeOf(x).toLowerCase()===c||x.pn.toLowerCase()===c)||null;}
+function doScan(code){const x=findByCode(code);S.ui.scanCode=code;S.ui.scanHit=x?x.id:null;S.ui.scanMiss=x?null:code;if(x){S.ui.scans=[x.id,...(S.ui.scans||[]).filter(i=>i!==x.id)].slice(0,5);}refresh();}
+function simScan(){const pool=PRODUCTS.filter(x=>x.id!==S.ui.scanHit);const x=pool[Math.floor(Math.random()*pool.length)];doScan(barcodeOf(x));}
+SCREENS.scanfind=()=>{const x=S.ui.scanHit?P(S.ui.scanHit):null;const edit=canEditRack();const st=x?DB.stock[x.id]:0;const staffPrice=['inventory','admin','manager','billing','sales'].includes(S.user.role);
+ return bar('Scan to find')+`<div class="scroll"><div class="pad">
+ <button class="scanbox" style="height:170px;width:100%" onclick="simScan()" aria-label="Scan a barcode"><div class="frame" style="width:250px;height:110px"><span class="line" style="animation-duration:1.4s"></span></div></button>
+ <p class="cap" style="text-align:center">Tap the box to scan. In this demo it picks a random part; the real app uses the camera or a barcode gun.</p>
+ <form class="row" style="gap:8px" onsubmit="event.preventDefault();doScan(document.getElementById('sc-code').value)"><label class="search grow" for="sc-code">${ic('scan','s20')}<input id="sc-code" inputmode="text" placeholder="Barcode or part number" value="${esc(S.ui.scanMiss||'')}"></label><button class="btn sm" type="submit">Find</button></form>
+ ${S.ui.scanMiss?`<div class="card" style="border:1.5px solid var(--r)"><div class="row">${ic('alert','s20')}<div class="grow"><div class="h3">No part found for “${esc(S.ui.scanMiss)}”</div><div class="cap">Check the code, or add it as a new product.</div></div></div>${edit?`<button class="btn sm" style="width:100%" onclick="S.ui.ap=null;S.ui.apErr=null;go('addproduct');setTimeout(()=>{if(S.ui.ap){S.ui.ap.barcode='${esc(S.ui.scanMiss)}';refresh();}},0)">+ Add as new product</button>`:''}</div>`:''}
+ ${x?`<div class="card" style="border:1.5px solid var(--y)">
+  <div class="row top"><div class="tile n" style="width:56px;height:56px">${ic(x.ic,'s28')}</div><div class="grow"><div class="micro muted">${esc(x.pack?x.pack+' · Aftermarket':x.brand+' · '+x.type)}</div><div class="h3">${esc(x.name)}</div><div class="cap">${x.pn} · ${barcodeOf(x)}</div></div></div>
+  <div class="grid2">
+   <div class="stat ${st===0?'r':st<10?'y':'g'}" style="padding:12px"><span class="micro">In stock</span><span class="v">${st} pcs</span><span class="cap">${st===0?'Out of stock':st<10?'Low · reorder':'OK'}</span></div>
+   <div class="stat k" style="padding:12px;background:var(--ink);color:#fff;border:0"><span class="micro" style="color:var(--ink3)">Rack</span><span class="v" style="color:var(--y)">${binOf(x.id)}</span><span class="cap" style="color:var(--ink3)">Rack-Shelf-Bin</span></div>
+  </div>
+  <div class="kv"><span>MRP</span><span>${inr(x.mrp)}</span></div>
+  ${staffPrice?`<div class="kv"><span>Customer price</span><span>${x.pending?'<span class="amb">Pending Admin</span>':inr(x.price)}</span></div><div class="kv"><span>Mechanic price</span><span>${x.pending?'<span class="amb">Pending Admin</span>':inr(x.mp)}</span></div>`:''}
+  <div class="kv"><span>Warranty</span><span style="color:${x.warDays?'var(--g)':'var(--ink5)'}">${warText(x.warDays)}</span></div>
+  <div class="stack g6"><span class="micro muted">Fits</span><div class="row wrap" style="gap:6px">${fitsOf(x).map(f=>`<span class="pill b">${esc(f)}</span>`).join('')}</div></div>
+  ${edit?`<div class="grid2"><button class="btn line sm" style="width:100%" onclick="rackEdit('${x.id}')">${ic('pin','s16')}Change rack</button><button class="btn sm" style="width:100%" onclick="S.ui.mv={pid:'${x.id}',q:1,to:'Vijayanagar',counted:'',reason:'Scan check',ref:''};go('stockmove',{type:'count'})">${ic('clip','s16')}Count stock</button></div>`:''}
+ </div>`:''}
+ ${(S.ui.scans||[]).length>1?`${sec('Recent scans')}<div class="card flush">${S.ui.scans.filter(i=>i!==S.ui.scanHit).map(i=>{const y=P(i);return y?li(esc(y.name),y.pn+' · Rack '+binOf(i)+' · '+DB.stock[i]+' pcs','',y.ic,`doScan('${barcodeOf(y)}')`,'n'):'';}).join('')}</div>`:''}
+ ${!x&&!S.ui.scanMiss?`<div class="cap" style="text-align:center">Try: ${PRODUCTS.slice(0,3).map(y=>`<button class="link" onclick="doScan('${barcodeOf(y)}')">${barcodeOf(y)}</button>`).join(' · ')}</div>`:''}
+</div></div>`;};
 
 /* ---------- rack locations ---------- */
 const binOf=id=>(DB.bins&&DB.bins[id])||'Not set';
@@ -988,7 +1019,7 @@ function searchIndex(){const r=S.user.role;const all=[];
  const staff=Object.entries(ACC()).filter(([,a])=>a.sid).map(([k,a])=>[a.name,a.label+' · '+a.sid+' · '+k,'user']);
  const inv=[...DB.bills.map(b=>[b.id,b.p+' · '+inr(b.amt),'file']),...DB.minv.map(v=>[v.id,'Mechanic invoice · '+inr(v.amt),'file'])];
  const ord=DB.orders.map(o=>[o.id,'Order · '+o.st+' · '+inr(o.amt),'package']);
- const parts=PRODUCTS.map(p=>[p.pn,p.name+' · stock '+DB.stock[p.id]+' · Rack '+binOf(p.id),p.ic]);
+ const parts=PRODUCTS.map(p=>[p.pn,barcodeOf(p)+' · '+p.name+' · stock '+DB.stock[p.id]+' · Rack '+binOf(p.id),p.ic]);
  const veh=[['KA 02 HM 4521','Vehicle · Bajaj Pulsar 150 · Anjali Rao','bike'],['KA 04 JX 1180','Vehicle · Honda Activa 6G · Anjali Rao','bike']];
  const scope={billing:[cust,mech,inv,parts],sales:[cust,mech,ord,parts,veh],manager:[cust,mech,staff,inv,ord,parts,veh],inventory:[parts],admin:[cust,mech,staff,inv,ord,parts,veh]}[r]||[];
  scope.forEach(g=>all.push(...g));return all;}
@@ -1033,7 +1064,7 @@ SCREENS.afinance=()=>`<div class="scroll"><div class="pad"><h1 class="h1">Financ
 SCREENS.audit=()=>`<div class="scroll"><div class="pad"><h1 class="h1">Audit log</h1><div class="cap">Every sensitive action, including the ones you make in this demo.</div>
  ${DB.audit.map(a=>`<div class="card"><div class="row top"><div class="tile sm">${ic('shield','s18')}</div><div class="grow"><div class="h3">${esc(a.a)}</div><div class="cap">${esc(a.who)} · ${esc(a.e)}</div></div></div><div class="row" style="gap:8px"><span class="pill r" style="text-decoration:${a.o==='—'?'none':'line-through'}">${esc(a.o)}</span>${ic('chevR','s16')}<span class="pill g">${esc(a.n)}</span></div><div class="cap">${esc(a.t)}</div></div>`).join('')}</div></div>`;
 SCREENS.more=()=>`<div class="scroll"><div class="pad"><h1 class="h1">More</h1>
- <div class="card flush">${li('Universal search','Mobile, staff ID, invoice, part no., vehicle','','search',"go('usearch')")}${li('Roles & permissions','RBAC matrix for all 7 roles','','lock',"go('rbac')")}${li('Create staff','Assign role, branch & permissions','','users',"go('newstaff')")}${li('Products & stock','Add products, set prices','','package',"go('stocklist')")}${li('Warranty register','All warranties issued on bills','','shield',"S.ui.wf='All';go('warreg')")}${li('Account','Log out · reset demo','','user',"go('saccount')")}</div></div></div>`;
+ <div class="card flush">${li('Universal search','Mobile, staff ID, invoice, part no., vehicle','','search',"go('usearch')")}${li('Roles & permissions','RBAC matrix for all 7 roles','','lock',"go('rbac')")}${li('Create staff','Assign role, branch & permissions','','users',"go('newstaff')")}${li('Products & stock','Add products, set prices','','package',"go('stocklist')")}${li('Warranty register','All warranties issued on bills','','shield',"S.ui.wf='All';go('warreg')")}${li('Scan to find','Look up any part by barcode','','scan',"S.ui.scanHit=null;S.ui.scanMiss=null;go('scanfind')")}${li('Account','Log out · reset demo','','user',"go('saccount')")}</div></div></div>`;
 const ROLEKEY={Billing:'billing',Sales:'sales',Manager:'manager',Inventory:'inventory'};
 function nextSid(r){const code={Billing:'BIL',Sales:'SAL',Manager:'MGR',Inventory:'INV'}[r];const n=Object.values(ACC()).filter(a=>a.sid&&a.sid.includes('-'+code+'-')).length+1;return 'BP-RNR-'+code+'-'+String(n).padStart(3,'0');}
 SCREENS.newstaff=()=>{const f=S.ui.ns||(S.ui.ns={name:'',login:'',role:'Billing'});const sid=nextSid(f.role);return bar('New staff login')+`<div class="scroll"><div class="pad">

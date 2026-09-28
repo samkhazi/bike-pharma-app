@@ -217,7 +217,7 @@ svg.s16{width:16px;height:16px}svg.s18{width:18px;height:18px}svg.s20{width:20px
 .wordmark{font-family:var(--brand);font-weight:700;font-size:34px;color:#fff;letter-spacing:1px;line-height:1}
 .wordsub{font-family:var(--brand);font-weight:600;font-size:12px;letter-spacing:.45em;color:var(--y);margin-left:.45em}
 .splash .wordmark,.splash .wordsub{animation:fade .6s .45s both}
-.hero{background:var(--ink);color:#fff;padding:26px 24px 34px;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:8px;flex:none}
+.hero{background:radial-gradient(120% 90% at 50% 0%,#2b2b2b 0%,#121212 60%);color:#fff;padding:30px 24px 52px;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:8px;flex:none}
 .hero::before,.hero::after{content:"";position:absolute;height:5px;background:var(--y);transform:rotate(-40deg);width:180px;right:-50px;top:26px}
 .hero::after{top:48px;right:-70px;width:200px}
 .hero .logo{width:72px;height:72px}
@@ -228,6 +228,28 @@ svg.s16{width:16px;height:16px}svg.s18{width:18px;height:18px}svg.s20{width:20px
 .otp input{width:46px;height:56px;border:1.5px solid var(--line);border-radius:14px;text-align:center;font-size:22px;font-weight:800;outline:0;background:var(--card)}
 .otp input:focus{border-color:var(--ink);box-shadow:0 0 0 3px var(--y-soft)}
 .hint{background:var(--y-soft);border-radius:12px;padding:10px 12px;font-size:12px;color:var(--y-deep);font-weight:600;display:flex;gap:8px;align-items:center}
+.lg-lang{position:absolute;top:12px;left:12px;display:flex;gap:2px;background:rgba(255,255,255,.1);border-radius:999px;padding:3px;z-index:2}.lg-lang button{color:#bbb;font-size:11px;font-weight:800;border-radius:999px;padding:4px 9px;min-width:30px}.lg-lang button.on{background:var(--y);color:var(--ink)}
+.lg-tagline{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;position:relative;z-index:1}.lg-tagline span{font-size:10.5px;color:#e8e8e8;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:3px 9px;animation:fade .5s both}.lg-tagline span:nth-child(1){animation-delay:.9s}.lg-tagline span:nth-child(2){animation-delay:1.05s}.lg-tagline span:nth-child(3){animation-delay:1.2s}
+.lg-road{position:absolute;left:0;right:0;bottom:22px;height:22px;pointer-events:none}.lg-road i{position:absolute;left:0;right:0;bottom:4px;height:2px;background:repeating-linear-gradient(90deg,rgba(255,194,14,.55) 0 14px,transparent 14px 26px);animation:lgRoad 1.2s linear infinite}
+.lg-bike{position:absolute;bottom:5px;left:-30px;color:var(--y);animation:lgRide 7s 1.4s ease-in-out infinite}
+@keyframes lgRoad{to{background-position:-26px 0}}@keyframes lgRide{0%{transform:translateX(0)}45%,100%{transform:translateX(460px)}}
+.lg-sheet>*{animation:lgUp .55s cubic-bezier(.2,.8,.2,1) both}.lg-sheet>*:nth-child(1){animation-delay:.25s}.lg-sheet>*:nth-child(2){animation-delay:.33s}.lg-sheet>*:nth-child(3){animation-delay:.41s}.lg-sheet>*:nth-child(4){animation-delay:.49s}.lg-sheet>*:nth-child(5){animation-delay:.57s}.lg-sheet>*:nth-child(6){animation-delay:.65s}.lg-sheet>*:nth-child(7){animation-delay:.73s}.lg-sheet>*:nth-child(n+8){animation-delay:.8s}
+@keyframes lgUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.lg-hi{display:inline-flex;align-self:flex-start;background:var(--y-soft);color:var(--y-deep);font-weight:800;font-size:12px;border-radius:999px;padding:4px 10px}
+.lg-inp{min-height:58px;border-width:2px;transition:border-color .2s,box-shadow .2s}.lg-inp:focus-within{border-color:var(--ink);box-shadow:0 0 0 4px rgba(255,194,14,.35)}.lg-inp input{font-size:17px;font-weight:700;letter-spacing:.3px}
+.lg-go{height:56px;font-size:15px;box-shadow:0 8px 20px rgba(255,194,14,.35);transition:transform .15s,box-shadow .2s}.lg-go:not(:disabled):active{transform:scale(.98)}.lg-go:not(:disabled) .lg-arr{animation:lgNudge 1.4s ease-in-out infinite}.lg-go:disabled{box-shadow:none}
+@keyframes lgNudge{50%{transform:translateX(4px)}}
+.lg-join{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:14px 12px;border-radius:18px;text-align:left;overflow:hidden;transition:transform .15s}.lg-join:active{transform:scale(.97)}
+.lg-join.customer{background:linear-gradient(135deg,#FFE58A,#FFC20E);color:#121212}.lg-join.mechanic{background:linear-gradient(135deg,#2a2a2a,#121212);color:#fff}
+.lg-join.on{outline:3px solid var(--ink);outline-offset:2px}.lg-join.mechanic.on{outline-color:var(--y)}
+.lg-jic{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;margin-bottom:4px}.lg-join.customer .lg-jic{background:rgba(255,255,255,.55)}.lg-join.mechanic .lg-jic{background:var(--y);color:#121212}
+.lg-join b{font-size:13.5px}.lg-join>span:not(.lg-jic):not(.lg-jarr){font-size:11px;opacity:.75}.lg-jarr{position:absolute;right:10px;top:12px;opacity:.7}
+@media (prefers-reduced-motion:reduce){.lg-sheet>*,.lg-road i,.lg-bike,.lg-arr,.lg-tagline span{animation:none!important}}
+.lg-or{display:flex;align-items:center;gap:10px;color:var(--ink5);font-size:12px;font-weight:700}.lg-or::before,.lg-or::after{content:'';flex:1;height:1px;background:var(--line)}
+.lg-demo{border:1px solid var(--line);border-radius:14px;padding:10px 12px;background:var(--paper)}.lg-demo summary{display:flex;justify-content:space-between;cursor:pointer;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--ink5);list-style:none}.lg-demo summary::-webkit-details-marker{display:none}
+.accs2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:10px}.accs2 button{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--card);text-align:left;min-width:0}.accs2 b{display:block;font-size:12px}.accs2 span span,.accs2 .grow>span{display:block;font-size:10px;color:var(--ink5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lg-trust{display:flex;justify-content:space-between;gap:6px}.lg-trust span{display:flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;color:var(--ink7)}
+.btn:disabled{opacity:.45}
 .accs{display:grid;gap:6px}
 .accs button{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--paper);font-size:12px;text-align:left}
 .accs button b{font-weight:800}
@@ -490,29 +512,48 @@ function deniedScreen(s){return bar('Admin only')+`<div class="scroll"><div clas
 function splash(){S.ui.splashT=setTimeout(endSplash,5300);}
 function endSplash(){clearTimeout(S.ui.splashT);const d=document.getElementById('splash');if(!d||d.classList.contains('out'))return;d.classList.add('out');setTimeout(()=>d.remove(),500);}
 const SCREENS={};
-SCREENS.login=()=>{const e=S.ui.loginErr;return `<div class="hero"><svg class="heroMark idle" viewBox="0 0 370 190" role="img" aria-label="Bike Pharma Automobiles"><use href="#logoMark"/></svg></div>
-<div class="sheet-card scroll">
- <div class="stack g6"><div class="cap">Namaste!</div><h1 class="h1">Login to Bike Pharma</h1><p class="cap">Enter your registered mobile number or staff email. We’ll send an OTP and open the account type linked to it.</p></div>
- <form class="field" onsubmit="event.preventDefault();sendOtp()">
-  <label for="loginId">Mobile number or email</label>
-  <div class="inp ${e?'err':''}">${ic('phone','s18')}<input id="loginId" autocomplete="username" inputmode="email" placeholder="98450 12345 or name@email.com" value="${esc(S.ui.loginVal||'')}"></div>
-  ${e?`<div class="errmsg">${esc(e)}</div>`:''}
-  <button class="btn" style="margin-top:8px" type="submit">Send OTP ${ic('chevR','s18')}</button>
+const LG_TX={en:{hi:'Namaste! 👋',t:'Login to Bike Pharma',s:'Customers, mechanics and staff — one login. We’ll send a one-time password.',l:'Mobile number or staff email',btn:'Get OTP',newq:'New to Bike Pharma?',cust:'Join as Customer',custd:'Buy spares, book service',mech:'Join as Mechanic',mechd:'Mechanic price & credit',staff:'Staff? Use the mobile or email your Admin gave you.'},
+ kn:{hi:'ನಮಸ್ಕಾರ! 👋',t:'Bike Pharma ಗೆ ಲಾಗಿನ್ ಮಾಡಿ',s:'ಗ್ರಾಹಕರು, ಮೆಕಾನಿಕ್‌ಗಳು ಮತ್ತು ಸಿಬ್ಬಂದಿ — ಒಂದೇ ಲಾಗಿನ್. ನಾವು OTP ಕಳುಹಿಸುತ್ತೇವೆ.',l:'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಅಥವಾ ಸಿಬ್ಬಂದಿ ಇಮೇಲ್',btn:'OTP ಪಡೆಯಿರಿ',newq:'Bike Pharma ಗೆ ಹೊಸಬರೇ?',cust:'ಗ್ರಾಹಕರಾಗಿ ಸೇರಿ',custd:'ಬಿಡಿಭಾಗ ಖರೀದಿ, ಸರ್ವೀಸ್',mech:'ಮೆಕಾನಿಕ್ ಆಗಿ ಸೇರಿ',mechd:'ಮೆಕಾನಿಕ್ ಬೆಲೆ ಮತ್ತು ಕ್ರೆಡಿಟ್',staff:'ಸಿಬ್ಬಂದಿಯೇ? Admin ನೀಡಿದ ಮೊಬೈಲ್/ಇಮೇಲ್ ಬಳಸಿ.'},
+ hi:{hi:'नमस्ते! 👋',t:'Bike Pharma में लॉगिन करें',s:'ग्राहक, मैकेनिक और स्टाफ — एक ही लॉगिन। हम OTP भेजेंगे।',l:'मोबाइल नंबर या स्टाफ ईमेल',btn:'OTP पाएं',newq:'Bike Pharma पर नए हैं?',cust:'ग्राहक के रूप में जुड़ें',custd:'स्पेयर्स खरीदें, सर्विस बुक करें',mech:'मैकेनिक के रूप में जुड़ें',mechd:'मैकेनिक प्राइस और क्रेडिट',staff:'स्टाफ? Admin द्वारा दिया गया मोबाइल/ईमेल डालें।'}};
+const lgT=()=>LG_TX[S.ui.lgLang||'en'];
+function lgKind(v){v=String(v||'').trim();if(!v)return {k:'none'};if(/[a-z@]/i.test(v)){return {k:'email',ok:/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(v)};}const d=v.replace(/\D/g,'').replace(/^(91|0)(?=\d{10}$)/,'');return {k:'phone',d,ok:d.length===10&&/^[6-9]/.test(d)};}
+function lgInput(el){S.ui.loginVal=el.value;S.ui.loginErr=null;const k=lgKind(el.value);const box=el.closest('.inp');box.classList.remove('err');const e=document.getElementById('lg-err');if(e)e.textContent='';
+ document.getElementById('lg-pre').style.display=k.k==='phone'?'':'none';document.getElementById('lg-ic').innerHTML=ic(k.k==='email'?'user':'phone','s18');
+ const tag=document.getElementById('lg-tag');tag.innerHTML=k.ok?(k.k==='email'?'<span class="pill b">Staff login</span>':`<span style="color:var(--g)">${ic('checkC','s18')}</span>`):'';
+ const btn=document.getElementById('lg-btn');btn.disabled=!k.ok;
+ if(k.k==='phone'&&k.d&&k.d.length<=10){const f=k.d.length>5?k.d.slice(0,5)+' '+k.d.slice(5):k.d;if(el.value!==f&&!/[^\d\s+]/.test(el.value)){el.value=f;S.ui.loginVal=f;}}}
+function lgJoin(role){S.ui.suRole=role;S.ui.loginErr=null;refresh();const i=document.getElementById('loginId');if(i){i.focus();}toast('Enter your mobile number to join as '+(role==='mechanic'?'a mechanic':'a customer'));}
+const ROLE_IC={customer:['user','y'],mechanic:['wrench','k'],billing:['receipt','b'],sales:['trend','g'],manager:['chart','a'],inventory:['package','n'],admin:['shield','r']};
+SCREENS.login=()=>{const e=S.ui.loginErr;const T=lgT();const k=lgKind(S.ui.loginVal||'');const ch=S.ui.otpCh||'SMS';
+ return `<div class="hero"><div class="lg-lang">${[['en','EN'],['kn','KN'],['hi','HI']].map(([c,l])=>`<button class="${(S.ui.lgLang||'en')===c?'on':''}" onclick="S.ui.lgLang='${c}';refresh()" aria-label="Language ${l}">${l}</button>`).join('')}</div><svg class="heroMark idle" viewBox="0 0 370 190" role="img" aria-label="Bike Pharma Automobiles"><use href="#logoMark"/></svg><div class="lg-tagline">${['Genuine spares','Trusted mechanics','Warranty tracked'].map(t=>`<span>${t}</span>`).join('')}</div><div class="lg-road"><i></i><span class="lg-bike">${ic('bike','s20')}</span></div></div>
+<div class="sheet-card scroll lg-sheet">
+ <div class="stack g6"><div class="lg-hi">${T.hi}</div><h1 class="h1" style="font-size:28px;line-height:1.15">${T.t}</h1><p class="cap">${T.s}</p></div>
+ ${S.ui.suRole?`<div class="row" style="background:var(--y-soft);border-radius:12px;padding:10px 12px;gap:8px">${ic(S.ui.suRole==='mechanic'?'wrench':'user','s18')}<span class="cap grow" style="color:var(--ink)"><b>Joining as ${S.ui.suRole==='mechanic'?'Mechanic':'Customer'}</b> · enter your mobile number</span><button class="link" onclick="S.ui.suRole=null;refresh()">Cancel</button></div>`:''}
+ <form class="field" onsubmit="event.preventDefault();sendOtp()" novalidate>
+  <label for="loginId">${T.l}</label>
+  <div class="inp lg-inp ${e?'err':''}" style="gap:8px"><span id="lg-ic">${ic(k.k==='email'?'user':'phone','s18')}</span><b id="lg-pre" style="${k.k==='phone'||k.k==='none'?'':'display:none'};border-right:1px solid var(--line);padding-right:8px">+91</b><input id="loginId" autocomplete="username" inputmode="${k.k==='email'?'email':'tel'}" placeholder="98450 12345" value="${esc(S.ui.loginVal||'')}" oninput="lgInput(this)" style="min-width:0;flex:1"><span id="lg-tag">${k.ok?(k.k==='email'?'<span class="pill b">Staff login</span>':`<span style="color:var(--g)">${ic('checkC','s18')}</span>`):''}</span></div>
+  <div id="lg-err" class="errmsg" role="alert">${e?esc(e):''}</div>
+  <div class="row" style="gap:6px;margin-top:2px"><span class="cap">Send OTP on</span>${['SMS','WhatsApp'].map(c=>`<button type="button" class="chip ${ch===c?'on':''}" style="padding:5px 12px;font-size:12px" onclick="S.ui.otpCh='${c}';refresh()">${c}</button>`).join('')}</div>
+  <button id="lg-btn" class="btn lg-go" style="margin-top:8px" type="submit" ${k.ok?'':'disabled'}>${T.btn} <span class="lg-arr">${ic('chevR','s18')}</span></button>
  </form>
- <div class="row cap" style="gap:8px">${ic('user','s16')}<span class="grow">New customer or mechanic? Enter your mobile number to sign up.</span></div>
- <div class="stack g8"><div class="micro muted">Test accounts · tap to fill</div><div class="accs">${Object.entries(ACCOUNTS).map(([k,a])=>`<button type="button" onclick="fillLogin('${k}')"><b>${esc(a.label)}</b><span>${esc(k)}</span></button>`).join('')}</div></div>
- <p class="cap" style="text-align:center">By continuing you agree to the Terms & Privacy Policy.</p>
+ <div class="lg-or"><span>${T.newq}</span></div>
+ <div class="grid2">${[['customer',T.cust,T.custd,'user'],['mechanic',T.mech,T.mechd,'wrench']].map(([r,l,d,i])=>`<button class="lg-join ${r} ${S.ui.suRole===r?'on':''}" onclick="lgJoin('${r}')"><span class="lg-jic">${ic(i,'s20')}</span><b>${l}</b><span>${d}</span><span class="lg-jarr">${ic('chevR','s16')}</span></button>`).join('')}</div>
+ <div class="row cap" style="gap:8px">${ic('lock','s16')}<span class="grow">${T.staff}</span></div>
+ <details class="lg-demo" ${S.ui.demoClosed?'':'open'} ontoggle="S.ui.demoClosed=!this.open"><summary><span>Demo logins · tap to fill</span><span class="cap">OTP 123456</span></summary>
+  <div class="accs2">${Object.entries(ACCOUNTS).map(([kk,a])=>{const [i,t]=ROLE_IC[a.role]||['user','n'];return `<button type="button" onclick="fillLogin('${kk}')"><span class="tile sm ${t}">${ic(i,'s16')}</span><span class="grow" style="min-width:0"><b>${esc(a.label)}</b><span>${esc(kk)}</span></span></button>`;}).join('')}</div></details>
+ <div class="lg-trust">${[['shield','100% genuine'],['wrench','Verified mechanics'],['award','Warranty in app']].map(([i,t])=>`<span>${ic(i,'s16')}${t}</span>`).join('')}</div>
+ <p class="cap" style="text-align:center;font-size:11px">By continuing you agree to our <button class="link" style="font-size:11px" onclick="toast('Terms of use')">Terms</button> & <button class="link" style="font-size:11px" onclick="toast('Privacy policy')">Privacy Policy</button> · <button class="link" style="font-size:11px" onclick="toast('Calling Bike Pharma support…')">Help</button><br><span style="color:var(--ink5)">v1.0 · Bike Pharma Automobiles, Bengaluru</span></p>
 </div>`;};
-function fillLogin(k){S.ui.loginVal=k;S.ui.loginErr=null;refresh();const i=document.getElementById('loginId');if(i)i.focus();}
+function fillLogin(k){S.ui.loginVal=k;S.ui.loginErr=null;refresh();const i=document.getElementById('loginId');if(i){i.focus();lgInput(i);}}
 function sendOtp(){const v=document.getElementById('loginId').value;S.ui.loginVal=v;const id=normId(v);
  if(!id){S.ui.loginErr='Enter your mobile number or email.';return refresh();}
  const a=ACC()[id];
  if(!a){ if(id.includes('@')){S.ui.loginErr='This email isn’t registered. Staff logins are created by the Bike Pharma Admin.';return refresh();}
    if(id.length!==10){S.ui.loginErr='Enter a 10-digit mobile number.';return refresh();}
-   S.ui.loginErr=null;S.ui.signup={id,role:'customer',name:'',shop:'',area:''};return go('signup');}
+   S.ui.loginErr=null;S.ui.signup={id,role:S.ui.suRole||'customer',name:'',shop:'',area:''};S.ui.suRole=null;return go('signup');}
  if(staffOff(id)){S.ui.loginErr='This login has been deactivated by Admin. Please contact your Admin.';return refresh();}
  if(a.status==='pending'){S.ui.loginErr='Your mechanic account is waiting for Bike Pharma verification. You can log in once Admin approves it.';return refresh();}
- S.ui.loginErr=null;S.ui.signup=null;S.ui.pending=id;S.ui.after=()=>{const f=document.querySelector('.otp input');if(f)f.focus();};go('otp');}
+ S.ui.loginErr=null;S.ui.signup=null;S.ui.pending=id;S.ui.otpTries=0;S.ui.otpSent=Date.now();S.ui.after=()=>{const f=document.querySelector('.otp input');if(f)f.focus();};go('otp');}
 SCREENS.signup=()=>{const s=S.ui.signup;const m=s.role==='mechanic';return bar('Create account')+`<div class="scroll"><div class="pad">
  <div class="stack g6"><h1 class="h1">New to Bike Pharma?</h1><p class="cap">+91 ${esc(s.id.slice(0,5))} ${esc(s.id.slice(5))} isn’t registered yet. Sign up as a customer or a mechanic. Staff accounts are created by Admin.</p></div>
  <div class="grid2">${[['customer','Customer','user','Buy spares, book service'],['mechanic','Mechanic','wrench','Mechanic price, wallet, credit']].map(([k,l,i,d])=>`<button class="opt ${s.role===k?'on':''}" style="flex-direction:column;align-items:flex-start" onclick="S.ui.signup.role='${k}';refresh()"><span class="sec" style="width:100%">${ic(i,'s20')}<span class="radio"></span></span><b>${l}</b><span class="cap">${d}</span></button>`).join('')}</div>
@@ -531,18 +572,23 @@ SCREENS.submitted=()=>{const s=S.ui.done||{};return `<div class="scroll"><div cl
  <div class="hint">${ic('users','s16')} Demo tip: log in as Admin (boltech25@gmail.com) → Users → Mechanics to approve it.</div>
  <button class="btn" onclick="reset('login')">Back to login</button></div></div>`;};
 SCREENS.otp=()=>{const id=S.ui.pending;const masked=id.includes('@')?id:'+91 '+id.slice(0,5)+' '+id.slice(5);return bar('')+`<div class="scroll"><div class="pad" style="gap:22px">
- <div class="stack g6"><h1 class="h1">Enter OTP</h1><p class="cap">Sent to <b style="color:var(--ink)">${esc(masked)}</b> · <button class="link" onclick="back()">Edit</button></p></div>
+ <div class="stack g6"><h1 class="h1">Enter OTP</h1><p class="cap">6-digit code sent ${id.includes('@')?'by email':'on '+(S.ui.otpCh||'SMS')} to <b style="color:var(--ink)">${esc(masked)}</b> · <button class="link" onclick="back()">Edit</button></p></div>
  <div class="otp" role="group" aria-label="6 digit OTP">${[0,1,2,3,4,5].map(i=>`<input id="otp${i}" inputmode="numeric" maxlength="1" aria-label="Digit ${i+1}" oninput="otpIn(this,${i})" onkeydown="otpKey(event,${i})">`).join('')}</div>
  ${S.ui.otpErr?`<div class="errmsg">${S.ui.otpErr}</div>`:''}
  <div class="hint">${ic('lock','s16')} Demo OTP for every account: 123456</div>
- <button class="btn" onclick="verify()">Verify &amp; continue ${ic('chevR','s18')}</button>
+ ${(S.ui.otpTries||0)>=5?`<div class="row cap" style="background:var(--r-soft);color:var(--r);border-radius:12px;padding:10px;gap:8px">${ic('lock','s16')}<span class="grow">Too many wrong tries. For your safety this login is paused for 15 minutes.</span></div>`:''}
+ <button class="btn" onclick="verify()" ${(S.ui.otpTries||0)>=5?'disabled':''}>Verify &amp; continue ${ic('chevR','s18')}</button>
+ <div class="row cap" style="justify-content:center;gap:6px" id="otp-rs">${otpResendHtml()}</div>
  <button class="link" style="text-align:center" onclick="fillOtp()">Auto-fill OTP</button>
 </div></div>`;};
 function otpIn(el,i){el.value=el.value.replace(/\D/g,'').slice(0,1);if(el.value&&i<5)document.getElementById('otp'+(i+1)).focus();if(i===5&&el.value)verify();}
 function otpKey(e,i){if(e.key==='Backspace'&&!e.target.value&&i>0)document.getElementById('otp'+(i-1)).focus();}
 function fillOtp(){'123456'.split('').forEach((d,i)=>document.getElementById('otp'+i).value=d);setTimeout(verify,250);}
-function verify(){const code=[0,1,2,3,4,5].map(i=>document.getElementById('otp'+i).value).join('');
- if(code!=='123456'){S.ui.otpErr='That OTP is incorrect. Use 123456 for this demo.';refresh();return;}
+function otpResendHtml(){const left=Math.max(0,30-Math.floor((Date.now()-(S.ui.otpSent||0))/1000));clearTimeout(window._rsT);if(left>0)window._rsT=setTimeout(()=>{const e=document.getElementById('otp-rs');if(e)e.innerHTML=otpResendHtml();},1000);
+ return left>0?`Didn’t get it? Resend in <b style="color:var(--ink)">0:${String(left).padStart(2,'0')}</b>`:`Didn’t get it? <button class="link" onclick="S.ui.otpSent=Date.now();toast('New OTP sent');refresh()">Resend OTP</button> · <button class="link" onclick="S.ui.otpCh=(S.ui.otpCh==='WhatsApp'?'SMS':'WhatsApp');S.ui.otpSent=Date.now();toast('OTP sent on '+S.ui.otpCh);refresh()">Try ${S.ui.otpCh==='WhatsApp'?'SMS':'WhatsApp'}</button>`;}
+function verify(){const code=[0,1,2,3,4,5].map(i=>document.getElementById('otp'+i).value).join('');if((S.ui.otpTries||0)>=5)return;
+ if(code.length<6){S.ui.otpErr='Enter all 6 digits.';refresh();return;}
+ if(code!=='123456'){S.ui.otpTries=(S.ui.otpTries||0)+1;const l=5-S.ui.otpTries;S.ui.otpErr=l>0?`That OTP is incorrect. ${l} ${l===1?'try':'tries'} left. (Demo OTP: 123456)`:'That OTP is incorrect.';refresh();return;}
  S.ui.otpErr=null;const id=S.ui.pending;const su=S.ui.signup;
  if(su&&su.id===id){ if(su.role==='mechanic'){DB.accounts[id]={role:'mechanic',name:su.name.trim(),label:'Mechanic',sub:su.shop.trim()+' · '+(su.area.trim()||'Bengaluru'),shop:su.shop.trim(),status:'pending',joined:today()};save();S.ui.done={...su};S.ui.signup=null;S.stack=[{s:'submitted',p:{}}];return render('push');}
    DB.accounts[id]={role:'customer',name:su.name.trim(),label:'Customer',sub:'Customer account · joined '+today(),status:'active'};save();S.ui.signup=null;}

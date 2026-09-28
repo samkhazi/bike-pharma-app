@@ -1,0 +1,452 @@
+<title>Bike Pharma App Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+:root{
+  --ink:#121212; --ink2:#3A362F; --muted:#6F6A60; --paper:#F7F5EF; --surface:#FFFFFF; --line:#E6E1D4;
+  --amber:#FFC20E; --amber-soft:#FFF4CC; --amber-deep:#8A6100; --teal:#1F6E7A; --coral:#C8432F; --green:#1C8A5A;
+  --sheet:#FFFDF7; --band:#121212; --band-ink:#F5F1E6;
+  --display:"Chakra Petch","Plus Jakarta Sans",system-ui,sans-serif;
+  --body:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){color-scheme:dark;--ink:#F3EFE6;--ink2:#D6D0C3;--muted:#A69F90;--paper:#100F0D;--surface:#1B1A17;--line:#2F2C26;--amber-soft:#3A2F0E;--amber-deep:#FFD54A;--band:#1B1A17;--band-ink:#F5F1E6}}
+:root[data-theme="dark"]{color-scheme:dark;--ink:#F3EFE6;--ink2:#D6D0C3;--muted:#A69F90;--paper:#100F0D;--surface:#1B1A17;--line:#2F2C26;--amber-soft:#3A2F0E;--amber-deep:#FFD54A;--band:#1B1A17;--band-ink:#F5F1E6}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55;padding-inline:16px;padding-block:0 48px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+header.top{background:var(--band);color:var(--band-ink);margin-inline:-16px;padding:28px 16px 22px;position:relative;overflow:hidden}
+header.top::after{content:"";position:absolute;right:-40px;top:34px;width:220px;height:6px;background:var(--amber);transform:rotate(-38deg);box-shadow:0 20px 0 var(--amber)}
+header.top .in{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:6px;position:relative;z-index:1}
+.eyebrow{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--amber)}
+h1{font-family:var(--display);font-size:clamp(28px,5vw,44px);line-height:1.05;margin:0;letter-spacing:.5px;text-wrap:balance}
+header.top p{margin:0;max-width:62ch;color:#BDB8AC;font-size:14px}
+nav.jump{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);margin-inline:-16px;padding:10px 16px;border-bottom:1px solid var(--line);display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+nav.jump::-webkit-scrollbar{display:none}
+nav.jump a{flex:none;text-decoration:none;color:var(--ink2);font-weight:700;font-size:12px;padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface)}
+nav.jump a:hover,nav.jump a:focus-visible{border-color:var(--amber);outline:none}
+nav.jump a.k{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.legend{display:flex;flex-wrap:wrap;gap:10px 18px;font-size:12px;color:var(--muted);align-items:center}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:18px;height:12px;border-radius:3px;border:1.5px solid #121212;display:inline-block}
+section{display:flex;flex-direction:column;gap:12px;scroll-margin-top:64px}
+.sh{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+h2{font-family:var(--display);font-size:24px;margin:0;letter-spacing:.3px;text-wrap:balance}
+.tag{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--amber-deep);background:var(--amber-soft);padding:3px 9px;border-radius:999px}
+section > p{margin:0;color:var(--muted);max-width:75ch;font-size:14px}
+.sheet{background:var(--sheet);border:1px solid #E6E1D4;border-radius:14px;padding:14px;overflow-x:auto}
+.sheet pre.mermaid{margin:0;background:transparent;min-width:640px;display:flex;justify-content:center;color:#121212}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.rule{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--ink2)}
+.rule b{display:block;color:var(--ink);font-size:13.5px;margin-bottom:2px}
+.grp{font-family:var(--display);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);border-top:1px solid var(--line);padding-top:18px;margin-top:6px}
+footer{color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:14px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+html{scroll-behavior:smooth}
+</style>
+
+<header class="top"><div class="in">
+  <span class="eyebrow">Bike Pharma Automobiles · Bengaluru</span>
+  <h1>App flow chart</h1>
+  <p>Every screen and process in the Bike Pharma app — from login to billing, credit, warranty and approvals — for all 7 roles. Tap a chip to jump. Wide charts scroll sideways on a phone.</p>
+</div></header>
+
+<nav class="jump" aria-label="Jump to">
+  <a class="k" href="#login">Login</a><a href="#map">Role map</a><a href="#customer">Customer</a><a href="#mechanic">Mechanic</a><a href="#billing">Billing</a><a href="#counter">Returns & day close</a><a href="#sales">Sales</a><a href="#inventory">Inventory</a><a href="#manager">Manager</a><a href="#admin">Admin</a><a href="#credit">Credit cycle</a><a href="#warranty">Warranty</a><a href="#partorder">Part order</a><a href="#approvals">Approvals</a><a href="#rules">Rules</a>
+</nav>
+
+<main class="wrap" style="padding-top:22px">
+
+<div class="legend" aria-label="Legend">
+  <span><i class="sw" style="background:#121212"></i>Role / start</span>
+  <span><i class="sw" style="background:#FFFFFF"></i>Screen or step</span>
+  <span><i class="sw" style="background:#FFC20E"></i>Decision</span>
+  <span><i class="sw" style="background:#FBE3DE;border-color:#C8432F"></i>Blocked / rule</span>
+  <span><i class="sw" style="background:#E3F3EA;border-color:#1C8A5A"></i>Result</span>
+  <span><i class="sw" style="background:#E2F0F1;border-color:#1F6E7A"></i>Approval</span>
+</div>
+
+<section id="login">
+  <div class="sh"><h2>Login & sign-up</h2><span class="tag">All roles</span></div>
+  <p>One login screen for everyone. Only customers and mechanics can sign up; staff logins are created by Admin.</p>
+  <div class="sheet"><pre class="mermaid">
+%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'14px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+flowchart TD
+  S(["Open app · splash"]):::role --> L["Login<br/>mobile number or staff email<br/>EN · KN · HI"]
+  L --> CH{"Send OTP on"}:::dec
+  CH -- SMS --> O
+  CH -- WhatsApp --> O["Enter OTP<br/>resend timer · 5 tries then lock"]
+  O --> F{"Account found?"}:::dec
+  F -- "Yes" --> W["Welcome · role is fixed by Bike Pharma"]:::ok
+  F -- "No · mobile number" --> J{"Join as"}:::dec
+  J -- Customer --> SC["Customer sign-up"]:::ok
+  J -- Mechanic --> SM["Mechanic sign-up<br/>shop details · waits for verification"]
+  F -- "No · email" --> X["Staff cannot sign up<br/>ask Admin for a login"]:::bad
+  F -- "Deactivated by Admin" --> X2["Login blocked"]:::bad
+  W --> APP["Open that role's app"]:::role
+  SC --> APP
+  SM --> APP
+  classDef role fill:#121212,color:#FFC20E,stroke:#121212,font-weight:bold
+  classDef dec fill:#FFC20E,stroke:#121212,color:#121212
+  classDef bad fill:#FBE3DE,stroke:#C8432F,color:#121212
+  classDef ok fill:#E3F3EA,stroke:#1C8A5A,color:#121212
+  classDef appr fill:#E2F0F1,stroke:#1F6E7A,color:#121212
+  </pre></div>
+</section>
+
+<section id="map">
+  <div class="sh"><h2>Role map</h2><span class="tag">Who sees what</span></div>
+  <p>Each role opens on its own home screen and bottom navigation. Admin gets everything the Manager has, grouped in sections.</p>
+  <div class="sheet"><pre class="mermaid">
+%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60'}}}%%
+flowchart LR
+  APP(["Bike Pharma app"]):::role
+  APP --> C["Customer<br/>Home · Shop · Service · Orders · Account"]:::role
+  APP --> M["Mechanic<br/>Home · Shop · Wallet · Credit · Account"]:::role
+  APP --> B["Billing<br/>Home · Invoice · Find Part · Search · Account"]:::role
+  APP --> SA["Sales Executive<br/>Home · Order · Stock · Search · Account"]:::role
+  APP --> I["Inventory<br/>Home · Stock in · Stock · Search · Account"]:::role
+  APP --> MG["Manager<br/>Home · Approvals · Team · Search · Account"]:::role
+  APP --> AD["Admin<br/>Overview · Users · Finance · Audit · More"]:::role
+  C --> C1["Buy spares · book service · warranty<br/>Insurance and PUC · wallet · SOS"]
+  M --> M1["Mechanic price · credit · wallet rewards<br/>job cards · customers · requests"]
+  B --> B1["Barcode invoice · mechanic dues<br/>returns · hold · estimate · day closing"]
+  SA --> S1["Beat plan · field KYC · quotations<br/>collection · target and incentive"]
+  I --> I1["GRN · racks · labels · cycle count<br/>expiry · supplier returns"]
+  MG --> G1["Sales · margin · stock alerts · POs and tasks<br/>mechanic reports · approvals · staff · expenses"]
+  AD --> A1["All Manager tools + branches · staff · pricing<br/>targets · suppliers · schemes · GST · export · security"]
+  classDef role fill:#121212,color:#FFC20E,stroke:#121212
+  </pre></div>
+</section>
+
+<div class="grp">Role flows</div>
+
+<section id="customer">
+  <div class="sh"><h2>Customer</h2><span class="tag">8951860708</span></div>
+  <p>Buying parts that fit their bike, booking a service with a verified mechanic, and keeping warranty, insurance and PUC in one place.</p>
+  <div class="sheet"><pre class="mermaid">
+%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+flowchart LR
+  H(["Customer home"]):::role
+  H --> SH["Shop · pick bike<br/>brand · model · variant · year · BS · colour"] --> PL["Compatible parts"] --> P["Product"]
+  P --> ST{"In stock?"}:::dec
+  ST -- Yes --> CT["Cart"] --> CO["Checkout<br/>address · wallet use"] --> PD["Order placed · animation"]:::ok --> OR["My orders<br/>track · invoice PDF · warranty"]
+  ST -- No --> PO["Order this part<br/>track until it arrives"]
+  H --> SV["Service"] --> NB{"Verified mechanic<br/>within 5 km?"}:::dec
+  NB -- Yes --> VM["Verified mechanics<br/>distance · rating · map"]
+  NB -- No --> BS["Bike Pharma Bike Surgeon"]
+  VM --> BK["Book service<br/>pickup and drop takes location"]
+  BS --> BK
+  BK --> TR["Booking tracker<br/>assigned · received · in progress · done"] --> RT["Rate service<br/>4 stars or more = ₹50 wallet"]:::ok
+  H --> HL["Bike health<br/>parts due by km"] --> SH
+  H --> PF["Photo part search"] --> P
+  H --> DC["Insurance and PUC<br/>reminders before expiry · renew"]
+  H --> WR["Warranty<br/>starts on bill date"]
+  H --> SOS["SOS · nearest open verified mechanic"]
+  H --> QR["QR scanner"]
+  H --> AC["Account<br/>purchase history · wallet · vehicles · addresses<br/>chat support · notification choices · theme · language"]
+  classDef role fill:#121212,color:#FFC20E,stroke:#121212
+  classDef dec fill:#FFC20E,stroke:#121212,color:#121212
+  classDef ok fill:#E3F3EA,stroke:#1C8A5A,color:#121212
+  </pre></div>
+</section>
+
+<section id="mechanic">
+  <div class="sh"><h2>Mechanic</h2><span class="tag">9008948080</span></div>
+  <p>Mechanics buy at mechanic price, on credit or pay-now. Wallet (rewards) and credit (what they owe) are kept separate.</p>
+  <div class="sheet"><pre class="mermaid">
+%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+flowchart LR
+  H(["Mechanic home<br/>wallet · outstanding"]):::role
+  H --> SP["Spare parts<br/>mechanic price · bulk slabs 10+ · 25+"] --> PM{"Pay mode"}:::dec
+  PM -- "Pay now" --> IN["Invoice · paid"]:::ok
+  PM -- "Credit" --> OD{"Any invoice<br/>overdue?"}:::dec
+  OD -- Yes --> BL["Credit blocked<br/>clear old dues first"]:::bad
+  OD -- No --> CR["Added to outstanding<br/>due in 30 days"]:::ok
+  IN --> RW["3% wallet reward"]:::ok
+  CR --> RW
+  H --> RO["Quick reorder<br/>usual items"] --> PM
+  H --> RQ["Service requests<br/>accept or decline · navigate"] --> JC
+  H --> JC["Job card<br/>bike → work → parts → labour → profit"] --> SP
+  H --> MC["My customers<br/>service reminders"]
+  H --> CRD["Credit · invoices"] --> PAY["Pay dues<br/>UPI · cash · bank"] --> UB["Overdue cleared<br/>credit works again"]:::ok
+  H --> WL["Wallet · history<br/>use within cap on next buy"]
+  H --> ER["Earnings report"]
+  classDef role fill:#121212,color:#FFC20E,stroke:#121212
+  classDef dec fill:#FFC20E,stroke:#121212,color:#121212
+  classDef bad fill:#FBE3DE,stroke:#C8432F,color:#121212
+  classDef ok fill:#E3F3EA,stroke:#1C8A5A,color:#121212
+  </pre></div>
+</section>
+
+<section id="billing">
+  <div class="sh"><h2>Billing · making an invoice</h2><span class="tag">samkhazi25@gmail.com</span></div>
+  <p>Nothing leaves the counter without a bill. Items go on the bill by barcode only.</p>
+  <div class="sheet"><pre class="mermaid">
+%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+flowchart TD
+  N(["New invoice"]):::role --> T{"Who is buying?"}:::dec
+  T -- Customer --> CU["Customer price<br/>mobile needed for warranty"]
+  T -- "CX with Mech" --> CX["Customer price<br/>note the mechanic who brought them"]
+  T -- Mechanic --> ME["Mechanic price<br/>pick mechanic"]
+  T -- "Walk-in" --> WI["Customer price · no mobile"]
+  CU --> BC
+  CX --> BC
+  ME --> BC
+  WI --> BC["Add items by barcode only<br/>scan or type the number"]
+  BC -. "customer steps away" .-> HD["Hold bill · resume later"]
+  BC -. "only wants a price" .-> ES["Estimate PDF · valid 7 days"]
+  BC --> DS{"Extra discount?"}:::dec
+  DS -- "0 to 2%" --> TT
+  DS -- "up to 10%" --> MA["Manager approves"]:::appr --> TT
+  DS -- "above 10%" --> AA["Admin approves"]:::appr --> TT
+  TT["Total · wallet use"] --> PY{"Payment"}:::dec
+  PY -- "Cash · UPI · Card" --> GN
+  PY -- "Credit · mechanic only" --> OV{"Mechanic has<br/>overdue invoice?"}:::dec
+  OV -- Yes --> NO["Credit blocked · take payment"]:::bad
+  OV -- No --> GN["Generate invoice"]:::ok
+  GN --> FX["Stock goes down · warranty starts today<br/>cashback to wallet · A4 or 80mm print · PDF"]:::ok
+  classDef role fill:#121212,color:#FFC20E,stroke:#121212
+  classDef dec fill:#FFC20E,stroke:#121212,color:#121212
+  classDef bad fill:#FBE3DE,stroke:#C8432F,color:#121212
+  classDef ok fill:#E3F3EA,stroke:#1C8A5A,color:#121212
+  classDef appr fill:#E2F0F1,stroke:#1F6E7A,color:#121212
+  </pre></div>
+</section>
+
+<section id="counter">
+  <div class="sh"><h2>Billing · returns, dues & day closing</h2><span class="tag">Counter</span></div>
+  <p>Payments from mechanics are received only from Mechanic outstanding. The day ends with a cash count.</p>
+  <div class="sheet"><pre class="mermaid">
+%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+flowchart LR
+  H(["Billing home"]):::role
+  H --> RT["Returns · find the bill"] --> IT["Pick items and qty"] --> RS{"Reason"}:::dec
+  RS -- "Wrong part · not needed" --> BK["Back to stock"]:::ok
+  RS -- "Damaged · warranty replace" --> DM["Kept aside as damaged<br/>Manager informed"]:::appr
+  BK --> GB{"Give back as"}:::dec
+  DM --> GB
+  GB --> G1["Wallet · Cash · UPI"]:::ok
+  GB --> G2["Exchange credit<br/>on a new invoice"]:::ok
+  H --> MD["Mechanic outstanding<br/>all mechanics · every open invoice"] --> RC["Receive payment<br/>oldest invoice cleared first"]:::ok
+  H --> DC["Day closing"] --> CT["Count notes<br/>₹500 to ₹1"] --> DF{"Matches expected?"}:::dec
+  DF -- "Yes or within ₹50" --> CL["Day closed · summary to Manager"]:::ok
+  DF -- "More than ₹50 off" --> CM["Short or excess sent to Manager"]:::appr
+  H --> FC["Field cash from Sales"] --> DC
+  classDef role fill:#121212,color:#FFC20E,stroke:#121212
+  classDef dec fill:#FFC20E,stroke:#121212,color:#121212
+  classDef ok fill:#E3F3EA,stroke:#1C8A5A,color:#121212
+  classDef appr fill:#E2F0F1,stroke:#1F6E7A,color:#121212
+  </pre></div>
+</section>
+
+<section id="sales">
+  <div class="sh"><h2>Sales Executive</h2><span class="tag">samkhazi26@gmail.com</span></div>
+  <p>Field work: daily beat, new mechanic KYC, orders and quotations, and collecting payments.</p>
+  <div class="sheet"><pre class="mermaid">
+%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+flowchart LR
+  H(["Sales home<br/>target · visits"]):::role
+  H --> BP["Beat plan · 8 shops"] --> CI["Check in by GPS<br/>within 100 m"] --> OC{"Visit outcome"}:::dec
+  OC -- "Order taken" --> SO["Order or quotation"] --> BL["Sent to Billing"]:::ok
+  OC -- "Payment collected" --> CP["Collect payment<br/>Cash · UPI · Cheque"] --> WR["WhatsApp receipt<br/>outstanding reduced"]:::ok --> DP["Cash deposited at counter<br/>Billing confirms in day closing"]
+  OC -- "Follow-up · closed" --> FU["Next visit"]
+  H --> KY["New mechanic KYC<br/>shop photo · ID · location"] --> AP["Admin approves"]:::appr --> MP["Mechanic gets mechanic price"]:::ok
+  H --> IC["My target and incentive<br/>80% · 100% · 120% slabs + ₹200 per new mechanic"]
+  H --> SK["Check stock · product search"]
+  classDef role fill:#121212,color:#FFC20E,stroke:#121212
+  classDef dec fill:#FFC20E,stroke:#121212,color:#121212
+  classDef ok fill:#E3F3EA,stroke:#1C8A5A,color:#121212
+  classDef appr fill:#E2F0F1,stroke:#1F6E7A,color:#121212
+  </pre></div>
+</section>
+
+<section id="inventory">
+  <div class="sh"><h2>Inventory</h2><span class="tag">samkhazi28@gmail.com</span></div>
+  <p>Stock goes up only when a GRN is posted. Any stock change that isn't a sale or GRN needs Manager approval.</p>
+  <div class="sheet"><pre class="mermaid">
+%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+flowchart LR
+  H(["Inventory home<br/>low · out · pending GRN"]):::role
+  H --> GR["Stock in · GRN<br/>supplier bill · items · rates"] --> PS{"Checked?"}:::dec
+  PS -- "Post" --> UP["Stock goes up"]:::ok
+  PS -- "Not yet" --> PN["Stays pending"]
+  H --> AD["Add product<br/>barcode · prices · warranty days · rack"]
+  H --> RK["Racks · move part"] --> LB["Print barcode and rack labels · PDF"]
+  H --> CC["Cycle count · one rack a day"] --> DF{"Matches system?"}:::dec
+  DF -- Yes --> OK1["Done"]:::ok
+  DF -- No --> AP1["Difference to Manager"]:::appr --> ADJ["Stock adjusted after approval"]:::ok
+  H --> EX["Expiry and batches<br/>earliest expiry sells first"] --> EXD{"Status"}:::dec
+  EXD -- "Expires in 30 days" --> FR["Move to front"]
+  EXD -- "Expired" --> RM["Remove from stock"]
+  EXD --> SR
+  H --> SR["Return to supplier<br/>debit note"] --> CN["Credit note received"]:::ok
+  H --> MV["Transfer · damaged · adjustments"] --> AP2["Manager approval"]:::appr
+  classDef role fill:#121212,color:#FFC20E,stroke:#121212
+  classDef dec fill:#FFC20E,stroke:#121212,color:#121212
+  classDef ok fill:#E3F3EA,stroke:#1C8A5A,color:#121212
+  classDef appr fill:#E2F0F1,stroke:#1F6E7A,color:#121212
+  </pre></div>
+</section>
+
+<section id="manager">
+  <div class="sh"><h2>Manager</h2><span class="tag">samkhazi27@gmail.com</span></div>
+  <p>Every home tile opens its own detail. The Manager watches sales, stock and mechanics, approves within limits, and tracks the Admin's targets.</p>
+  <div class="sheet"><pre class="mermaid">
+%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+flowchart LR
+  H(["Manager home<br/>Today · This month · Branch"]):::role
+  H --> T1["Today's sales · bills"]
+  H --> T2["Gross margin"]
+  H --> T3["Outstanding · overdue mechanics"]
+  H --> T4["Pending approvals"]:::appr
+  H --> OM["Our Mechanics<br/>Top · Regular · Attention · Blocked · Not buying · New"] --> MP["Mechanic full report<br/>items · brands · weekly and monthly business<br/>payment path · purchase history · report card"]
+  H --> VR["Verified mechanics · priority"]
+  H --> TG["Targets from Admin · tracking"]
+  H --> SA["Stock alerts<br/>fast moving · not selling · out · below minimum"] --> PO{"Order how?"}:::dec
+  PO -- "Myself" --> PR["Prepare purchase order"]:::ok
+  PO -- "Give a task" --> TK["Task to staff"]:::ok
+  H --> MB["Mechanic business<br/>daily · weekly · monthly · dropped vs last period"]
+  H --> NW["First-time buyers today"]
+  H --> IN["Not buying for many days"]
+  H --> TM["Team and money"] --> SP["Staff performance"]
+  TM --> EP["Expenses → real profit"]
+  TM --> WA["Daily WhatsApp summary"]
+  TM --> DCL["Day closing · expiry · cycle count"]
+  classDef role fill:#121212,color:#FFC20E,stroke:#121212
+  classDef dec fill:#FFC20E,stroke:#121212,color:#121212
+  classDef ok fill:#E3F3EA,stroke:#1C8A5A,color:#121212
+  classDef appr fill:#E2F0F1,stroke:#1F6E7A,color:#121212
+  </pre></div>
+</section>
+
+<section id="admin">
+  <div class="sh"><h2>Admin</h2><span class="tag">boltech25@gmail.com</span></div>
+  <p>Admin sees all branches and every Manager option, grouped by section, plus control over staff, pricing and data.</p>
+  <div class="sheet"><pre class="mermaid">
+%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+flowchart LR
+  H(["Admin overview<br/>All branches or one branch"]):::role
+  H --> NUM["Sales · purchases · profit · outstanding · stock value"]
+  H --> MEC["Mechanics section<br/>Our Mechanics · verified · report cards · not buying"]
+  H --> OPS["Stock and operations<br/>alerts · POs and tasks · part orders · approvals · team"]
+  H --> TOOLS["Admin tools"]
+  TOOLS --> ST["Create staff · change role · deactivate login"]
+  TOOLS --> MT["Mechanic tier and credit limit"]
+  TOOLS --> PR["Master pricing<br/>MRP · customer · mechanic price"]
+  TOOLS --> TGT["Branch targets"] --> MGT["Manager sees tracking"]
+  TOOLS --> SUP["Suppliers · pay"]
+  TOOLS --> SCH["Schemes and loyalty"] --> CMP["Send offer<br/>skips people who turned offers off"]
+  TOOLS --> KYC["KYC approvals"]:::appr
+  TOOLS --> SET["Business settings · roles and access"]
+  H --> REP["Reports and data"]
+  REP --> BRC["Branch comparison"]
+  REP --> GST["GST · GSTR-1 · HSN"]
+  REP --> EXP["Backup · export CSV"]
+  H --> SEC["Security alerts · audit log"]
+  classDef role fill:#121212,color:#FFC20E,stroke:#121212
+  classDef appr fill:#E2F0F1,stroke:#1F6E7A,color:#121212
+  </pre></div>
+</section>
+
+<div class="grp">Key processes</div>
+
+<section id="credit">
+  <div class="sh"><h2>Credit cycle</h2><span class="tag">Mechanics</span></div>
+  <p>Credit stops the moment any invoice is overdue, both in the mechanic app and at the counter, and restarts when it is paid.</p>
+  <div class="sheet"><pre class="mermaid">
+%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+flowchart LR
+  B(["Credit purchase"]):::role --> O["Outstanding goes up<br/>due in 30 days"] --> R["Reminders before due"] --> P{"Paid by due date?"}:::dec
+  P -- Yes --> C["Invoice cleared"]:::ok --> B
+  P -- No --> OD["Overdue"]:::bad --> BL["Credit blocked<br/>app and counter"]:::bad --> PAY["Pays · counter · app · field"] --> CL["Oldest invoices cleared first"]:::ok --> UN{"Anything still overdue?"}:::dec
+  UN -- No --> B
+  UN -- Yes --> BL
+  classDef role fill:#121212,color:#FFC20E,stroke:#121212
+  classDef dec fill:#FFC20E,stroke:#121212,color:#121212
+  classDef bad fill:#FBE3DE,stroke:#C8432F,color:#121212
+  classDef ok fill:#E3F3EA,stroke:#1C8A5A,color:#121212
+  </pre></div>
+</section>
+
+<section id="warranty">
+  <div class="sh"><h2>Warranty</h2><span class="tag">Customers & mechanics</span></div>
+  <p>Warranty days are set per product and start on the bill date.</p>
+  <div class="sheet"><pre class="mermaid">
+%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+flowchart LR
+  A(["Bill with mobile number"]):::role --> W["Warranty issued per item<br/>days set on the product"] --> APP["Shows in customer or mechanic app<br/>reminder before it ends"]
+  APP --> CL["Part fails · comes to counter"] --> CK["Warranty Check<br/>by mobile · bill · part"] --> V{"Still valid?"}:::dec
+  V -- Yes --> RP["Return as warranty replace<br/>new part given"]:::ok --> MG["Manager informed"]:::appr
+  V -- No --> NB["Expired · normal sale"]:::bad
+  classDef role fill:#121212,color:#FFC20E,stroke:#121212
+  classDef dec fill:#FFC20E,stroke:#121212,color:#121212
+  classDef bad fill:#FBE3DE,stroke:#C8432F,color:#121212
+  classDef ok fill:#E3F3EA,stroke:#1C8A5A,color:#121212
+  classDef appr fill:#E2F0F1,stroke:#1F6E7A,color:#121212
+  </pre></div>
+</section>
+
+<section id="partorder">
+  <div class="sh"><h2>Part order</h2><span class="tag">Out of stock</span></div>
+  <p>A part we don't have can still be ordered, from the app or at the counter, and tracked until it arrives.</p>
+  <div class="sheet"><pre class="mermaid">
+%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+flowchart LR
+  A(["Part not in stock"]):::role --> B["Order this part<br/>app or counter · advance optional"] --> C["Ordered from supplier"] --> D["Received at store · GRN"] --> E["Customer notified"] --> F{"Delivery"}:::dec
+  F -- "Pickup at store" --> G["Billed · handed over"]:::ok
+  F -- "Home delivery" --> G
+  classDef role fill:#121212,color:#FFC20E,stroke:#121212
+  classDef dec fill:#FFC20E,stroke:#121212,color:#121212
+  classDef ok fill:#E3F3EA,stroke:#1C8A5A,color:#121212
+  </pre></div>
+</section>
+
+<section id="approvals">
+  <div class="sh"><h2>Approvals</h2><span class="tag">Manager & Admin</span></div>
+  <p>Requests from every role land in one Approvals list. Nothing changes until someone approves; every decision is written to the audit log.</p>
+  <div class="sheet"><pre class="mermaid">
+%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+flowchart LR
+  D1["Billing · extra discount"] --> Q
+  D2["Billing · damaged return"] --> Q
+  D3["Billing · cash short or excess"] --> Q
+  D4["Inventory · stock adjustment · cycle count"] --> Q
+  D5["Sales · new mechanic KYC"] --> Q
+  Q(["Approvals list"]):::role --> WHO{"Who decides?"}:::dec
+  WHO -- "Discount up to 10% · stock · returns · cash" --> MG["Manager"]:::appr
+  WHO -- "Discount above 10% · KYC · credit limit" --> AD["Admin"]:::appr
+  MG --> R{"Decision"}:::dec
+  AD --> R
+  R -- Approve --> OK["Change applied<br/>discount on bill · stock updated · mechanic verified"]:::ok
+  R -- Reject --> NO["Nothing changes"]:::bad
+  OK --> AU["Audit log"]
+  NO --> AU
+  classDef role fill:#121212,color:#FFC20E,stroke:#121212
+  classDef dec fill:#FFC20E,stroke:#121212,color:#121212
+  classDef bad fill:#FBE3DE,stroke:#C8432F,color:#121212
+  classDef ok fill:#E3F3EA,stroke:#1C8A5A,color:#121212
+  classDef appr fill:#E2F0F1,stroke:#1F6E7A,color:#121212
+  </pre></div>
+</section>
+
+<section id="rules">
+  <div class="sh"><h2>Business rules behind the flows</h2></div>
+  <div class="rules">
+    <div class="rule"><b>No sale without a bill</b>Every part leaving the store is on an invoice.</div>
+    <div class="rule"><b>Barcode only</b>Invoice items are added by scanning or typing the barcode.</div>
+    <div class="rule"><b>Wallet ≠ credit</b>Wallet is rewards earned; credit is what a mechanic owes.</div>
+    <div class="rule"><b>Overdue blocks credit</b>Any overdue invoice stops new credit until it is paid.</div>
+    <div class="rule"><b>CX with Mech = customer price</b>The mechanic who brought the customer is noted on the bill.</div>
+    <div class="rule"><b>Warranty from bill date</b>Days are set per product.</div>
+    <div class="rule"><b>5 km verified mechanics</b>If none is near, show the Bike Pharma Bike Surgeon.</div>
+    <div class="rule"><b>Staff logins from Admin</b>Only customers and mechanics can sign up.</div>
+    <div class="rule"><b>Receive payment in one place</b>Only from Mechanic outstanding.</div>
+    <div class="rule"><b>Insurance and PUC never lapse</b>Reminders go out before the expiry date.</div>
+    <div class="rule"><b>People choose notifications</b>Customers and mechanics pick what they get; offers skip people who turned them off.</div>
+    <div class="rule"><b>Discount limits</b>Billing 2% · Manager 10% · Admin above.</div>
+  </div>
+</section>
+
+<footer>Bike Pharma Automobiles · app flow as built in the prototype · 28 Sept 2026</footer>
+</main>

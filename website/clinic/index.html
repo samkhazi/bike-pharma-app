@@ -401,26 +401,23 @@ footer{background:#050505}
 .lev{background:radial-gradient(45% 50% at 70% 58%,rgba(255,194,14,.10) 0%,rgba(255,194,14,0) 70%),#0B0B0B}
 
 /* ===== Bike Surgeon rider ===== */
-#rider{position:fixed;left:0;bottom:14px;width:250px;height:206px;z-index:40;pointer-events:none;transform-origin:0 100%;will-change:transform}
-@media (max-width:700px){#rider{width:150px;height:124px;bottom:8px}}
+#rider{position:fixed;left:0;bottom:12px;width:250px;height:206px;z-index:40;pointer-events:none;transform-origin:0 100%;will-change:transform}
+@media (max-width:700px){#rider{width:150px;height:124px;bottom:6px}}
 #riderSvg{width:100%;height:100%;overflow:visible;transform-origin:50% 50%;display:block}
-#riderSvg .lg{fill:none;stroke:#2A2A2A;stroke-width:14;stroke-linecap:round;stroke-linejoin:round}
-#riderSvg .lg.f{stroke:#1A1A1A}
-#riderSvg .ar{fill:none;stroke:#121212;stroke-width:12;stroke-linecap:round;stroke-linejoin:round}
-#riderSvg .ar.f{stroke:#0B0B0B}
-#riderSvg .tyre{fill:none;stroke:#121212;stroke-width:10}
-#riderSvg .rim{fill:none;stroke:#9A9A9A;stroke-width:3}
-#riderSvg .spk{stroke:#6A6A6A;stroke-width:2}
+#riderSvg .lg{fill:none;stroke:#2A2A2A;stroke-width:17;stroke-linecap:round;stroke-linejoin:round}
+#riderSvg .lg.f{stroke:#1A1A1A;stroke-width:16}
+#riderSvg .ar{fill:none;stroke:#121212;stroke-width:13;stroke-linecap:round;stroke-linejoin:round}
+#riderSvg .ar.f{stroke:#0B0B0B;stroke-width:12}
 #riderSvg .speed path{stroke:#FFC20E;stroke-width:4;stroke-linecap:round;opacity:0;transition:opacity .2s}
 #rider.moving .speed path{opacity:.9;animation:spd .35s linear infinite}
 @keyframes spd{50%{transform:translateX(-10px)}}
-.rroad{position:absolute;left:-10%;right:-10%;bottom:-2px;height:3px;background:repeating-linear-gradient(90deg,#FFC20E 0 18px,transparent 18px 34px);opacity:.0;transition:opacity .3s}
+.rroad{position:absolute;left:-12%;right:-12%;bottom:-3px;height:3px;background:repeating-linear-gradient(90deg,#FFC20E 0 18px,transparent 18px 34px);opacity:0;transition:opacity .3s}
 #rider.moving .rroad{opacity:.8;animation:road .4s linear infinite}
 @keyframes road{to{background-position:-34px 0}}
-#riderBub{position:absolute;bottom:96%;left:34%;background:#FFC20E;color:#121212;font:700 12px/1.3 var(--mono);letter-spacing:.02em;padding:8px 12px;border-radius:12px 12px 12px 3px;white-space:nowrap;opacity:0;transform:translateY(8px);transition:opacity .3s,transform .3s;box-shadow:0 8px 20px rgba(0,0,0,.35)}
+#riderBub{position:absolute;bottom:98%;left:30%;background:#FFC20E;color:#121212;font:700 12px/1.3 var(--mono);letter-spacing:.02em;padding:8px 12px;border-radius:12px 12px 12px 3px;white-space:nowrap;opacity:0;transform:translateY(8px);transition:opacity .3s,transform .3s;box-shadow:0 8px 20px rgba(0,0,0,.35)}
 #riderBub.on{opacity:1;transform:none}
-@media (max-width:700px){#riderBub{font-size:10px;padding:6px 9px;left:20%}}
-.spotfloor{position:absolute;left:10%;right:10%;bottom:6%;height:60px;border-radius:50%;background:radial-gradient(ellipse,rgba(255,194,14,.28),rgba(255,194,14,0) 70%)}
+@media (max-width:700px){#riderBub{font-size:10px;padding:6px 9px;left:10%}}
+.spotfloor{position:absolute;left:8%;right:8%;bottom:4%;height:64px;border-radius:50%;background:radial-gradient(ellipse,rgba(255,194,14,.30),rgba(255,194,14,0) 70%)}
 .levs .stage3d{z-index:1}
 /* cart drawer + toast */
 .drawer{position:fixed;top:0;right:0;bottom:0;width:min(400px,100%);z-index:80;background:var(--paper);color:var(--ink);transform:translateX(105%);transition:transform .45s cubic-bezier(.3,1,.3,1);display:flex;flex-direction:column;box-shadow:-30px 0 60px rgba(0,0,0,.4);padding-top:env(safe-area-inset-top,0px)}
@@ -623,31 +620,53 @@ footer{background:#050505}
 
 <div id="rider" aria-hidden="true"><div id="riderBub"></div>
 <svg id="riderSvg" viewBox="0 0 340 280">
- <g class="speed"><path d="M20 150 h-40 M30 175 h-56 M18 200 h-34"/></g>
- <path id="rLegF" class="lg f"/><g id="rBootF"><path d="M-7 -7 h15 q9 0 9 7 v3 h-24 z" fill="#0B0B0B"/></g>
- <path id="rArmF" class="ar f"/><circle id="rGloveF" r="5.5" fill="#E0A800"/>
+ <g class="speed"><path d="M24 150 h-44 M34 176 h-60 M22 202 h-38"/></g>
+ <g id="rPuffs"><circle r="4" fill="#9A9A9A" opacity="0"/><circle r="4" fill="#9A9A9A" opacity="0"/><circle r="4" fill="#9A9A9A" opacity="0"/><circle r="4" fill="#9A9A9A" opacity="0"/><circle r="4" fill="#9A9A9A" opacity="0"/><circle r="4" fill="#9A9A9A" opacity="0"/><circle r="4" fill="#9A9A9A" opacity="0"/><circle r="4" fill="#9A9A9A" opacity="0"/></g>
+ <path id="rLegF" class="lg f"/><g id="rBootF"><path d="M-9 -13 L6 -13 L10 -5 L21 -3 L21 3 L-10 3 Z" fill="#0B0B0B"/><rect x="-9" y="-9" width="15" height="3" fill="#FFC20E"/><rect x="-10" y="1" width="31" height="3" fill="#3A3A3A"/></g>
+ <path id="rArmF" class="ar f"/><g id="rGloveF"><circle r="7" fill="#E0A800"/></g>
  <g id="rBike">
-  <g id="rStand"><rect x="140" y="202" width="51" height="6" rx="3" fill="#6A6A6A"/></g>
-  <g id="rWheelR"><circle cx="78" cy="212" r="41" class="tyre"/><circle cx="78" cy="212" r="31" class="rim"/><path class="spk" d="M78 181 V243 M47 212 H109 M56 190 L100 234 M100 190 L56 234"/><circle cx="78" cy="212" r="7" fill="#3A3A3A"/></g>
-  <g id="rWheelF"><circle cx="262" cy="212" r="41" class="tyre"/><circle cx="262" cy="212" r="31" class="rim"/><path class="spk" d="M262 181 V243 M231 212 H293 M240 190 L284 234 M284 190 L240 234"/><circle cx="262" cy="212" r="7" fill="#3A3A3A"/><circle cx="262" cy="212" r="18" fill="none" stroke="#BDBDBD" stroke-width="3" stroke-dasharray="3 4"/></g>
-  <path d="M78 212 L152 197" stroke="#2A2A2A" stroke-width="9" stroke-linecap="round"/>
-  <path d="M40 182 A44 44 0 0 1 104 162" fill="none" stroke="#121212" stroke-width="8" stroke-linecap="round"/>
-  <path d="M226 170 A44 44 0 0 1 296 176" fill="none" stroke="#121212" stroke-width="7" stroke-linecap="round"/>
-  <rect x="134" y="158" width="58" height="42" rx="9" fill="#2A2A2A"/><path d="M140 168 h46 M140 176 h46 M140 184 h46" stroke="#4A4A4A" stroke-width="3"/>
-  <path d="M176 198 Q150 226 104 212 L56 202" fill="none" stroke="#BDBDBD" stroke-width="9" stroke-linecap="round"/><path d="M52 196 L104 205 L102 218 L50 209 Z" fill="#9A9A9A"/>
-  <path d="M227 106 L262 212" stroke="#8A8A8A" stroke-width="8" stroke-linecap="round"/>
-  <path d="M100 134 L150 128 L196 150 L150 160 L108 152 Z" fill="#1C1C1C"/>
-  <path d="M60 124 L102 128 L104 142 L70 140 Z" fill="#121212"/><rect x="56" y="126" width="9" height="7" rx="2" fill="#FFC20E"/>
-  <path d="M92 124 Q124 114 162 122 L158 137 Q126 142 96 138 Z" fill="#0B0B0B"/>
-  <path d="M152 128 Q188 106 228 116 L221 150 Q186 156 154 152 Z" fill="#FFC20E"/><path d="M160 124 Q190 112 220 118" stroke="#FFF2B3" stroke-width="3" fill="none" stroke-linecap="round"/>
-  <path d="M186 128 v18 M177 137 h18" stroke="#121212" stroke-width="5" stroke-linecap="round"/>
-  <path d="M222 104 L208 98" stroke="#121212" stroke-width="6" stroke-linecap="round"/><path d="M226 106 L232 96" stroke="#3A3A3A" stroke-width="4" stroke-linecap="round"/>
-  <circle cx="242" cy="128" r="12" fill="#121212"/><circle cx="245" cy="128" r="7" fill="#FFF2B3"/>
- </g>
- <g id="rTorso"><rect x="-14" y="-60" width="28" height="66" rx="12" fill="#121212"/><rect x="-14" y="-46" width="28" height="7" fill="#FFC20E"/><rect x="-14" y="-10" width="28" height="4" fill="#DADADA"/><path d="M-7 -30 h14 M0 -37 v14" stroke="#FFC20E" stroke-width="3.5" stroke-linecap="round"/></g>
- <path id="rLegN" class="lg"/><g id="rBootN"><path d="M-7 -7 h15 q9 0 9 7 v3 h-24 z" fill="#121212"/><rect x="-7" y="-1" width="24" height="3" fill="#FFC20E"/></g>
- <g id="rHead"><circle r="17" fill="#121212"/><path d="M3 -9 A13 13 0 0 1 16 5 L4 6 Z" fill="#D9D9D9"/><path d="M-15 -6 Q-2 -22 14 -10" stroke="#FFC20E" stroke-width="4" fill="none"/><path d="M-9 1 h8 M-5 -3 v8" stroke="#FFC20E" stroke-width="2.6" stroke-linecap="round"/></g>
- <path id="rArmN" class="ar"/><g id="rWatch"><rect x="-4.5" y="-4" width="9" height="8" rx="2" fill="#FFC20E" stroke="#121212" stroke-width="1.5"/></g><circle id="rGloveN" r="6" fill="#FFC20E"/>
+ <g id="rStand"><rect x="140" y="205.5" width="47" height="5" rx="2.5" fill="#6A6A6A"/><rect x="183" y="203" width="8" height="10" rx="2" fill="#4A4A4A"/></g>
+ <g id="rWheelR"><circle cx="80" cy="212" r="36" fill="none" stroke="#121212" stroke-width="11"/><circle cx="80" cy="212" r="41" fill="none" stroke="#1C1C1C" stroke-width="2" stroke-dasharray="3 4"/><circle cx="80" cy="212" r="29.5" fill="none" stroke="#FFC20E" stroke-width="2.4"/><circle cx="80" cy="212" r="12" fill="none" stroke="#BDBDBD" stroke-width="5"/><path d="M92.0 212.0h.1 M90.4 218.0h.1 M86.0 222.4h.1 M80.0 224.0h.1 M74.0 222.4h.1 M69.6 218.0h.1 M68.0 212.0h.1 M69.6 206.0h.1 M74.0 201.6h.1 M80.0 200.0h.1 M86.0 201.6h.1 M90.4 206.0h.1" stroke="#4A4A4A" stroke-width="2.4" stroke-linecap="round"/><circle cx="80" cy="212" r="14" fill="none" stroke="#6A6A6A" stroke-width="3" stroke-dasharray="2.2 2"/><path d="M78.9 203.1L78.7 185.0M81.1 203.1L81.3 185.0M88.2 208.2L105.2 202.4M88.8 210.3L106.1 204.9M86.1 218.6L96.9 233.0M84.4 219.9L94.8 234.6M75.6 219.9L65.2 234.6M73.9 218.6L63.1 233.0M71.2 210.3L53.9 204.9M71.8 208.2L54.8 202.4" stroke="#1A1A1A" stroke-width="4.2" stroke-linecap="round"/><circle cx="80" cy="212" r="8" fill="#3A3A3A"/><circle cx="80" cy="212" r="3" fill="#9A9A9A"/></g>
+ <g id="rWheelF"><circle cx="266" cy="212" r="36" fill="none" stroke="#121212" stroke-width="11"/><circle cx="266" cy="212" r="41" fill="none" stroke="#1C1C1C" stroke-width="2" stroke-dasharray="3 4"/><circle cx="266" cy="212" r="29.5" fill="none" stroke="#FFC20E" stroke-width="2.4"/><circle cx="266" cy="212" r="18" fill="none" stroke="#BDBDBD" stroke-width="6"/><path d="M284.0 212.0h.1 M281.6 221.0h.1 M275.0 227.6h.1 M266.0 230.0h.1 M257.0 227.6h.1 M250.4 221.0h.1 M248.0 212.0h.1 M250.4 203.0h.1 M257.0 196.4h.1 M266.0 194.0h.1 M275.0 196.4h.1 M281.6 203.0h.1" stroke="#4A4A4A" stroke-width="2.4" stroke-linecap="round"/><path d="M264.9 203.1L264.7 185.0M267.1 203.1L267.3 185.0M274.2 208.2L291.2 202.4M274.8 210.3L292.1 204.9M272.1 218.6L282.9 233.0M270.4 219.9L280.8 234.6M261.6 219.9L251.2 234.6M259.9 218.6L249.1 233.0M257.2 210.3L239.9 204.9M257.8 208.2L240.8 202.4" stroke="#1A1A1A" stroke-width="4.2" stroke-linecap="round"/><circle cx="266" cy="212" r="8" fill="#3A3A3A"/><circle cx="266" cy="212" r="3" fill="#9A9A9A"/></g>
+ <path d="M150 193 L80 198 M150 207 L80 226" stroke="#6A6A6A" stroke-width="2.4" stroke-dasharray="2.2 1.8"/>
+ <path d="M150 199 L80 212" stroke="#2A2A2A" stroke-width="9" stroke-linecap="round"/>
+ <path d="M104 204 L118 152" stroke="#9A9A9A" stroke-width="5" stroke-linecap="round"/><path d="M106 196 l8 -3 M108 188 l8 -3 M110 180 l8 -3 M112 172 l8 -3 M114 164 l8 -3" stroke="#FFC20E" stroke-width="2.4" stroke-linecap="round"/>
+ <path d="M52 186 A40 40 0 0 1 108 166" fill="none" stroke="#121212" stroke-width="6" stroke-linecap="round"/>
+ <path d="M140 172 L206 168 Q216 190 206 211 L148 213 Q134 196 140 172 Z" fill="#2A2A2A"/>
+ <path d="M176 170 L195 136 L220 146 L205 174 Z" fill="#3A3A3A"/><path d="M181 162 l24 8 M185 154 l24 8 M189 146 l24 8" stroke="#6A6A6A" stroke-width="2.4"/>
+ <circle cx="160" cy="194" r="13" fill="#3A3A3A" stroke="#6A6A6A" stroke-width="2"/><circle cx="150" cy="200" r="6" fill="#1C1C1C"/>
+ <path d="M205 176 Q216 206 182 214 L122 207" fill="none" stroke="#9A9A9A" stroke-width="7" stroke-linecap="round"/>
+ <path d="M124 212 L58 193 L54 177 L68 175 L128 196 Z" fill="#BDBDBD"/><path d="M118 202 L72 188 L70 180 L112 191 Z" fill="#121212"/><ellipse cx="55" cy="184" rx="3" ry="7" fill="#3A3A3A"/>
+ <path d="M150 196 L178 150 L228 112" fill="none" stroke="#1C1C1C" stroke-width="6"/>
+ <path d="M112 148 L150 146 L162 172 L124 172 Z" fill="#FFC20E"/><path d="M118 156 L152 154" stroke="#121212" stroke-width="3"/>
+ <path d="M100 131 L66 121 L60 126 L70 144 L118 150 Z" fill="#121212"/><path d="M58 121 L68 123 L68 131 L60 130 Z" fill="#FFC20E"/><path d="M92 136 L70 128" stroke="#FFC20E" stroke-width="2.4" stroke-linecap="round"/>
+ <path d="M72 144 L62 160" stroke="#3A3A3A" stroke-width="3"/><rect x="50" y="158" width="22" height="13" rx="2" fill="#EDEDED" stroke="#3A3A3A"/><rect x="54" y="152" width="6" height="3" rx="1.5" fill="#FFC20E"/>
+ <path d="M98 131 Q130 124 164 129 L162 144 Q128 147 100 144 Z" fill="#0B0B0B"/><path d="M104 132 Q130 127 160 131" stroke="#3A3A3A" stroke-width="2" fill="none"/>
+ <path d="M150 130 Q170 112 214 113 L228 121 L224 147 Q198 160 158 156 Z" fill="#FFC20E"/><path d="M160 124 Q180 113 210 115" stroke="#FFF2B3" stroke-width="3" fill="none" stroke-linecap="round"/>
+ <path d="M212 148 L230 124 L236 146 L222 166 Z" fill="#121212"/>
+ <path d="M185 127 v16 M177 135 h16" stroke="#121212" stroke-width="4.5" stroke-linecap="round"/>
+ <path d="M229 110 L260 204" stroke="#9A9A9A" stroke-width="8" stroke-linecap="round"/><path d="M247 160 L264 210" stroke="#2A2A2A" stroke-width="11" stroke-linecap="round"/>
+ <path d="M246 196 l12 -4 l4 10 l-12 4 z" fill="#FFC20E" stroke="#121212" stroke-width="1.5"/>
+ <path d="M234 178 A38 38 0 0 1 296 188" fill="none" stroke="#121212" stroke-width="6" stroke-linecap="round"/>
+ <path d="M231 104 L250 102 L263 124 L253 150 L237 145 Z" fill="#121212"/><path d="M246 117 L257 122 L252 139 L243 134 Z" fill="#FFF2B3"/><rect x="250" y="106" width="8" height="4" rx="2" fill="#FFC20E"/>
+ <path d="M229 105 L213 102" stroke="#121212" stroke-width="5" stroke-linecap="round"/><path d="M219 100 L214 110" stroke="#3A3A3A" stroke-width="2.5" stroke-linecap="round"/>
+ <path d="M223 101 L229 80" stroke="#3A3A3A" stroke-width="3"/><ellipse cx="231" cy="78" rx="8" ry="4.5" fill="#121212" stroke="#6A6A6A"/>
+ <rect x="143" y="205" width="15" height="4" rx="2" fill="#3A3A3A"/><rect x="104" y="208" width="12" height="4" rx="2" fill="#3A3A3A"/><path d="M162 206 l10 -4" stroke="#3A3A3A" stroke-width="3" stroke-linecap="round"/>
+</g>
+ <g id="rTorso"><path d="M-15 4 L-18 -38 Q-20 -66 -3 -73 L9 -73 Q21 -68 20 -44 L16 4 Z" fill="#121212"/>
+  <path d="M-18 -60 Q-24 -40 -18 -16" stroke="#2A2A2A" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M-18 -47 L20 -49 L20 -40 L-18 -38 Z" fill="#FFC20E"/><path d="M6 -31 h10 M11 -36 v10" stroke="#FFC20E" stroke-width="3.2" stroke-linecap="round"/>
+  <rect x="-16" y="-8" width="32" height="3" fill="#DADADA"/><rect x="-15" y="0" width="31" height="5" rx="2" fill="#2A2A2A"/>
+  <path d="M-4 -73 L10 -73 L12 -66 L-4 -66 Z" fill="#2A2A2A"/></g>
+ <g id="rHead"><rect x="-6" y="-4" width="12" height="8" fill="#2A2A2A"/><circle cx="1" cy="-19" r="19.5" fill="#121212"/>
+  <path d="M7 -6 Q21 -6 21 -17 L12 -19 Z" fill="#121212"/><path d="M4 -27 Q20 -28 21.5 -15 L8 -13 Q1 -19 4 -27 Z" fill="#3A3A3A"/>
+  <path d="M8 -25 Q16 -25 18.5 -18" stroke="#FFC20E" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <path d="M-17 -25 Q-3 -42 16 -31" stroke="#FFC20E" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M-10 -15 h9 M-5.5 -19.5 v9" stroke="#FFC20E" stroke-width="2.6" stroke-linecap="round"/><path d="M-4 -36 l5 -1" stroke="#4A4A4A" stroke-width="2.2" stroke-linecap="round"/></g>
+ <path id="rLegN" class="lg"/><g id="rKnee"><rect x="-7" y="-6" width="16" height="12" rx="5" fill="#FFC20E"/></g><g id="rBootN"><path d="M-9 -13 L6 -13 L10 -5 L21 -3 L21 3 L-10 3 Z" fill="#121212"/><rect x="-9" y="-9" width="15" height="3" fill="#FFC20E"/><rect x="-10" y="1" width="31" height="3" fill="#3A3A3A"/></g>
+ <path id="rArmN" class="ar"/><g id="rElbow"><circle r="4.5" fill="#FFC20E"/></g>
+ <g id="rWatch"><rect x="-5" y="-5" width="10" height="10" rx="2.5" fill="#FFC20E" stroke="#121212" stroke-width="1.6"/><circle r="2.4" fill="#FFFFFF"/></g>
+ <g id="rGloveN"><circle r="7.5" fill="#FFC20E"/><rect x="-2" y="-4" width="5" height="8" rx="2" fill="#121212"/></g>
 </svg><div class="rroad"></div></div>
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer" aria-label="Cart" aria-hidden="true">
@@ -782,84 +801,114 @@ if(!RM&&'IntersectionObserver' in window){
  $$('.odo').forEach(o=>{if(o.getBoundingClientRect().top>innerHeight)io2.observe(o);});}
 })();
 </script>
-<script>/* Bike Surgeon rider: waits leaning on the bike, rides while you scroll, parks when you stop */
+<script>/* Bike Surgeon rider v2 — true-to-scale bike & rider, scroll-linked travel, real mount / park sequences */
 (function(){
 const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
-const box=document.getElementById('rider');const svg=document.getElementById('riderSvg');const bub=document.getElementById('riderBub');const spot=document.getElementById('riderSpot');
+const box=document.getElementById('rider'),svg=document.getElementById('riderSvg'),bub=document.getElementById('riderBub'),spot=document.getElementById('riderSpot');
 if(!box||!svg)return;
-const $=id=>svg.getElementById?svg.getElementById(id):document.getElementById(id);
-const L={torso:56,ua:31,fa:30,th:43,sh:45};
-const GRIP=[213,104],PEG=[152,196],GROUND=253;
-/* poses: hip, torso angle (deg, screen coords), head tilt, hands, feet, side stand (0 up, 1 down), bike tilt */
+const E=id=>document.getElementById(id);
+/* body in px (1 m ≈ 136 px): torso 0.52 m, thigh/shin 0.45 m, arms 0.31 / 0.28 m */
+const L={torso:70,ua:42,fa:38,th:60,sh:58};
+const G=253,GRIP=[212,104],GRIP2=[209,106],PEG=[150,207],PEGF=[146,207];
 const P={
- lean:{hip:[122,154],tor:-98,head:4,hN:[140,164],hF:[104,138],fN:[168,GROUND],fF:[154,GROUND],st:1,bt:-2.5},
- watch:{hip:[122,154],tor:-100,head:22,hN:[154,103],hF:[157,110],fN:[168,GROUND],fF:[154,GROUND],st:1,bt:-2.5},
- mount:{hip:[118,112],tor:-74,head:0,hN:[206,106],hF:[204,108],fN:[124,196],fF:[140,GROUND],st:1,bt:-1},
- astride:{hip:[128,127],tor:-66,head:-2,hN:GRIP,hF:[GRIP[0]-3,GRIP[1]+2],fN:[150,GROUND],fF:[146,GROUND],st:1,bt:-1},
- ride:{hip:[128,125],tor:-57,head:-6,hN:GRIP,hF:[GRIP[0]-3,GRIP[1]+2],fN:PEG,fF:[PEG[0]-4,PEG[1]],st:0,bt:0}};
-const clone=p=>JSON.parse(JSON.stringify(p));
-let cur=clone(P.lean),from=clone(P.lean),to=P.lean,t0=0,dur=1,queue=[];
-const lerp=(a,b,k)=>a+(b-a)*k;
-function mix(a,b,k){const o={};for(const key in a){o[key]=Array.isArray(a[key])?[lerp(a[key][0],b[key][0],k),lerp(a[key][1],b[key][1],k)]:lerp(a[key],b[key],k);}return o;}
-function go(pose,ms){queue.push([pose,ms]);}
-function nextStep(now){if(!queue.length)return false;const [p,ms]=queue.shift();from=clone(cur);to=P[p];t0=now;dur=RM?1:ms;return true;}
-/* 2-bone IK */
-function ik(sx,sy,tx,ty,a,b,bend){let dx=tx-sx,dy=ty-sy;let d=Math.hypot(dx,dy);const m=a+b-.5;if(d>m){dx*=m/d;dy*=m/d;d=m;}
- const th=Math.atan2(dy,dx);const c=Math.min(1,Math.max(-1,(a*a+d*d-b*b)/(2*a*d)));const al=Math.acos(c);const j=th-bend*al;
- const ex=sx+Math.cos(j)*a,ey=sy+Math.sin(j)*a;return [ex,ey,sx+dx,sy+dy];}
-const set=(id,attr)=>{const e=$(id);if(!e)return;for(const k in attr)e.setAttribute(k,attr[k]);};
-function limb(id,x1,y1,x2,y2,x3,y3){set(id,{d:`M${x1.toFixed(1)} ${y1.toFixed(1)} L${x2.toFixed(1)} ${y2.toFixed(1)} L${x3.toFixed(1)} ${y3.toFixed(1)}`});}
-let wheelA=0;
-function draw(p){
- const [hx,hy]=p.hip;const ta=p.tor*Math.PI/180;const sx=hx+Math.cos(ta)*L.torso,sy=hy+Math.sin(ta)*L.torso;
- // torso as a rounded jacket block
- set('rTorso',{transform:`translate(${hx.toFixed(1)} ${hy.toFixed(1)}) rotate(${(p.tor+90).toFixed(1)})`});
- set('rHead',{transform:`translate(${(sx+Math.cos(ta)*14).toFixed(1)} ${(sy+Math.sin(ta)*14).toFixed(1)}) rotate(${(p.tor+90+p.head).toFixed(1)})`});
- const aN=ik(sx,sy,p.hN[0],p.hN[1],L.ua,L.fa,-1),aF=ik(sx-2,sy+2,p.hF[0],p.hF[1],L.ua,L.fa,-1);
- limb('rArmN',sx,sy,aN[0],aN[1],aN[2],aN[3]);limb('rArmF',sx-2,sy+2,aF[0],aF[1],aF[2],aF[3]);
- set('rGloveN',{cx:aN[2].toFixed(1),cy:aN[3].toFixed(1)});set('rGloveF',{cx:aF[2].toFixed(1),cy:aF[3].toFixed(1)});
- set('rWatch',{transform:`translate(${lerp(aN[0],aN[2],.78).toFixed(1)} ${lerp(aN[1],aN[3],.78).toFixed(1)}) rotate(${(Math.atan2(aN[3]-aN[1],aN[2]-aN[0])*180/Math.PI).toFixed(1)})`});
- const lN=ik(hx,hy,p.fN[0],p.fN[1],L.th,L.sh,1),lF=ik(hx-3,hy,p.fF[0],p.fF[1],L.th,L.sh,1);
- limb('rLegN',hx,hy,lN[0],lN[1],lN[2],lN[3]);limb('rLegF',hx-3,hy,lF[0],lF[1],lF[2],lF[3]);
- set('rBootN',{transform:`translate(${lN[2].toFixed(1)} ${lN[3].toFixed(1)})`});set('rBootF',{transform:`translate(${lF[2].toFixed(1)} ${lF[3].toFixed(1)})`});
- set('rStand',{transform:`rotate(${lerp(172,98,p.st).toFixed(1)} 140 205)`});
- set('rBike',{transform:`rotate(${p.bt.toFixed(2)} 78 253)`});
- set('rWheelR',{transform:`rotate(${wheelA.toFixed(1)} 78 212)`});set('rWheelF',{transform:`rotate(${wheelA.toFixed(1)} 262 212)`});
+ lean:     {hip:[126,150],tor:-101,head:4, hN:[146,104],hF:[151,108],fN:[178,G],fF:[170,G],st:1,bt:-2},
+ watch:    {hip:[126,150],tor:-103,head:27,hN:[166,96],hF:[151,108],fN:[178,G],fF:[170,G],st:1,bt:-2},
+ beside:   {hip:[152,131],tor:-92,head:0, hN:[165,150],hF:[150,154],fN:[160,G],fF:[146,G],st:1,bt:-2},
+ hold:     {hip:[152,131],tor:-86,head:-2,hN:GRIP,hF:GRIP2,fN:[160,G],fF:[146,G],st:1,bt:-2},
+ swing:    {hip:[140,121],tor:-78,head:0, hN:GRIP,hF:GRIP2,fN:[158,G],fF:[78,110],st:1,bt:-2},
+ sit:      {hip:[128,140],tor:-72,head:-2,hN:GRIP,hF:GRIP2,fN:[154,G],fF:PEGF,st:1,bt:-1.2},
+ kick:     {hip:[128,140],tor:-72,head:6, hN:GRIP,hF:GRIP2,fN:[130,244],fF:PEGF,st:1,bt:-1.2},
+ kicked:   {hip:[128,140],tor:-70,head:2, hN:GRIP,hF:GRIP2,fN:[124,236],fF:PEGF,st:0,bt:0},
+ ride:     {hip:[128,140],tor:-62,head:-8,hN:GRIP,hF:GRIP2,fN:PEG,fF:PEGF,st:0,bt:0},
+ brake:    {hip:[130,140],tor:-68,head:-4,hN:GRIP,hF:GRIP2,fN:PEG,fF:PEGF,st:0,bt:1.6},
+ footdown: {hip:[128,140],tor:-72,head:-2,hN:GRIP,hF:GRIP2,fN:[154,G],fF:PEGF,st:0,bt:0},
+ kickdown: {hip:[128,140],tor:-72,head:8, hN:GRIP,hF:GRIP2,fN:[124,249],fF:PEGF,st:1,bt:-1.2}};
+const SEQ={
+ mount:[['beside',260],['hold',260],['swing',340],['sit',260],['kick',190],['kicked',160],['ride',220]],
+ go:[['ride',240]],
+ stop:[['brake',230],['footdown',260]],
+ park:[['kickdown',240],['sit',160],['swing',360],['hold',260],['beside',240],['lean',420]],
+ watch:[['watch',420]],unwatch:[['lean',420]]};
+const clone=p=>JSON.parse(JSON.stringify(p)),lerp=(a,b,k)=>a+(b-a)*k;
+function mix(a,b,k){const o={};for(const key in a)o[key]=Array.isArray(a[key])?[lerp(a[key][0],b[key][0],k),lerp(a[key][1],b[key][1],k)]:lerp(a[key],b[key],k);return o;}
+let cur=clone(P.lean),from=cur,to=P.lean,t0=0,dur=1,queue=[],onDone=null;
+function play(name,done,now){queue=SEQ[name].slice();onDone=done||null;step(now||performance.now());}
+function step(now){const n=queue.shift();if(!n){const d=onDone;onDone=null;d&&d();return false;}from=clone(cur);to=P[n[0]];t0=now;dur=RM?1:n[1];return true;}
+function ik(sx,sy,tx,ty,a,b,bend){let dx=tx-sx,dy=ty-sy,d=Math.hypot(dx,dy);const m=a+b-.5;if(d>m){dx*=m/d;dy*=m/d;d=m;}
+ const th=Math.atan2(dy,dx),c=Math.min(1,Math.max(-1,(a*a+d*d-b*b)/(2*a*d))),j=th-bend*Math.acos(c);return [sx+Math.cos(j)*a,sy+Math.sin(j)*a,sx+dx,sy+dy];}
+const at=(id,v)=>{const e=E(id);if(e)e.setAttribute('transform',v);};
+const pth=(id,a,b,c)=>{const e=E(id);if(e)e.setAttribute('d',`M${a[0].toFixed(1)} ${a[1].toFixed(1)}L${b[0].toFixed(1)} ${b[1].toFixed(1)}L${c[0].toFixed(1)} ${c[1].toFixed(1)}`);};
+const deg=r=>r*180/Math.PI;
+let wheelA=0,bounce=0,breath=0;
+function draw(p,t){
+ const [hx,hy]=p.hip;const tor=p.tor+Math.sin(breath)*.8;const ta=tor*Math.PI/180;const sx=hx+Math.cos(ta)*L.torso,sy=hy+Math.sin(ta)*L.torso;
+ at('rBike',`translate(0 ${bounce.toFixed(2)}) rotate(${p.bt.toFixed(2)} 80 ${G})`);
+ at('rTorso',`translate(${hx.toFixed(1)} ${(hy+bounce).toFixed(1)}) rotate(${(tor+90).toFixed(1)})`);
+ at('rHead',`translate(${(sx+Math.cos(ta)*6).toFixed(1)} ${(sy+Math.sin(ta)*6+bounce).toFixed(1)}) rotate(${(tor+90+p.head).toFixed(1)})`);
+ const aN=ik(sx+2,sy+4+bounce,p.hN[0],p.hN[1]+(p.hN[1]<120?bounce:0),L.ua,L.fa,-1),aF=ik(sx-3,sy+6+bounce,p.hF[0],p.hF[1]+(p.hF[1]<120?bounce:0),L.ua,L.fa,-1);
+ pth('rArmN',[sx+2,sy+4+bounce],aN,[aN[2],aN[3]]);pth('rArmF',[sx-3,sy+6+bounce],aF,[aF[2],aF[3]]);
+ at('rElbow',`translate(${aN[0].toFixed(1)} ${aN[1].toFixed(1)})`);
+ at('rGloveN',`translate(${aN[2].toFixed(1)} ${aN[3].toFixed(1)})`);at('rGloveF',`translate(${aF[2].toFixed(1)} ${aF[3].toFixed(1)})`);
+ at('rWatch',`translate(${lerp(aN[0],aN[2],.8).toFixed(1)} ${lerp(aN[1],aN[3],.8).toFixed(1)}) rotate(${deg(Math.atan2(aN[3]-aN[1],aN[2]-aN[0])).toFixed(1)})`);
+ const hb=hy+bounce;const lN=ik(hx+3,hb,p.fN[0],p.fN[1],L.th,L.sh,1),lF=ik(hx-3,hb,p.fF[0],p.fF[1],L.th,L.sh,1);
+ pth('rLegN',[hx+3,hb],lN,[lN[2],lN[3]]);pth('rLegF',[hx-3,hb],lF,[lF[2],lF[3]]);
+ at('rKnee',`translate(${lN[0].toFixed(1)} ${lN[1].toFixed(1)}) rotate(${deg(Math.atan2(lN[3]-lN[1],lN[2]-lN[0])).toFixed(1)})`);
+ const onPeg=p.fN[1]<G-2;at('rBootN',`translate(${lN[2].toFixed(1)} ${lN[3].toFixed(1)}) rotate(${onPeg?-8:0})`);at('rBootF',`translate(${lF[2].toFixed(1)} ${lF[3].toFixed(1)}) rotate(${p.fF[1]<G-2?-8:0})`);
+ at('rStand',`rotate(${lerp(174,104,p.st).toFixed(1)} 140 208)`);
+ at('rWheelR',`rotate(${wheelA.toFixed(1)} 80 212)`);at('rWheelF',`rotate(${wheelA.toFixed(1)} 266 212)`);
 }
-/* state machine */
-let state='idle',lastScroll=0,idleSince=performance.now(),nextWatch=performance.now()+1800,watching=false,speed=0;
-const W=()=>innerWidth<700?150:250;
-let x=0,y=0,s=1,face=1,tx=0;let started=false;
+/* exhaust puffs */
+const puffs=[...document.querySelectorAll('#rPuffs circle')].map(c=>({c,life:0,x:0,y:0}));let puffT=0;
+function puffStep(dt,riding){puffT+=dt;if(riding&&puffT>110){puffT=0;const p=puffs.find(q=>q.life<=0);if(p){p.life=1;p.x=54;p.y=183;}}
+ puffs.forEach(p=>{if(p.life<=0){p.c.setAttribute('opacity',0);return;}p.life-=dt/700;p.x-=dt*.06;p.y-=dt*.012;p.c.setAttribute('cx',p.x.toFixed(1));p.c.setAttribute('cy',p.y.toFixed(1));p.c.setAttribute('r',(3+(1-p.life)*7).toFixed(1));p.c.setAttribute('opacity',(p.life*.45).toFixed(2));});}
+/* where the rider should be: parked spot per section, travel is linked to scroll */
 const SECS=['top','scan','diagnose','inside','pharmacy','opd','near','warranty'];
 const SAY={top:'Ready when you are.',scan:'Scanning your bike…',diagnose:'Move the slider. I’ll check it.',inside:'Let’s open it up.',pharmacy:'Only genuine parts.',opd:'Book me for 10:30?',near:'I’m 0.6 km away.',warranty:'You’re covered.'};
-function section(){let cur='top';for(const id of SECS){const e=document.getElementById(id);if(e&&e.getBoundingClientRect().top<innerHeight*.55)cur=id;}return cur;}
-function park(){const w=W();const idx=SECS.indexOf(section());return idx%2===0?innerWidth-w-18:18;}
-function heroDock(){if(!spot)return null;const r=spot.getBoundingClientRect();if(r.bottom<innerHeight*.35||r.width<60||innerWidth<700&&r.height<120)return null;
- const w=W();const sc=Math.min(2.4,r.width*.8/w);return {x:r.left+(r.width-w*sc)/2,y:r.bottom-(innerHeight-14),s:sc};}
-function onScroll(){lastScroll=performance.now();if((state==='idle'||state==='parking')&&!heroDock()&&s<1.05&&Math.abs(park()-x)<30)return;if(state==='idle'||state==='parking'){state='mounting';queue=[];watching=false;bub.classList.remove('on');go('mount',300);go('ride',320);nextStep(performance.now());}}
-addEventListener('scroll',onScroll,{passive:true});
-function frame(now){
+const BW=()=>innerWidth<700?150:250;
+function lane(i){const w=BW();const right=innerWidth-w-18;const inner=innerWidth<700?Math.max(10,right-120):Math.max(innerWidth*.52,right-440);return {x:i%2===0?right:inner,y:0,s:1};}
+function dock(){if(!spot)return null;const r=spot.getBoundingClientRect();if(r.width<80||r.height<110)return null;const w=BW();const s=Math.min(2.3,r.width*.78/w,r.height*.95/(w*280/340));return {x:r.left+(r.width-w*s)/2,y:(r.bottom-(innerHeight-14))+scrollY,s,hero:1};}
+let heroDock=null;
+function spotOf(i){if(i===0&&heroDock)return {x:heroDock.x,y:heroDock.y-scrollY,s:heroDock.s};return lane(i);}
+function target(){const tops=SECS.map(id=>{const e=E(id);return e?e.getBoundingClientRect().top+scrollY:Infinity;});const y=scrollY+innerHeight*.35;
+ let i=0;for(let k=0;k<tops.length;k++)if(tops[k]<=y)i=k;const a=tops[i],b=tops[i+1]??Infinity;const p=isFinite(b)?(y-a)/(b-a):0;
+ const k=Math.min(1,Math.max(0,(p-.25)/.5));const e=k*k*(3-2*k);const A=spotOf(i),B=isFinite(b)?spotOf(i+1):A;
+ const ey=i===0?Math.min(1,e*3):e;return {x:lerp(A.x,B.x,e),y:lerp(A.y,B.y,ey),s:lerp(A.s,B.s,ey),sec:SECS[e>.5?Math.min(i+1,SECS.length-1):i]};}
+/* state machine */
+let st='idle',x=0,y=0,s=1,v=0,face=1,stopAt=0,idleAt=0,nextW=0,watching=false,last=performance.now(),inited=false;
+function frame(now){const dt=Math.min(50,now-last);last=now;
+ heroDock=dock()||heroDock;const T=target();
+ if(!inited){x=T.x;y=T.y;s=T.s;inited=true;idleAt=now;nextW=now+1600;}
  // pose tween
- if(to){const k=Math.min(1,(now-t0)/dur);const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;cur=mix(from,to,e);if(k>=1){cur=clone(to);if(!nextStep(now)){if(state==='mounting')state='riding';if(state==='parking'){state='idle';idleSince=now;nextWatch=now+1500;}}}}
- // riding: move toward the next parking spot while the page scrolls
- const dock=heroDock();
- if(state==='riding'||state==='mounting'){speed=lerp(speed,1,.08);if(now-lastScroll>650&&state==='riding'&&Math.abs(tx-x)<10){state='parking';go('astride',380);go('lean',560);nextStep(now);}}
- else speed=lerp(speed,0,.1);
- tx=dock&&state!=='riding'?dock.x:park();
- const dx=tx-x;if(Math.abs(dx)>2){const f=dx>0?1:-1;if(state==='riding'||state==='mounting')face=f;}
- const moving=state==='riding'||state==='mounting';x+=!started?dx:moving?Math.sign(dx)*Math.min(Math.abs(dx),Math.max(1.5,Math.abs(dx)*.045)):(dock?dx*.12:0);
- const ty=dock&&state!=='riding'?dock.y:0,ts=dock&&state!=='riding'?dock.s:1;y+=(ty-y)*(started?.1:1);s+=(ts-s)*(started?.1:1);started=true;
- wheelA+=speed*(9+Math.min(20,Math.abs(dx)*.2))*face;
+ const k=Math.min(1,(now-t0)/dur);const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;cur=mix(from,to,e);if(k>=1){cur=clone(to);step(now);}
+ const dx=T.x-x,far=Math.abs(dx)>14||Math.abs(T.s-s)>.05;
+ if(RM){x=T.x;y=T.y;s=T.s;}
+ else if(st==='idle'&&far){st='mounting';watching=false;bub.classList.remove('on');play('mount',()=>{st='riding';},now);}
+ else if(st==='stopped'&&far){st='riding';play('go',null,now);}
+ else if(st==='stopped'&&now-stopAt>900){st='parking';play('park',()=>{st='idle';idleAt=performance.now();nextW=idleAt+1200;},now);}
+ // travel: accelerate, cruise, brake — distance drives the wheels
+ if(st==='riding'){const maxV=innerWidth<700?7:12;const want=Math.max(-maxV,Math.min(maxV,dx*.09));v+=Math.max(-.7,Math.min(.7,want-v));
+  if(Math.abs(dx)<1.5&&Math.abs(v)<.6){v=0;x=T.x;st='stopped';stopAt=now;play('stop',null,now);}
+  if(Math.abs(v)>.2)face=v>0?1:-1;}
+ else v*=.8;
+ if(st==='stopped'&&Math.abs(dx)<14)x+=dx*.2;
+ x+=v*(dt/16.7);
+ const move=Math.abs(v*(dt/16.7));
+ // y / scale follow the same progress so the rider shrinks from the hero into the lane
+ y+=(T.y-y)*(st==='riding'||RM?.12:.06);s+=(T.s-s)*(st==='riding'||RM?.12:.06);
+ const unit=s*BW()/340;wheelA+=move/unit/41*57.3;
+ const spd=Math.min(1,Math.abs(v)/8);bounce=st==='riding'?Math.sin(now/55)*.9*spd:0;
+ breath+=dt/650;
  box.style.transform=`translate(${x.toFixed(1)}px,${y.toFixed(1)}px) scale(${s.toFixed(3)})`;
  svg.style.transform=face<0?'scaleX(-1)':'';
- box.classList.toggle('moving',speed>.3);
- // idle: check the watch now and then, say something about this section
- if(state==='idle'&&!RM){if(!watching&&now>nextWatch){watching=true;queue=[];go('watch',420);nextStep(now);setTimeout(()=>{if(state==='idle'&&watching){queue=[];go('lean',420);nextStep(performance.now());watching=false;nextWatch=performance.now()+3500+Math.random()*2500;}},1700);}
-  if(now-idleSince>900){const t=SAY[section()]||'';if(bub.textContent!==t)bub.textContent=t;bub.classList.add('on');bub.classList.toggle('flip',face<0);}}
- else bub.classList.remove('on');
- draw(cur);
+ box.classList.toggle('moving',spd>.25);
+ puffStep(dt,st==='riding'&&spd>.1);
+ // idle: check the watch now and then; speak about this section
+ if(st==='idle'&&!RM){if(!watching&&now>nextW){watching=true;play('watch',()=>{setTimeout(()=>{if(st==='idle'&&watching){play('unwatch',()=>{watching=false;nextW=performance.now()+3200+Math.random()*2400;});}},1500);},now);}
+  if(now-idleAt>700){const t=SAY[T.sec]||'';if(bub.textContent!==t)bub.textContent=t;bub.classList.add('on');}}
+ else if(st!=='idle')bub.classList.remove('on');
+ draw(cur,now);
  requestAnimationFrame(frame);}
-draw(cur);requestAnimationFrame(frame);
+draw(cur,0);requestAnimationFrame(frame);
 })();
 </script>
 

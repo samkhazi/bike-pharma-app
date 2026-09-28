@@ -471,7 +471,7 @@ function closeSheet(){document.querySelectorAll('.scrim').forEach(x=>x.remove())
 
 /* ---------- RBAC (client mirror of backend rules) ---------- */
 const ACCESS={
- customer:['docs','partorder','home','shop','list','product','cart','checkout','placed','orders','service','book','booking','garage','vehicle','warranty','offers','wishlist','notifs','qr','account','addresses'],
+ customer:['custbuy','docs','partorder','home','shop','list','product','cart','checkout','placed','orders','service','book','booking','garage','vehicle','warranty','offers','wishlist','notifs','qr','account','addresses'],
  mechanic:['mhome','mshop','mproduct','wallet','credit','pay','purchases','invoices','maccount','notifs'],
  billing:['partorders','partorder','custview','mechdues','bhome','invoice','receive','usearch','saccount','masterprice','racks','findpart','warreg','scanfind','bills','billview','pendpay'],
  sales:['custview','shome','sorder','stocklist','usearch','saccount','masterprice','racks','scanfind'],
@@ -631,7 +631,7 @@ SCREENS.checkout=()=>{const t=cartTotals();const a=S.ui.addr||'Home';const pm=S.
  ${[['UPI','Google Pay · PhonePe · Paytm','rupee'],['Card','Visa, Mastercard, RuPay','card'],['Net banking','All major banks','store'],['Cash on delivery','₹20 handling fee','wallet']].map(([n,d,i])=>`<button class="opt ${pm===n?'on':''}" onclick="S.ui.pm='${n}';refresh()"><span class="tile sm">${ic(i,'s18')}</span><span class="grow stack" style="gap:2px;text-align:left"><b>${n}</b><span class="cap">${d}</span></span><span class="radio"></span></button>`).join('')}
  <div class="row cap" style="justify-content:center">${ic('lock','s16')} Secure payments by Razorpay</div>
 </div></div><div class="foot"><div class="sum">Paying via ${pm}<b>${inr(t.total+(pm==='Cash on delivery'?20:0))}</b></div><button class="btn" onclick="placeOrder()">Pay ${inr(t.total+(pm==='Cash on delivery'?20:0))}</button></div>`;};
-function placeOrder(){const t=cartTotals();const id='BP-ORD-2026-'+(10482+DB.orders.length);DB.orders.unshift({id,d:new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}),items:cartCount(),amt:t.total,pm:S.ui.pm||'UPI',st:'Confirmed'});
+function placeOrder(){const t=cartTotals();const id='BP-ORD-2026-'+(10482+DB.orders.length);DB.orders.unshift({id,d:new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}),items:cartCount(),amt:t.total,pm:S.ui.pm||'UPI',st:'Confirmed',list:DB.cart.map(c=>[c.id,c.q])});
  issueWarranties(DB.cart.map(c=>[c.id,c.q]),S.uid,S.user.name,id,'Online order');DB.cart.forEach(c=>{DB.stock[c.id]=Math.max(0,DB.stock[c.id]-c.q);logMove('out',c.id,c.q,id,'Online order · '+S.user.name);});S.ui.last={id,amt:t.total,n:cartCount()};DB.cart=[];DB.coupon=null;save();S.ui.after=()=>setTimeout(()=>confetti(90),300);S.stack=[{s:'home',p:{}},{s:'placed',p:{}}];render('push');}
 SCREENS.placed=()=>{const l=S.ui.last||{id:'BP-ORD-2026-10482',amt:1376,n:3};return `<div class="scroll"><div class="pad" style="padding-top:40px;align-items:center;text-align:center">
  ${okBadge(104)}
@@ -860,10 +860,38 @@ function qrResult(t){const r={Mechanic:['wrench','Mechanic QR detected','Ravi Ku
  return `<div class="row"><div class="tile k round">${ic(r[0],'s20')}</div><div class="grow"><div class="h3">${r[1]}</div><div class="cap">${r[2]}</div></div><span class="pill g">Verified</span></div><button class="btn sm" style="width:100%" onclick="${r[3]}">${r[4]}</button>`;}
 SCREENS.notifs=()=>bar('Notifications')+`<div class="scroll"><div class="pad">
  <div class="card flush">${(S.user.role==='mechanic'?[['wallet','g','Reward credited','₹1,500 added to wallet for INV-015'],['receipt','r','Payment due 15 Oct','INV-015 · ₹40,000 outstanding'],['tag','','Bulk offer','Buy 20+ brake pads → extra 8% off']]:[['truck','b','Out for delivery','Your order arrives today by 7 PM'],['wrench','','Service in progress','Ravi Kumar Auto Works started work on your Pulsar'],['rupee','g','Payment successful','₹1,376 paid via UPI'],['shield','y','Warranty expiring soon','Exide battery warranty ends 15 Oct'],['tag','','Dasara offer is live','Up to 25% off brake parts']]).map(([i,t,a,b])=>li(a,b,'',i,'',t)).join('')}</div></div></div>`;
+/* customer purchase history (account) */
+const CUST_HIST={'8951860708':[
+ {id:'SRV-2026-0612',t:'Service',iso:'2026-06-12',items:[['General service + oil change',1,1240]],pm:'UPI',at:'Ravi Kumar Auto Works'},
+ {id:'SRV-2026-0203',t:'Service',iso:'2026-02-03',items:[['Front brake pad replacement',1,780]],pm:'Cash',at:'Ravi Kumar Auto Works'},
+ {id:'INV-2025-01120',t:'Store',iso:'2025-01-02',items:[['Clutch Plate Kit',1,1450]],pm:'UPI',at:'Bike Pharma Rajajinagar'},
+ {id:'SRV-2025-0918',t:'Service',iso:'2025-09-18',items:[['Chain & sprocket kit fitted',1,2150]],pm:'Card',at:'Ravi Kumar Auto Works'},
+ {id:'INV-2024-05512',t:'Store',iso:'2024-10-15',items:[['Exide Xplore Battery 12V',1,1890]],pm:'Card',at:'Bike Pharma Rajajinagar'}]};
+const SEED_ORDER_ITEMS={'BP-ORD-2026-09877':[['p4',1]],'BP-ORD-2026-09120':[['p5',2],['p7',1]]};
+const ddmmm2iso=s=>{const d=new Date(String(s).replace('Sept','Sep')+(/\d{4}$/.test(s)?'':' 2026'));return isNaN(d)?isoToday():d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+function custPurchases(){const mob=S.uid;const out=[];
+ DB.orders.forEach(o=>{const its=(o.list||SEED_ORDER_ITEMS[o.id]||[]).map(([pid,q])=>{const x=P(pid);return x?[x.name,q,x.price,pid,x.mrp]:null;}).filter(Boolean);out.push({id:o.id,t:'Online',iso:ddmmm2iso(o.d),items:its.length?its:[[o.items+' items',1,o.amt]],amt:o.amt,pm:o.pm,st:o.st,at:'Bike Pharma app'});});
+ DB.bills.filter(b=>b.mob===mob).forEach(b=>out.push({id:b.id,t:'Store',iso:isoToday(),items:(b.items||[]).map(i=>{const x=P(i.pid);return [x?x.name:i.pid,i.q,i.r,i.pid,i.mrp];}),amt:b.amt,pm:b.pm,st:'Paid',at:'Bike Pharma Rajajinagar'+(b.via?' · via '+b.via:'')}));
+ soList().filter(o=>o.mob===mob).forEach(o=>{const x=P(o.pid);out.push({id:o.id,t:'Part order',iso:ddmmm2iso(String(o.log[0][0]).split(' · ')[0]),items:[[x.name,o.q,x.price,o.pid,x.mrp]],amt:o.amt,pm:o.adv?'Advance '+inr(o.adv):'Pay on pickup',st:soStage(o)>=4?'Completed':SO_STEPS[soStage(o)][0],at:'Bike Pharma Rajajinagar',so:1});});
+ (CUST_HIST[mob]||[]).forEach(h=>out.push({...h,amt:h.items.reduce((a,i)=>a+i[1]*i[2],0),st:'Paid'}));
+ return out.sort((a,b)=>b.iso.localeCompare(a.iso));}
+const PH_T={Online:['b','cart'],Store:['y','store'],Service:['g','wrench'],'Part order':['a','package']};
+SCREENS.custbuy=()=>{const all=custPurchases();const f=S.ui.chf||'All';const yr=S.ui.chy||'All time';const years=['All time',...new Set(all.map(x=>x.iso.slice(0,4)))];
+ const list=all.filter(x=>(f==='All'||x.t===f)&&(yr==='All time'||x.iso.startsWith(yr)));const tot=list.reduce((a,x)=>a+x.amt,0);
+ const saved=list.reduce((a,x)=>a+x.items.reduce((s,i)=>s+(i[4]?(i[4]-i[2])*i[1]:0),0),0);
+ return bar('Purchase history')+`<div class="scroll"><div class="pad">
+ <div class="dark-card" style="gap:8px"><span class="micro" style="color:var(--ink3)">${yr==='All time'?'Total spent with Bike Pharma':'Spent in '+yr}</span><span class="amt" style="color:#fff">${inr(tot)}</span><div class="row" style="gap:12px"><span class="cap" style="color:var(--ink3)">${list.length} purchase${list.length===1?'':'s'}</span>${saved?`<span class="cap" style="color:#4ade80">You saved ${inr(saved)} vs MRP</span>`:''}</div></div>
+ <div class="chips">${['All','Online','Store','Service','Part order'].map(x=>`<button class="chip ${f===x?'on':''}" onclick="S.ui.chf='${x}';refresh()">${x==='Part order'?'Part orders':x} <b>${x==='All'?all.length:all.filter(y=>y.t===x).length}</b></button>`).join('')}</div>
+ <div class="chips">${years.map(y=>`<button class="chip ${yr===y?'on':''}" onclick="S.ui.chy='${y}';refresh()">${y}</button>`).join('')}</div>
+ <div class="stack g8">${list.map((x,i)=>{const [tn,icn]=PH_T[x.t];const ws=DB.warranties.filter(w=>w.inv===x.id);return `<div class="card" style="gap:8px"><div class="row"><div class="tile sm ${tn}">${ic(icn,'s18')}</div><div class="grow"><div class="h3" style="font-size:15px">${x.id}</div><div class="cap">${fmtD(x.iso)} · ${esc(x.at)}</div></div><div style="text-align:right"><b class="num">${inr(x.amt)}</b><div class="micro muted">${esc(x.pm)}</div></div></div>
+  <div class="stack" style="gap:2px">${x.items.map(it=>`<div class="kv cap"><span>${esc(it[0])} × ${it[1]}</span><span class="num">${inr(it[1]*it[2])}</span></div>`).join('')}</div>
+  <div class="row" style="gap:6px;flex-wrap:wrap"><span class="pill ${tn}">${x.t}</span><span class="pill ${x.st==='Delivered'||x.st==='Paid'||x.st==='Completed'?'g':''}">${esc(x.st)}</span>${ws.length?`<span class="pill g">${ic('shield','s16')} ${ws.length} warranty</span>`:''}</div>
+  <div class="grid3" style="gap:6px">${x.so?`<button class="btn line sm" style="width:100%;grid-column:span 3" onclick="go('partorder',{id:'${x.id}'})">Track part order</button>`:`<button class="btn line sm" style="width:100%" onclick="toast('Invoice ${x.id} downloaded (PDF)')">${ic('download','s16')} Invoice</button>${ws.length?`<button class="btn line sm" style="width:100%" onclick="go('warranty')">Warranty</button>`:x.t==='Online'?`<button class="btn line sm" style="width:100%" onclick="tab('orders')">Track</button>`:'<span></span>'}${x.items.some(it=>it[3])?`<button class="btn sm" style="width:100%" onclick="${x.items.filter(it=>it[3]).map(it=>`addCart('${it[3]}')`).join(';')};go('cart')">Buy again</button>`:x.t==='Service'?`<button class="btn sm" style="width:100%" onclick="S.ui.bk=null;go('book')">Book again</button>`:'<span></span>'}`}</div></div>`;}).join('')||'<div class="empty">No purchases here yet.</div>'}</div>
+</div></div>`;};
 SCREENS.account=()=>`<div class="scroll"><div class="pad">
  <div class="card" style="flex-direction:row;align-items:center"><div class="tile y round" style="width:56px;height:56px;font-weight:800;font-size:18px">${esc(S.user.name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase())}</div><div class="grow"><div class="h2">${esc(S.user.name)}</div><div class="cap">+91 ${S.uid.slice(0,5)} ${S.uid.slice(5)}</div><span class="pill y">Customer</span></div></div>
  ${sec('My account')}
- <div class="card flush">${li('My vehicles','Pulsar 150, Activa 6G','','bike',"go('garage')")}${li('Saved addresses','Home, Office, Workshop','','pin',"go('addresses')")}${li('Warranty','4 active · 1 expiring','','shield',"go('warranty')")}${li('Wishlist',DB.wish.length+' items','','heart',"go('wishlist')")}${li('Offers & coupons','3 available','','tag',"go('offers')")}</div>
+ <div class="card flush">${(()=>{const l=custPurchases();return li('Purchase history',l.length+' purchases · '+inr(l.reduce((a,x)=>a+x.amt,0))+' spent','','receipt',"S.ui.chf='All';S.ui.chy='All time';go('custbuy')");})()}${li('My vehicles','Pulsar 150, Activa 6G','','bike',"go('garage')")}${li('Saved addresses','Home, Office, Workshop','','pin',"go('addresses')")}${li('Warranty','4 active · 1 expiring','','shield',"go('warranty')")}${li('Wishlist',DB.wish.length+' items','','heart',"go('wishlist')")}${li('Offers & coupons','3 available','','tag',"go('offers')")}</div>
  ${sec('Preferences')}
  <div class="card flush">${li('Language','English · ಕನ್ನಡ · हिन्दी','<b class="link">'+(S.ui.lang||'English')+'</b>','globe',"S.ui.lang=({English:'ಕನ್ನಡ','ಕನ್ನಡ':'हिन्दी','हिन्दी':'English'})[S.ui.lang||'English'];refresh()")}${li('Notifications','Orders, service, offers','','bell',"go('notifs')")}</div>
  ${sec('Security')}

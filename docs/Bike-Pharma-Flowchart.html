@@ -35,7 +35,7 @@ h2{font-family:var(--display);font-size:24px;margin:0;letter-spacing:.3px;text-w
 .tag{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--amber-deep);background:var(--amber-soft);padding:3px 9px;border-radius:999px}
 section > p{margin:0;color:var(--muted);max-width:75ch;font-size:14px}
 .sheet{background:var(--sheet);border:1px solid #E6E1D4;border-radius:14px;padding:14px;overflow-x:auto}
-.sheet pre.mermaid{margin:0;background:transparent;min-width:640px;display:flex;justify-content:center;color:#121212}
+.sheet pre.mermaid{margin:0;background:transparent;min-width:640px;display:flex;justify-content:center;color:#121212;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"DejaVu Sans",Arial,sans-serif;font-size:15px;white-space:normal}
 .rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
 .rule{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--ink2)}
 .rule b{display:block;color:var(--ink);font-size:13.5px;margin-bottom:2px}
@@ -70,7 +70,7 @@ html{scroll-behavior:smooth}
   <div class="sh"><h2>Login & sign-up</h2><span class="tag">All roles</span></div>
   <p>One login screen for everyone. Only customers and mechanics can sign up; staff logins are created by Admin.</p>
   <div class="sheet"><pre class="mermaid">
-%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'14px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+%%{init:{'theme':'base','htmlLabels':false,'flowchart':{'htmlLabels':false,'padding':14},'themeVariables':{'fontFamily':'system-ui, -apple-system, Segoe UI, Roboto, DejaVu Sans, Arial, sans-serif','fontSize':'15px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
 flowchart TD
   S(["Open app · splash"]):::role --> L["Login<br/>mobile number or staff email<br/>EN · KN · HI"]
   L --> CH{"Send OTP on"}:::dec
@@ -98,7 +98,7 @@ flowchart TD
   <div class="sh"><h2>Role map</h2><span class="tag">Who sees what</span></div>
   <p>Each role opens on its own home screen and bottom navigation. Admin gets everything the Manager has, grouped in sections.</p>
   <div class="sheet"><pre class="mermaid">
-%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60'}}}%%
+%%{init:{'theme':'base','htmlLabels':false,'flowchart':{'htmlLabels':false,'padding':14},'themeVariables':{'fontFamily':'system-ui, -apple-system, Segoe UI, Roboto, DejaVu Sans, Arial, sans-serif','fontSize':'15px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60'}}}%%
 flowchart LR
   APP(["Bike Pharma app"]):::role
   APP --> C["Customer<br/>Home · Shop · Service · Orders · Account"]:::role
@@ -125,7 +125,7 @@ flowchart LR
   <div class="sh"><h2>Customer</h2><span class="tag">8951860708</span></div>
   <p>Buying parts that fit their bike, booking a service with a verified mechanic, and keeping warranty, insurance and PUC in one place.</p>
   <div class="sheet"><pre class="mermaid">
-%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+%%{init:{'theme':'base','htmlLabels':false,'flowchart':{'htmlLabels':false,'padding':14},'themeVariables':{'fontFamily':'system-ui, -apple-system, Segoe UI, Roboto, DejaVu Sans, Arial, sans-serif','fontSize':'15px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
 flowchart LR
   H(["Customer home"]):::role
   H --> SH["Shop · pick bike<br/>brand · model · variant · year · BS · colour"] --> PL["Compatible parts"] --> P["Product"]
@@ -155,7 +155,7 @@ flowchart LR
   <div class="sh"><h2>Mechanic</h2><span class="tag">9008948080</span></div>
   <p>Mechanics buy at mechanic price, on credit or pay-now. Wallet (rewards) and credit (what they owe) are kept separate.</p>
   <div class="sheet"><pre class="mermaid">
-%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+%%{init:{'theme':'base','htmlLabels':false,'flowchart':{'htmlLabels':false,'padding':14},'themeVariables':{'fontFamily':'system-ui, -apple-system, Segoe UI, Roboto, DejaVu Sans, Arial, sans-serif','fontSize':'15px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
 flowchart LR
   H(["Mechanic home<br/>wallet · outstanding"]):::role
   H --> SP["Spare parts<br/>mechanic price · bulk slabs 10+ · 25+"] --> PM{"Pay mode"}:::dec
@@ -183,7 +183,7 @@ flowchart LR
   <div class="sh"><h2>Billing · making an invoice</h2><span class="tag">samkhazi25@gmail.com</span></div>
   <p>Nothing leaves the counter without a bill. Items go on the bill by barcode only.</p>
   <div class="sheet"><pre class="mermaid">
-%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+%%{init:{'theme':'base','htmlLabels':false,'flowchart':{'htmlLabels':false,'padding':14},'themeVariables':{'fontFamily':'system-ui, -apple-system, Segoe UI, Roboto, DejaVu Sans, Arial, sans-serif','fontSize':'15px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
 flowchart TD
   N(["New invoice"]):::role --> T{"Who is buying?"}:::dec
   T -- Customer --> CU["Customer price<br/>mobile needed for warranty"]
@@ -218,7 +218,7 @@ flowchart TD
   <div class="sh"><h2>Billing · returns, dues & day closing</h2><span class="tag">Counter</span></div>
   <p>Payments from mechanics are received only from Mechanic outstanding. The day ends with a cash count.</p>
   <div class="sheet"><pre class="mermaid">
-%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+%%{init:{'theme':'base','htmlLabels':false,'flowchart':{'htmlLabels':false,'padding':14},'themeVariables':{'fontFamily':'system-ui, -apple-system, Segoe UI, Roboto, DejaVu Sans, Arial, sans-serif','fontSize':'15px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
 flowchart LR
   H(["Billing home"]):::role
   H --> RT["Returns · find the bill"] --> IT["Pick items and qty"] --> RS{"Reason"}:::dec
@@ -244,7 +244,7 @@ flowchart LR
   <div class="sh"><h2>Sales Executive</h2><span class="tag">samkhazi26@gmail.com</span></div>
   <p>Field work: daily beat, new mechanic KYC, orders and quotations, and collecting payments.</p>
   <div class="sheet"><pre class="mermaid">
-%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+%%{init:{'theme':'base','htmlLabels':false,'flowchart':{'htmlLabels':false,'padding':14},'themeVariables':{'fontFamily':'system-ui, -apple-system, Segoe UI, Roboto, DejaVu Sans, Arial, sans-serif','fontSize':'15px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
 flowchart LR
   H(["Sales home<br/>target · visits"]):::role
   H --> BP["Beat plan · 8 shops"] --> CI["Check in by GPS<br/>within 100 m"] --> OC{"Visit outcome"}:::dec
@@ -265,7 +265,7 @@ flowchart LR
   <div class="sh"><h2>Inventory</h2><span class="tag">samkhazi28@gmail.com</span></div>
   <p>Stock goes up only when a GRN is posted. Any stock change that isn't a sale or GRN needs Manager approval.</p>
   <div class="sheet"><pre class="mermaid">
-%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+%%{init:{'theme':'base','htmlLabels':false,'flowchart':{'htmlLabels':false,'padding':14},'themeVariables':{'fontFamily':'system-ui, -apple-system, Segoe UI, Roboto, DejaVu Sans, Arial, sans-serif','fontSize':'15px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
 flowchart LR
   H(["Inventory home<br/>low · out · pending GRN"]):::role
   H --> GR["Stock in · GRN<br/>supplier bill · items · rates"] --> PS{"Checked?"}:::dec
@@ -293,7 +293,7 @@ flowchart LR
   <div class="sh"><h2>Manager</h2><span class="tag">samkhazi27@gmail.com</span></div>
   <p>Every home tile opens its own detail. The Manager watches sales, stock and mechanics, approves within limits, and tracks the Admin's targets.</p>
   <div class="sheet"><pre class="mermaid">
-%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+%%{init:{'theme':'base','htmlLabels':false,'flowchart':{'htmlLabels':false,'padding':14},'themeVariables':{'fontFamily':'system-ui, -apple-system, Segoe UI, Roboto, DejaVu Sans, Arial, sans-serif','fontSize':'15px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
 flowchart LR
   H(["Manager home<br/>Today · This month · Branch"]):::role
   H --> T1["Today's sales · bills"]
@@ -324,7 +324,7 @@ flowchart LR
   <div class="sh"><h2>Admin</h2><span class="tag">boltech25@gmail.com</span></div>
   <p>Admin sees all branches and every Manager option, grouped by section, plus control over staff, pricing and data.</p>
   <div class="sheet"><pre class="mermaid">
-%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+%%{init:{'theme':'base','htmlLabels':false,'flowchart':{'htmlLabels':false,'padding':14},'themeVariables':{'fontFamily':'system-ui, -apple-system, Segoe UI, Roboto, DejaVu Sans, Arial, sans-serif','fontSize':'15px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
 flowchart LR
   H(["Admin overview<br/>All branches or one branch"]):::role
   H --> NUM["Sales · purchases · profit · outstanding · stock value"]
@@ -355,7 +355,7 @@ flowchart LR
   <div class="sh"><h2>Credit cycle</h2><span class="tag">Mechanics</span></div>
   <p>Credit stops the moment any invoice is overdue, both in the mechanic app and at the counter, and restarts when it is paid.</p>
   <div class="sheet"><pre class="mermaid">
-%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+%%{init:{'theme':'base','htmlLabels':false,'flowchart':{'htmlLabels':false,'padding':14},'themeVariables':{'fontFamily':'system-ui, -apple-system, Segoe UI, Roboto, DejaVu Sans, Arial, sans-serif','fontSize':'15px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
 flowchart LR
   B(["Credit purchase"]):::role --> O["Outstanding goes up<br/>due in 30 days"] --> R["Reminders before due"] --> P{"Paid by due date?"}:::dec
   P -- Yes --> C["Invoice cleared"]:::ok --> B
@@ -373,7 +373,7 @@ flowchart LR
   <div class="sh"><h2>Warranty</h2><span class="tag">Customers & mechanics</span></div>
   <p>Warranty days are set per product and start on the bill date.</p>
   <div class="sheet"><pre class="mermaid">
-%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+%%{init:{'theme':'base','htmlLabels':false,'flowchart':{'htmlLabels':false,'padding':14},'themeVariables':{'fontFamily':'system-ui, -apple-system, Segoe UI, Roboto, DejaVu Sans, Arial, sans-serif','fontSize':'15px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
 flowchart LR
   A(["Bill with mobile number"]):::role --> W["Warranty issued per item<br/>days set on the product"] --> APP["Shows in customer or mechanic app<br/>reminder before it ends"]
   APP --> CL["Part fails · comes to counter"] --> CK["Warranty Check<br/>by mobile · bill · part"] --> V{"Still valid?"}:::dec
@@ -391,7 +391,7 @@ flowchart LR
   <div class="sh"><h2>Part order</h2><span class="tag">Out of stock</span></div>
   <p>A part we don't have can still be ordered, from the app or at the counter, and tracked until it arrives.</p>
   <div class="sheet"><pre class="mermaid">
-%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+%%{init:{'theme':'base','htmlLabels':false,'flowchart':{'htmlLabels':false,'padding':14},'themeVariables':{'fontFamily':'system-ui, -apple-system, Segoe UI, Roboto, DejaVu Sans, Arial, sans-serif','fontSize':'15px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
 flowchart LR
   A(["Part not in stock"]):::role --> B["Order this part<br/>app or counter · advance optional"] --> C["Ordered from supplier"] --> D["Received at store · GRN"] --> E["Customer notified"] --> F{"Delivery"}:::dec
   F -- "Pickup at store" --> G["Billed · handed over"]:::ok
@@ -406,7 +406,7 @@ flowchart LR
   <div class="sh"><h2>Approvals</h2><span class="tag">Manager & Admin</span></div>
   <p>Requests from every role land in one Approvals list. Nothing changes until someone approves; every decision is written to the audit log.</p>
   <div class="sheet"><pre class="mermaid">
-%%{init:{'theme':'base','themeVariables':{'fontFamily':'Plus Jakarta Sans, sans-serif','fontSize':'13px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
+%%{init:{'theme':'base','htmlLabels':false,'flowchart':{'htmlLabels':false,'padding':14},'themeVariables':{'fontFamily':'system-ui, -apple-system, Segoe UI, Roboto, DejaVu Sans, Arial, sans-serif','fontSize':'15px','primaryColor':'#FFFFFF','primaryBorderColor':'#121212','primaryTextColor':'#121212','lineColor':'#6F6A60','edgeLabelBackground':'#FFFDF7'}}}%%
 flowchart LR
   D1["Billing · extra discount"] --> Q
   D2["Billing · damaged return"] --> Q

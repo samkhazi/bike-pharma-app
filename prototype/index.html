@@ -572,6 +572,7 @@ function toggleWish(id){DB.wish=DB.wish.includes(id)?DB.wish.filter(x=>x!==id):[
 function cartTotals(){const mrp=DB.cart.reduce((a,x)=>a+P(x.id).mrp*x.q,0);const sub=DB.cart.reduce((a,x)=>a+P(x.id).price*x.q,0);const cp=DB.coupon?Math.min(300,Math.round(sub*0.1)):0;const del=sub>=499||!sub?0:40;return{mrp,sub,disc:mrp-sub,cp,del,total:sub-cp+del};}
 SCREENS.home=()=>`<div class="scroll"><div class="pad">
  <div class="row"><div class="grow"><h1 class="h1">Hello, ${esc(S.user.name.split(' ')[0])}</h1><div class="row cap" style="gap:4px">${ic('pin','s16')}Rajajinagar, Bengaluru</div></div>
+  <button class="iconbtn line" onclick="go('qr')" aria-label="QR scanner">${ic('qr','s20')}</button>
   <button class="iconbtn line" onclick="go('notifs')" aria-label="Notifications">${ic('bell','s20')}<span class="dot"></span></button>
   <button class="iconbtn line" onclick="go('cart')" aria-label="Cart">${ic('cart','s20')}${cartCount()?`<span class="cnt">${cartCount()}</span>`:''}</button></div>
  <button class="search" onclick="go('list',{q:''})">${ic('search','s20')}<span class="grow" style="text-align:left">Search parts, part no., bike…</span>${ic('scan','s20')}</button>
@@ -579,7 +580,7 @@ SCREENS.home=()=>`<div class="scroll"><div class="pad">
   <span class="row" style="background:var(--y);color:var(--ink);border-radius:12px;padding:10px 12px;gap:8px;font-size:12px;font-weight:700">${ic('clock','s16')}<span class="grow">General service due in 12 days · Book now</span>${ic('chevR','s16')}</span></button>
  ${docHomeCard()}
  ${soList().filter(o=>o.mob===S.uid&&soStage(o)<4).map(o=>soCard(o,`go('partorder',{id:'${o.id}'})`)).join('')}
- <div class="grid4">${[['Buy Spares','grid',"tab('shop')"],['Find Mechanic','pin',"tab('service')"],['Book Service','wrench',"go('book')"],['My Orders','package',"tab('orders')"],['Offers','tag',"go('offers')"],['Warranty','shield',"go('warranty')"],['Insurance & PUC','file',"go('docs')"],['QR Scanner','qr',"go('qr')"]].map(([l,i,o])=>`<button class="qa" onclick="${o}"><span class="tile">${ic(i)}</span>${l}</button>`).join('')}</div>
+ <div class="grid4">${[['Buy Spares','grid',"tab('shop')"],['Find Mechanic','pin',"tab('service')"],['Book Service','wrench',"go('book')"],['My Orders','package',"tab('orders')"],['Offers','tag',"go('offers')"],['Warranty','shield',"go('warranty')"],['Insurance & PUC','file',"go('docs')"],['Wishlist','heart',"go('wishlist')"]].map(([l,i,o])=>`<button class="qa" onclick="${o}"><span class="tile">${ic(i)}</span>${l}</button>`).join('')}</div>
  <button class="card" style="background:var(--y-soft);border:0;flex-direction:row;align-items:center;text-align:left" onclick="go('offers')"><div class="grow stack g6"><span class="pill k" style="align-self:flex-start">Festival offer</span><span class="h3">Up to 25% off brake parts</span><span class="cap">Use code DASARA25 · till 12 Oct</span></div><div class="tile y round" style="width:56px;height:56px">${ic('gift','s28')}</div></button>
  ${sec('Nearby verified mechanics','Map view',"tab('service')")}
  ${mechCard(MECHS[0])}

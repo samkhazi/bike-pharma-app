@@ -1,15 +1,15 @@
 <title>The Bike Clinic</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;1,9..144,400;1,9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
 :root{
   color-scheme:dark;
-  --night:#0D0C0A; --asphalt:#161410; --smoke:#23201A; --line:#34302A;
-  --amber:#FFC20E; --amber2:#FFD65A; --amber-deep:#8A6100;
-  --cream:#F3EDE0; --paper:#FBF7EE; --ink:#15130F; --ink2:#4A443A; --muted:#8C8576; --chrome:#CFC8B8;
-  --good:#7CC99A; --due:#FFC20E; --bad:#E5533D;
-  --serif:"Fraunces",Georgia,"Times New Roman",serif;
+  --night:#0C0C0C; --asphalt:#131313; --smoke:#1E1E1E; --line:#2F2F2F;
+  --amber:#FFC20E; --amber2:#FFC20E; --amber-deep:#121212;
+  --cream:#FFF2B3; --paper:#FFF2B3; --ink:#121212; --ink2:#424242; --muted:#818181; --chrome:#C3C3C3;
+  --good:#121212; --due:#FFC20E; --bad:#FFC20E;
+  --serif:"Chakra Petch","Plus Jakarta Sans",system-ui,sans-serif;
   --sans:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
   --gut:clamp(16px,4vw,48px);
@@ -30,7 +30,7 @@ h2 em,h1 em{font-style:italic;color:var(--amber);font-weight:400}
 .lede{font-size:17px;color:var(--muted);max-width:52ch;margin:0}
 .btn{display:inline-flex;align-items:center;gap:10px;border:0;border-radius:999px;padding:14px 22px;font-weight:800;font-size:14px;letter-spacing:.02em;background:var(--amber);color:var(--ink);transition:transform .2s ease,box-shadow .2s ease}
 .btn:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(255,194,14,.28)}
-.btn.ghost{background:transparent;color:var(--cream);box-shadow:inset 0 0 0 1.5px rgba(243,237,224,.35)}
+.btn.ghost{background:transparent;color:var(--cream);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35)}
 .btn.ghost:hover{box-shadow:inset 0 0 0 1.5px var(--amber)}
 .btn.dark{background:var(--ink);color:var(--amber)}
 svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
@@ -69,11 +69,11 @@ header.nav.solid{background:rgba(13,12,10,.72);backdrop-filter:blur(14px);-webki
 .hero{position:relative;min-height:auto;padding:120px 0 40px;overflow:hidden;background:
   radial-gradient(60% 55% at 72% 40%,rgba(255,194,14,.10),transparent 70%),
   radial-gradient(40% 40% at 10% 90%,rgba(255,194,14,.05),transparent 70%),var(--night)}
-.hero::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(207,200,184,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(207,200,184,.05) 1px,transparent 1px);background-size:44px 44px;mask-image:radial-gradient(70% 70% at 60% 45%,#000 30%,transparent 80%);-webkit-mask-image:radial-gradient(70% 70% at 60% 45%,#000 30%,transparent 80%)}
+.hero::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:44px 44px;mask-image:radial-gradient(70% 70% at 60% 45%,#000 30%,transparent 80%);-webkit-mask-image:radial-gradient(70% 70% at 60% 45%,#000 30%,transparent 80%)}
 .hgrid{position:relative;display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.25fr);gap:28px;align-items:center}
 @media (max-width:900px){.hgrid{grid-template-columns:1fr}}
 .hero h1{font-size:clamp(46px,7.4vw,96px);line-height:.95;margin:16px 0 18px}
-.hero .lede{color:#B5AE9F}
+.hero .lede{color:#AAAAAA}
 .hcta{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
 .trust{display:flex;flex-wrap:wrap;gap:18px;margin-top:30px;color:var(--muted);font-size:13px}
 .trust span{display:inline-flex;gap:8px;align-items:center}
@@ -82,7 +82,7 @@ header.nav.solid{background:rgba(13,12,10,.72);backdrop-filter:blur(14px);-webki
 .scan svg{width:100%;height:auto;display:block;overflow:visible}
 .bk{fill:none;stroke:var(--chrome);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1400;stroke-dashoffset:0}
 .xband.go .bk{stroke-dashoffset:1400;animation:draw 2.4s cubic-bezier(.6,0,.2,1) .1s forwards}
-.bk.t{stroke-width:9;stroke:#2B2721}
+.bk.t{stroke-width:9;stroke:#262626}
 .xr{fill:none;stroke:var(--amber);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .xr.f{fill:rgba(255,194,14,.12)}
 @keyframes draw{to{stroke-dashoffset:0}}
@@ -99,7 +99,7 @@ header.nav.solid{background:rgba(13,12,10,.72);backdrop-filter:blur(14px);-webki
 .ecg{position:relative;height:90px;margin-top:26px}
 .ecg svg{width:100%;height:100%;display:block}
 .ecg path{fill:none;stroke:var(--amber);stroke-width:2.2;stroke-linejoin:round;stroke-dasharray:2600;stroke-dashoffset:2600;animation:draw 3.2s ease 1.6s forwards;filter:drop-shadow(0 0 6px rgba(255,194,14,.6))}
-.ecg .road{stroke:rgba(207,200,184,.25);stroke-width:1.5;stroke-dasharray:14 12;animation:roadMove 1s linear infinite;filter:none}
+.ecg .road{stroke:rgba(255,255,255,.25);stroke-width:1.5;stroke-dasharray:14 12;animation:roadMove 1s linear infinite;filter:none}
 @keyframes roadMove{to{stroke-dashoffset:-26}}
 
 /* marquee */
@@ -116,31 +116,31 @@ section{position:relative;scroll-margin-top:70px}
 .light{background:var(--cream);color:var(--ink)}
 .light .lede{color:var(--ink2)}
 .light .eyebrow{color:var(--amber-deep)}
-.light h2 em{color:#B98300}
+.light h2 em{color:#121212}
 
 /* diagnose */
 .diag{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:28px;align-items:start}
 @media (max-width:900px){.diag{grid-template-columns:1fr}}
-.panel{background:var(--paper);border:1px solid #E4DCCB;border-radius:22px;padding:24px;box-shadow:0 1px 0 #fff inset,0 20px 50px -30px rgba(60,45,10,.35)}
+.panel{background:var(--paper);border:1px solid #FFF2B3;border-radius:22px;padding:24px;box-shadow:0 1px 0 #fff inset,0 20px 50px -30px rgba(0,0,0,.35)}
 .fld{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
 .fld label{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink2)}
-.fld select{appearance:none;border:1.5px solid #D9CFBA;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2315130F' stroke-width='2' fill='none'/%3E%3C/svg%3E") no-repeat right 16px center;border-radius:14px;padding:14px 16px;font-weight:700;color:var(--ink)}
+.fld select{appearance:none;border:1.5px solid #FFC20E;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23121212' stroke-width='2' fill='none'/%3E%3C/svg%3E") no-repeat right 16px center;border-radius:14px;padding:14px 16px;font-weight:700;color:var(--ink)}
 .rng{display:flex;align-items:center;gap:14px}
-.rng input{flex:1;accent-color:#E0A800}
+.rng input{flex:1;accent-color:#FFC20E}
 .rng output{font-family:var(--mono);font-weight:700;font-size:15px;min-width:92px;text-align:right;color:var(--ink)}
 .score{display:flex;align-items:center;gap:18px;padding:16px;border-radius:16px;background:var(--ink);color:var(--cream)}
-.ring{--v:70;width:84px;height:84px;border-radius:50%;background:conic-gradient(var(--c,#7CC99A) calc(var(--v)*1%),#2E2A23 0);display:grid;place-items:center;flex:none;transition:--v .6s}
+.ring{--v:70;width:84px;height:84px;border-radius:50%;background:conic-gradient(var(--c,#121212) calc(var(--v)*1%),#282828 0);display:grid;place-items:center;flex:none;transition:--v .6s}
 .ring b{width:66px;height:66px;border-radius:50%;background:var(--ink);display:grid;place-items:center;font:700 24px var(--serif)}
-.score p{margin:2px 0 0;font-size:13px;color:#B5AE9F}
+.score p{margin:2px 0 0;font-size:13px;color:#AAAAAA}
 .rows{display:flex;flex-direction:column;gap:12px}
-.row{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 14px;border-radius:14px;background:#fff;border:1px solid #ECE4D3}
-.row .ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:#F5EEDC;color:var(--ink)}
+.row{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 14px;border-radius:14px;background:#fff;border:1px solid #FFF2B3}
+.row .ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:#FFF2B3;color:var(--ink)}
 .row b{font-size:14.5px;display:block}
-.bar{height:7px;border-radius:5px;background:#EFE8D8;overflow:hidden;margin-top:6px}
+.bar{height:7px;border-radius:5px;background:#FFF2B3;overflow:hidden;margin-top:6px}
 .bar i{display:block;height:100%;border-radius:5px;background:var(--good);transition:width .5s cubic-bezier(.3,.8,.3,1)}
 .row small{font-size:12px;color:var(--ink2)}
 .st{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;padding:5px 9px;border-radius:999px;font-weight:700;text-transform:uppercase;white-space:nowrap}
-.st.g{background:#E3F3EA;color:#1C6B45}.st.a{background:#FFF1C8;color:#7A5600}.st.r{background:#FBE3DE;color:#A83424}
+.st.g{background:#F2F2F2;color:#121212}.st.a{background:#FFC20E;color:#121212}.st.r{background:#121212;color:#FFC20E}
 .rx{border:0;background:var(--ink);color:var(--amber);border-radius:999px;padding:6px 12px;font-weight:800;font-size:12px;margin-top:6px}
 
 /* exploded */
@@ -161,24 +161,24 @@ section{position:relative;scroll-margin-top:70px}
 /* pharmacy */
 .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px}
 .rxc{perspective:900px}
-.rxc .card{position:relative;background:var(--paper);border-radius:18px;padding:18px 18px 16px;border:1px solid #E4DCCB;box-shadow:0 22px 40px -28px rgba(60,45,10,.45);transform-style:preserve-3d;transition:transform .25s ease,box-shadow .25s;overflow:hidden;display:flex;flex-direction:column;gap:10px;min-height:100%}
+.rxc .card{position:relative;background:var(--paper);border-radius:18px;padding:18px 18px 16px;border:1px solid #FFF2B3;box-shadow:0 22px 40px -28px rgba(0,0,0,.45);transform-style:preserve-3d;transition:transform .25s ease,box-shadow .25s;overflow:hidden;display:flex;flex-direction:column;gap:10px;min-height:100%}
 .rxc .card::before{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.7) 50%,transparent 65%);transform:translateX(-120%);transition:transform .7s ease;pointer-events:none}
 .rxc:hover .card::before{transform:translateX(120%)}
 .rxc .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
-.rxsym{font-family:var(--serif);font-style:italic;font-size:34px;line-height:.8;color:#B98300}
+.rxsym{font-family:var(--serif);font-style:italic;font-size:34px;line-height:.8;color:#121212}
 .batch{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--ink2);text-align:right;line-height:1.5}
 .rxc h3{font-size:21px;line-height:1.15;color:var(--ink)}
 .rxc .brandn{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--ink2)}
-.dose{border-block:1px dashed #D9CFBA;padding:9px 0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px}
+.dose{border-block:1px dashed #FFC20E;padding:9px 0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px}
 .dose span{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink2);padding-top:2px}
 .dose b{font-weight:600;color:var(--ink)}
 .pr{display:flex;align-items:center;gap:10px;margin-top:auto}
 .pr b{font:700 24px var(--serif);color:var(--ink)}
 .pr s{color:var(--ink2);font-size:13px}
-.pr .off{font-family:var(--mono);font-size:10.5px;font-weight:700;color:#1C6B45;background:#E3F3EA;padding:3px 7px;border-radius:6px}
+.pr .off{font-family:var(--mono);font-size:10.5px;font-weight:700;color:#121212;background:#F2F2F2;padding:3px 7px;border-radius:6px}
 .add{margin-left:auto;width:42px;height:42px;border-radius:50%;border:0;background:var(--ink);color:var(--amber);display:grid;place-items:center;transition:transform .2s}
 .add:hover{transform:rotate(90deg)}
-.add.done{background:#1C8A5A;color:#fff;transform:none}
+.add.done{background:#121212;color:#fff;transform:none}
 
 /* OPD */
 .opd{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.9fr);gap:36px;align-items:start}
@@ -189,13 +189,13 @@ section{position:relative;scroll-margin-top:70px}
 .chip.on{background:var(--amber);border-color:var(--amber);color:var(--ink)}
 .dfld{display:flex;flex-direction:column;gap:9px;margin-bottom:22px}
 .dfld>label,.dfld>span{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
-.dfld select{appearance:none;background:var(--smoke) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23CFC8B8' stroke-width='2' fill='none'/%3E%3C/svg%3E") no-repeat right 16px center;border:1.5px solid var(--line);border-radius:14px;padding:13px 16px;font-weight:600}
+.dfld select{appearance:none;background:var(--smoke) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23D9D9D9' stroke-width='2' fill='none'/%3E%3C/svg%3E") no-repeat right 16px center;border:1.5px solid var(--line);border-radius:14px;padding:13px 16px;font-weight:600}
 .tog{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;background:var(--smoke);border:1.5px solid var(--line);width:100%;text-align:left}
-.tog .sw{width:46px;height:26px;border-radius:13px;background:#3A352C;position:relative;flex:none;transition:background .2s}
+.tog .sw{width:46px;height:26px;border-radius:13px;background:#333333;position:relative;flex:none;transition:background .2s}
 .tog .sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s}
 .tog[aria-pressed=true] .sw{background:var(--amber)}.tog[aria-pressed=true] .sw::after{left:23px}
 .printer{position:relative;padding-top:18px}
-.slot{height:22px;border-radius:12px;background:#2B2721;box-shadow:inset 0 6px 10px rgba(0,0,0,.6);position:relative;z-index:2}
+.slot{height:22px;border-radius:12px;background:#262626;box-shadow:inset 0 6px 10px rgba(0,0,0,.6);position:relative;z-index:2}
 .tkwrap{overflow:hidden;margin:-11px 18px 0;position:relative;z-index:1;min-height:40px}
 .ticket{background:var(--paper);color:var(--ink);border-radius:0 0 16px 16px;padding:26px 22px 22px;transform:translateY(-100%);transition:transform 1.4s steps(18,end);position:relative;
   -webkit-mask:radial-gradient(circle 9px at 0 62%,transparent 98%,#000) left/51% 100% no-repeat,radial-gradient(circle 9px at 100% 62%,transparent 98%,#000) right/51% 100% no-repeat;
@@ -204,14 +204,14 @@ section{position:relative;scroll-margin-top:70px}
 .ticket .tno{font:700 54px/1 var(--serif);letter-spacing:-.02em}
 .ticket .kv{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;padding:5px 0}
 .ticket .kv span{color:var(--ink2)}
-.ticket .cut{border-top:2px dashed #D9CFBA;margin:14px -22px}
-.ticket .doc{display:flex;gap:10px;align-items:center;background:#F3ECDB;border-radius:12px;padding:10px 12px;font-size:13px}
+.ticket .cut{border-top:2px dashed #FFC20E;margin:14px -22px}
+.ticket .doc{display:flex;gap:10px;align-items:center;background:#FFF2B3;border-radius:12px;padding:10px 12px;font-size:13px}
 .emptyt{font-family:var(--mono);font-size:12px;letter-spacing:.12em;color:var(--muted);text-align:center;padding:16px 0}
 
 /* radar */
 .near{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:center}
 @media (max-width:900px){.near{grid-template-columns:1fr}}
-.radar{position:relative;aspect-ratio:1;max-width:460px;width:100%;margin:0 auto;border-radius:50%;background:radial-gradient(circle,#1D1A14 0,#11100D 70%);box-shadow:inset 0 0 0 1px var(--line),0 0 80px rgba(255,194,14,.06)}
+.radar{position:relative;aspect-ratio:1;max-width:460px;width:100%;margin:0 auto;border-radius:50%;background:radial-gradient(circle,#181818 0,#0F0F0F 70%);box-shadow:inset 0 0 0 1px var(--line),0 0 80px rgba(255,194,14,.06)}
 .radar svg{position:absolute;inset:0;width:100%;height:100%}
 .sweep{transform-origin:50% 50%;animation:spin 4s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -232,15 +232,15 @@ section{position:relative;scroll-margin-top:70px}
 .flip .in{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .9s cubic-bezier(.3,1.2,.4,1)}
 .flip.on .in{transform:rotateY(180deg)}
 .face{position:absolute;inset:0;border-radius:22px;backface-visibility:hidden;-webkit-backface-visibility:hidden;padding:22px;display:flex;flex-direction:column;text-align:left;overflow:hidden}
-.front{background:linear-gradient(135deg,#2A251A,#0F0E0B 60%);color:var(--cream);box-shadow:0 30px 60px -30px rgba(0,0,0,.7),inset 0 0 0 1px #3A3428}
+.front{background:linear-gradient(135deg,#222222,#0D0D0D 60%);color:var(--cream);box-shadow:0 30px 60px -30px rgba(0,0,0,.7),inset 0 0 0 1px #313131}
 .front::after{content:"";position:absolute;right:-60px;top:40px;width:260px;height:10px;background:var(--amber);transform:rotate(-38deg);box-shadow:0 26px 0 var(--amber)}
-.front .chipm{width:46px;height:34px;border-radius:7px;background:linear-gradient(135deg,#E8C763,#9C7A20);margin-top:auto}
+.front .chipm{width:46px;height:34px;border-radius:7px;background:linear-gradient(135deg,#FFC20E,#E0A800);margin-top:auto}
 .front .nm{font:600 22px var(--serif);margin-top:12px}
 .front .no{font-family:var(--mono);font-size:13px;letter-spacing:.2em;color:var(--chrome)}
 .back{background:var(--paper);color:var(--ink);transform:rotateY(180deg);gap:8px}
 .back .wr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;font-size:12.5px;align-items:center}
-.back .wr i{grid-column:1/-1;height:5px;border-radius:3px;background:#EFE8D8;display:block;overflow:hidden}
-.back .wr i u{display:block;height:100%;background:#1C8A5A;text-decoration:none}
+.back .wr i{grid-column:1/-1;height:5px;border-radius:3px;background:#FFF2B3;display:block;overflow:hidden}
+.back .wr i u{display:block;height:100%;background:#121212;text-decoration:none}
 
 /* numbers */
 .nums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
@@ -255,20 +255,20 @@ section{position:relative;scroll-margin-top:70px}
 /* app */
 .appcta{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:40px;align-items:center}
 @media (max-width:900px){.appcta{grid-template-columns:1fr}}
-.phone{width:min(300px,78vw);aspect-ratio:9/19;margin:0 auto;border-radius:44px;background:#0A0908;padding:12px;box-shadow:0 0 0 2px #2B2721,0 40px 80px -30px rgba(0,0,0,.8);animation:float 6s ease-in-out infinite}
+.phone{width:min(300px,78vw);aspect-ratio:9/19;margin:0 auto;border-radius:44px;background:#090909;padding:12px;box-shadow:0 0 0 2px #262626,0 40px 80px -30px rgba(0,0,0,.8);animation:float 6s ease-in-out infinite}
 @keyframes float{50%{transform:translateY(-12px) rotate(-1deg)}}
-.scrn{width:100%;height:100%;border-radius:34px;background:#F7F5EF;color:var(--ink);overflow:hidden;display:flex;flex-direction:column;gap:10px;padding:34px 14px 14px;font-size:11px}
+.scrn{width:100%;height:100%;border-radius:34px;background:#FFF2B3;color:var(--ink);overflow:hidden;display:flex;flex-direction:column;gap:10px;padding:34px 14px 14px;font-size:11px}
 .scrn .hc{background:#141414;color:#fff;border-radius:14px;padding:12px;position:relative;overflow:hidden}
 .scrn .hc::after{content:"";position:absolute;right:-20px;top:14px;width:90px;height:4px;background:var(--amber);transform:rotate(-38deg);box-shadow:0 10px 0 var(--amber)}
 .scrn .due{background:var(--amber);border-radius:10px;padding:8px;font-weight:700;margin-top:8px;color:var(--ink)}
 .scrn .tl{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.scrn .tl div{background:#fff;border-radius:10px;padding:10px 4px;text-align:center;font-weight:700;font-size:9.5px;box-shadow:0 2px 8px rgba(40,32,10,.06)}
-.scrn .tl i{display:block;width:22px;height:22px;border-radius:7px;background:#FFF4CC;margin:0 auto 5px}
+.scrn .tl div{background:#fff;border-radius:10px;padding:10px 4px;text-align:center;font-weight:700;font-size:9.5px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.scrn .tl i{display:block;width:22px;height:22px;border-radius:7px;background:#FFF2B3;margin:0 auto 5px}
 .stores{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}
 .store{border:1.5px solid var(--line);border-radius:14px;padding:10px 16px;display:flex;gap:10px;align-items:center;background:transparent;color:var(--cream)}
 .store small{display:block;font-size:10px;color:var(--muted)}
 
-footer{background:#080706;color:var(--muted);padding:60px 0 40px;font-size:14px}
+footer{background:#070707;color:var(--muted);padding:60px 0 40px;font-size:14px}
 .fgrid{display:grid;grid-template-columns:1.3fr repeat(3,1fr);gap:28px}
 @media (max-width:860px){.fgrid{grid-template-columns:1fr 1fr}}
 footer h4{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--chrome);margin:0 0 12px;font-weight:700}
@@ -277,7 +277,7 @@ footer p{margin:0 0 6px}
 
 
 /* ===== levitating hero (scroll-driven) ===== */
-.lev{position:relative;height:210vh;background:radial-gradient(70% 60% at 62% 45%,#3A2A12 0%,#1A140C 45%,#0D0C0A 80%)}
+.lev{position:relative;height:210vh;background:radial-gradient(70% 60% at 62% 45%,#262626 0%,#131313 45%,#0C0C0C 80%)}
 .levs{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden;--p:0;--a:1;--b:0;--mx:0;--my:0}
 .bokeh{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(255,196,60,.55),rgba(255,196,60,0) 70%);filter:blur(6px);animation:bok 9s ease-in-out infinite}
 @keyframes bok{50%{transform:translateY(-18px);opacity:.6}}
@@ -288,26 +288,26 @@ footer p{margin:0 0 6px}
 .ltext .sa{opacity:var(--a);transform:translateY(calc((1 - var(--a)) * -30px))}
 .ltext .sb{opacity:var(--b);transform:translateY(calc((1 - var(--b)) * 30px))}
 .ltext h1{font-size:clamp(44px,7vw,92px);line-height:.95;margin:16px 0 18px}
-.ltext .lede{color:#C9BFAA}
+.ltext .lede{color:#BABABA}
 .dots{display:flex;gap:8px;margin-top:26px}
-.dots i{width:26px;height:4px;border-radius:2px;background:rgba(243,237,224,.25)}
+.dots i{width:26px;height:4px;border-radius:2px;background:rgba(255,255,255,.25)}
 .dots i.on{background:var(--amber)}
 .stage3d{position:relative;height:min(78vh,640px);perspective:1100px}
 @media (max-width:900px){.stage3d{height:52vh}}
 .lp{position:absolute;left:50%;top:50%;transform-style:preserve-3d}
 /* pedestal */
-.ped{position:absolute;left:50%;top:72%;width:min(360px,70vw);height:80px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(ellipse at 50% 35%,#E8B84A 0%,#9C6B12 45%,#3A2708 75%);box-shadow:0 40px 60px -20px rgba(0,0,0,.8),0 0 80px rgba(255,194,14,.25),inset 0 6px 12px rgba(255,236,170,.6)}
-.ped::after{content:"";position:absolute;left:4%;right:4%;top:44%;height:46px;border-radius:0 0 50% 50%/0 0 100% 100%;background:linear-gradient(#6B470B,#2A1B05);z-index:-1}
+.ped{position:absolute;left:50%;top:72%;width:min(360px,70vw);height:80px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(ellipse at 50% 35%,#FFC20E 0%,#E0A800 45%,#212121 75%);box-shadow:0 40px 60px -20px rgba(0,0,0,.8),0 0 80px rgba(255,194,14,.25),inset 0 6px 12px rgba(255,236,170,.6)}
+.ped::after{content:"";position:absolute;left:4%;right:4%;top:44%;height:46px;border-radius:0 0 50% 50%/0 0 100% 100%;background:linear-gradient(#3B3B3B,#181818);z-index:-1}
 .ped::before{content:"";position:absolute;left:50%;top:-10px;width:70%;height:30px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(ellipse,rgba(255,220,120,.55),transparent 70%);filter:blur(8px)}
 /* rotor */
 .rotwrap{position:absolute;left:50%;top:44%;width:min(330px,62vw);aspect-ratio:1;transform:translate(-50%,-50%) translateY(calc(var(--p) * -30px)) rotateX(calc(var(--my) * -8deg + var(--p) * 18deg)) rotateY(calc(-24deg + var(--mx) * 14deg + var(--p) * 40deg));transform-style:preserve-3d;animation:hover 5s ease-in-out infinite}
 @keyframes hover{50%{margin-top:-14px}}
 .rotor,.rthick{position:absolute;inset:0;border-radius:50%}
-.rthick{background:#3F3A31;transform:translateZ(calc(var(--z) * -1px));-webkit-mask:var(--holes);mask:var(--holes)}
-.rotor{background:radial-gradient(circle,#15130F 0 15.5%,transparent 16%),conic-gradient(from 10deg,#8d877c,#f4f0e8 8%,#a19b8f 16%,#5e584e 26%,#e8e3d8 36%,#8d877c 46%,#f7f3ea 56%,#6c665c 68%,#d9d3c6 80%,#8d877c);-webkit-mask:var(--holes);mask:var(--holes);animation:spinr 14s linear infinite;box-shadow:inset 0 0 0 3px rgba(255,255,255,.25)}
+.rthick{background:#383838;transform:translateZ(calc(var(--z) * -1px));-webkit-mask:var(--holes);mask:var(--holes)}
+.rotor{background:radial-gradient(circle,#121212 0 15.5%,transparent 16%),conic-gradient(from 10deg,#848484,#FFF2B3 8%,#989898 16%,#565656 26%,#FFF2B3 36%,#848484 46%,#FFF2B3 56%,#646464 68%,#D0D0D0 80%,#848484);-webkit-mask:var(--holes);mask:var(--holes);animation:spinr 14s linear infinite;box-shadow:inset 0 0 0 3px rgba(255,255,255,.25)}
 .rotor::before{content:"";position:absolute;inset:0;border-radius:50%;background:repeating-radial-gradient(circle,rgba(0,0,0,.05) 0 1px,transparent 1px 4px)}
-.hub{position:absolute;inset:27%;border-radius:50%;background:radial-gradient(circle,#0D0C0A 0 22%,transparent 23%),conic-gradient(from 30deg,#2B2721,#6a6458,#2B2721,#57514a,#2B2721);box-shadow:0 0 0 6px #1E1B16,inset 0 0 18px rgba(0,0,0,.8);transform:translateZ(2px)}
-.hub i{position:absolute;width:11%;height:11%;border-radius:50%;background:radial-gradient(circle,#0D0C0A 40%,#C9C2B3 45%,#6a6458 70%);left:44.5%;top:44.5%}
+.hub{position:absolute;inset:27%;border-radius:50%;background:radial-gradient(circle,#0C0C0C 0 22%,transparent 23%),conic-gradient(from 30deg,#262626,#616161,#262626,#505050,#262626);box-shadow:0 0 0 6px #1A1A1A,inset 0 0 18px rgba(0,0,0,.8);transform:translateZ(2px)}
+.hub i{position:absolute;width:11%;height:11%;border-radius:50%;background:radial-gradient(circle,#0C0C0C 40%,#BEBEBE 45%,#616161 70%);left:44.5%;top:44.5%}
 .shine{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,transparent 0 12%,rgba(255,255,255,.55) 16%,transparent 22% 58%,rgba(255,255,255,.35) 62%,transparent 68%);mix-blend-mode:screen;animation:spinr 7s linear infinite reverse;-webkit-mask:var(--holes);mask:var(--holes);pointer-events:none}
 @keyframes spinr{to{transform:rotate(360deg)}}
 .glow{position:absolute;left:50%;top:44%;width:min(520px,90vw);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,194,14,.28),transparent 62%);filter:blur(10px)}
@@ -336,23 +336,79 @@ footer p{margin:0 0 6px}
 @media (prefers-reduced-motion:reduce){.lev{height:auto}.levs{position:relative;height:auto;min-height:100vh}.fp svg,.rotor,.shine,.rotwrap{animation:none!important}.ribbons path{stroke-dashoffset:0}}
 
 #xv .bx{fill:none;stroke:var(--chrome);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
-#xv .bx.t{stroke-width:9;stroke:#2B2721}
+#xv .bx.t{stroke-width:9;stroke:#262626}
 .rotor,.rthick,.shine{-webkit-mask-composite:source-in;mask-composite:intersect}
+
+/* ===== brand restyle: black · white · yellow only ===== */
+h1,h2,h3{font-family:var(--serif);text-transform:uppercase;font-weight:700;letter-spacing:.005em;line-height:1}
+em,i{font-style:normal}
+h1 em,h2 em{font-style:normal;font-weight:700}
+.ltext h1{font-size:clamp(40px,6vw,82px)}
+h2{font-size:clamp(30px,4.6vw,56px)}
+.light{background:#FFFFFF}
+.light h2 em{color:#121212;background:linear-gradient(transparent 58%,#FFC20E 58%);padding:0 .08em}
+.marq{background:#FFC20E;border:0}
+.marq div{font-family:var(--serif);font-style:normal;text-transform:uppercase;font-weight:700;letter-spacing:.08em;font-size:20px;color:#121212}
+.marq span::after{content:"●";color:#121212;font-size:10px}
+.brand b{font-family:var(--serif);text-transform:uppercase;letter-spacing:.04em;font-size:17px}.brand b span{font-style:normal}
+.lev{background:radial-gradient(60% 55% at 64% 45%,rgba(255,194,14,.13) 0%,rgba(255,194,14,0) 60%),#0B0B0B}
+.ped{background:radial-gradient(ellipse at 50% 30%,#3A3A3A 0%,#161616 55%,#0B0B0B 80%);box-shadow:0 40px 60px -20px rgba(0,0,0,.9),0 0 0 2px #FFC20E,0 0 60px rgba(255,194,14,.25),inset 0 4px 10px rgba(255,255,255,.12)}
+.ped::after{background:linear-gradient(#1C1C1C,#0B0B0B)}
+.ped::before{background:radial-gradient(ellipse,rgba(255,194,14,.45),transparent 70%)}
+.ltext .lede,.hero .lede{color:#BDBDBD}
+.lede{color:#9A9A9A}.light .lede{color:#444}
+.panel{border-color:#E6E6E6;box-shadow:0 18px 40px -28px rgba(0,0,0,.35)}
+.row{border-color:#EDEDED}.row .ic{background:#FFC20E}
+.bar{background:#EDEDED}
+.st.g{background:#fff;color:#121212;box-shadow:inset 0 0 0 1.5px #121212}
+.st.a{background:#FFC20E;color:#121212}
+.st.r{background:#121212;color:#FFC20E}
+.rx{background:#121212;color:#FFC20E}
+.score{background:#121212}
+.rxc .card{background:#fff;border:1.5px solid #121212;border-radius:14px;padding:0 18px 16px;box-shadow:6px 6px 0 #FFC20E}
+.rxc:hover .card{box-shadow:8px 8px 0 #FFC20E}
+.rxc .card::before{background:linear-gradient(115deg,transparent 35%,rgba(255,194,14,.18) 50%,transparent 65%)}
+.tagtop{display:flex;justify-content:space-between;gap:10px;margin:0 -18px 4px;padding:10px 18px;background:#121212;color:#FFC20E;font-family:var(--mono);font-size:11px;letter-spacing:.1em}
+.tagtop .stk{color:#fff}
+.rxc h3{font-size:19px;line-height:1.1;text-transform:uppercase}
+.rxc .brandn{color:#121212;font-weight:700}
+.dose{border-color:#DADADA}
+.pr b{font-family:var(--serif)}
+.pr .off{background:#FFC20E;color:#121212}
+.add{background:#FFC20E;color:#121212}.add.done{background:#121212;color:#FFC20E}
+.chip.on{color:#121212}
+.mcard .av{color:#121212}
+.vtick{color:#FFC20E}
+.front{background:linear-gradient(135deg,#1E1E1E,#0B0B0B 60%)}
+.front .chipm{background:linear-gradient(135deg,#FFE066,#E0A800)}
+.back .wr i u{background:#121212}
+.ticket{background:#fff}.ticket .doc{background:#F2F2F2}
+.num{background:#161616;border-color:#2A2A2A}
+.odo{color:#FFC20E}
+footer{background:#050505}
+.btn.ghost{box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.45)}
+.eyebrow{font-weight:700}
+.light .eyebrow{color:#121212}
+.light .eyebrow::before{background:#FFC20E;height:3px}
+.dots i.on{background:#FFC20E}
+.panel{background:#FFFFFF}
+.tagtop{font-size:10.5px;letter-spacing:.06em;white-space:nowrap}
+@media (max-width:900px){.ltext h1{font-size:clamp(32px,9vw,44px)}.ltext .eyebrow{font-size:10.5px}}
 /* cart drawer + toast */
 .drawer{position:fixed;top:0;right:0;bottom:0;width:min(400px,100%);z-index:80;background:var(--paper);color:var(--ink);transform:translateX(105%);transition:transform .45s cubic-bezier(.3,1,.3,1);display:flex;flex-direction:column;box-shadow:-30px 0 60px rgba(0,0,0,.4);padding-top:env(safe-area-inset-top,0px)}
 .drawer.on{transform:none}
-.dhead{display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:1px dashed #D9CFBA}
+.dhead{display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:1px dashed #FFC20E}
 .dhead h3{font-size:26px}
 .dbody{flex:1;overflow:auto;padding:12px 22px;display:flex;flex-direction:column;gap:10px}
-.ditem{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;padding:12px 0;border-bottom:1px solid #ECE4D3;font-size:14px}
+.ditem{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;padding:12px 0;border-bottom:1px solid #FFF2B3;font-size:14px}
 .ditem small{color:var(--ink2)}
 .qty{display:flex;align-items:center;gap:8px}
-.qty button{width:28px;height:28px;border-radius:50%;border:1.5px solid #D9CFBA;background:#fff;color:var(--ink);font-weight:800}
-.dfoot{padding:18px 22px calc(18px + env(safe-area-inset-bottom,0px));border-top:1px dashed #D9CFBA;display:flex;flex-direction:column;gap:12px}
+.qty button{width:28px;height:28px;border-radius:50%;border:1.5px solid #FFC20E;background:#fff;color:var(--ink);font-weight:800}
+.dfoot{padding:18px 22px calc(18px + env(safe-area-inset-bottom,0px));border-top:1px dashed #FFC20E;display:flex;flex-direction:column;gap:12px}
 .dfoot .tot{display:flex;justify-content:space-between;font:700 20px var(--serif)}
 .scrim{position:fixed;inset:0;z-index:79;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .3s}
 .scrim.on{opacity:1;pointer-events:auto}
-.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,140%);z-index:90;background:var(--ink);color:var(--cream);border:1px solid #3A3428;border-radius:999px;padding:12px 20px;font-size:14px;font-weight:600;display:flex;gap:10px;align-items:center;transition:transform .35s cubic-bezier(.3,1.4,.4,1);max-width:calc(100vw - 32px)}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,140%);z-index:90;background:var(--ink);color:var(--cream);border:1px solid #313131;border-radius:999px;padding:12px 20px;font-size:14px;font-weight:600;display:flex;gap:10px;align-items:center;transition:transform .35s cubic-bezier(.3,1.4,.4,1);max-width:calc(100vw - 32px)}
 .toast.on{transform:translate(-50%,0)}
 .toast svg{color:var(--amber)}
 
@@ -371,7 +427,7 @@ footer p{margin:0 0 6px}
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="logoMark" viewBox="0 0 370 190"><g><g transform="translate(140.22,28.91)"><path d="M73.04 40.01C73.04 35.83 76.05 32.37 80.02 31.63C78.97 26.56 76.96 21.85 74.21 17.66C70.89 19.93 66.32 19.61 63.37 16.66C60.41 13.71 60.09 9.13 62.37 5.81C58.18 3.07 53.46 1.06 48.39 0.00C47.97 2.28 46.63 4.22 44.79 5.48L44.79 14.83C56.66 17.07 65.65 27.49 65.65 40.01C65.65 54.17 54.17 65.65 40.01 65.65C25.85 65.65 14.37 54.17 14.37 40.01C14.37 27.61 23.18 17.26 34.89 14.89L34.89 5.23C33.23 3.97 32.03 2.14 31.63 0.00C26.56 1.06 21.85 3.07 17.66 5.81C19.93 9.14 19.61 13.71 16.66 16.66C13.70 19.61 9.13 19.93 5.81 17.66C3.07 21.85 1.06 26.56 0.00 31.63C3.97 32.37 6.98 35.83 6.98 40.01C6.98 44.19 3.97 47.66 0.00 48.39C1.06 53.46 3.07 58.18 5.81 62.37C9.14 60.09 13.70 60.42 16.66 63.37C19.61 66.32 19.94 70.89 17.66 74.21C21.85 76.96 26.56 78.97 31.63 80.02C32.36 76.05 35.83 73.04 40.01 73.04C44.19 73.04 47.66 76.05 48.39 80.02C53.46 78.97 58.18 76.96 62.37 74.21C60.09 70.89 60.42 66.32 63.37 63.37C66.32 60.42 70.89 60.09 74.21 62.37C76.96 58.18 78.97 53.46 80.02 48.39C76.05 47.66 73.04 44.19 73.04 40.01" fill="#FEBE0F" fill-rule="nonzero"/></g></g><g><g transform="translate(156.46,0)"><circle cx="23.30" cy="12.72" r="3" class="pinhole"/><path d="M28.59 45.63C28.62 47.37 28.89 48.91 29.36 50.22C37.42 52.62 43.31 60.09 43.31 68.92C43.31 79.69 34.55 88.45 23.78 88.45C13.01 88.45 4.25 79.69 4.25 68.92C4.25 60.24 9.95 52.87 17.80 50.34C18.29 49.02 18.58 47.48 18.61 45.72C7.98 48.09 0.00 57.59 0.00 68.92C0.00 82.04 10.67 92.70 23.78 92.70C36.89 92.70 47.56 82.04 47.56 68.92C47.56 57.46 39.40 47.86 28.59 45.63" fill="currentColor" fill-rule="nonzero"/><path d="M23.30 15.20C21.93 15.20 20.82 14.09 20.82 12.72C20.82 11.35 21.93 10.24 23.30 10.24C24.67 10.24 25.78 11.35 25.78 12.72C25.78 14.09 24.67 15.20 23.30 15.20" fill="currentColor" fill-rule="nonzero"/><path d="M38.65 3.22L38.65 2.19C38.65 1.46 38.14 0.84 37.42 0.68C36.90 0.57 36.15 0.51 35.08 0.58C35.08 0.58 34.46 1.15 33.63 1.20C32.81 1.25 30.74 1.20 30.74 1.20C30.74 1.20 29.40 0.40 29.22 0.19C29.05 0.00 24.20 0.10 23.60 0.11C23.01 0.10 18.16 0.00 17.99 0.19C17.81 0.40 16.47 1.20 16.47 1.20C16.47 1.20 14.40 1.25 13.57 1.20C12.75 1.15 12.13 0.58 12.13 0.58C11.07 0.51 10.33 0.57 9.80 0.68C9.08 0.83 8.56 1.46 8.56 2.19L8.56 3.22L38.65 3.22" fill="currentColor" fill-rule="nonzero"/><path d="M8.56 3.94h30.08v1.24h-30.08Z" fill="currentColor" fill-rule="nonzero"/><path d="M23.30 16.84C21.03 16.84 19.19 14.99 19.19 12.72C19.19 10.45 21.03 8.61 23.30 8.61C25.58 8.61 27.42 10.45 27.42 12.72C27.42 14.99 25.58 16.84 23.30 16.84M32.86 68.50C32.86 73.51 28.80 77.57 23.79 77.57C18.78 77.57 14.72 73.51 14.72 68.50C14.72 63.49 18.78 59.43 23.79 59.43C28.80 59.43 32.86 63.49 32.86 68.50M36.84 25.38L38.64 25.38L38.64 6.47L8.56 6.47L8.56 25.38L10.37 25.38C10.01 19.38 20.55 19.95 20.55 19.95L20.55 45.06C20.75 54.72 13.26 58.90 11.82 58.96C10.37 59.01 9.41 59.14 9.41 59.73L9.41 76.36C9.48 76.85 9.75 76.98 9.75 76.98L9.75 78.46C10.06 79.67 12.51 79.43 13.37 79.43C14.23 79.43 15.16 79.08 15.16 79.08L15.16 78.50C15.16 78.50 16.16 78.12 17.98 79.95C18.47 80.44 19.18 80.83 19.92 81.13C22.27 82.09 24.94 82.09 27.29 81.13C28.03 80.83 28.73 80.44 29.23 79.95C31.05 78.12 32.05 78.50 32.05 78.50L32.05 79.08C32.05 79.08 32.98 79.43 33.84 79.43C34.70 79.43 37.15 79.67 37.46 78.46L37.46 76.98C37.46 76.98 37.73 76.85 37.80 76.36L37.80 59.73C37.80 59.14 36.84 59.01 35.39 58.96C33.94 58.90 26.45 54.72 26.66 45.06L26.66 19.95C26.66 19.95 37.20 19.38 36.84 25.38" fill="currentColor" fill-rule="nonzero"/><path d="M23.79 62.15C20.29 62.15 17.44 65.00 17.44 68.50C17.44 72.00 20.29 74.85 23.79 74.85C27.29 74.85 30.14 72.00 30.14 68.50C30.14 65.00 27.29 62.15 23.79 62.15M23.79 76.53C19.36 76.53 15.75 72.93 15.75 68.50C15.75 64.07 19.36 60.46 23.79 60.46C28.22 60.46 31.83 64.07 31.83 68.50C31.83 72.93 28.22 76.53 23.79 76.53" fill="currentColor" fill-rule="nonzero"/></g></g><g transform="translate(0,136.31)"><path d="M36.48 0.00h6.84v31.17h-6.84Z" fill="currentColor" fill-rule="nonzero"/><path d="M49.51 0.00L56.35 0.00L56.35 14.46L73.02 0.00L81.59 0.00L66.31 13.29L81.55 31.17L73.80 31.17L61.55 16.97L56.35 21.17L56.35 31.17L49.51 31.17L49.51 0.00" fill="currentColor" fill-rule="nonzero"/><path d="M85.05 0.00L112.97 0.00L112.97 5.28L91.89 5.28L91.89 12.60L111.15 12.60L111.15 17.75L91.89 17.75L91.89 25.89L113.23 25.89L113.23 31.17L85.05 31.17L85.05 0.00" fill="currentColor" fill-rule="nonzero"/><path d="M166.30 0.00L173.14 0.00L173.14 12.47L190.75 12.47L190.75 0.00L197.59 0.00L197.59 31.17L190.75 31.17L190.75 17.75L173.14 17.75L173.14 31.17L166.30 31.17L166.30 0.00" fill="currentColor" fill-rule="nonzero"/><path d="M26.27 14.98C28.52 14.33 31.07 11.91 31.07 8.40C31.07 3.29 27.31 0.00 17.87 0.00L0.86 0.00L0.86 5.28L17.87 5.28C22.59 5.28 24.24 6.97 24.24 9.01C24.24 11.30 22.50 12.99 18.87 12.99L0.86 12.99L0.86 17.40L19.26 17.40C23.24 17.40 25.36 19.22 25.36 21.65C25.36 23.98 23.54 25.89 18.61 25.89L0.86 25.89L0.86 31.17L18.48 31.17C28.43 31.17 32.16 27.19 32.16 22.04C32.16 18.18 29.52 15.85 26.27 14.98" fill="currentColor" fill-rule="nonzero"/><path d="M149.16 0.00L131.71 0.00L131.71 5.28L148.42 5.28C153.53 5.28 155.48 7.53 155.48 10.74C155.48 13.94 153.53 16.19 148.42 16.19L131.71 16.19L131.71 31.17L138.55 31.17L138.55 21.47L149.16 21.47C157.56 21.47 162.32 17.32 162.32 10.74C162.32 4.16 157.56 0.00 149.16 0.00" fill="currentColor" fill-rule="nonzero"/><path d="M266.16 19.05C270.40 17.79 273.30 14.76 273.30 10.04C273.30 3.81 268.41 0.00 260.62 0.00L242.48 0.00L242.48 5.28L259.88 5.28C264.34 5.28 266.46 7.10 266.46 10.04C266.46 12.99 264.34 14.81 259.88 14.81L242.48 14.81L242.48 31.17L249.32 31.17L249.32 20.09L259.36 20.09L265.86 31.17L273.35 31.17L266.16 19.05" fill="currentColor" fill-rule="nonzero"/><path d="M277.32 0.00L287.06 0.00L297.76 23.03L308.45 0.00L318.19 0.00L318.19 31.17L311.35 31.17L311.35 7.01L300.22 31.17L295.29 31.17L284.16 7.01L284.16 31.17L277.32 31.17L277.32 0.00" fill="currentColor" fill-rule="nonzero"/><path d="M231.83 31.17L239.02 31.17L224.17 0.00L215.77 0.00L200.97 31.17L208.15 31.17L211.53 23.94L211.54 23.94L220.02 5.67L228.43 23.94L228.46 23.94L231.83 31.17" fill="currentColor" fill-rule="nonzero"/><path d="M349.03 23.94L349.05 23.94L352.43 31.17L359.61 31.17L344.77 0.00L336.37 0.00L321.56 31.17L328.75 31.17L332.13 23.94L332.13 23.94L340.61 5.67L349.03 23.94" fill="currentColor" fill-rule="nonzero"/><path d="M8.90 47.55L6.58 41.68L4.26 47.55L8.90 47.55M5.30 39.55L7.86 39.55L13.16 52.71L10.95 52.71L9.59 49.33L3.56 49.33L2.21 52.71L0.00 52.71L5.30 39.55" fill="currentColor" fill-rule="nonzero"/><path d="M21.75 39.55L21.75 46.66C21.75 49.80 23.05 51.12 25.04 51.12C27.04 51.12 28.33 49.80 28.33 46.66L28.33 39.55L30.49 39.55L30.49 46.66C30.49 50.81 28.59 52.93 25.04 52.93C21.50 52.93 19.61 50.81 19.61 46.66L19.61 39.55L21.75 39.55" fill="currentColor" fill-rule="nonzero"/><path d="M42.59 41.36L38.02 41.36L38.02 39.55L49.30 39.55L49.30 41.36L44.73 41.36L44.73 52.71L42.59 52.71L42.59 41.36" fill="currentColor" fill-rule="nonzero"/><path d="M66.40 46.13C66.40 42.89 64.38 41.14 61.99 41.14C59.58 41.14 57.57 42.89 57.57 46.13C57.57 49.36 59.58 51.12 61.99 51.12C64.38 51.12 66.40 49.36 66.40 46.13M55.43 46.13C55.43 41.59 58.48 39.33 61.99 39.33C65.48 39.33 68.54 41.59 68.54 46.13C68.54 50.66 65.48 52.93 61.99 52.93C58.48 52.93 55.43 50.66 55.43 46.13" fill="currentColor" fill-rule="nonzero"/><path d="M76.58 39.55L79.80 39.55L83.62 50.28L87.42 39.55L90.65 39.55L90.65 52.71L88.50 52.71L88.50 41.87L84.64 52.71L82.56 52.71L78.72 41.87L78.72 52.71L76.58 52.71L76.58 39.55" fill="currentColor" fill-rule="nonzero"/><path d="M109.67 46.13C109.67 42.89 107.66 41.14 105.26 41.14C102.85 41.14 100.84 42.89 100.84 46.13C100.84 49.36 102.85 51.12 105.26 51.12C107.66 51.12 109.67 49.36 109.67 46.13M98.70 46.13C98.70 41.59 101.75 39.33 105.26 39.33C108.75 39.33 111.81 41.59 111.81 46.13C111.81 50.66 108.75 52.93 105.26 52.93C101.75 52.93 98.70 50.66 98.70 46.13" fill="currentColor" fill-rule="nonzero"/><path d="M125.99 50.90C127.97 50.90 128.61 49.93 128.61 48.83C128.61 47.64 127.82 46.73 126.28 46.73L121.99 46.73L121.99 50.90L125.99 50.90M126.21 45.12C127.56 45.12 128.24 44.30 128.24 43.18C128.24 42.16 127.60 41.36 125.77 41.36L121.99 41.36L121.99 45.12L126.21 45.12M119.85 39.55L125.77 39.55C129.17 39.55 130.38 41.10 130.38 43.04C130.38 44.50 129.39 45.54 128.48 45.87C129.83 46.27 130.76 47.35 130.76 48.91C130.76 50.93 129.56 52.71 125.96 52.71L119.85 52.71L119.85 39.55" fill="currentColor" fill-rule="nonzero"/><path d="M138.97 39.55h2.14v13.16h-2.14Z" fill="currentColor" fill-rule="nonzero"/><path d="M149.69 39.55L151.82 39.55L151.82 50.90L159.14 50.90L159.14 52.71L149.69 52.71L149.69 39.55" fill="currentColor" fill-rule="nonzero"/><path d="M166.67 39.55L176.45 39.55L176.45 41.36L168.81 41.36L168.81 45.05L175.86 45.05L175.86 46.82L168.81 46.82L168.81 50.90L176.54 50.90L176.54 52.71L166.67 52.71L166.67 39.55" fill="currentColor" fill-rule="nonzero"/><path d="M186.08 49.38C186.30 49.80 187.09 51.12 189.43 51.12C191.51 51.12 192.35 50.20 192.35 49.02C192.35 47.90 191.44 47.22 189.30 46.84C185.83 46.20 184.60 44.83 184.60 42.95C184.60 40.83 186.25 39.33 189.39 39.33C192.26 39.33 193.70 40.79 194.11 41.87L192.22 42.49C191.88 41.94 191.24 41.14 189.43 41.14C187.53 41.14 186.76 41.94 186.76 42.95C186.76 43.99 187.58 44.65 189.79 45.05C192.77 45.58 194.49 46.57 194.49 49.02C194.49 51.36 192.75 52.93 189.43 52.93C185.95 52.93 184.58 51.14 184.20 50.00L186.08 49.38" fill="currentColor" fill-rule="nonzero"/></g><g transform="translate(0,136.31)"><g><path d="M200.91 52.23L369.43 52.08L367.58 48.16L200.91 48.32L200.91 52.23" fill="#FEBE0F" fill-rule="nonzero"/><path d="M200.60 40.77L200.60 44.88L365.95 44.72L364.01 40.61L200.60 40.77" fill="#FEBE0F" fill-rule="nonzero"/></g></g></symbol>
   <symbol id="gearOnly" viewBox="140 28 81 81"><g><g transform="translate(140.22,28.91)"><path d="M73.04 40.01C73.04 35.83 76.05 32.37 80.02 31.63C78.97 26.56 76.96 21.85 74.21 17.66C70.89 19.93 66.32 19.61 63.37 16.66C60.41 13.71 60.09 9.13 62.37 5.81C58.18 3.07 53.46 1.06 48.39 0.00C47.97 2.28 46.63 4.22 44.79 5.48L44.79 14.83C56.66 17.07 65.65 27.49 65.65 40.01C65.65 54.17 54.17 65.65 40.01 65.65C25.85 65.65 14.37 54.17 14.37 40.01C14.37 27.61 23.18 17.26 34.89 14.89L34.89 5.23C33.23 3.97 32.03 2.14 31.63 0.00C26.56 1.06 21.85 3.07 17.66 5.81C19.93 9.14 19.61 13.71 16.66 16.66C13.70 19.61 9.13 19.93 5.81 17.66C3.07 21.85 1.06 26.56 0.00 31.63C3.97 32.37 6.98 35.83 6.98 40.01C6.98 44.19 3.97 47.66 0.00 48.39C1.06 53.46 3.07 58.18 5.81 62.37C9.14 60.09 13.70 60.42 16.66 63.37C19.61 66.32 19.94 70.89 17.66 74.21C21.85 76.96 26.56 78.97 31.63 80.02C32.36 76.05 35.83 73.04 40.01 73.04C44.19 73.04 47.66 76.05 48.39 80.02C53.46 78.97 58.18 76.96 62.37 74.21C60.09 70.89 60.42 66.32 63.37 63.37C66.32 60.42 70.89 60.09 74.21 62.37C76.96 58.18 78.97 53.46 80.02 48.39C76.05 47.66 73.04 44.19 73.04 40.01" fill="#FEBE0F" fill-rule="nonzero"/></g></g></symbol></defs></svg>
 <div class="loader" aria-hidden="true"><div class="gauge">
-  <svg viewBox="0 0 180 110"><path d="M18 92a72 72 0 0 1 144 0" fill="none" stroke="#2B2721" stroke-width="10" stroke-linecap="round"/><path d="M18 92a72 72 0 0 1 144 0" fill="none" stroke="#FFC20E" stroke-width="10" stroke-linecap="round" stroke-dasharray="226" stroke-dashoffset="226" style="animation:draw 1.3s cubic-bezier(.3,1.2,.5,1) forwards;--x:0"/><g class="needle"><line x1="90" y1="92" x2="90" y2="30" stroke="#F3EDE0" stroke-width="3" stroke-linecap="round"/><circle cx="90" cy="92" r="7" fill="#FFC20E"/></g></svg>
+  <svg viewBox="0 0 180 110"><path d="M18 92a72 72 0 0 1 144 0" fill="none" stroke="#262626" stroke-width="10" stroke-linecap="round"/><path d="M18 92a72 72 0 0 1 144 0" fill="none" stroke="#FFC20E" stroke-width="10" stroke-linecap="round" stroke-dasharray="226" stroke-dashoffset="226" style="animation:draw 1.3s cubic-bezier(.3,1.2,.5,1) forwards;--x:0"/><g class="needle"><line x1="90" y1="92" x2="90" y2="30" stroke="#FFF2B3" stroke-width="3" stroke-linecap="round"/><circle cx="90" cy="92" r="7" fill="#FFC20E"/></g></svg>
   <div class="lbl">WARMING UP THE ENGINE</div></div></div>
 
 <header class="nav" id="nav"><div class="wrap navin">
@@ -390,24 +446,24 @@ footer p{margin:0 0 6px}
   <canvas id="sparks" aria-hidden="true"></canvas>
   <div class="wrap levg">
    <div class="ltext">
-    <div class="sa"><span class="eyebrow">Bike Pharma Automobiles · Bengaluru</span><h1>Genuine parts. <em>Precision care.</em></h1><p class="lede">Brakes, oil, chains and every part your bike needs — 100% genuine, fitted by verified mechanics, with warranty in your app.</p>
+    <div class="sa"><span class="eyebrow">Bike Pharma Automobiles · Bengaluru</span><h1>Genuine spares. <em>Expert fitting.</em></h1><p class="lede">Brake pads, engine oil, chain kits and 12,000+ parts for every bike. Original brands, fitted by verified mechanics near you, with warranty on every bill.</p>
      <div class="hcta"><a class="btn" href="#pharmacy">Order online <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a><a class="btn ghost" href="#opd">Book a check-up</a></div></div>
-    <div class="sb" aria-hidden="true"><span class="eyebrow">The bike clinic</span><h1>Every bike deserves a <em>good doctor.</em></h1><p class="lede">We diagnose, prescribe the right part, treat it with a verified mechanic and follow up on warranty. Scroll on to see how.</p>
+    <div class="sb" aria-hidden="true"><span class="eyebrow">The bike clinic</span><h1>Every bike needs <em>a good doctor.</em></h1><p class="lede">Check the bike, pick the right part, get it fitted, track the warranty. All in one place.</p>
      <div class="hcta"><a class="btn" href="#diagnose" tabindex="-1">Run a free check-up <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div></div>
     <div class="dots" aria-hidden="true"><i class="on" id="dA"></i><i id="dB"></i><i></i></div>
    </div>
    <div class="stage3d" aria-hidden="true">
     <div class="glow"></div>
-    <svg class="ribbons" viewBox="0 0 720 560"><defs><linearGradient id="rb1" x1="0" x2="1"><stop offset="0" stop-color="#FFE08A" stop-opacity="0"/><stop offset=".3" stop-color="#FFD65A"/><stop offset=".6" stop-color="#C78A00"/><stop offset="1" stop-color="#FFE9A8" stop-opacity=".2"/></linearGradient></defs>
+    <svg class="ribbons" viewBox="0 0 720 560"><defs><linearGradient id="rb1" x1="0" x2="1"><stop offset="0" stop-color="#FFC20E" stop-opacity="0"/><stop offset=".3" stop-color="#FFC20E"/><stop offset=".6" stop-color="#E0A800"/><stop offset="1" stop-color="#FFF2B3" stop-opacity=".2"/></linearGradient></defs>
      <path d="M40 400 C160 250 280 520 420 380 S640 140 700 230" stroke="url(#rb1)"/><path class="b" d="M20 170 C180 60 300 250 440 170 S620 330 700 300" stroke="url(#rb1)"/></svg>
     <div class="ped"></div>
     
     <div class="rotwrap"><div class="rthick" style="--z:10"></div><div class="rthick" style="--z:7"></div><div class="rthick" style="--z:4"></div><div class="rotor"></div><div class="shine"></div><div class="hub"><i style="transform:rotate(0deg) translateY(-160%)"></i><i style="transform:rotate(72deg) translateY(-160%)"></i><i style="transform:rotate(144deg) translateY(-160%)"></i><i style="transform:rotate(216deg) translateY(-160%)"></i><i style="transform:rotate(288deg) translateY(-160%)"></i></div></div>
-    <svg class="splash" viewBox="0 0 560 300"><defs><linearGradient id="oil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE9A8"/><stop offset=".45" stop-color="#F2A900"/><stop offset="1" stop-color="#7A4E00"/></linearGradient></defs>
+    <svg class="splash" viewBox="0 0 560 300"><defs><linearGradient id="oil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF2B3"/><stop offset=".45" stop-color="#FFC20E"/><stop offset="1" stop-color="#3D3D3D"/></linearGradient></defs>
      <path d="M60 250 C120 200 150 150 170 90 C178 150 200 190 240 205 C250 130 262 80 280 30 C296 90 306 140 318 205 C356 190 380 150 392 92 C408 150 440 200 500 250 C420 290 140 290 60 250Z" fill="url(#oil)" opacity=".92"/>
-     <path d="M110 240 C170 225 390 225 450 240" stroke="#FFF4CC" stroke-width="4" fill="none" opacity=".6"/>
+     <path d="M110 240 C170 225 390 225 450 240" stroke="#FFF2B3" stroke-width="4" fill="none" opacity=".6"/>
      <circle cx="168" cy="62" r="11" fill="url(#oil)"/><circle cx="280" cy="10" r="8" fill="url(#oil)"/><circle cx="394" cy="60" r="12" fill="url(#oil)"/><circle cx="120" cy="150" r="7" fill="url(#oil)"/><circle cx="450" cy="140" r="9" fill="url(#oil)"/><circle cx="230" cy="40" r="5" fill="url(#oil)"/><circle cx="340" cy="30" r="6" fill="url(#oil)"/></svg>
-    <div class="fp" style="--x:-52;--y:-30;--w:62px;--d:0.6;--bl:1.5px;--sc:0.8;--r:12;--sp:90;--zi:2;--t:6s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gN1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F4F0E8"/><stop offset=".45" stop-color="#8D877C"/><stop offset=".7" stop-color="#D9D3C6"/><stop offset="1" stop-color="#4A453C"/></linearGradient></defs><polygon points="50,6 88,28 88,72 50,94 12,72 12,28" fill="url(#gN1)" stroke="#3A362F" stroke-width="2"/><circle cx="50" cy="50" r="18" fill="#1A1814"/><circle cx="50" cy="50" r="18" fill="none" stroke="#C9C2B3" stroke-width="3" stroke-dasharray="4 3"/></svg></div><div class="fp" style="--x:48;--y:-40;--w:78px;--d:0.9;--bl:0px;--sc:1;--r:-24;--sp:-140;--zi:4;--t:7s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gB2" x1="0" x2="1"><stop offset="0" stop-color="#6C665C"/><stop offset=".4" stop-color="#F4F0E8"/><stop offset="1" stop-color="#5E584E"/></linearGradient></defs><polygon points="30,6 70,6 80,20 70,34 30,34 20,20" fill="url(#gB2)" stroke="#3A362F" stroke-width="2"/><rect x="38" y="32" width="24" height="62" rx="3" fill="url(#gB2)"/><path d="M38 44h24M38 52h24M38 60h24M38 68h24M38 76h24M38 84h24" stroke="#4A453C" stroke-width="2.5"/></svg></div><div class="fp" style="--x:-60;--y:22;--w:88px;--d:1.2;--bl:0px;--sc:1.05;--r:0;--sp:180;--zi:6;--t:8s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gG3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE08A"/><stop offset=".5" stop-color="#C78A00"/><stop offset="1" stop-color="#6B470B"/></linearGradient></defs><path d="M94.0 50.0 L93.6 55.7 L82.8 58.8 L81.4 63.0 L88.1 72.0 L84.9 76.8 L74.0 74.0 L70.7 77.0 L72.0 88.1 L66.8 90.7 L58.8 82.8 L54.4 83.7 L50.0 94.0 L44.3 93.6 L41.2 82.8 L37.0 81.4 L28.0 88.1 L23.2 84.9 L26.0 74.0 L23.0 70.7 L11.9 72.0 L9.3 66.8 L17.2 58.8 L16.3 54.4 L6.0 50.0 L6.4 44.3 L17.2 41.2 L18.6 37.0 L11.9 28.0 L15.1 23.2 L26.0 26.0 L29.3 23.0 L28.0 11.9 L33.2 9.3 L41.2 17.2 L45.6 16.3 L50.0 6.0 L55.7 6.4 L58.8 17.2 L63.0 18.6 L72.0 11.9 L76.8 15.1 L74.0 26.0 L77.0 29.3 L88.1 28.0 L90.7 33.2 L82.8 41.2 L83.7 45.6Z" fill="url(#gG3)" stroke="#5a3d06" stroke-width="1.5"/><circle cx="50" cy="50" r="14" fill="#1A1814"/></svg></div><div class="fp" style="--x:56;--y:18;--w:96px;--d:1.5;--bl:3px;--sc:1.2;--r:28;--sp:120;--zi:8;--t:6.5s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gP4" x1="0" x2="1"><stop offset="0" stop-color="#8d877c"/><stop offset=".5" stop-color="#f4f0e8"/><stop offset="1" stop-color="#6c665c"/></linearGradient></defs><rect x="44" y="2" width="12" height="14" rx="3" fill="url(#gP4)"/><rect x="36" y="14" width="28" height="34" rx="12" fill="#F7F3EA" stroke="#CFC8B8"/><path d="M38 22h24M38 28h24M38 34h24" stroke="#DCD5C7" stroke-width="2"/><polygon points="32,48 68,48 72,56 68,64 32,64 28,56" fill="url(#gP4)"/><rect x="40" y="64" width="20" height="22" fill="url(#gP4)"/><path d="M40 70h20M40 76h20M40 82h20" stroke="#4A453C" stroke-width="2"/><path d="M50 86v8h8" fill="none" stroke="#C9C2B3" stroke-width="3"/></svg></div><div class="fp" style="--x:-24;--y:-58;--w:70px;--d:0.5;--bl:2px;--sc:0.75;--r:-12;--sp:90;--zi:2;--t:7.5s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gL5" x1="0" x2="1"><stop offset="0" stop-color="#5e584e"/><stop offset=".5" stop-color="#e8e3d8"/><stop offset="1" stop-color="#4A453C"/></linearGradient></defs><rect x="8" y="30" width="56" height="40" rx="20" fill="none" stroke="url(#gL5)" stroke-width="10"/><rect x="36" y="30" width="56" height="40" rx="20" fill="none" stroke="url(#gL5)" stroke-width="10"/><circle cx="28" cy="50" r="6" fill="#C9C2B3"/><circle cx="72" cy="50" r="6" fill="#C9C2B3"/></svg></div><div class="fp" style="--x:30;--y:-62;--w:60px;--d:0.4;--bl:3px;--sc:0.65;--r:0;--sp:200;--zi:1;--t:9s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><radialGradient id="gR6" cx=".35" cy=".3"><stop offset="0" stop-color="#fff"/><stop offset=".4" stop-color="#bdb6a8"/><stop offset="1" stop-color="#3f3a31"/></radialGradient></defs><circle cx="50" cy="50" r="44" fill="none" stroke="#8d877c" stroke-width="10"/><circle cx="50" cy="50" r="20" fill="none" stroke="#8d877c" stroke-width="8"/><circle cx="82.0" cy="50.0" r="7" fill="url(#gR6)"/><circle cx="74.5" cy="70.6" r="7" fill="url(#gR6)"/><circle cx="55.6" cy="81.5" r="7" fill="url(#gR6)"/><circle cx="34.0" cy="77.7" r="7" fill="url(#gR6)"/><circle cx="19.9" cy="60.9" r="7" fill="url(#gR6)"/><circle cx="19.9" cy="39.1" r="7" fill="url(#gR6)"/><circle cx="34.0" cy="22.3" r="7" fill="url(#gR6)"/><circle cx="55.6" cy="18.5" r="7" fill="url(#gR6)"/><circle cx="74.5" cy="29.4" r="7" fill="url(#gR6)"/></svg></div><div class="fp" style="--x:-38;--y:48;--w:44px;--d:1.1;--bl:0px;--sc:1;--r:0;--sp:20;--zi:6;--t:5s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gD7" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE9A8"/><stop offset=".5" stop-color="#F2A900"/><stop offset="1" stop-color="#8A5A00"/></linearGradient></defs><path d="M50 4C62 28 80 44 80 64a30 30 0 0 1-60 0C20 44 38 28 50 4z" fill="url(#gD7)"/><ellipse cx="40" cy="58" rx="7" ry="12" fill="#fff" opacity=".55" transform="rotate(-20 40 58)"/></svg></div><div class="fp" style="--x:40;--y:44;--w:34px;--d:1.3;--bl:1px;--sc:1;--r:12;--sp:-20;--zi:7;--t:5.5s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gD8" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE9A8"/><stop offset=".5" stop-color="#F2A900"/><stop offset="1" stop-color="#8A5A00"/></linearGradient></defs><path d="M50 4C62 28 80 44 80 64a30 30 0 0 1-60 0C20 44 38 28 50 4z" fill="url(#gD8)"/><ellipse cx="40" cy="58" rx="7" ry="12" fill="#fff" opacity=".55" transform="rotate(-20 40 58)"/></svg></div><div class="fp" style="--x:66;--y:-8;--w:46px;--d:0.7;--bl:1px;--sc:0.85;--r:0;--sp:160;--zi:3;--t:6.8s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gW9" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE08A"/><stop offset=".5" stop-color="#B98300"/><stop offset="1" stop-color="#FFE08A"/></linearGradient></defs><circle cx="50" cy="50" r="40" fill="none" stroke="url(#gW9)" stroke-width="22"/></svg></div><div class="fp" style="--x:-74;--y:-4;--w:40px;--d:1.7;--bl:5px;--sc:1.5;--r:40;--sp:-120;--zi:9;--t:7s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gN10" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F4F0E8"/><stop offset=".45" stop-color="#8D877C"/><stop offset=".7" stop-color="#D9D3C6"/><stop offset="1" stop-color="#4A453C"/></linearGradient></defs><polygon points="50,6 88,28 88,72 50,94 12,72 12,28" fill="url(#gN10)" stroke="#3A362F" stroke-width="2"/><circle cx="50" cy="50" r="18" fill="#1A1814"/><circle cx="50" cy="50" r="18" fill="none" stroke="#C9C2B3" stroke-width="3" stroke-dasharray="4 3"/></svg></div><div class="fp" style="--x:16;--y:-70;--w:30px;--d:0.3;--bl:4px;--sc:0.6;--r:-10;--sp:40;--zi:1;--t:6s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gD11" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE9A8"/><stop offset=".5" stop-color="#F2A900"/><stop offset="1" stop-color="#8A5A00"/></linearGradient></defs><path d="M50 4C62 28 80 44 80 64a30 30 0 0 1-60 0C20 44 38 28 50 4z" fill="url(#gD11)"/><ellipse cx="40" cy="58" rx="7" ry="12" fill="#fff" opacity=".55" transform="rotate(-20 40 58)"/></svg></div><div class="fp" style="--x:-40;--y:64;--w:58px;--d:1.8;--bl:6px;--sc:1.5;--r:70;--sp:160;--zi:9;--t:8.5s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gB12" x1="0" x2="1"><stop offset="0" stop-color="#6C665C"/><stop offset=".4" stop-color="#F4F0E8"/><stop offset="1" stop-color="#5E584E"/></linearGradient></defs><polygon points="30,6 70,6 80,20 70,34 30,34 20,20" fill="url(#gB12)" stroke="#3A362F" stroke-width="2"/><rect x="38" y="32" width="24" height="62" rx="3" fill="url(#gB12)"/><path d="M38 44h24M38 52h24M38 60h24M38 68h24M38 76h24M38 84h24" stroke="#4A453C" stroke-width="2.5"/></svg></div>
+    <div class="fp" style="--x:-52;--y:-30;--w:62px;--d:0.6;--bl:1.5px;--sc:0.8;--r:12;--sp:90;--zi:2;--t:6s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gN1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF2B3"/><stop offset=".45" stop-color="#848484"/><stop offset=".7" stop-color="#D0D0D0"/><stop offset="1" stop-color="#434343"/></linearGradient></defs><polygon points="50,6 88,28 88,72 50,94 12,72 12,28" fill="url(#gN1)" stroke="#343434" stroke-width="2"/><circle cx="50" cy="50" r="18" fill="#171717"/><circle cx="50" cy="50" r="18" fill="none" stroke="#BEBEBE" stroke-width="3" stroke-dasharray="4 3"/></svg></div><div class="fp" style="--x:48;--y:-40;--w:78px;--d:0.9;--bl:0px;--sc:1;--r:-24;--sp:-140;--zi:4;--t:7s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gB2" x1="0" x2="1"><stop offset="0" stop-color="#646464"/><stop offset=".4" stop-color="#FFF2B3"/><stop offset="1" stop-color="#565656"/></linearGradient></defs><polygon points="30,6 70,6 80,20 70,34 30,34 20,20" fill="url(#gB2)" stroke="#343434" stroke-width="2"/><rect x="38" y="32" width="24" height="62" rx="3" fill="url(#gB2)"/><path d="M38 44h24M38 52h24M38 60h24M38 68h24M38 76h24M38 84h24" stroke="#434343" stroke-width="2.5"/></svg></div><div class="fp" style="--x:-60;--y:22;--w:88px;--d:1.2;--bl:0px;--sc:1.05;--r:0;--sp:180;--zi:6;--t:8s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gG3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFC20E"/><stop offset=".5" stop-color="#E0A800"/><stop offset="1" stop-color="#3B3B3B"/></linearGradient></defs><path d="M94.0 50.0 L93.6 55.7 L82.8 58.8 L81.4 63.0 L88.1 72.0 L84.9 76.8 L74.0 74.0 L70.7 77.0 L72.0 88.1 L66.8 90.7 L58.8 82.8 L54.4 83.7 L50.0 94.0 L44.3 93.6 L41.2 82.8 L37.0 81.4 L28.0 88.1 L23.2 84.9 L26.0 74.0 L23.0 70.7 L11.9 72.0 L9.3 66.8 L17.2 58.8 L16.3 54.4 L6.0 50.0 L6.4 44.3 L17.2 41.2 L18.6 37.0 L11.9 28.0 L15.1 23.2 L26.0 26.0 L29.3 23.0 L28.0 11.9 L33.2 9.3 L41.2 17.2 L45.6 16.3 L50.0 6.0 L55.7 6.4 L58.8 17.2 L63.0 18.6 L72.0 11.9 L76.8 15.1 L74.0 26.0 L77.0 29.3 L88.1 28.0 L90.7 33.2 L82.8 41.2 L83.7 45.6Z" fill="url(#gG3)" stroke="#303030" stroke-width="1.5"/><circle cx="50" cy="50" r="14" fill="#171717"/></svg></div><div class="fp" style="--x:56;--y:18;--w:96px;--d:1.5;--bl:3px;--sc:1.2;--r:28;--sp:120;--zi:8;--t:6.5s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gP4" x1="0" x2="1"><stop offset="0" stop-color="#848484"/><stop offset=".5" stop-color="#FFF2B3"/><stop offset="1" stop-color="#646464"/></linearGradient></defs><rect x="44" y="2" width="12" height="14" rx="3" fill="url(#gP4)"/><rect x="36" y="14" width="28" height="34" rx="12" fill="#FFF2B3" stroke="#C3C3C3"/><path d="M38 22h24M38 28h24M38 34h24" stroke="#D2D2D2" stroke-width="2"/><polygon points="32,48 68,48 72,56 68,64 32,64 28,56" fill="url(#gP4)"/><rect x="40" y="64" width="20" height="22" fill="url(#gP4)"/><path d="M40 70h20M40 76h20M40 82h20" stroke="#434343" stroke-width="2"/><path d="M50 86v8h8" fill="none" stroke="#BEBEBE" stroke-width="3"/></svg></div><div class="fp" style="--x:-24;--y:-58;--w:70px;--d:0.5;--bl:2px;--sc:0.75;--r:-12;--sp:90;--zi:2;--t:7.5s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gL5" x1="0" x2="1"><stop offset="0" stop-color="#565656"/><stop offset=".5" stop-color="#FFF2B3"/><stop offset="1" stop-color="#434343"/></linearGradient></defs><rect x="8" y="30" width="56" height="40" rx="20" fill="none" stroke="url(#gL5)" stroke-width="10"/><rect x="36" y="30" width="56" height="40" rx="20" fill="none" stroke="url(#gL5)" stroke-width="10"/><circle cx="28" cy="50" r="6" fill="#BEBEBE"/><circle cx="72" cy="50" r="6" fill="#BEBEBE"/></svg></div><div class="fp" style="--x:30;--y:-62;--w:60px;--d:0.4;--bl:3px;--sc:0.65;--r:0;--sp:200;--zi:1;--t:9s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><radialGradient id="gR6" cx=".35" cy=".3"><stop offset="0" stop-color="#fff"/><stop offset=".4" stop-color="#B2B2B2"/><stop offset="1" stop-color="#383838"/></radialGradient></defs><circle cx="50" cy="50" r="44" fill="none" stroke="#848484" stroke-width="10"/><circle cx="50" cy="50" r="20" fill="none" stroke="#848484" stroke-width="8"/><circle cx="82.0" cy="50.0" r="7" fill="url(#gR6)"/><circle cx="74.5" cy="70.6" r="7" fill="url(#gR6)"/><circle cx="55.6" cy="81.5" r="7" fill="url(#gR6)"/><circle cx="34.0" cy="77.7" r="7" fill="url(#gR6)"/><circle cx="19.9" cy="60.9" r="7" fill="url(#gR6)"/><circle cx="19.9" cy="39.1" r="7" fill="url(#gR6)"/><circle cx="34.0" cy="22.3" r="7" fill="url(#gR6)"/><circle cx="55.6" cy="18.5" r="7" fill="url(#gR6)"/><circle cx="74.5" cy="29.4" r="7" fill="url(#gR6)"/></svg></div><div class="fp" style="--x:-38;--y:48;--w:44px;--d:1.1;--bl:0px;--sc:1;--r:0;--sp:20;--zi:6;--t:5s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gD7" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF2B3"/><stop offset=".5" stop-color="#FFC20E"/><stop offset="1" stop-color="#454545"/></linearGradient></defs><path d="M50 4C62 28 80 44 80 64a30 30 0 0 1-60 0C20 44 38 28 50 4z" fill="url(#gD7)"/><ellipse cx="40" cy="58" rx="7" ry="12" fill="#fff" opacity=".55" transform="rotate(-20 40 58)"/></svg></div><div class="fp" style="--x:40;--y:44;--w:34px;--d:1.3;--bl:1px;--sc:1;--r:12;--sp:-20;--zi:7;--t:5.5s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gD8" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF2B3"/><stop offset=".5" stop-color="#FFC20E"/><stop offset="1" stop-color="#454545"/></linearGradient></defs><path d="M50 4C62 28 80 44 80 64a30 30 0 0 1-60 0C20 44 38 28 50 4z" fill="url(#gD8)"/><ellipse cx="40" cy="58" rx="7" ry="12" fill="#fff" opacity=".55" transform="rotate(-20 40 58)"/></svg></div><div class="fp" style="--x:66;--y:-8;--w:46px;--d:0.7;--bl:1px;--sc:0.85;--r:0;--sp:160;--zi:3;--t:6.8s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gW9" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFC20E"/><stop offset=".5" stop-color="#121212"/><stop offset="1" stop-color="#FFC20E"/></linearGradient></defs><circle cx="50" cy="50" r="40" fill="none" stroke="url(#gW9)" stroke-width="22"/></svg></div><div class="fp" style="--x:-74;--y:-4;--w:40px;--d:1.7;--bl:5px;--sc:1.5;--r:40;--sp:-120;--zi:9;--t:7s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gN10" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF2B3"/><stop offset=".45" stop-color="#848484"/><stop offset=".7" stop-color="#D0D0D0"/><stop offset="1" stop-color="#434343"/></linearGradient></defs><polygon points="50,6 88,28 88,72 50,94 12,72 12,28" fill="url(#gN10)" stroke="#343434" stroke-width="2"/><circle cx="50" cy="50" r="18" fill="#171717"/><circle cx="50" cy="50" r="18" fill="none" stroke="#BEBEBE" stroke-width="3" stroke-dasharray="4 3"/></svg></div><div class="fp" style="--x:16;--y:-70;--w:30px;--d:0.3;--bl:4px;--sc:0.6;--r:-10;--sp:40;--zi:1;--t:6s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gD11" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF2B3"/><stop offset=".5" stop-color="#FFC20E"/><stop offset="1" stop-color="#454545"/></linearGradient></defs><path d="M50 4C62 28 80 44 80 64a30 30 0 0 1-60 0C20 44 38 28 50 4z" fill="url(#gD11)"/><ellipse cx="40" cy="58" rx="7" ry="12" fill="#fff" opacity=".55" transform="rotate(-20 40 58)"/></svg></div><div class="fp" style="--x:-40;--y:64;--w:58px;--d:1.8;--bl:6px;--sc:1.5;--r:70;--sp:160;--zi:9;--t:8.5s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gB12" x1="0" x2="1"><stop offset="0" stop-color="#646464"/><stop offset=".4" stop-color="#FFF2B3"/><stop offset="1" stop-color="#565656"/></linearGradient></defs><polygon points="30,6 70,6 80,20 70,34 30,34 20,20" fill="url(#gB12)" stroke="#343434" stroke-width="2"/><rect x="38" y="32" width="24" height="62" rx="3" fill="url(#gB12)"/><path d="M38 44h24M38 52h24M38 60h24M38 68h24M38 76h24M38 84h24" stroke="#434343" stroke-width="2.5"/></svg></div>
    </div>
   </div>
   <div class="scrollcue"><i></i>SCROLL</div>
@@ -444,7 +500,7 @@ footer p{margin:0 0 6px}
 <div class="marq" aria-hidden="true"><div><span>Bosch</span><span>Motul</span><span>Brembo</span><span>Bajaj Genuine</span><span>Philips</span><span>Rolon</span><span>Honda Genuine</span><span>TVS Genuine</span><span>Bosch</span><span>Motul</span><span>Brembo</span><span>Bajaj Genuine</span><span>Philips</span><span>Rolon</span><span>Honda Genuine</span><span>TVS Genuine</span></div></div>
 
 <section class="sec light" id="diagnose"><div class="wrap">
-  <div class="shead rv"><span class="eyebrow">Step 1 · Diagnose</span><h2>Tell us the bike. <em>We'll tell you what hurts.</em></h2><p class="lede">Pick your bike and move the sliders. The report updates live, using the service intervals our mechanics follow.</p></div>
+  <div class="shead rv"><span class="eyebrow">Step 1 · Check your bike</span><h2>Tell us the bike. <em>We'll tell you what hurts.</em></h2><p class="lede">Pick your bike and move the sliders. The report updates live, using the service intervals our mechanics follow.</p></div>
   <div class="diag">
     <div class="panel rv">
       <div class="fld"><label for="dBike">Your bike</label><select id="dBike"><option>Bajaj Pulsar 150</option><option>Honda Activa 6G</option><option>Hero Splendor Plus</option><option>TVS Apache RTR 160</option><option>Royal Enfield Classic 350</option></select></div>
@@ -473,12 +529,12 @@ footer p{margin:0 0 6px}
 </section>
 
 <section class="sec light" id="pharmacy"><div class="wrap">
-  <div class="shead rv"><span class="eyebrow">Step 2 · Prescribe</span><h2>The <em>pharmacy</em> for your bike.</h2><p class="lede">Every part comes with its dose: when to replace it and which bikes it fits. Genuine, warranty-tracked, and priced below MRP.</p></div>
+  <div class="shead rv"><span class="eyebrow">Step 2 · Pick the part</span><h2>Genuine spares. <em>Below MRP.</em></h2><p class="lede">Every part shows the bikes it fits, when to replace it and its warranty. Original brands only, checked at our counter before it reaches you.</p></div>
   <div class="pgrid" id="pgrid"></div>
 </div></section>
 
 <section class="sec" id="opd"><div class="wrap">
-  <div class="shead rv"><span class="eyebrow">Step 3 · Treat</span><h2>Book a service. <em>Take your token.</em></h2><p class="lede">Choose what your bike needs. We send it to the nearest Bike Pharma verified mechanic, or to our own Bike Surgeon if none is within 5 km.</p></div>
+  <div class="shead rv"><span class="eyebrow">Step 3 · Get it fitted</span><h2>Book a service. <em>Take your token.</em></h2><p class="lede">Choose what your bike needs. We send it to the nearest Bike Pharma verified mechanic, or to our own Bike Surgeon if none is within 5 km.</p></div>
   <div class="opd">
     <form id="opdForm" class="rv">
       <div class="dfld"><label for="oArea">Where is the bike?</label><select id="oArea"><option>Rajajinagar</option><option>Malleshwaram</option><option>Yeshwanthpur</option><option>Whitefield</option></select></div>
@@ -505,7 +561,7 @@ footer p{margin:0 0 6px}
 </div></section>
 
 <section class="sec light" id="warranty"><div class="wrap wgrid">
-  <div class="shead rv" style="margin:0"><span class="eyebrow">Step 4 · Recover</span><h2>Your bike's <em>health card.</em></h2><p class="lede">Every bill adds its warranty to your card. It starts on the bill date, reminds you before it ends, and works at any Bike Pharma store. Tap the card to turn it over.</p>
+  <div class="shead rv" style="margin:0"><span class="eyebrow">Step 4 · Warranty</span><h2>All your warranty. <em>One card.</em></h2><p class="lede">Every bill adds its warranty to your card. It starts on the bill date, reminds you before it ends, and works at any Bike Pharma store. Tap the card to turn it over.</p>
     <div class="hcta"><button class="btn dark" id="flipBtn">Turn the card</button></div></div>
   <button class="flip rv" id="flip" aria-label="Health card. Tap to see warranties"><div class="in">
     <div class="face front"><svg viewBox="0 0 370 190" style="width:92px;height:48px"><use href="#logoMark"/></svg><div class="nm">Anjali Rao</div><div class="no">KA 02 HM 4521 · PULSAR 150</div><div class="chipm"></div><div class="mono" style="margin-top:10px;color:var(--amber)">4 active warranties</div></div>
@@ -513,7 +569,7 @@ footer p{margin:0 0 6px}
       <div class="wr"><b>Front brake pads</b><span>142 days left</span><i><u style="width:79%"></u></i></div>
       <div class="wr"><b>Disc rotor 260mm</b><span>301 days left</span><i><u style="width:82%"></u></i></div>
       <div class="wr"><b>Chain sprocket kit</b><span>88 days left</span><i><u style="width:49%"></u></i></div>
-      <div class="wr"><b>LED headlight H4</b><span>12 days left</span><i><u style="width:7%;background:#E5533D"></u></i></div>
+      <div class="wr"><b>LED headlight H4</b><span>12 days left</span><i><u style="width:7%;background:#FFC20E"></u></i></div>
     </div></div></button>
 </div></section>
 
@@ -531,9 +587,9 @@ footer p{margin:0 0 6px}
     <div class="stores"><button class="store" data-t="The Android app opens on Google Play"><svg class="i" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9z"/></svg><span><small>Get it on</small><b>Google Play</b></span></button><button class="store" data-t="The iPhone app opens on the App Store"><svg class="i" viewBox="0 0 24 24"><path d="M16 4c-1 1-2.5 1.6-3.6 1.4.1-1.3.9-2.6 1.8-3.2C15.2 1.6 16.4 1.3 17 1.3c.1 1-.3 2-1 2.7zM19 17c-.7 1.5-1.8 3.4-3.2 3.4-1.3 0-1.7-.8-3.2-.8s-2 .8-3.2.8C8 20.4 6 17 6 13.7 6 10.3 8 8.6 10 8.6c1.3 0 2.2.8 3 .8.8 0 2-.9 3.4-.8 1.3.1 2.4.6 3 1.6-2.7 1.6-2.3 5.6.6 6.8z"/></svg><span><small>Download on the</small><b>App Store</b></span></button></div></div>
   <div class="phone" aria-hidden="true"><div class="scrn">
     <div style="font:700 16px var(--serif)">Hello, Anjali</div>
-    <div class="hc"><b style="font-size:12px">Pulsar 150 · BS6</b><div style="color:#aaa;font-size:10px">KA 02 HM 4521 · 9,800 km</div><div class="due">General service due in 12 days</div></div>
+    <div class="hc"><b style="font-size:12px">Pulsar 150 · BS6</b><div style="color:#AAAAAA;font-size:10px">KA 02 HM 4521 · 9,800 km</div><div class="due">General service due in 12 days</div></div>
     <div class="tl"><div><i></i>Bike health</div><div><i></i>Photo search</div><div><i></i>SOS help</div><div><i></i>Buy spares</div><div><i></i>Book service</div><div><i></i>Warranty</div></div>
-    <div style="background:#FBE3DE;border-radius:10px;padding:8px;font-weight:700">Activa insurance · renew now</div>
+    <div style="background:#121212;border-radius:10px;padding:8px;font-weight:700">Activa insurance · renew now</div>
     <div style="background:#fff;border-radius:10px;padding:8px"><b>Wallet</b> · ₹146 cashback</div>
   </div></div>
 </div></section>
@@ -551,7 +607,7 @@ footer p{margin:0 0 6px}
 
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer" aria-label="Cart" aria-hidden="true">
-  <div class="dhead"><h3>Your <em style="font-style:italic;color:#B98300">prescription</em></h3><button class="cartbtn" id="closeCart" aria-label="Close cart" style="background:#EFE8D8;color:var(--ink)"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="dhead"><h3>Your <em style="color:#121212;background:#FFC20E;padding:0 .2em">cart</em></h3><button class="cartbtn" id="closeCart" aria-label="Close cart" style="background:#FFF2B3;color:var(--ink)"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
   <div class="dbody" id="dbody"></div>
   <div class="dfoot"><div class="tot"><span>Total</span><span id="dTot">₹0</span></div><div style="font-size:12.5px;color:var(--ink2)" id="dSave"></div><button class="btn" id="checkout" style="justify-content:center">Checkout in the Bike Pharma app</button></div>
 </aside>
@@ -589,12 +645,12 @@ $$('#mnav a').forEach(a=>a.onclick=()=>{$('#mnav').hidden=true;$('#menuBtn').set
 
 /* products + cart */
 const P=[
- {id:'p1',n:'Front Brake Pad Set – Sintered',b:'BOSCH',mrp:549,p:449,dose:'Every 10,000 km',fits:'Pulsar 150 / 180 · Avenger',w:'180 days',ic:'M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z'},
- {id:'p2',n:'Motul 7100 4T 20W-50 · 1 L',b:'MOTUL',mrp:760,p:689,dose:'Every 3,000 km',fits:'All 4-stroke bikes',w:'—',ic:'M12 3c3 4 6 7.5 6 11a6 6 0 0 1-12 0c0-3.5 3-7 6-11z'},
- {id:'p3',n:'Chain Sprocket Kit',b:'ROLON',mrp:2150,p:1899,dose:'Every 15,000 km',fits:'Pulsar 150 · Apache 160',w:'120 days',ic:'M9 12a3 3 0 1 0 6 0 3 3 0 1 0-6 0M3 12h3M18 12h3'},
- {id:'p4',n:'Front Disc Rotor 260mm',b:'BREMBO',mrp:2250,p:1890,dose:'Check every service',fits:'Pulsar 150 Twin Disc',w:'365 days',ic:'M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M12 9a3 3 0 1 0 0 6 3 3 0 1 0 0-6'},
- {id:'p5',n:'Air Filter Element',b:'BAJAJ GENUINE',mrp:175,p:155,dose:'Every 6,000 km',fits:'Pulsar 150 / 180',w:'—',ic:'M4 5h16l-6 7v6l-4 2v-8z'},
- {id:'p6',n:'LED Headlight H4 35W',b:'PHILIPS',mrp:1699,p:1599,dose:'Replace when dim',fits:'Most bikes with H4 socket',w:'365 days',ic:'M9 18h6M10 21h4M12 3a6 6 0 0 1 4 10.5c-.8.8-1 1.5-1 2.5H9c0-1-.2-1.7-1-2.5A6 6 0 0 1 12 3z'}];
+ {id:'p1',pn:'BP-BRK-0457',n:'Front Brake Pad Set – Sintered',b:'BOSCH',mrp:549,p:449,dose:'Every 10,000 km',fits:'Pulsar 150 / 180 · Avenger',w:'180 days',ic:'M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z'},
+ {id:'p2',pn:'LUB-M7100-1',n:'Motul 7100 4T 20W-50 · 1 L',b:'MOTUL',mrp:760,p:689,dose:'Every 3,000 km',fits:'All 4-stroke bikes',w:'—',ic:'M12 3c3 4 6 7.5 6 11a6 6 0 0 1-12 0c0-3.5 3-7 6-11z'},
+ {id:'p3',pn:'BP-CHN-0880',n:'Chain Sprocket Kit',b:'ROLON',mrp:2150,p:1899,dose:'Every 15,000 km',fits:'Pulsar 150 · Apache 160',w:'120 days',ic:'M9 12a3 3 0 1 0 6 0 3 3 0 1 0-6 0M3 12h3M18 12h3'},
+ {id:'p4',pn:'BP-BRK-0921',n:'Front Disc Rotor 260mm',b:'BREMBO',mrp:2250,p:1890,dose:'Check every service',fits:'Pulsar 150 Twin Disc',w:'365 days',ic:'M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M12 9a3 3 0 1 0 0 6 3 3 0 1 0 0-6'},
+ {id:'p5',pn:'BP-FLT-0205',n:'Air Filter Element',b:'BAJAJ GENUINE',mrp:175,p:155,dose:'Every 6,000 km',fits:'Pulsar 150 / 180',w:'—',ic:'M4 5h16l-6 7v6l-4 2v-8z'},
+ {id:'p6',pn:'BP-ELC-0431',n:'LED Headlight H4 35W',b:'PHILIPS',mrp:1699,p:1599,dose:'Replace when dim',fits:'Most bikes with H4 socket',w:'365 days',ic:'M9 18h6M10 21h4M12 3a6 6 0 0 1 4 10.5c-.8.8-1 1.5-1 2.5H9c0-1-.2-1.7-1-2.5A6 6 0 0 1 12 3z'}];
 const cart={};
 const cartCount=()=>Object.values(cart).reduce((a,b)=>a+b,0);
 function renderCart(){$('#cartN').textContent=cartCount();const ids=Object.keys(cart).filter(k=>cart[k]>0);
@@ -608,8 +664,8 @@ const openCart=on=>{$('#drawer').classList.toggle('on',on);$('#scrim').classList
 $('#cartBtn').onclick=()=>openCart(true);$('#closeCart').onclick=()=>openCart(false);$('#scrim').onclick=()=>openCart(false);
 addEventListener('keydown',e=>{if(e.key==='Escape')openCart(false);});
 $('#checkout').onclick=()=>toast(cartCount()?'Checkout opens in the Bike Pharma app':'Your cart is empty');
-$('#pgrid').innerHTML=P.map((x,i)=>`<div class="rxc rv"><div class="card"><div class="top"><span class="rxsym">Rx</span><span class="batch">BATCH BP-${2409+i*7}<br>EXP · N/A</span></div><div><div class="brandn">${x.b}</div><h3>${x.n}</h3></div>
- <div class="dose"><span>Dose</span><b>${x.dose}</b><span>For</span><b>${x.fits}</b><span>Warranty</span><b>${x.w}</b></div>
+$('#pgrid').innerHTML=P.map((x,i)=>`<div class="rxc rv"><div class="card"><div class="tagtop"><span>${x.pn}</span><span class="stk">IN STOCK</span></div><div><div class="brandn">${x.b}</div><h3>${x.n}</h3></div>
+ <div class="dose"><span>Replace</span><b>${x.dose}</b><span>Fits</span><b>${x.fits}</b><span>Warranty</span><b>${x.w}</b></div>
  <div class="pr"><b>${inr(x.p)}</b><s>${inr(x.mrp)}</s><span class="off">${Math.round((1-x.p/x.mrp)*100)}% OFF</span><button class="add" data-id="${x.id}" aria-label="Add to cart"></button></div></div></div>`).join('');
 $('#pgrid').addEventListener('click',e=>{const b=e.target.closest('.add');if(b)addToCart(b.dataset.id);});
 if(!RM&&matchMedia('(hover:hover)').matches){$('#pgrid').addEventListener('pointermove',e=>{const c=e.target.closest('.card');$$('#pgrid .card').forEach(x=>{if(x!==c)x.style.transform='';});if(!c)return;const r=c.getBoundingClientRect();const x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;c.style.transform=`rotateY(${x*10}deg) rotateX(${-y*10}deg) translateZ(0)`;});$('#pgrid').addEventListener('pointerleave',()=>$$('#pgrid .card').forEach(x=>x.style.transform=''));}
@@ -623,13 +679,13 @@ function diagnose(){const km=+$('#dKm').value;let sv=+$('#dSvc').value;if(sv>km)
  $('#dKmO').textContent=km.toLocaleString('en-IN')+' km';$('#dSvcO').textContent=sv.toLocaleString('en-IN')+' km';
  let due=0,bad=0;const since=km-sv;
  $('#rows').innerHTML=PARTS.map(([n,pid,every,mode,ic])=>{const ev=Math.round(every*f);const used=mode==='svc'?since:km%ev;const pct=Math.min(100,used/ev*100);const left=ev-used;const st=left<0?['r','Overdue']:left<ev*.15?['a','Due soon']:['g','Good'];if(st[0]==='r')bad++;if(st[0]==='a')due++;
-  const col=st[0]==='r'?'var(--bad)':st[0]==='a'?'#E0A800':'var(--good)';
-  return `<div class="row rv"><span class="ic"><svg class="i" viewBox="0 0 24 24"><path d="${ic}"/></svg></span><div><b>${n}</b><small>${left<0?'Overdue by '+(-left).toLocaleString('en-IN')+' km':left.toLocaleString('en-IN')+' km left'} · every ${ev.toLocaleString('en-IN')} km</small><div class="bar"><i style="width:${pct}%;background:${col}"></i></div></div><div style="text-align:right"><span class="st ${st[0]}">${st[1]}</span>${st[0]!=='g'&&pid?`<br><button class="rx" data-rx="${pid}">Prescribe</button>`:''}</div></div>`;}).join('');
- const score=Math.max(5,100-bad*25-due*10);const r=$('#ring');r.style.setProperty('--v',score);r.style.setProperty('--c',score>70?'#7CC99A':score>45?'#FFC20E':'#E5533D');$('#scoreN').textContent=score;
+  const col=st[0]==='r'?'repeating-linear-gradient(135deg,#FFC20E 0 6px,#121212 6px 12px)':st[0]==='a'?'#FFC20E':'#121212';
+  return `<div class="row rv"><span class="ic"><svg class="i" viewBox="0 0 24 24"><path d="${ic}"/></svg></span><div><b>${n}</b><small>${left<0?'Overdue by '+(-left).toLocaleString('en-IN')+' km':left.toLocaleString('en-IN')+' km left'} · every ${ev.toLocaleString('en-IN')} km</small><div class="bar"><i style="width:${pct}%;background:${col}"></i></div></div><div style="text-align:right"><span class="st ${st[0]}">${st[1]}</span>${st[0]!=='g'&&pid?`<br><button class="rx" data-rx="${pid}">Add part</button>`:''}</div></div>`;}).join('');
+ const score=Math.max(5,100-bad*25-due*10);const r=$('#ring');r.style.setProperty('--v',score);r.style.setProperty('--c',score>70?'#FFFFFF':'#FFC20E');$('#scoreN').textContent=score;
  $('#scoreT').textContent=score>85?'In great shape':score>60?'Needs a little care':'Needs a doctor today';
  $('#scoreP').textContent=bad||due?`${bad?bad+' overdue · ':''}${due?due+' due soon · ':''}${bad?'book a service now':'plan a service this month'}`:'Nothing due. Ride safe.';}
 ['#dBike','#dKm','#dSvc'].forEach(s=>$(s).addEventListener('input',diagnose));
-$('#rows').addEventListener('click',e=>{const b=e.target.closest('[data-rx]');if(b)addToCart(b.dataset.rx,'Prescribed · '+P.find(p=>p.id===b.dataset.rx).n+' added to cart');});
+$('#rows').addEventListener('click',e=>{const b=e.target.closest('[data-rx]');if(b)addToCart(b.dataset.rx,P.find(p=>p.id===b.dataset.rx).n+' added to cart');});
 diagnose();
 
 /* exploded view on scroll */
@@ -659,11 +715,11 @@ $('#opdForm').onsubmit=e=>{e.preventDefault();const area=$('#oArea').value;const
 /* radar */
 const rsv=$('#radar');let area='Rajajinagar';
 function radar(){const L=AREAS[area];const ring=(r,o)=>`<circle cx="200" cy="200" r="${r}" fill="none" stroke="#FFC20E" stroke-opacity="${o}" stroke-dasharray="2 6"/>`;
- let h=`<defs><radialGradient id="sw" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(200 200) scale(190)"><stop offset="0" stop-color="#FFC20E" stop-opacity=".35"/><stop offset="1" stop-color="#FFC20E" stop-opacity="0"/></radialGradient></defs>`+ring(60,.25)+ring(120,.25)+ring(180,.5)+`<line x1="20" y1="200" x2="380" y2="200" stroke="#34302A"/><line x1="200" y1="20" x2="200" y2="380" stroke="#34302A"/>`;
- h+=`<g class="sweep"><path d="M200 200 L200 20 A180 180 0 0 1 356 110 Z" fill="url(#sw)"/></g><text x="206" y="30" fill="#8C8576" font-family="JetBrains Mono,monospace" font-size="11">5 KM</text>`;
- L.forEach((m,i)=>{const a=(i*137+40)*Math.PI/180;const d=m[2]/5*180;const x=200+Math.cos(a)*d,y=200+Math.sin(a)*d;h+=`<circle class="mdot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7" fill="#FFC20E" style="animation-delay:${i*.6}s"/><text x="${(x+12).toFixed(1)}" y="${(y+4).toFixed(1)}" fill="#F3EDE0" font-family="JetBrains Mono,monospace" font-size="11">${m[1]}</text>`;});
- h+=`<circle cx="200" cy="200" r="9" fill="#F3EDE0"/><circle cx="200" cy="200" r="16" fill="none" stroke="#F3EDE0" stroke-opacity=".4"/><text x="214" y="218" fill="#F3EDE0" font-family="JetBrains Mono,monospace" font-size="11">YOU</text>`;
- if(!L.length)h+=`<text x="200" y="120" text-anchor="middle" fill="#E5533D" font-family="JetBrains Mono,monospace" font-size="12">NO VERIFIED MECHANIC IN 5 KM</text>`;
+ let h=`<defs><radialGradient id="sw" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(200 200) scale(190)"><stop offset="0" stop-color="#FFC20E" stop-opacity=".35"/><stop offset="1" stop-color="#FFC20E" stop-opacity="0"/></radialGradient></defs>`+ring(60,.25)+ring(120,.25)+ring(180,.5)+`<line x1="20" y1="200" x2="380" y2="200" stroke="#2F2F2F"/><line x1="200" y1="20" x2="200" y2="380" stroke="#2F2F2F"/>`;
+ h+=`<g class="sweep"><path d="M200 200 L200 20 A180 180 0 0 1 356 110 Z" fill="url(#sw)"/></g><text x="206" y="30" fill="#818181" font-family="JetBrains Mono,monospace" font-size="11">5 KM</text>`;
+ L.forEach((m,i)=>{const a=(i*137+40)*Math.PI/180;const d=m[2]/5*180;const x=200+Math.cos(a)*d,y=200+Math.sin(a)*d;h+=`<circle class="mdot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7" fill="#FFC20E" style="animation-delay:${i*.6}s"/><text x="${(x+12).toFixed(1)}" y="${(y+4).toFixed(1)}" fill="#FFF2B3" font-family="JetBrains Mono,monospace" font-size="11">${m[1]}</text>`;});
+ h+=`<circle cx="200" cy="200" r="9" fill="#FFF2B3"/><circle cx="200" cy="200" r="16" fill="none" stroke="#FFF2B3" stroke-opacity=".4"/><text x="214" y="218" fill="#FFF2B3" font-family="JetBrains Mono,monospace" font-size="11">YOU</text>`;
+ if(!L.length)h+=`<text x="200" y="120" text-anchor="middle" fill="#FFC20E" font-family="JetBrains Mono,monospace" font-size="12">NO VERIFIED MECHANIC IN 5 KM</text>`;
  rsv.innerHTML=h;
  $('#nArea').innerHTML=Object.keys(AREAS).map(a=>`<button class="chip ${a===area?'on':''}" aria-pressed="${a===area}" data-a="${a}">${a}</button>`).join('');
  $('#mlist').innerHTML=L.length?L.map(m=>`<div class="mcard"><span class="av">${m[1]}</span><div><b>${m[0]}<span class="vtick">✓ ${m[4].toUpperCase()}</span></b><small>★ ${m[3]} · open now · genuine parts</small></div><span class="km">${m[2]} km</span></div>`).join(''):`<div class="mcard"><span class="av" style="background:var(--bad);color:#fff">BS</span><div><b>Bike Pharma Bike Surgeon</b><small>No verified mechanic within 5 km of ${area}. Our own surgeon comes to you.</small></div></div>`;}

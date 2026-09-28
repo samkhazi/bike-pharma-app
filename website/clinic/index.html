@@ -394,6 +394,11 @@ footer{background:#050505}
 .panel{background:#FFFFFF}
 .tagtop{font-size:10.5px;letter-spacing:.06em;white-space:nowrap}
 @media (max-width:900px){.ltext h1{font-size:clamp(32px,9vw,44px)}.ltext .eyebrow{font-size:10.5px}}
+.gl3d{position:absolute;inset:0;z-index:1}
+.levs .levg{z-index:2}.ltext{z-index:6}
+.gl3d canvas{display:block}
+.levs.gl .glow,.levs.gl .ribbons,.levs.gl .ped,.levs.gl .rotwrap,.levs.gl .fp,.levs.gl .splash{display:none}
+.lev{background:radial-gradient(45% 50% at 70% 58%,rgba(255,194,14,.10) 0%,rgba(255,194,14,0) 70%),#0B0B0B}
 /* cart drawer + toast */
 .drawer{position:fixed;top:0;right:0;bottom:0;width:min(400px,100%);z-index:80;background:var(--paper);color:var(--ink);transform:translateX(105%);transition:transform .45s cubic-bezier(.3,1,.3,1);display:flex;flex-direction:column;box-shadow:-30px 0 60px rgba(0,0,0,.4);padding-top:env(safe-area-inset-top,0px)}
 .drawer.on{transform:none}
@@ -441,10 +446,10 @@ footer{background:#050505}
 
 <main>
 <section class="lev" id="top" aria-label="Bike Pharma">
- <div class="levs" id="levs" style="--holes:radial-gradient(circle at 90.00% 50.00%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 87.59% 63.68%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 80.64% 75.71%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 70.00% 84.64%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 56.95% 89.39%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 43.05% 89.39%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 30.00% 84.64%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 19.36% 75.71%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 12.41% 63.68%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 10.00% 50.00%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 12.41% 36.32%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 19.36% 24.29%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 30.00% 15.36%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 43.05% 10.61%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 56.95% 10.61%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 70.00% 15.36%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 80.64% 24.29%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 87.59% 36.32%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 82.50% 55.73%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 78.58% 66.50%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 71.21% 75.28%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 61.29% 81.01%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 50.00% 83.00%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 38.71% 81.01%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 28.79% 75.28%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 21.42% 66.50%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 17.50% 55.73%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 17.50% 44.27%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 21.42% 33.50%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 28.79% 24.72%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 38.71% 18.99%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 50.00% 17.00%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 61.29% 18.99%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 71.21% 24.72%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 78.58% 33.50%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 82.50% 44.27%,#0000 2.3%,#000 2.6%),radial-gradient(circle,#0000 11%,#000 11.4%);-webkit-mask-composite:source-in">
-  <span class="bokeh" style="left:6%;top:14%;width:90px;height:90px"></span><span class="bokeh" style="left:80%;top:10%;width:140px;height:140px;animation-delay:-3s"></span><span class="bokeh" style="left:70%;top:78%;width:70px;height:70px;animation-delay:-5s"></span><span class="bokeh" style="left:30%;top:86%;width:110px;height:110px;animation-delay:-2s;opacity:.5"></span><span class="bokeh" style="left:48%;top:6%;width:50px;height:50px;animation-delay:-6s"></span>
-  <canvas id="sparks" aria-hidden="true"></canvas>
-  <div class="wrap levg">
+ <div class="levs" id="levs" data-x="1" style="--holes:radial-gradient(circle at 90.00% 50.00%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 87.59% 63.68%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 80.64% 75.71%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 70.00% 84.64%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 56.95% 89.39%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 43.05% 89.39%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 30.00% 84.64%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 19.36% 75.71%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 12.41% 63.68%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 10.00% 50.00%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 12.41% 36.32%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 19.36% 24.29%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 30.00% 15.36%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 43.05% 10.61%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 56.95% 10.61%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 70.00% 15.36%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 80.64% 24.29%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 87.59% 36.32%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 82.50% 55.73%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 78.58% 66.50%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 71.21% 75.28%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 61.29% 81.01%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 50.00% 83.00%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 38.71% 81.01%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 28.79% 75.28%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 21.42% 66.50%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 17.50% 55.73%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 17.50% 44.27%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 21.42% 33.50%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 28.79% 24.72%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 38.71% 18.99%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 50.00% 17.00%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 61.29% 18.99%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 71.21% 24.72%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 78.58% 33.50%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 82.50% 44.27%,#0000 2.3%,#000 2.6%),radial-gradient(circle,#0000 11%,#000 11.4%);-webkit-mask-composite:source-in">
+  
+  
+  <div id="gl3d" class="gl3d" aria-hidden="true"></div><div class="wrap levg">
    <div class="ltext">
     <div class="sa"><span class="eyebrow">Bike Pharma Automobiles · Bengaluru</span><h1>Genuine spares. <em>Expert fitting.</em></h1><p class="lede">Brake pads, engine oil, chain kits and 12,000+ parts for every bike. Original brands, fitted by verified mechanics near you, with warranty on every bill.</p>
      <div class="hcta"><a class="btn" href="#pharmacy">Order online <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a><a class="btn ghost" href="#opd">Book a check-up</a></div></div>
@@ -736,5 +741,99 @@ if(!RM&&'IntersectionObserver' in window){
  $$('.rv').forEach(el=>{if(el.getBoundingClientRect().top>innerHeight){el.classList.add('pre');io.observe(el);}});
  const io2=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){const ds=e.target.querySelectorAll('.d');ds.forEach(d=>{d.style.transition='none';d.style.transform='translateY(0)';});void e.target.offsetWidth;ds.forEach((d,i)=>{d.style.transition='';d.style.transitionDelay=(i*.08)+'s';d.style.transform=`translateY(-${d.dataset.v}em)`;});io2.unobserve(e.target);}}),{threshold:.5});
  $$('.odo').forEach(o=>{if(o.getBoundingClientRect().top>innerHeight)io2.observe(o);});}
+})();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>/* Real 3D hero: brake disc + yellow caliper + floating parts (three.js r128) */
+(function(){
+const host=document.getElementById('gl3d');const levs=document.getElementById('levs');
+if(!host||!window.THREE)return;
+let renderer;try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});}catch(e){return;}
+if(!renderer.getContext())return;
+levs.classList.add('gl');
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;renderer.physicallyCorrectLights=true;
+host.appendChild(renderer.domElement);
+const scene=new THREE.Scene();const cam=new THREE.PerspectiveCamera(32,1,.1,100);cam.position.set(0,.35,8.2);
+/* studio environment for real metal reflections */
+(()=>{const env=new THREE.Scene();const box=new THREE.Mesh(new THREE.BoxGeometry(12,12,12),new THREE.MeshBasicMaterial({color:0x0c0c0c,side:THREE.BackSide}));env.add(box);
+ const panel=(w,h,col,x,y,z,ry,rx)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:col,side:THREE.DoubleSide}));m.position.set(x,y,z);m.rotation.y=ry||0;m.rotation.x=rx||0;env.add(m);};
+ const W=new THREE.Color(6,6,6),Y=new THREE.Color(7,4.6,.4);
+ panel(5,1.2,W,0,4.5,1,0,Math.PI/2);panel(1.4,5,W,-5.5,0,1,Math.PI/2);panel(1,4,Y,5.5,0,-1,-Math.PI/2);panel(6,.6,W,0,-1,-5.5);panel(3,.5,Y,0,-5,2,0,-Math.PI/2);
+ const pm=new THREE.PMREMGenerator(renderer);scene.environment=pm.fromScene(env,.03).texture;})();
+/* materials */
+const steel=new THREE.MeshStandardMaterial({color:0xd8d8d8,metalness:1,roughness:.26});
+const steelDark=new THREE.MeshStandardMaterial({color:0x6a6a6a,metalness:1,roughness:.38});
+const black=new THREE.MeshStandardMaterial({color:0x151515,metalness:.6,roughness:.45});
+const yellow=new THREE.MeshPhysicalMaterial({color:0xffc20e,metalness:.25,roughness:.28,clearcoat:1,clearcoatRoughness:.08});
+const ceramic=new THREE.MeshPhysicalMaterial({color:0xf4f4f4,metalness:0,roughness:.2,clearcoat:1});
+const circ=(r,x=0,y=0)=>{const p=new THREE.Path();p.absarc(x,y,r,0,Math.PI*2,true);return p;};
+const ext=(shape,depth,bev=.012,seg=64)=>{const g=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:true,bevelThickness:bev,bevelSize:bev,bevelSegments:3,curveSegments:seg});g.center();return g;};
+/* disc */
+const root=new THREE.Group();scene.add(root);const R=1.35;const rig=new THREE.Group();root.add(rig);
+const spin=new THREE.Group();rig.add(spin);
+const ringS=new THREE.Shape();ringS.absarc(0,0,R,0,Math.PI*2,false);ringS.holes.push(circ(R*.66));
+for(let i=0;i<30;i++){const a=i/30*Math.PI*2,rr=i%2?R*.8:R*.9;ringS.holes.push(circ(R*.038,Math.cos(a)*rr,Math.sin(a)*rr));}
+spin.add(new THREE.Mesh(ext(ringS,.07,.01,96),steel));
+const car=new THREE.Shape();car.absarc(0,0,R*.68,0,Math.PI*2,false);car.holes.push(circ(R*.2));
+for(let i=0;i<5;i++){const a=i/5*Math.PI*2+.3;car.holes.push(circ(R*.11,Math.cos(a)*R*.44,Math.sin(a)*R*.44));car.holes.push(circ(R*.045,Math.cos(a+.63)*R*.3,Math.sin(a+.63)*R*.3));}
+const carM=new THREE.Mesh(ext(car,.05,.008,64),black);spin.add(carM);
+for(let i=0;i<5;i++){const a=i/5*Math.PI*2+.3+.63;const b=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,.12,6),steelDark);b.rotation.x=Math.PI/2;b.position.set(Math.cos(a)*R*.3,Math.sin(a)*R*.3,.03);spin.add(b);}
+/* yellow caliper with brand name */
+const cal=new THREE.Group();rig.add(cal);
+const cs=new THREE.Shape();const cw=.82,ch=.36,cr=.12;cs.moveTo(-cw/2+cr,-ch/2);cs.lineTo(cw/2-cr,-ch/2);cs.quadraticCurveTo(cw/2,-ch/2,cw/2,-ch/2+cr);cs.lineTo(cw/2,ch/2-cr);cs.quadraticCurveTo(cw/2,ch/2,cw/2-cr,ch/2);cs.lineTo(-cw/2+cr,ch/2);cs.quadraticCurveTo(-cw/2,ch/2,-cw/2,ch/2-cr);cs.lineTo(-cw/2,-ch/2+cr);cs.quadraticCurveTo(-cw/2,-ch/2,-cw/2+cr,-ch/2);
+const calM=new THREE.Mesh(ext(cs,.34,.06,24),yellow);cal.add(calM);
+const cv=document.createElement('canvas');cv.width=512;cv.height=128;const cx=cv.getContext('2d');cx.fillStyle='#121212';cx.font='700 64px "Chakra Petch", "Arial Black", sans-serif';cx.textAlign='center';cx.textBaseline='middle';cx.fillText('BIKE PHARMA',256,68);
+const tex=new THREE.CanvasTexture(cv);if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{cx.clearRect(0,0,512,128);cx.font='700 64px "Chakra Petch", "Arial Black", sans-serif';cx.fillText('BIKE PHARMA',256,68);tex.needsUpdate=true;});tex.encoding=THREE.sRGBEncoding;tex.anisotropy=8;
+const lab=new THREE.Mesh(new THREE.PlaneGeometry(.8,.2),new THREE.MeshBasicMaterial({map:tex,transparent:true}));lab.position.z=.232;lab.scale.setScalar(.78);cal.add(lab);
+const pinG=new THREE.CylinderGeometry(.045,.045,.5,20);[-.3,.3].forEach(x=>{const p=new THREE.Mesh(pinG,steelDark);p.rotation.x=Math.PI/2;p.position.set(x,0,0);cal.add(p);});
+const ang=.28;cal.position.set(Math.cos(ang)*R*.84,Math.sin(ang)*R*.84,0);cal.rotation.z=ang-Math.PI/2;
+/* parts */
+const parts=[];
+function hexShape(r,hole){const s=new THREE.Shape();for(let i=0;i<6;i++){const a=i/6*Math.PI*2+Math.PI/6;const x=Math.cos(a)*r,y=Math.sin(a)*r;i?s.lineTo(x,y):s.moveTo(x,y);}s.closePath();if(hole)s.holes.push(circ(hole));return s;}
+const mk={
+ nut:()=>new THREE.Mesh(ext(hexShape(.2,.1),.14,.02,32),steel),
+ washer:()=>{const s=new THREE.Shape();s.absarc(0,0,.2,0,Math.PI*2,false);s.holes.push(circ(.09));return new THREE.Mesh(ext(s,.035,.008,48),yellow);},
+ bolt:()=>{const g=new THREE.Group();const h=new THREE.Mesh(ext(hexShape(.17),.12,.015,24),steel);h.rotation.x=Math.PI/2;h.position.y=.42;g.add(h);const sh=new THREE.Mesh(new THREE.CylinderGeometry(.075,.075,.8,32),steel);g.add(sh);
+   for(let i=0;i<9;i++){const t=new THREE.Mesh(new THREE.TorusGeometry(.078,.012,8,32),steelDark);t.rotation.x=Math.PI/2;t.position.y=-.36+i*.07;g.add(t);}return g;},
+ gear:()=>{const s=new THREE.Shape();const n=14;for(let i=0;i<n*2;i++){const a=i/(n*2)*Math.PI*2;const r=i%2?.3:.38;const a2=a+Math.PI/(n*2);if(!i)s.moveTo(Math.cos(a)*r,Math.sin(a)*r);else s.lineTo(Math.cos(a)*r,Math.sin(a)*r);s.lineTo(Math.cos(a2)*r,Math.sin(a2)*r);}s.closePath();s.holes.push(circ(.1));return new THREE.Mesh(ext(s,.1,.01,24),yellow);},
+ plug:()=>{const g=new THREE.Group();const v=(pts)=>pts.map(([x,y])=>new THREE.Vector2(x,y));
+   g.add(new THREE.Mesh(new THREE.LatheGeometry(v([[0,.62],[.05,.62],[.06,.56],[.05,.52],[.09,.5],[.1,.44],[.085,.42],[.1,.38],[.085,.36],[.1,.32],[.085,.3],[.11,.26],[.12,.12],[0,.12]]),40),ceramic));
+   const hx=new THREE.Mesh(ext(hexShape(.15),.12,.012,24),steel);hx.rotation.x=Math.PI/2;hx.position.y=.06;g.add(hx);
+   g.add(new THREE.Mesh(new THREE.LatheGeometry(v([[0,0],[.075,0],[.075,-.32],[.03,-.34],[0,-.34]]),32),steel));
+   for(let i=0;i<5;i++){const t=new THREE.Mesh(new THREE.TorusGeometry(.078,.01,8,24),steelDark);t.rotation.x=Math.PI/2;t.position.y=-.04-i*.06;g.add(t);}return g;},
+ bearing:()=>{const g=new THREE.Group();g.add(new THREE.Mesh(new THREE.TorusGeometry(.3,.05,16,64),steel));g.add(new THREE.Mesh(new THREE.TorusGeometry(.15,.04,16,48),steel));for(let i=0;i<9;i++){const a=i/9*Math.PI*2;const b=new THREE.Mesh(new THREE.SphereGeometry(.055,20,16),steel);b.position.set(Math.cos(a)*.225,Math.sin(a)*.225,0);g.add(b);}return g;}};
+const LAYOUT=[['nut',-1.6,1.35,.2,.9],['bolt',2.05,1.3,-.3,1],['gear',-1.55,-1.25,.3,.9],['plug',2.1,-.6,.6,1],['washer',-1.0,-1.75,.8,.95],['bearing',1.15,-1.8,-.4,1],['nut',.4,2.0,-.9,.8],['washer',2.55,.45,-1.2,.8],['gear',-.7,1.95,-1.4,.7]];
+LAYOUT.forEach(([k,x,y,z,s],i)=>{const m=mk[k]();m.scale.setScalar(s);const g=new THREE.Group();g.add(m);g.userData={base:new THREE.Vector3(x,y,z),rs:new THREE.Vector3((Math.random()-.5)*.8,(Math.random()-.5)*.8,(Math.random()-.5)*.6),ph:Math.random()*6.28};m.rotation.set(Math.random()*3,Math.random()*3,Math.random()*3);root.add(g);parts.push(g);});
+/* light + floor glow */
+const key=new THREE.DirectionalLight(0xffffff,2.2);key.position.set(-3,4,5);scene.add(key);
+const rim=new THREE.PointLight(0xffc20e,18,12,2);rim.position.set(2.5,1.5,-2.5);scene.add(rim);
+const fill=new THREE.PointLight(0xffffff,6,10,2);fill.position.set(2,-2,4);scene.add(fill);
+const gtex=(()=>{const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');const g=x.createRadialGradient(128,128,0,128,128,128);g.addColorStop(0,'rgba(255,194,14,.55)');g.addColorStop(.35,'rgba(255,194,14,.18)');g.addColorStop(1,'rgba(255,194,14,0)');x.fillStyle=g;x.fillRect(0,0,256,256);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return t;})();
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(7,7),new THREE.MeshBasicMaterial({map:gtex,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));floor.rotation.x=-Math.PI/2;floor.position.y=-2.05;root.add(floor);
+const shTex=(()=>{const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');const g=x.createRadialGradient(64,64,0,64,64,64);g.addColorStop(0,'rgba(0,0,0,.75)');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,128,128);return new THREE.CanvasTexture(c);})();
+const shadow=new THREE.Mesh(new THREE.PlaneGeometry(3,1.1),new THREE.MeshBasicMaterial({map:shTex,transparent:true,depthWrite:false}));shadow.rotation.x=-Math.PI/2;shadow.position.y=-2.03;root.add(shadow);
+/* size */
+function fit(){const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);renderer.domElement.style.width=w+'px';renderer.domElement.style.height=h+'px';cam.aspect=w/h;
+ const wide=w>900;const t=Math.tan(THREE.MathUtils.degToRad(cam.fov/2));
+ let dist=wide?Math.max(8.2,5.2/(2*t)):Math.max(8.2,5.4/(2*t*cam.aspect));cam.position.z=dist;
+ const hh=t*dist,hw=hh*cam.aspect;const fx=wide?.7:.5,fy=wide?.5:.7;
+ root.position.x=(fx-.5)*2*hw;root.position.y=-(fy-.5)*2*hh+.2;cam.updateProjectionMatrix();}
+addEventListener('resize',fit);fit();
+/* input */
+let mx=0,my=0,tmx=0,tmy=0;if(!RM&&matchMedia('(pointer:fine)').matches)levs.addEventListener('pointermove',e=>{tmx=(e.clientX/innerWidth-.5)*2;tmy=(e.clientY/innerHeight-.5)*2;});
+let visible=true;new IntersectionObserver(es=>{visible=es[0].isIntersecting;},{threshold:0}).observe(levs);
+const clock=new THREE.Clock();
+function frame(){const t=clock.getElapsedTime();const p=+levs.style.getPropertyValue('--p')||0;
+ mx+=(tmx-mx)*.06;my+=(tmy-my)*.06;
+ const e=p*p*(3-2*p);
+ rig.rotation.y=-.45+mx*.25+e*.75;rig.rotation.x=.08+my*.12-e*.25;rig.position.y=Math.sin(t*1.1)*.07+e*.15;
+ spin.rotation.z=-t*.35;
+ shadow.scale.setScalar(1-Math.sin(t*1.1)*.05);
+ parts.forEach(g=>{const u=g.userData;const k=1+e*.32;const kx=u.base.x<0?1+e*.04:k;g.position.set(u.base.x*kx+mx*.25*(u.base.z+1.5),u.base.y*k+Math.sin(t*.9+u.ph)*.09-my*.15,u.base.z+e*.5);
+  g.children[0].rotation.x+=u.rs.x*.01;g.children[0].rotation.y+=u.rs.y*.01;g.children[0].rotation.z+=u.rs.z*.01+e*.002;});
+ renderer.render(scene,cam);}
+function loop(){if(visible&&!document.hidden)frame();requestAnimationFrame(loop);}
+if(RM){frame();addEventListener('scroll',()=>frame(),{passive:true});}else loop();
 })();
 </script>

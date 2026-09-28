@@ -401,7 +401,11 @@ footer{background:#050505}
 .lev{background:radial-gradient(45% 50% at 70% 58%,rgba(255,194,14,.10) 0%,rgba(255,194,14,0) 70%),#0B0B0B}
 
 /* ===== Bike Surgeon rider ===== */
-#rider{position:fixed;left:0;bottom:12px;width:250px;height:206px;z-index:40;pointer-events:none;transform-origin:0 100%;will-change:transform}
+#road{position:absolute;left:0;top:0;width:100%;z-index:30;pointer-events:none;overflow:visible}
+#road .rd{fill:none;stroke:rgba(18,18,18,.55);stroke-width:26;stroke-linecap:round;stroke-linejoin:round}
+#road .rl{fill:none;stroke:#FFC20E;stroke-width:3;stroke-dasharray:16 14;stroke-linecap:round;opacity:.9}
+body{position:relative}
+#rider{position:fixed;left:0;bottom:12px;width:230px;height:189px;z-index:40;pointer-events:none;transform-origin:0 100%;will-change:transform}
 @media (max-width:700px){#rider{width:150px;height:124px;bottom:6px}}
 #riderSvg{width:100%;height:100%;overflow:visible;transform-origin:50% 88%;display:block}
 #riderSvg .lg{fill:none;stroke:#2A2A2A;stroke-width:17;stroke-linecap:round;stroke-linejoin:round}
@@ -618,7 +622,7 @@ footer{background:#050505}
   <div class="copy"><span>© 2026 Bike Pharma Automobiles, Bengaluru</span><span>Every bike deserves a good doctor.</span></div>
 </div></footer>
 
-<div id="rider" aria-hidden="true"><div id="riderBub"></div>
+<svg id="road" aria-hidden="true"><path class="rd"/><path class="rl"/></svg><div id="rider" aria-hidden="true"><div id="riderBub"></div>
 <svg id="riderSvg" viewBox="0 0 340 280">
  <g class="speed"><path d="M24 150 h-44 M34 176 h-60 M22 202 h-38"/></g>
  <g id="rPuffs"><circle r="4" fill="#9A9A9A" opacity="0"/><circle r="4" fill="#9A9A9A" opacity="0"/><circle r="4" fill="#9A9A9A" opacity="0"/><circle r="4" fill="#9A9A9A" opacity="0"/><circle r="4" fill="#9A9A9A" opacity="0"/><circle r="4" fill="#9A9A9A" opacity="0"/><circle r="4" fill="#9A9A9A" opacity="0"/><circle r="4" fill="#9A9A9A" opacity="0"/></g>
@@ -861,39 +865,46 @@ function draw(p,t){
 const puffs=[...document.querySelectorAll('#rPuffs circle')].map(c=>({c,life:0,x:0,y:0}));let puffT=0;
 function puffStep(dt,riding){puffT+=dt;if(riding&&puffT>110){puffT=0;const p=puffs.find(q=>q.life<=0);if(p){p.life=1;p.x=54;p.y=183;}}
  puffs.forEach(p=>{if(p.life<=0){p.c.setAttribute('opacity',0);return;}p.life-=dt/700;p.x-=dt*.06;p.y-=dt*.012;p.c.setAttribute('cx',p.x.toFixed(1));p.c.setAttribute('cy',p.y.toFixed(1));p.c.setAttribute('r',(3+(1-p.life)*7).toFixed(1));p.c.setAttribute('opacity',(p.life*.45).toFixed(2));});}
-/* where the rider should be: parked spot per section, travel is linked to scroll */
+/* the road: a serpentine through the whole page; the rider rides it as you scroll */
 const SECS=['top','scan','diagnose','inside','pharmacy','opd','near','warranty'];
 const SAY={top:'Ready when you are.',scan:'Scanning your bike…',diagnose:'Move the slider. I’ll check it.',inside:'Let’s open it up.',pharmacy:'Only genuine parts.',opd:'Book me for 10:30?',near:'I’m 0.6 km away.',warranty:'You’re covered.'};
-const BW=()=>innerWidth<700?150:250;
-function lane(i){const w=BW();return {x:innerWidth-w-18,y:0,s:1};}
-function dock(){if(!spot)return null;const r=spot.getBoundingClientRect();if(r.width<80||r.height<110)return null;const w=BW();const s=Math.min(2.3,r.width*.78/w,r.height*.95/(w*280/340));return {x:r.left+(r.width-w*s)/2,y:(r.bottom-(innerHeight-14))+scrollY,s,hero:1};}
+const BW=()=>innerWidth<700?150:230,BH=()=>BW()*280/340;
+const RY=()=>innerHeight*(innerWidth<700?.74:.66);          // rider sits here on screen
+const road=document.getElementById('road');
+function R(){const w=BW(),W=innerWidth;return {cx:W/2,A:Math.max(40,(W-w)/2-20),P:innerHeight*2.2,y0:RY()};}
+function roadX(docY){const r=R();return r.cx+r.A*Math.sin(2*Math.PI*(docY-r.y0)/r.P+Math.PI/2);}
+function roadSlope(docY){const r=R();return r.A*2*Math.PI/r.P*Math.cos(2*Math.PI*(docY-r.y0)/r.P+Math.PI/2);}
+function buildRoad(){if(!road)return;const H=document.documentElement.scrollHeight,W=innerWidth,r=R();road.setAttribute('width',W);road.setAttribute('height',H);road.setAttribute('viewBox',`0 0 ${W} ${H}`);road.style.height=H+'px';
+ let d='';for(let y=r.y0;y<=H;y+=14){d+=(d?'L':'M')+roadX(y).toFixed(1)+' '+y.toFixed(1);}
+ road.querySelector('.rd').setAttribute('d',d);road.querySelector('.rl').setAttribute('d',d);}
+addEventListener('resize',buildRoad);addEventListener('load',buildRoad);if(window.ResizeObserver)new ResizeObserver(()=>buildRoad()).observe(document.body);buildRoad();
 let heroDock=null;
-function spotOf(i){if(i===0&&heroDock)return {x:heroDock.x,y:heroDock.y-scrollY,s:heroDock.s};return lane(i);}
-function target(){const tops=SECS.map(id=>{const e=E(id);return e?e.getBoundingClientRect().top+scrollY:Infinity;});const y=scrollY+innerHeight*.35;
- let i=0;for(let k=0;k<tops.length;k++)if(tops[k]<=y)i=k;const a=tops[i],b=tops[i+1]??Infinity;const p=isFinite(b)?(y-a)/(b-a):0;
- const e=Math.min(1,Math.max(0,(p-.22)/.56));const A=spotOf(i),B=isFinite(b)?spotOf(i+1):A;
- const w=BW(),h=w*280/340,mid=-(innerHeight*.5-h*.55-12);const sm=q=>{q=Math.min(1,Math.max(0,q));return q*q*(3-2*q);};
- let o;if(e<=0)o={x:A.x,y:A.y,s:A.s};else if(e>=1)o={x:B.x,y:B.y,s:B.s};
- else if(e<.5){const k=e/.5;const up=sm(k/.32);o={x:lerp(A.x,-w*1.25,k),y:lerp(A.y,mid,up),s:lerp(A.s,1,up)};}
- else{const k=(e-.5)/.5;const down=sm((k-.5)/.5);o={x:lerp(innerWidth+w*.25,B.x,k),y:lerp(mid,B.y,down),s:B.s};}
- o.sec=SECS[e>.5?Math.min(i+1,SECS.length-1):i];return o;}
+function dock(){if(!spot)return null;const r=spot.getBoundingClientRect();if(r.width<80||r.height<110)return null;const w=BW();const s=Math.min(2.4,r.width*.78/w,r.height*.95/BH());return {x:r.left+(r.width-w*s)/2,y:(r.bottom-(innerHeight-12)),s};}
+let lastScroll=0,sdir=0,lastY=scrollY;addEventListener('scroll',()=>{lastScroll=performance.now();const d=scrollY-lastY;if(d)sdir=d>0?1:-1;lastY=scrollY;},{passive:true});
+function secAt(docY){let cur='top';for(const id of SECS){const e=E(id);if(e&&e.getBoundingClientRect().top+scrollY<=docY)cur=id;}return cur;}
+function target(now){const docY=scrollY+RY();const w=BW();const sec=secAt(docY);
+ if(scrollY<innerHeight*.04){const d=dock();if(d)return {x:d.x,y:d.y,s:d.s,sec:'top',park:true};}
+ const y=RY()-(innerHeight-12);const rx=roadX(docY)-w*.51;
+ if(now-lastScroll>650){const left=rx<innerWidth/2-w/2;return {x:left?12:innerWidth-w-12,y,s:1,sec,park:true,slope:0};}
+ return {x:rx,y,s:1,sec,park:false,slope:roadSlope(docY)};}
 /* state machine */
 let tilt=0,st='idle',x=0,y=0,s=1,v=0,face=-1,stopAt=0,idleAt=0,nextW=0,watching=false,last=performance.now(),inited=false;
 function frame(now){const dt=Math.min(50,now-last);last=now;
- heroDock=dock()||heroDock;const T=target();
+ const T=target(now);
  if(!inited){x=T.x;y=T.y;s=T.s;inited=true;idleAt=now;nextW=now+1600;}
  // pose tween
  const k=Math.min(1,(now-t0)/dur);const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;cur=mix(from,to,e);if(k>=1){cur=clone(to);step(now);}
- const dx=T.x-x,far=Math.abs(dx)>14||Math.abs(T.s-s)>.05;
+ const dx=T.x-x,far=Math.abs(dx)>14||Math.abs(T.s-s)>.05||!T.park;
  if(RM){x=T.x;y=T.y;s=T.s;}
  else if(st==='idle'&&far){st='mounting';watching=false;bub.classList.remove('on');play('mount',()=>{st='riding';},now);}
  else if(st==='stopped'&&far){st='riding';play('go',null,now);}
  else if(st==='stopped'&&now-stopAt>900){st='parking';play('park',()=>{st='idle';idleAt=performance.now();nextW=idleAt+1200;},now);}
  // travel: accelerate, cruise, brake — distance drives the wheels
- if(st==='riding'&&Math.abs(dx)>innerWidth*.7){x=T.x;}
- if(st==='riding'){const maxV=innerWidth<700?11:20;const want=Math.max(-maxV,Math.min(maxV,dx*.12));v+=Math.max(-.7,Math.min(.7,want-v));
-  if(Math.abs(dx)<1.5&&Math.abs(v)<.6){v=0;x=T.x;st='stopped';stopAt=now;play('stop',null,now);}
-  if(Math.abs(v)>.2)face=v>0?1:-1;}
+  if(st==='riding'&&!T.park){v=dx*.45/(dt/16.7);}
+ else if(st==='riding'){const maxV=innerWidth<700?14:26;const want=Math.max(-maxV,Math.min(maxV,dx*.12));v+=Math.max(-.7,Math.min(.7,want-v));
+  if(T.park&&Math.abs(dx)<1.5&&Math.abs(v)<.6){v=0;x=T.x;st='stopped';stopAt=now;play('stop',null,now);}
+}
+ if(st==='riding'&&Math.abs(v)>.2)face=v>0?1:-1;
  else v*=.8;
  if(st==='stopped'&&Math.abs(dx)<14)x+=dx*.2;
  x+=v*(dt/16.7);
@@ -904,7 +915,7 @@ function frame(now){const dt=Math.min(50,now-last);last=now;
  const spd=Math.min(1,Math.abs(v)/8);bounce=st==='riding'?Math.sin(now/55)*.9*spd:0;
  breath+=dt/650;
  box.style.transform=`translate(${x.toFixed(1)}px,${y.toFixed(1)}px) scale(${s.toFixed(3)})`;
- const vx=v*(dt/16.7);let want=0;if(st==='riding'&&Math.hypot(vx,vy)>.6){want=face>0?Math.atan2(vy,vx):Math.atan2(-vy,-vx);want=Math.max(-.32,Math.min(.32,want));}tilt+=(want-tilt)*.12;
+ const vx=v*(dt/16.7);let want=0;if(st==='riding'&&!T.park&&performance.now()-lastScroll<300){want=sdir*.2*face;}else if(st==='riding'&&Math.hypot(vx,vy)>.6){want=face>0?Math.atan2(vy,vx):Math.atan2(-vy,-vx);want=Math.max(-.3,Math.min(.3,want));}tilt+=(want-tilt)*.12;
  svg.style.transform=`rotate(${(tilt*57.3).toFixed(2)}deg)`+(face<0?' scaleX(-1)':'');
  box.classList.toggle('moving',spd>.25);
  puffStep(dt,st==='riding'&&spd>.1);

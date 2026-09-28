@@ -399,6 +399,29 @@ footer{background:#050505}
 .gl3d canvas{display:block}
 .levs.gl .glow,.levs.gl .ribbons,.levs.gl .ped,.levs.gl .rotwrap,.levs.gl .fp,.levs.gl .splash{display:none}
 .lev{background:radial-gradient(45% 50% at 70% 58%,rgba(255,194,14,.10) 0%,rgba(255,194,14,0) 70%),#0B0B0B}
+
+/* ===== Bike Surgeon rider ===== */
+#rider{position:fixed;left:0;bottom:14px;width:250px;height:206px;z-index:40;pointer-events:none;transform-origin:0 100%;will-change:transform}
+@media (max-width:700px){#rider{width:150px;height:124px;bottom:8px}}
+#riderSvg{width:100%;height:100%;overflow:visible;transform-origin:50% 50%;display:block}
+#riderSvg .lg{fill:none;stroke:#2A2A2A;stroke-width:14;stroke-linecap:round;stroke-linejoin:round}
+#riderSvg .lg.f{stroke:#1A1A1A}
+#riderSvg .ar{fill:none;stroke:#121212;stroke-width:12;stroke-linecap:round;stroke-linejoin:round}
+#riderSvg .ar.f{stroke:#0B0B0B}
+#riderSvg .tyre{fill:none;stroke:#121212;stroke-width:10}
+#riderSvg .rim{fill:none;stroke:#9A9A9A;stroke-width:3}
+#riderSvg .spk{stroke:#6A6A6A;stroke-width:2}
+#riderSvg .speed path{stroke:#FFC20E;stroke-width:4;stroke-linecap:round;opacity:0;transition:opacity .2s}
+#rider.moving .speed path{opacity:.9;animation:spd .35s linear infinite}
+@keyframes spd{50%{transform:translateX(-10px)}}
+.rroad{position:absolute;left:-10%;right:-10%;bottom:-2px;height:3px;background:repeating-linear-gradient(90deg,#FFC20E 0 18px,transparent 18px 34px);opacity:.0;transition:opacity .3s}
+#rider.moving .rroad{opacity:.8;animation:road .4s linear infinite}
+@keyframes road{to{background-position:-34px 0}}
+#riderBub{position:absolute;bottom:96%;left:34%;background:#FFC20E;color:#121212;font:700 12px/1.3 var(--mono);letter-spacing:.02em;padding:8px 12px;border-radius:12px 12px 12px 3px;white-space:nowrap;opacity:0;transform:translateY(8px);transition:opacity .3s,transform .3s;box-shadow:0 8px 20px rgba(0,0,0,.35)}
+#riderBub.on{opacity:1;transform:none}
+@media (max-width:700px){#riderBub{font-size:10px;padding:6px 9px;left:20%}}
+.spotfloor{position:absolute;left:10%;right:10%;bottom:6%;height:60px;border-radius:50%;background:radial-gradient(ellipse,rgba(255,194,14,.28),rgba(255,194,14,0) 70%)}
+.levs .stage3d{z-index:1}
 /* cart drawer + toast */
 .drawer{position:fixed;top:0;right:0;bottom:0;width:min(400px,100%);z-index:80;background:var(--paper);color:var(--ink);transform:translateX(105%);transition:transform .45s cubic-bezier(.3,1,.3,1);display:flex;flex-direction:column;box-shadow:-30px 0 60px rgba(0,0,0,.4);padding-top:env(safe-area-inset-top,0px)}
 .drawer.on{transform:none}
@@ -449,7 +472,7 @@ footer{background:#050505}
  <div class="levs" id="levs" data-x="1" style="--holes:radial-gradient(circle at 90.00% 50.00%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 87.59% 63.68%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 80.64% 75.71%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 70.00% 84.64%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 56.95% 89.39%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 43.05% 89.39%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 30.00% 84.64%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 19.36% 75.71%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 12.41% 63.68%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 10.00% 50.00%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 12.41% 36.32%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 19.36% 24.29%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 30.00% 15.36%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 43.05% 10.61%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 56.95% 10.61%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 70.00% 15.36%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 80.64% 24.29%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 87.59% 36.32%,#0000 2.6%,#000 2.9%),radial-gradient(circle at 82.50% 55.73%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 78.58% 66.50%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 71.21% 75.28%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 61.29% 81.01%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 50.00% 83.00%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 38.71% 81.01%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 28.79% 75.28%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 21.42% 66.50%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 17.50% 55.73%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 17.50% 44.27%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 21.42% 33.50%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 28.79% 24.72%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 38.71% 18.99%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 50.00% 17.00%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 61.29% 18.99%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 71.21% 24.72%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 78.58% 33.50%,#0000 2.3%,#000 2.6%),radial-gradient(circle at 82.50% 44.27%,#0000 2.3%,#000 2.6%),radial-gradient(circle,#0000 11%,#000 11.4%);-webkit-mask-composite:source-in">
   
   
-  <div id="gl3d" class="gl3d" aria-hidden="true"></div><div class="wrap levg">
+  <div class="wrap levg">
    <div class="ltext">
     <div class="sa"><span class="eyebrow">Bike Pharma Automobiles · Bengaluru</span><h1>Genuine spares. <em>Expert fitting.</em></h1><p class="lede">Brake pads, engine oil, chain kits and 12,000+ parts for every bike. Original brands, fitted by verified mechanics near you, with warranty on every bill.</p>
      <div class="hcta"><a class="btn" href="#pharmacy">Order online <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a><a class="btn ghost" href="#opd">Book a check-up</a></div></div>
@@ -457,19 +480,7 @@ footer{background:#050505}
      <div class="hcta"><a class="btn" href="#diagnose" tabindex="-1">Run a free check-up <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div></div>
     <div class="dots" aria-hidden="true"><i class="on" id="dA"></i><i id="dB"></i><i></i></div>
    </div>
-   <div class="stage3d" aria-hidden="true">
-    <div class="glow"></div>
-    <svg class="ribbons" viewBox="0 0 720 560"><defs><linearGradient id="rb1" x1="0" x2="1"><stop offset="0" stop-color="#FFC20E" stop-opacity="0"/><stop offset=".3" stop-color="#FFC20E"/><stop offset=".6" stop-color="#E0A800"/><stop offset="1" stop-color="#FFF2B3" stop-opacity=".2"/></linearGradient></defs>
-     <path d="M40 400 C160 250 280 520 420 380 S640 140 700 230" stroke="url(#rb1)"/><path class="b" d="M20 170 C180 60 300 250 440 170 S620 330 700 300" stroke="url(#rb1)"/></svg>
-    <div class="ped"></div>
-    
-    <div class="rotwrap"><div class="rthick" style="--z:10"></div><div class="rthick" style="--z:7"></div><div class="rthick" style="--z:4"></div><div class="rotor"></div><div class="shine"></div><div class="hub"><i style="transform:rotate(0deg) translateY(-160%)"></i><i style="transform:rotate(72deg) translateY(-160%)"></i><i style="transform:rotate(144deg) translateY(-160%)"></i><i style="transform:rotate(216deg) translateY(-160%)"></i><i style="transform:rotate(288deg) translateY(-160%)"></i></div></div>
-    <svg class="splash" viewBox="0 0 560 300"><defs><linearGradient id="oil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF2B3"/><stop offset=".45" stop-color="#FFC20E"/><stop offset="1" stop-color="#3D3D3D"/></linearGradient></defs>
-     <path d="M60 250 C120 200 150 150 170 90 C178 150 200 190 240 205 C250 130 262 80 280 30 C296 90 306 140 318 205 C356 190 380 150 392 92 C408 150 440 200 500 250 C420 290 140 290 60 250Z" fill="url(#oil)" opacity=".92"/>
-     <path d="M110 240 C170 225 390 225 450 240" stroke="#FFF2B3" stroke-width="4" fill="none" opacity=".6"/>
-     <circle cx="168" cy="62" r="11" fill="url(#oil)"/><circle cx="280" cy="10" r="8" fill="url(#oil)"/><circle cx="394" cy="60" r="12" fill="url(#oil)"/><circle cx="120" cy="150" r="7" fill="url(#oil)"/><circle cx="450" cy="140" r="9" fill="url(#oil)"/><circle cx="230" cy="40" r="5" fill="url(#oil)"/><circle cx="340" cy="30" r="6" fill="url(#oil)"/></svg>
-    <div class="fp" style="--x:-52;--y:-30;--w:62px;--d:0.6;--bl:1.5px;--sc:0.8;--r:12;--sp:90;--zi:2;--t:6s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gN1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF2B3"/><stop offset=".45" stop-color="#848484"/><stop offset=".7" stop-color="#D0D0D0"/><stop offset="1" stop-color="#434343"/></linearGradient></defs><polygon points="50,6 88,28 88,72 50,94 12,72 12,28" fill="url(#gN1)" stroke="#343434" stroke-width="2"/><circle cx="50" cy="50" r="18" fill="#171717"/><circle cx="50" cy="50" r="18" fill="none" stroke="#BEBEBE" stroke-width="3" stroke-dasharray="4 3"/></svg></div><div class="fp" style="--x:48;--y:-40;--w:78px;--d:0.9;--bl:0px;--sc:1;--r:-24;--sp:-140;--zi:4;--t:7s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gB2" x1="0" x2="1"><stop offset="0" stop-color="#646464"/><stop offset=".4" stop-color="#FFF2B3"/><stop offset="1" stop-color="#565656"/></linearGradient></defs><polygon points="30,6 70,6 80,20 70,34 30,34 20,20" fill="url(#gB2)" stroke="#343434" stroke-width="2"/><rect x="38" y="32" width="24" height="62" rx="3" fill="url(#gB2)"/><path d="M38 44h24M38 52h24M38 60h24M38 68h24M38 76h24M38 84h24" stroke="#434343" stroke-width="2.5"/></svg></div><div class="fp" style="--x:-60;--y:22;--w:88px;--d:1.2;--bl:0px;--sc:1.05;--r:0;--sp:180;--zi:6;--t:8s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gG3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFC20E"/><stop offset=".5" stop-color="#E0A800"/><stop offset="1" stop-color="#3B3B3B"/></linearGradient></defs><path d="M94.0 50.0 L93.6 55.7 L82.8 58.8 L81.4 63.0 L88.1 72.0 L84.9 76.8 L74.0 74.0 L70.7 77.0 L72.0 88.1 L66.8 90.7 L58.8 82.8 L54.4 83.7 L50.0 94.0 L44.3 93.6 L41.2 82.8 L37.0 81.4 L28.0 88.1 L23.2 84.9 L26.0 74.0 L23.0 70.7 L11.9 72.0 L9.3 66.8 L17.2 58.8 L16.3 54.4 L6.0 50.0 L6.4 44.3 L17.2 41.2 L18.6 37.0 L11.9 28.0 L15.1 23.2 L26.0 26.0 L29.3 23.0 L28.0 11.9 L33.2 9.3 L41.2 17.2 L45.6 16.3 L50.0 6.0 L55.7 6.4 L58.8 17.2 L63.0 18.6 L72.0 11.9 L76.8 15.1 L74.0 26.0 L77.0 29.3 L88.1 28.0 L90.7 33.2 L82.8 41.2 L83.7 45.6Z" fill="url(#gG3)" stroke="#303030" stroke-width="1.5"/><circle cx="50" cy="50" r="14" fill="#171717"/></svg></div><div class="fp" style="--x:56;--y:18;--w:96px;--d:1.5;--bl:3px;--sc:1.2;--r:28;--sp:120;--zi:8;--t:6.5s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gP4" x1="0" x2="1"><stop offset="0" stop-color="#848484"/><stop offset=".5" stop-color="#FFF2B3"/><stop offset="1" stop-color="#646464"/></linearGradient></defs><rect x="44" y="2" width="12" height="14" rx="3" fill="url(#gP4)"/><rect x="36" y="14" width="28" height="34" rx="12" fill="#FFF2B3" stroke="#C3C3C3"/><path d="M38 22h24M38 28h24M38 34h24" stroke="#D2D2D2" stroke-width="2"/><polygon points="32,48 68,48 72,56 68,64 32,64 28,56" fill="url(#gP4)"/><rect x="40" y="64" width="20" height="22" fill="url(#gP4)"/><path d="M40 70h20M40 76h20M40 82h20" stroke="#434343" stroke-width="2"/><path d="M50 86v8h8" fill="none" stroke="#BEBEBE" stroke-width="3"/></svg></div><div class="fp" style="--x:-24;--y:-58;--w:70px;--d:0.5;--bl:2px;--sc:0.75;--r:-12;--sp:90;--zi:2;--t:7.5s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gL5" x1="0" x2="1"><stop offset="0" stop-color="#565656"/><stop offset=".5" stop-color="#FFF2B3"/><stop offset="1" stop-color="#434343"/></linearGradient></defs><rect x="8" y="30" width="56" height="40" rx="20" fill="none" stroke="url(#gL5)" stroke-width="10"/><rect x="36" y="30" width="56" height="40" rx="20" fill="none" stroke="url(#gL5)" stroke-width="10"/><circle cx="28" cy="50" r="6" fill="#BEBEBE"/><circle cx="72" cy="50" r="6" fill="#BEBEBE"/></svg></div><div class="fp" style="--x:30;--y:-62;--w:60px;--d:0.4;--bl:3px;--sc:0.65;--r:0;--sp:200;--zi:1;--t:9s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><radialGradient id="gR6" cx=".35" cy=".3"><stop offset="0" stop-color="#fff"/><stop offset=".4" stop-color="#B2B2B2"/><stop offset="1" stop-color="#383838"/></radialGradient></defs><circle cx="50" cy="50" r="44" fill="none" stroke="#848484" stroke-width="10"/><circle cx="50" cy="50" r="20" fill="none" stroke="#848484" stroke-width="8"/><circle cx="82.0" cy="50.0" r="7" fill="url(#gR6)"/><circle cx="74.5" cy="70.6" r="7" fill="url(#gR6)"/><circle cx="55.6" cy="81.5" r="7" fill="url(#gR6)"/><circle cx="34.0" cy="77.7" r="7" fill="url(#gR6)"/><circle cx="19.9" cy="60.9" r="7" fill="url(#gR6)"/><circle cx="19.9" cy="39.1" r="7" fill="url(#gR6)"/><circle cx="34.0" cy="22.3" r="7" fill="url(#gR6)"/><circle cx="55.6" cy="18.5" r="7" fill="url(#gR6)"/><circle cx="74.5" cy="29.4" r="7" fill="url(#gR6)"/></svg></div><div class="fp" style="--x:-38;--y:48;--w:44px;--d:1.1;--bl:0px;--sc:1;--r:0;--sp:20;--zi:6;--t:5s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gD7" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF2B3"/><stop offset=".5" stop-color="#FFC20E"/><stop offset="1" stop-color="#454545"/></linearGradient></defs><path d="M50 4C62 28 80 44 80 64a30 30 0 0 1-60 0C20 44 38 28 50 4z" fill="url(#gD7)"/><ellipse cx="40" cy="58" rx="7" ry="12" fill="#fff" opacity=".55" transform="rotate(-20 40 58)"/></svg></div><div class="fp" style="--x:40;--y:44;--w:34px;--d:1.3;--bl:1px;--sc:1;--r:12;--sp:-20;--zi:7;--t:5.5s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gD8" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF2B3"/><stop offset=".5" stop-color="#FFC20E"/><stop offset="1" stop-color="#454545"/></linearGradient></defs><path d="M50 4C62 28 80 44 80 64a30 30 0 0 1-60 0C20 44 38 28 50 4z" fill="url(#gD8)"/><ellipse cx="40" cy="58" rx="7" ry="12" fill="#fff" opacity=".55" transform="rotate(-20 40 58)"/></svg></div><div class="fp" style="--x:66;--y:-8;--w:46px;--d:0.7;--bl:1px;--sc:0.85;--r:0;--sp:160;--zi:3;--t:6.8s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gW9" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFC20E"/><stop offset=".5" stop-color="#121212"/><stop offset="1" stop-color="#FFC20E"/></linearGradient></defs><circle cx="50" cy="50" r="40" fill="none" stroke="url(#gW9)" stroke-width="22"/></svg></div><div class="fp" style="--x:-74;--y:-4;--w:40px;--d:1.7;--bl:5px;--sc:1.5;--r:40;--sp:-120;--zi:9;--t:7s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gN10" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF2B3"/><stop offset=".45" stop-color="#848484"/><stop offset=".7" stop-color="#D0D0D0"/><stop offset="1" stop-color="#434343"/></linearGradient></defs><polygon points="50,6 88,28 88,72 50,94 12,72 12,28" fill="url(#gN10)" stroke="#343434" stroke-width="2"/><circle cx="50" cy="50" r="18" fill="#171717"/><circle cx="50" cy="50" r="18" fill="none" stroke="#BEBEBE" stroke-width="3" stroke-dasharray="4 3"/></svg></div><div class="fp" style="--x:16;--y:-70;--w:30px;--d:0.3;--bl:4px;--sc:0.6;--r:-10;--sp:40;--zi:1;--t:6s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gD11" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF2B3"/><stop offset=".5" stop-color="#FFC20E"/><stop offset="1" stop-color="#454545"/></linearGradient></defs><path d="M50 4C62 28 80 44 80 64a30 30 0 0 1-60 0C20 44 38 28 50 4z" fill="url(#gD11)"/><ellipse cx="40" cy="58" rx="7" ry="12" fill="#fff" opacity=".55" transform="rotate(-20 40 58)"/></svg></div><div class="fp" style="--x:-40;--y:64;--w:58px;--d:1.8;--bl:6px;--sc:1.5;--r:70;--sp:160;--zi:9;--t:8.5s" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><linearGradient id="gB12" x1="0" x2="1"><stop offset="0" stop-color="#646464"/><stop offset=".4" stop-color="#FFF2B3"/><stop offset="1" stop-color="#565656"/></linearGradient></defs><polygon points="30,6 70,6 80,20 70,34 30,34 20,20" fill="url(#gB12)" stroke="#343434" stroke-width="2"/><rect x="38" y="32" width="24" height="62" rx="3" fill="url(#gB12)"/><path d="M38 44h24M38 52h24M38 60h24M38 68h24M38 76h24M38 84h24" stroke="#434343" stroke-width="2.5"/></svg></div>
-   </div>
+   <div class="stage3d" id="riderSpot" aria-hidden="true"><div class="spotfloor"></div></div>
   </div>
   <div class="scrollcue"><i></i>SCROLL</div>
  </div>
@@ -610,6 +621,34 @@ footer{background:#050505}
   <div class="copy"><span>© 2026 Bike Pharma Automobiles, Bengaluru</span><span>Every bike deserves a good doctor.</span></div>
 </div></footer>
 
+<div id="rider" aria-hidden="true"><div id="riderBub"></div>
+<svg id="riderSvg" viewBox="0 0 340 280">
+ <g class="speed"><path d="M20 150 h-40 M30 175 h-56 M18 200 h-34"/></g>
+ <path id="rLegF" class="lg f"/><g id="rBootF"><path d="M-7 -7 h15 q9 0 9 7 v3 h-24 z" fill="#0B0B0B"/></g>
+ <path id="rArmF" class="ar f"/><circle id="rGloveF" r="5.5" fill="#E0A800"/>
+ <g id="rBike">
+  <g id="rStand"><rect x="140" y="202" width="51" height="6" rx="3" fill="#6A6A6A"/></g>
+  <g id="rWheelR"><circle cx="78" cy="212" r="41" class="tyre"/><circle cx="78" cy="212" r="31" class="rim"/><path class="spk" d="M78 181 V243 M47 212 H109 M56 190 L100 234 M100 190 L56 234"/><circle cx="78" cy="212" r="7" fill="#3A3A3A"/></g>
+  <g id="rWheelF"><circle cx="262" cy="212" r="41" class="tyre"/><circle cx="262" cy="212" r="31" class="rim"/><path class="spk" d="M262 181 V243 M231 212 H293 M240 190 L284 234 M284 190 L240 234"/><circle cx="262" cy="212" r="7" fill="#3A3A3A"/><circle cx="262" cy="212" r="18" fill="none" stroke="#BDBDBD" stroke-width="3" stroke-dasharray="3 4"/></g>
+  <path d="M78 212 L152 197" stroke="#2A2A2A" stroke-width="9" stroke-linecap="round"/>
+  <path d="M40 182 A44 44 0 0 1 104 162" fill="none" stroke="#121212" stroke-width="8" stroke-linecap="round"/>
+  <path d="M226 170 A44 44 0 0 1 296 176" fill="none" stroke="#121212" stroke-width="7" stroke-linecap="round"/>
+  <rect x="134" y="158" width="58" height="42" rx="9" fill="#2A2A2A"/><path d="M140 168 h46 M140 176 h46 M140 184 h46" stroke="#4A4A4A" stroke-width="3"/>
+  <path d="M176 198 Q150 226 104 212 L56 202" fill="none" stroke="#BDBDBD" stroke-width="9" stroke-linecap="round"/><path d="M52 196 L104 205 L102 218 L50 209 Z" fill="#9A9A9A"/>
+  <path d="M227 106 L262 212" stroke="#8A8A8A" stroke-width="8" stroke-linecap="round"/>
+  <path d="M100 134 L150 128 L196 150 L150 160 L108 152 Z" fill="#1C1C1C"/>
+  <path d="M60 124 L102 128 L104 142 L70 140 Z" fill="#121212"/><rect x="56" y="126" width="9" height="7" rx="2" fill="#FFC20E"/>
+  <path d="M92 124 Q124 114 162 122 L158 137 Q126 142 96 138 Z" fill="#0B0B0B"/>
+  <path d="M152 128 Q188 106 228 116 L221 150 Q186 156 154 152 Z" fill="#FFC20E"/><path d="M160 124 Q190 112 220 118" stroke="#FFF2B3" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M186 128 v18 M177 137 h18" stroke="#121212" stroke-width="5" stroke-linecap="round"/>
+  <path d="M222 104 L208 98" stroke="#121212" stroke-width="6" stroke-linecap="round"/><path d="M226 106 L232 96" stroke="#3A3A3A" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="242" cy="128" r="12" fill="#121212"/><circle cx="245" cy="128" r="7" fill="#FFF2B3"/>
+ </g>
+ <g id="rTorso"><rect x="-14" y="-60" width="28" height="66" rx="12" fill="#121212"/><rect x="-14" y="-46" width="28" height="7" fill="#FFC20E"/><rect x="-14" y="-10" width="28" height="4" fill="#DADADA"/><path d="M-7 -30 h14 M0 -37 v14" stroke="#FFC20E" stroke-width="3.5" stroke-linecap="round"/></g>
+ <path id="rLegN" class="lg"/><g id="rBootN"><path d="M-7 -7 h15 q9 0 9 7 v3 h-24 z" fill="#121212"/><rect x="-7" y="-1" width="24" height="3" fill="#FFC20E"/></g>
+ <g id="rHead"><circle r="17" fill="#121212"/><path d="M3 -9 A13 13 0 0 1 16 5 L4 6 Z" fill="#D9D9D9"/><path d="M-15 -6 Q-2 -22 14 -10" stroke="#FFC20E" stroke-width="4" fill="none"/><path d="M-9 1 h8 M-5 -3 v8" stroke="#FFC20E" stroke-width="2.6" stroke-linecap="round"/></g>
+ <path id="rArmN" class="ar"/><g id="rWatch"><rect x="-4.5" y="-4" width="9" height="8" rx="2" fill="#FFC20E" stroke="#121212" stroke-width="1.5"/></g><circle id="rGloveN" r="6" fill="#FFC20E"/>
+</svg><div class="rroad"></div></div>
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer" aria-label="Cart" aria-hidden="true">
   <div class="dhead"><h3>Your <em style="color:#121212;background:#FFC20E;padding:0 .2em">cart</em></h3><button class="cartbtn" id="closeCart" aria-label="Close cart" style="background:#FFF2B3;color:var(--ink)"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
@@ -743,97 +782,84 @@ if(!RM&&'IntersectionObserver' in window){
  $$('.odo').forEach(o=>{if(o.getBoundingClientRect().top>innerHeight)io2.observe(o);});}
 })();
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script>/* Real 3D hero: brake disc + yellow caliper + floating parts (three.js r128) */
+<script>/* Bike Surgeon rider: waits leaning on the bike, rides while you scroll, parks when you stop */
 (function(){
-const host=document.getElementById('gl3d');const levs=document.getElementById('levs');
-if(!host||!window.THREE)return;
-let renderer;try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});}catch(e){return;}
-if(!renderer.getContext())return;
-levs.classList.add('gl');
 const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
-renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;renderer.physicallyCorrectLights=true;
-host.appendChild(renderer.domElement);
-const scene=new THREE.Scene();const cam=new THREE.PerspectiveCamera(32,1,.1,100);cam.position.set(0,.35,8.2);
-/* studio environment for real metal reflections */
-(()=>{const env=new THREE.Scene();const box=new THREE.Mesh(new THREE.BoxGeometry(12,12,12),new THREE.MeshBasicMaterial({color:0x0c0c0c,side:THREE.BackSide}));env.add(box);
- const panel=(w,h,col,x,y,z,ry,rx)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:col,side:THREE.DoubleSide}));m.position.set(x,y,z);m.rotation.y=ry||0;m.rotation.x=rx||0;env.add(m);};
- const W=new THREE.Color(6,6,6),Y=new THREE.Color(7,4.6,.4);
- panel(5,1.2,W,0,4.5,1,0,Math.PI/2);panel(1.4,5,W,-5.5,0,1,Math.PI/2);panel(1,4,Y,5.5,0,-1,-Math.PI/2);panel(6,.6,W,0,-1,-5.5);panel(3,.5,Y,0,-5,2,0,-Math.PI/2);
- const pm=new THREE.PMREMGenerator(renderer);scene.environment=pm.fromScene(env,.03).texture;})();
-/* materials */
-const steel=new THREE.MeshStandardMaterial({color:0xd8d8d8,metalness:1,roughness:.26});
-const steelDark=new THREE.MeshStandardMaterial({color:0x6a6a6a,metalness:1,roughness:.38});
-const black=new THREE.MeshStandardMaterial({color:0x151515,metalness:.6,roughness:.45});
-const yellow=new THREE.MeshPhysicalMaterial({color:0xffc20e,metalness:.25,roughness:.28,clearcoat:1,clearcoatRoughness:.08});
-const ceramic=new THREE.MeshPhysicalMaterial({color:0xf4f4f4,metalness:0,roughness:.2,clearcoat:1});
-const circ=(r,x=0,y=0)=>{const p=new THREE.Path();p.absarc(x,y,r,0,Math.PI*2,true);return p;};
-const ext=(shape,depth,bev=.012,seg=64)=>{const g=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:true,bevelThickness:bev,bevelSize:bev,bevelSegments:3,curveSegments:seg});g.center();return g;};
-/* disc */
-const root=new THREE.Group();scene.add(root);const R=1.35;const rig=new THREE.Group();root.add(rig);
-const spin=new THREE.Group();rig.add(spin);
-const ringS=new THREE.Shape();ringS.absarc(0,0,R,0,Math.PI*2,false);ringS.holes.push(circ(R*.66));
-for(let i=0;i<30;i++){const a=i/30*Math.PI*2,rr=i%2?R*.8:R*.9;ringS.holes.push(circ(R*.038,Math.cos(a)*rr,Math.sin(a)*rr));}
-spin.add(new THREE.Mesh(ext(ringS,.07,.01,96),steel));
-const car=new THREE.Shape();car.absarc(0,0,R*.68,0,Math.PI*2,false);car.holes.push(circ(R*.2));
-for(let i=0;i<5;i++){const a=i/5*Math.PI*2+.3;car.holes.push(circ(R*.11,Math.cos(a)*R*.44,Math.sin(a)*R*.44));car.holes.push(circ(R*.045,Math.cos(a+.63)*R*.3,Math.sin(a+.63)*R*.3));}
-const carM=new THREE.Mesh(ext(car,.05,.008,64),black);spin.add(carM);
-for(let i=0;i<5;i++){const a=i/5*Math.PI*2+.3+.63;const b=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,.12,6),steelDark);b.rotation.x=Math.PI/2;b.position.set(Math.cos(a)*R*.3,Math.sin(a)*R*.3,.03);spin.add(b);}
-/* yellow caliper with brand name */
-const cal=new THREE.Group();rig.add(cal);
-const cs=new THREE.Shape();const cw=.82,ch=.36,cr=.12;cs.moveTo(-cw/2+cr,-ch/2);cs.lineTo(cw/2-cr,-ch/2);cs.quadraticCurveTo(cw/2,-ch/2,cw/2,-ch/2+cr);cs.lineTo(cw/2,ch/2-cr);cs.quadraticCurveTo(cw/2,ch/2,cw/2-cr,ch/2);cs.lineTo(-cw/2+cr,ch/2);cs.quadraticCurveTo(-cw/2,ch/2,-cw/2,ch/2-cr);cs.lineTo(-cw/2,-ch/2+cr);cs.quadraticCurveTo(-cw/2,-ch/2,-cw/2+cr,-ch/2);
-const calM=new THREE.Mesh(ext(cs,.34,.06,24),yellow);cal.add(calM);
-const cv=document.createElement('canvas');cv.width=512;cv.height=128;const cx=cv.getContext('2d');cx.fillStyle='#121212';cx.font='700 64px "Chakra Petch", "Arial Black", sans-serif';cx.textAlign='center';cx.textBaseline='middle';cx.fillText('BIKE PHARMA',256,68);
-const tex=new THREE.CanvasTexture(cv);if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{cx.clearRect(0,0,512,128);cx.font='700 64px "Chakra Petch", "Arial Black", sans-serif';cx.fillText('BIKE PHARMA',256,68);tex.needsUpdate=true;});tex.encoding=THREE.sRGBEncoding;tex.anisotropy=8;
-const lab=new THREE.Mesh(new THREE.PlaneGeometry(.8,.2),new THREE.MeshBasicMaterial({map:tex,transparent:true}));lab.position.z=.232;lab.scale.setScalar(.78);cal.add(lab);
-const pinG=new THREE.CylinderGeometry(.045,.045,.5,20);[-.3,.3].forEach(x=>{const p=new THREE.Mesh(pinG,steelDark);p.rotation.x=Math.PI/2;p.position.set(x,0,0);cal.add(p);});
-const ang=.28;cal.position.set(Math.cos(ang)*R*.84,Math.sin(ang)*R*.84,0);cal.rotation.z=ang-Math.PI/2;
-/* parts */
-const parts=[];
-function hexShape(r,hole){const s=new THREE.Shape();for(let i=0;i<6;i++){const a=i/6*Math.PI*2+Math.PI/6;const x=Math.cos(a)*r,y=Math.sin(a)*r;i?s.lineTo(x,y):s.moveTo(x,y);}s.closePath();if(hole)s.holes.push(circ(hole));return s;}
-const mk={
- nut:()=>new THREE.Mesh(ext(hexShape(.2,.1),.14,.02,32),steel),
- washer:()=>{const s=new THREE.Shape();s.absarc(0,0,.2,0,Math.PI*2,false);s.holes.push(circ(.09));return new THREE.Mesh(ext(s,.035,.008,48),yellow);},
- bolt:()=>{const g=new THREE.Group();const h=new THREE.Mesh(ext(hexShape(.17),.12,.015,24),steel);h.rotation.x=Math.PI/2;h.position.y=.42;g.add(h);const sh=new THREE.Mesh(new THREE.CylinderGeometry(.075,.075,.8,32),steel);g.add(sh);
-   for(let i=0;i<9;i++){const t=new THREE.Mesh(new THREE.TorusGeometry(.078,.012,8,32),steelDark);t.rotation.x=Math.PI/2;t.position.y=-.36+i*.07;g.add(t);}return g;},
- gear:()=>{const s=new THREE.Shape();const n=14;for(let i=0;i<n*2;i++){const a=i/(n*2)*Math.PI*2;const r=i%2?.3:.38;const a2=a+Math.PI/(n*2);if(!i)s.moveTo(Math.cos(a)*r,Math.sin(a)*r);else s.lineTo(Math.cos(a)*r,Math.sin(a)*r);s.lineTo(Math.cos(a2)*r,Math.sin(a2)*r);}s.closePath();s.holes.push(circ(.1));return new THREE.Mesh(ext(s,.1,.01,24),yellow);},
- plug:()=>{const g=new THREE.Group();const v=(pts)=>pts.map(([x,y])=>new THREE.Vector2(x,y));
-   g.add(new THREE.Mesh(new THREE.LatheGeometry(v([[0,.62],[.05,.62],[.06,.56],[.05,.52],[.09,.5],[.1,.44],[.085,.42],[.1,.38],[.085,.36],[.1,.32],[.085,.3],[.11,.26],[.12,.12],[0,.12]]),40),ceramic));
-   const hx=new THREE.Mesh(ext(hexShape(.15),.12,.012,24),steel);hx.rotation.x=Math.PI/2;hx.position.y=.06;g.add(hx);
-   g.add(new THREE.Mesh(new THREE.LatheGeometry(v([[0,0],[.075,0],[.075,-.32],[.03,-.34],[0,-.34]]),32),steel));
-   for(let i=0;i<5;i++){const t=new THREE.Mesh(new THREE.TorusGeometry(.078,.01,8,24),steelDark);t.rotation.x=Math.PI/2;t.position.y=-.04-i*.06;g.add(t);}return g;},
- bearing:()=>{const g=new THREE.Group();g.add(new THREE.Mesh(new THREE.TorusGeometry(.3,.05,16,64),steel));g.add(new THREE.Mesh(new THREE.TorusGeometry(.15,.04,16,48),steel));for(let i=0;i<9;i++){const a=i/9*Math.PI*2;const b=new THREE.Mesh(new THREE.SphereGeometry(.055,20,16),steel);b.position.set(Math.cos(a)*.225,Math.sin(a)*.225,0);g.add(b);}return g;}};
-const LAYOUT=[['nut',-1.6,1.35,.2,.9],['bolt',2.05,1.3,-.3,1],['gear',-1.55,-1.25,.3,.9],['plug',2.1,-.6,.6,1],['washer',-1.0,-1.75,.8,.95],['bearing',1.15,-1.8,-.4,1],['nut',.4,2.0,-.9,.8],['washer',2.55,.45,-1.2,.8],['gear',-.7,1.95,-1.4,.7]];
-LAYOUT.forEach(([k,x,y,z,s],i)=>{const m=mk[k]();m.scale.setScalar(s);const g=new THREE.Group();g.add(m);g.userData={base:new THREE.Vector3(x,y,z),rs:new THREE.Vector3((Math.random()-.5)*.8,(Math.random()-.5)*.8,(Math.random()-.5)*.6),ph:Math.random()*6.28};m.rotation.set(Math.random()*3,Math.random()*3,Math.random()*3);root.add(g);parts.push(g);});
-/* light + floor glow */
-const key=new THREE.DirectionalLight(0xffffff,2.2);key.position.set(-3,4,5);scene.add(key);
-const rim=new THREE.PointLight(0xffc20e,18,12,2);rim.position.set(2.5,1.5,-2.5);scene.add(rim);
-const fill=new THREE.PointLight(0xffffff,6,10,2);fill.position.set(2,-2,4);scene.add(fill);
-const gtex=(()=>{const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');const g=x.createRadialGradient(128,128,0,128,128,128);g.addColorStop(0,'rgba(255,194,14,.55)');g.addColorStop(.35,'rgba(255,194,14,.18)');g.addColorStop(1,'rgba(255,194,14,0)');x.fillStyle=g;x.fillRect(0,0,256,256);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return t;})();
-const floor=new THREE.Mesh(new THREE.PlaneGeometry(7,7),new THREE.MeshBasicMaterial({map:gtex,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));floor.rotation.x=-Math.PI/2;floor.position.y=-2.05;root.add(floor);
-const shTex=(()=>{const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');const g=x.createRadialGradient(64,64,0,64,64,64);g.addColorStop(0,'rgba(0,0,0,.75)');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,128,128);return new THREE.CanvasTexture(c);})();
-const shadow=new THREE.Mesh(new THREE.PlaneGeometry(3,1.1),new THREE.MeshBasicMaterial({map:shTex,transparent:true,depthWrite:false}));shadow.rotation.x=-Math.PI/2;shadow.position.y=-2.03;root.add(shadow);
-/* size */
-function fit(){const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);renderer.domElement.style.width=w+'px';renderer.domElement.style.height=h+'px';cam.aspect=w/h;
- const wide=w>900;const t=Math.tan(THREE.MathUtils.degToRad(cam.fov/2));
- let dist=wide?Math.max(8.2,5.2/(2*t)):Math.max(8.2,5.4/(2*t*cam.aspect));cam.position.z=dist;
- const hh=t*dist,hw=hh*cam.aspect;const fx=wide?.7:.5,fy=wide?.5:.7;
- root.position.x=(fx-.5)*2*hw;root.position.y=-(fy-.5)*2*hh+.2;cam.updateProjectionMatrix();}
-addEventListener('resize',fit);fit();
-/* input */
-let mx=0,my=0,tmx=0,tmy=0;if(!RM&&matchMedia('(pointer:fine)').matches)levs.addEventListener('pointermove',e=>{tmx=(e.clientX/innerWidth-.5)*2;tmy=(e.clientY/innerHeight-.5)*2;});
-let visible=true;new IntersectionObserver(es=>{visible=es[0].isIntersecting;},{threshold:0}).observe(levs);
-const clock=new THREE.Clock();
-function frame(){const t=clock.getElapsedTime();const p=+levs.style.getPropertyValue('--p')||0;
- mx+=(tmx-mx)*.06;my+=(tmy-my)*.06;
- const e=p*p*(3-2*p);
- rig.rotation.y=-.45+mx*.25+e*.75;rig.rotation.x=.08+my*.12-e*.25;rig.position.y=Math.sin(t*1.1)*.07+e*.15;
- spin.rotation.z=-t*.35;
- shadow.scale.setScalar(1-Math.sin(t*1.1)*.05);
- parts.forEach(g=>{const u=g.userData;const k=1+e*.32;const kx=u.base.x<0?1+e*.04:k;g.position.set(u.base.x*kx+mx*.25*(u.base.z+1.5),u.base.y*k+Math.sin(t*.9+u.ph)*.09-my*.15,u.base.z+e*.5);
-  g.children[0].rotation.x+=u.rs.x*.01;g.children[0].rotation.y+=u.rs.y*.01;g.children[0].rotation.z+=u.rs.z*.01+e*.002;});
- renderer.render(scene,cam);}
-function loop(){if(visible&&!document.hidden)frame();requestAnimationFrame(loop);}
-if(RM){frame();addEventListener('scroll',()=>frame(),{passive:true});}else loop();
+const box=document.getElementById('rider');const svg=document.getElementById('riderSvg');const bub=document.getElementById('riderBub');const spot=document.getElementById('riderSpot');
+if(!box||!svg)return;
+const $=id=>svg.getElementById?svg.getElementById(id):document.getElementById(id);
+const L={torso:56,ua:31,fa:30,th:43,sh:45};
+const GRIP=[213,104],PEG=[152,196],GROUND=253;
+/* poses: hip, torso angle (deg, screen coords), head tilt, hands, feet, side stand (0 up, 1 down), bike tilt */
+const P={
+ lean:{hip:[122,154],tor:-98,head:4,hN:[140,164],hF:[104,138],fN:[168,GROUND],fF:[154,GROUND],st:1,bt:-2.5},
+ watch:{hip:[122,154],tor:-100,head:22,hN:[154,103],hF:[157,110],fN:[168,GROUND],fF:[154,GROUND],st:1,bt:-2.5},
+ mount:{hip:[118,112],tor:-74,head:0,hN:[206,106],hF:[204,108],fN:[124,196],fF:[140,GROUND],st:1,bt:-1},
+ astride:{hip:[128,127],tor:-66,head:-2,hN:GRIP,hF:[GRIP[0]-3,GRIP[1]+2],fN:[150,GROUND],fF:[146,GROUND],st:1,bt:-1},
+ ride:{hip:[128,125],tor:-57,head:-6,hN:GRIP,hF:[GRIP[0]-3,GRIP[1]+2],fN:PEG,fF:[PEG[0]-4,PEG[1]],st:0,bt:0}};
+const clone=p=>JSON.parse(JSON.stringify(p));
+let cur=clone(P.lean),from=clone(P.lean),to=P.lean,t0=0,dur=1,queue=[];
+const lerp=(a,b,k)=>a+(b-a)*k;
+function mix(a,b,k){const o={};for(const key in a){o[key]=Array.isArray(a[key])?[lerp(a[key][0],b[key][0],k),lerp(a[key][1],b[key][1],k)]:lerp(a[key],b[key],k);}return o;}
+function go(pose,ms){queue.push([pose,ms]);}
+function nextStep(now){if(!queue.length)return false;const [p,ms]=queue.shift();from=clone(cur);to=P[p];t0=now;dur=RM?1:ms;return true;}
+/* 2-bone IK */
+function ik(sx,sy,tx,ty,a,b,bend){let dx=tx-sx,dy=ty-sy;let d=Math.hypot(dx,dy);const m=a+b-.5;if(d>m){dx*=m/d;dy*=m/d;d=m;}
+ const th=Math.atan2(dy,dx);const c=Math.min(1,Math.max(-1,(a*a+d*d-b*b)/(2*a*d)));const al=Math.acos(c);const j=th-bend*al;
+ const ex=sx+Math.cos(j)*a,ey=sy+Math.sin(j)*a;return [ex,ey,sx+dx,sy+dy];}
+const set=(id,attr)=>{const e=$(id);if(!e)return;for(const k in attr)e.setAttribute(k,attr[k]);};
+function limb(id,x1,y1,x2,y2,x3,y3){set(id,{d:`M${x1.toFixed(1)} ${y1.toFixed(1)} L${x2.toFixed(1)} ${y2.toFixed(1)} L${x3.toFixed(1)} ${y3.toFixed(1)}`});}
+let wheelA=0;
+function draw(p){
+ const [hx,hy]=p.hip;const ta=p.tor*Math.PI/180;const sx=hx+Math.cos(ta)*L.torso,sy=hy+Math.sin(ta)*L.torso;
+ // torso as a rounded jacket block
+ set('rTorso',{transform:`translate(${hx.toFixed(1)} ${hy.toFixed(1)}) rotate(${(p.tor+90).toFixed(1)})`});
+ set('rHead',{transform:`translate(${(sx+Math.cos(ta)*14).toFixed(1)} ${(sy+Math.sin(ta)*14).toFixed(1)}) rotate(${(p.tor+90+p.head).toFixed(1)})`});
+ const aN=ik(sx,sy,p.hN[0],p.hN[1],L.ua,L.fa,-1),aF=ik(sx-2,sy+2,p.hF[0],p.hF[1],L.ua,L.fa,-1);
+ limb('rArmN',sx,sy,aN[0],aN[1],aN[2],aN[3]);limb('rArmF',sx-2,sy+2,aF[0],aF[1],aF[2],aF[3]);
+ set('rGloveN',{cx:aN[2].toFixed(1),cy:aN[3].toFixed(1)});set('rGloveF',{cx:aF[2].toFixed(1),cy:aF[3].toFixed(1)});
+ set('rWatch',{transform:`translate(${lerp(aN[0],aN[2],.78).toFixed(1)} ${lerp(aN[1],aN[3],.78).toFixed(1)}) rotate(${(Math.atan2(aN[3]-aN[1],aN[2]-aN[0])*180/Math.PI).toFixed(1)})`});
+ const lN=ik(hx,hy,p.fN[0],p.fN[1],L.th,L.sh,1),lF=ik(hx-3,hy,p.fF[0],p.fF[1],L.th,L.sh,1);
+ limb('rLegN',hx,hy,lN[0],lN[1],lN[2],lN[3]);limb('rLegF',hx-3,hy,lF[0],lF[1],lF[2],lF[3]);
+ set('rBootN',{transform:`translate(${lN[2].toFixed(1)} ${lN[3].toFixed(1)})`});set('rBootF',{transform:`translate(${lF[2].toFixed(1)} ${lF[3].toFixed(1)})`});
+ set('rStand',{transform:`rotate(${lerp(172,98,p.st).toFixed(1)} 140 205)`});
+ set('rBike',{transform:`rotate(${p.bt.toFixed(2)} 78 253)`});
+ set('rWheelR',{transform:`rotate(${wheelA.toFixed(1)} 78 212)`});set('rWheelF',{transform:`rotate(${wheelA.toFixed(1)} 262 212)`});
+}
+/* state machine */
+let state='idle',lastScroll=0,idleSince=performance.now(),nextWatch=performance.now()+1800,watching=false,speed=0;
+const W=()=>innerWidth<700?150:250;
+let x=0,y=0,s=1,face=1,tx=0;let started=false;
+const SECS=['top','scan','diagnose','inside','pharmacy','opd','near','warranty'];
+const SAY={top:'Ready when you are.',scan:'Scanning your bike…',diagnose:'Move the slider. I’ll check it.',inside:'Let’s open it up.',pharmacy:'Only genuine parts.',opd:'Book me for 10:30?',near:'I’m 0.6 km away.',warranty:'You’re covered.'};
+function section(){let cur='top';for(const id of SECS){const e=document.getElementById(id);if(e&&e.getBoundingClientRect().top<innerHeight*.55)cur=id;}return cur;}
+function park(){const w=W();const idx=SECS.indexOf(section());return idx%2===0?innerWidth-w-18:18;}
+function heroDock(){if(!spot)return null;const r=spot.getBoundingClientRect();if(r.bottom<innerHeight*.35||r.width<60||innerWidth<700&&r.height<120)return null;
+ const w=W();const sc=Math.min(2.4,r.width*.8/w);return {x:r.left+(r.width-w*sc)/2,y:r.bottom-(innerHeight-14),s:sc};}
+function onScroll(){lastScroll=performance.now();if((state==='idle'||state==='parking')&&!heroDock()&&s<1.05&&Math.abs(park()-x)<30)return;if(state==='idle'||state==='parking'){state='mounting';queue=[];watching=false;bub.classList.remove('on');go('mount',300);go('ride',320);nextStep(performance.now());}}
+addEventListener('scroll',onScroll,{passive:true});
+function frame(now){
+ // pose tween
+ if(to){const k=Math.min(1,(now-t0)/dur);const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;cur=mix(from,to,e);if(k>=1){cur=clone(to);if(!nextStep(now)){if(state==='mounting')state='riding';if(state==='parking'){state='idle';idleSince=now;nextWatch=now+1500;}}}}
+ // riding: move toward the next parking spot while the page scrolls
+ const dock=heroDock();
+ if(state==='riding'||state==='mounting'){speed=lerp(speed,1,.08);if(now-lastScroll>650&&state==='riding'&&Math.abs(tx-x)<10){state='parking';go('astride',380);go('lean',560);nextStep(now);}}
+ else speed=lerp(speed,0,.1);
+ tx=dock&&state!=='riding'?dock.x:park();
+ const dx=tx-x;if(Math.abs(dx)>2){const f=dx>0?1:-1;if(state==='riding'||state==='mounting')face=f;}
+ const moving=state==='riding'||state==='mounting';x+=!started?dx:moving?Math.sign(dx)*Math.min(Math.abs(dx),Math.max(1.5,Math.abs(dx)*.045)):(dock?dx*.12:0);
+ const ty=dock&&state!=='riding'?dock.y:0,ts=dock&&state!=='riding'?dock.s:1;y+=(ty-y)*(started?.1:1);s+=(ts-s)*(started?.1:1);started=true;
+ wheelA+=speed*(9+Math.min(20,Math.abs(dx)*.2))*face;
+ box.style.transform=`translate(${x.toFixed(1)}px,${y.toFixed(1)}px) scale(${s.toFixed(3)})`;
+ svg.style.transform=face<0?'scaleX(-1)':'';
+ box.classList.toggle('moving',speed>.3);
+ // idle: check the watch now and then, say something about this section
+ if(state==='idle'&&!RM){if(!watching&&now>nextWatch){watching=true;queue=[];go('watch',420);nextStep(now);setTimeout(()=>{if(state==='idle'&&watching){queue=[];go('lean',420);nextStep(performance.now());watching=false;nextWatch=performance.now()+3500+Math.random()*2500;}},1700);}
+  if(now-idleSince>900){const t=SAY[section()]||'';if(bub.textContent!==t)bub.textContent=t;bub.classList.add('on');bub.classList.toggle('flip',face<0);}}
+ else bub.classList.remove('on');
+ draw(cur);
+ requestAnimationFrame(frame);}
+draw(cur);requestAnimationFrame(frame);
 })();
 </script>
+

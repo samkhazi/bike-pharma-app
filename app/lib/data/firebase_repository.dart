@@ -410,4 +410,63 @@ class FirebaseRepository implements Repository {
       );
     }).toList();
   }
+
+  @override
+  Future<List<PurchaseInvoice>> purchaseInvoices() async {
+    final q = await _db.collection('purchaseInvoices').orderBy('createdAt', descending: true).limit(100).get();
+    return q.docs
+        .map((d) => PurchaseInvoice.fromMap(d.id, d.data(), createdAt: (d.data()['createdAt'] as Timestamp?)?.toDate()))
+        .toList();
+  }
+
+  @override
+  Future<PurchaseInvoice> createPurchaseInvoice({
+    required String distributor,
+    required String invoiceNo,
+    required List<PurchaseLine> lines,
+  }) async {
+    final id = purchaseInvoiceId(distributor, invoiceNo);
+    final ref = _db.collection('purchaseInvoices').doc(id);
+    await _db.runTransaction((tx) async {
+      if ((await tx.get(ref)).exists) throw Exception('Ye invoice pehle se entered hai');
+      tx.set(ref, {
+        'distributor': distributor.trim(),
+        'invoiceNo': invoiceNo.trim(),
+        'lines': [for (final l in lines) l.toMap()],
+        'received': false,
+        'createdBy': _uid,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    });
+    return PurchaseInvoice(
+      id: id,
+      distributor: distributor.trim(),
+      invoiceNo: invoiceNo.trim(),
+      lines: lines,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<void> receivePurchaseInvoice(PurchaseInvoice invoice) async {
+    final ref = _db.collection('purchaseInvoices').doc(invoice.id);
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      if (!snap.exists) throw Exception('Invoice nahi mila');
+      if (snap.data()?['received'] == true) throw Exception('Ye invoice pehle hi inventory me add ho chuka hai');
+      for (final l in invoice.lines) {
+        if (l.received <= 0 && l.barcode == null) continue;
+        tx.update(_db.collection('products').doc(l.productId), {
+          if (l.received > 0) 'stock': FieldValue.increment(l.received),
+          if (l.barcode != null) 'barcodes': FieldValue.arrayUnion([l.barcode]),
+        });
+      }
+      tx.update(ref, {
+        'lines': [for (final l in invoice.lines) l.toMap()],
+        'received': true,
+        'receivedBy': _uid,
+        'receivedAt': FieldValue.serverTimestamp(),
+      });
+    });
+  }
 }

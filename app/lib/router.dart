@@ -22,7 +22,10 @@ import 'screens/shop/checkout_screen.dart';
 import 'screens/shop/home_screen.dart';
 import 'screens/shop/product_screen.dart';
 import 'screens/shop/shop_screen.dart';
+import 'screens/team/inventory_screen.dart';
 import 'screens/team/mechanic_discounts_screen.dart';
+import 'screens/team/new_invoice_screen.dart';
+import 'screens/team/receive_invoice_screen.dart';
 import 'screens/team/team_home_screen.dart';
 import 'screens/team/team_members_screen.dart';
 import 'widgets/bubble_nav.dart';
@@ -62,6 +65,9 @@ GoRouter buildRouter() => GoRouter(
         // Bike Pharma team and owner. Each screen also refuses anyone without access.
         GoRoute(path: '/team', builder: (_, _) => const TeamHomeScreen()),
         GoRoute(path: '/team/members', builder: (_, _) => const TeamMembersScreen()),
+        GoRoute(path: '/team/inventory', builder: (_, _) => const InventoryScreen()),
+        GoRoute(path: '/team/inventory/new', builder: (_, _) => const NewInvoiceScreen()),
+        GoRoute(path: '/team/inventory/:id', builder: (_, s) => ReceiveInvoiceScreen(id: s.pathParameters['id']!)),
         GoRoute(path: '/team/discounts', builder: (_, _) => const MechanicDiscountsScreen()),
         GoRoute(path: '/warranty', builder: (_, _) => const WarrantyScreen()),
         GoRoute(path: '/mechanic/:id', builder: (_, s) => MechanicProfileScreen(id: s.pathParameters['id']!)),

@@ -70,11 +70,12 @@ class _TeamHomeScreenState extends State<TeamHomeScreen> {
                     ),
                     onTap: () => _open('/admin/mechanics'),
                   ),
-                  const _Tile(
-                    key: Key('teamInventory'),
+                  _Tile(
+                    key: const Key('teamInventory'),
                     icon: Icons.inventory_2_outlined,
                     title: 'Inventory',
-                    subtitle: Text('Stock add aur update · jald aa raha hai'),
+                    subtitle: const Text('Distributor invoice scan karke stock add karo'),
+                    onTap: () => _open('/team/inventory'),
                   ),
                   const _Tile(
                     key: Key('teamBilling'),

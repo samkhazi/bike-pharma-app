@@ -117,10 +117,10 @@ class DemoRepository implements Repository {
 
   @override
   Future<List<Product>> products({String? category}) =>
-      _delay(demoProducts.where((p) => category == null || p.category == category).toList());
+      _delay(_catalogue.where((p) => category == null || p.category == category).toList());
 
   @override
-  Future<Product?> product(String id) => _delay(demoProducts.where((p) => p.id == id).firstOrNull);
+  Future<Product?> product(String id) => _delay(_catalogue.where((p) => p.id == id).firstOrNull);
 
   @override
   Future<Map<String, int>> cart() => _delay(Map.of(_cart));
@@ -342,6 +342,65 @@ class DemoRepository implements Repository {
     final updated = approve ? a.copyWith(status: 'approved', mechanicId: id) : a.copyWith(status: 'rejected', reason: reason ?? '');
     _applications[uid] = updated;
     return _delay(id);
+  }
+
+  // Stock received from distributors is kept next to the const sample catalogue.
+  final _received = <String, int>{};
+  final _learnedCodes = <String, List<String>>{};
+  final _invoices = <String, PurchaseInvoice>{};
+
+  List<Product> get _catalogue => [
+        for (final p in demoProducts)
+          Product(
+            id: p.id,
+            name: p.name,
+            category: p.category,
+            subCategory: p.subCategory,
+            brand: p.brand,
+            price: p.price,
+            mrp: p.mrp,
+            stock: p.stock + (_received[p.id] ?? 0),
+            images: p.images,
+            fits: p.fits,
+            fitsAll: p.fitsAll,
+            rating: p.rating,
+            description: p.description,
+            barcodes: [...p.barcodes, ...?_learnedCodes[p.id]],
+          ),
+      ];
+
+  @override
+  Future<List<PurchaseInvoice>> purchaseInvoices() => _delay(_invoices.values.toList().reversed.toList());
+
+  @override
+  Future<PurchaseInvoice> createPurchaseInvoice({
+    required String distributor,
+    required String invoiceNo,
+    required List<PurchaseLine> lines,
+  }) async {
+    final id = purchaseInvoiceId(distributor, invoiceNo);
+    if (_invoices.containsKey(id)) throw Exception('Ye invoice pehle se entered hai');
+    final inv = PurchaseInvoice(
+      id: id,
+      distributor: distributor.trim(),
+      invoiceNo: invoiceNo.trim(),
+      lines: lines,
+      createdAt: DateTime.now(),
+    );
+    _invoices[id] = inv;
+    return _delay(inv);
+  }
+
+  @override
+  Future<void> receivePurchaseInvoice(PurchaseInvoice invoice) async {
+    if (_invoices[invoice.id]?.received ?? false) throw Exception('Ye invoice pehle hi inventory me add ho chuka hai');
+    for (final l in invoice.lines) {
+      if (l.received > 0) _received[l.productId] = (_received[l.productId] ?? 0) + l.received;
+      final code = l.barcode;
+      if (code != null) (_learnedCodes[l.productId] ??= []).add(code);
+    }
+    _invoices[invoice.id] = invoice.copyWith(received: true);
+    await _delay(null);
   }
 
   @override

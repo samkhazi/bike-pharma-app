@@ -46,10 +46,23 @@ Money is always stored as **integer paise** (₹1 = 100). Timestamps are Firesto
 | images | string[] | Storage URLs |
 | fits | string[] | list of `fitKey`s this part fits |
 | fitsAll | bool | universal accessory (helmet, gloves) |
+| barcodes | string[]? | barcode/QR codes printed on this part's packs, learned while receiving a distributor invoice |
 | rating | number | |
 | active | bool | |
 
 App rule from Sam: Shop and search show only products where `fitsAll == true` or `fits` contains the customer's active vehicle `fitKey`.
+
+### `purchaseInvoices/{distributor-slug}_{invoice-slug}` (team only)
+A distributor's bill, typed in by the team and checked part by part with the barcode scanner. The id comes from distributor + invoice number, so one bill can't be entered twice.
+
+| field | type | notes |
+|---|---|---|
+| distributor, invoiceNo | string | |
+| lines | `{ productId, name, qty, received, barcode? }[]` | `qty` billed, `received` ticked/scanned |
+| received | bool | true once added to stock; then it is never edited |
+| createdBy, createdAt, receivedBy, receivedAt | | |
+
+Receiving (one transaction) does `products/{productId}.stock += received` per line and `arrayUnion`s the scanned `barcode` into `products/{productId}.barcodes`. Pieces not scanned are not added.
 
 ### `warranties/{warrantyId}` (written by the shop / admin when a warranty-covered part is billed)
 

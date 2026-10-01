@@ -88,4 +88,16 @@ abstract class Repository {
 
   // Warranty tracker: warranty-covered parts from this customer's bills
   Future<List<WarrantyItem>> warranties();
+
+  // Inventory: distributor invoices checked in by scanning (team)
+  Future<List<PurchaseInvoice>> purchaseInvoices();
+  /// Saves a new invoice; throws if this distributor + invoice number exists.
+  Future<PurchaseInvoice> createPurchaseInvoice({
+    required String distributor,
+    required String invoiceNo,
+    required List<PurchaseLine> lines,
+  });
+  /// Adds each line's `received` count to its product's stock, remembers the
+  /// scanned barcodes, and closes the invoice. Throws if already received.
+  Future<void> receivePurchaseInvoice(PurchaseInvoice invoice);
 }

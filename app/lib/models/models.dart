@@ -90,6 +90,10 @@ class Product {
   final double rating;
   final String? description;
 
+  /// Barcodes / QR codes printed on this part's packs. Learned while receiving
+  /// a distributor invoice, so the next scan matches it straight away.
+  final List<String> barcodes;
+
   const Product({
     required this.id,
     required this.name,
@@ -104,7 +108,25 @@ class Product {
     this.fitsAll = false,
     this.rating = 0,
     this.description,
+    this.barcodes = const [],
   });
+
+  Product withReceived(int qty, {String? barcode}) => Product(
+        id: id,
+        name: name,
+        category: category,
+        subCategory: subCategory,
+        brand: brand,
+        price: price,
+        mrp: mrp,
+        stock: stock + qty,
+        images: images,
+        fits: fits,
+        fitsAll: fitsAll,
+        rating: rating,
+        description: description,
+        barcodes: barcode == null || barcodes.contains(barcode) ? barcodes : [...barcodes, barcode],
+      );
 
   bool fitsVehicle(Vehicle? v) => fitsAll || (v != null && fits.contains(v.fitKey));
   int get discountPercent => mrp <= price ? 0 : (((mrp - price) / mrp) * 100).round();
@@ -123,6 +145,7 @@ class Product {
         fitsAll: m['fitsAll'] ?? false,
         rating: ((m['rating'] ?? 0) as num).toDouble(),
         description: m['description'],
+        barcodes: List<String>.from(m['barcodes'] ?? const []),
       );
 }
 
@@ -483,4 +506,100 @@ class UserProfile {
   final String uid, name, phone;
   final String? activeVehicleId;
   const UserProfile({required this.uid, required this.name, required this.phone, this.activeVehicleId});
+}
+
+
+/// One part on a distributor's invoice. [received] is how many the team has
+/// scanned (or ticked) so far; only that count goes into stock.
+class PurchaseLine {
+  final String productId;
+  final String name;
+  final int qty; // as billed by the distributor
+  final int received;
+
+  /// Code scanned for this part during receiving, saved on the product.
+  final String? barcode;
+
+  const PurchaseLine({
+    required this.productId,
+    required this.name,
+    required this.qty,
+    this.received = 0,
+    this.barcode,
+  });
+
+  bool get done => received >= qty;
+
+  PurchaseLine copyWith({int? received, String? barcode}) => PurchaseLine(
+        productId: productId,
+        name: name,
+        qty: qty,
+        received: received ?? this.received,
+        barcode: barcode ?? this.barcode,
+      );
+
+  Map<String, dynamic> toMap() => {
+        'productId': productId,
+        'name': name,
+        'qty': qty,
+        'received': received,
+        'barcode': barcode,
+      };
+
+  factory PurchaseLine.fromMap(Map<String, dynamic> m) => PurchaseLine(
+        productId: m['productId'] ?? '',
+        name: m['name'] ?? '',
+        qty: (m['qty'] ?? 0) as int,
+        received: (m['received'] ?? 0) as int,
+        barcode: m['barcode'],
+      );
+}
+
+/// A distributor's bill for parts sent to the shop. Checked part by part while
+/// unpacking; once [received] the scanned counts have been added to stock.
+class PurchaseInvoice {
+  final String id;
+  final String distributor;
+  final String invoiceNo;
+  final List<PurchaseLine> lines;
+  final bool received;
+  final DateTime? createdAt;
+
+  const PurchaseInvoice({
+    required this.id,
+    required this.distributor,
+    required this.invoiceNo,
+    required this.lines,
+    this.received = false,
+    this.createdAt,
+  });
+
+  int get totalQty => lines.fold(0, (a, l) => a + l.qty);
+  int get totalReceived => lines.fold(0, (a, l) => a + (l.received > l.qty ? l.qty : l.received));
+  int get missingQty => totalQty - totalReceived;
+
+  PurchaseInvoice copyWith({List<PurchaseLine>? lines, bool? received}) => PurchaseInvoice(
+        id: id,
+        distributor: distributor,
+        invoiceNo: invoiceNo,
+        lines: lines ?? this.lines,
+        received: received ?? this.received,
+        createdAt: createdAt,
+      );
+
+  factory PurchaseInvoice.fromMap(String id, Map<String, dynamic> m, {DateTime? createdAt}) => PurchaseInvoice(
+        id: id,
+        distributor: m['distributor'] ?? '',
+        invoiceNo: m['invoiceNo'] ?? '',
+        lines: [for (final l in (m['lines'] as List? ?? const [])) PurchaseLine.fromMap(Map<String, dynamic>.from(l as Map))],
+        received: m['received'] ?? false,
+        createdAt: createdAt,
+      );
+}
+
+/// Same distributor + invoice number always gives the same id, so one bill can
+/// never be entered (and added to stock) twice.
+String purchaseInvoiceId(String distributor, String invoiceNo) {
+  String slug(String s) => s.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(RegExp(r'^-+|-+$'), '');
+  return '${slug(distributor)}_${slug(invoiceNo)}';
 }

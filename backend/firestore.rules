@@ -138,6 +138,16 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Distributor invoices checked in by the team. Receiving one adds the
+    // scanned counts to products/{id}.stock; a received invoice is never edited.
+    match /purchaseInvoices/{invoiceId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && data().received == false
+        && data().lines is list && data().lines.size() >= 1 && data().lines.size() <= 200;
+      allow update: if isAdmin() && resource.data.received == false;
+      allow delete: if false;
+    }
+
     match /offers/{offerId} {
       allow read: if signedIn();
       allow write: if isAdmin();

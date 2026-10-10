@@ -1,0 +1,13 @@
+{
+  "name": "bikepharma-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bike Pharma Automobiles website + app server (bikepharma.com)",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "admin": "node admin.mjs"
+  },
+  "engines": { "node": ">=20" }
+}

@@ -1,0 +1,13 @@
+# server pe hi rehte hain, GitHub me nahi
+data/
+.env
+node_modules/
+*.log
+bikepharma-*.zip
+_to_delete/
+.check-*
+public/cat/
+public/bj/
+public/ph/
+public/phh/
+public/figs/

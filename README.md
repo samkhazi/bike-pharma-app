@@ -68,6 +68,7 @@ Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 - Phone (360px) aur 1024px screens pe header ke icons ab screen ke andar; 1100px se chhoti screen pe menu button.
 - Right side pe dikhne wali grey chhaaya (band cart drawer ki) hata di. WhatsApp button ka text ab saaf padhta hai.
 - Dark mode me app bar ka logo ab safed text wala. Browser tab me Bike Pharma ka icon.
+- Dark mode me Estimate ki likhawat aur mechanic profile ke WhatsApp/Task button ab saaf padhte hain. Logo har page pe light + dark dono me check kiya.
 - Security: customer/mechanic apna role (jaise admin) khud nahi badal sakte; naam/text me HTML ab chalta nahi.
 - App se "Reset demo data" button aur demo wali likhawat hatayi. Nakli phone/UPI/GSTIN/address hataye (point 5).
 - Update ab GitHub se ek command me (point 1 aur 2).

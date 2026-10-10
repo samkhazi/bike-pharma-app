@@ -9,7 +9,7 @@ import zlib from 'node:zlib';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { openStore, HAS_SQLITE } from './lib/store.mjs';
-import { roleClass, scopeDb, scopeValue, canWrite, merge3, applyOwn, deepEqual, cleanStrings, safeText, STAFF_ROLES } from './lib/merge.mjs';
+import { roleClass, viewOf, scopeValue, canWrite, merge3, applyOwn, applyMine, mechLogins, moveCodes, deepEqual, cleanStrings, safeText, STAFF_ROLES, MECH_OWN } from './lib/merge.mjs';
 import { otpConfig, makeOtp, deliverOtp } from './lib/sms.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -42,6 +42,7 @@ const normId = v => { v = String(v || '').trim().toLowerCase(); if (v.includes('
 const today = () => new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 const stateVal = k => { const r = store.stateGet(k); return r ? JSON.parse(r.json) : undefined; };
 const accounts = () => stateVal('accounts') || {};
+const reader = () => { const c = new Map(); return k => { if (!c.has(k)) c.set(k, stateVal(k)); return c.get(k); }; }; // cached reads for one request
 function setAccount(id, acc) { const a = accounts(); a[id] = acc; store.write({ accounts: JSON.stringify(a) }); }
 function hashPw(pw) { const salt = crypto.randomBytes(16); const h = crypto.scryptSync(String(pw), salt, 32); return salt.toString('hex') + ':' + h.toString('hex'); }
 function checkPw(pw, stored) { if (!stored) return false; const [s, h] = String(stored).split(':'); if (!s || !h) return false; const x = crypto.scryptSync(String(pw), Buffer.from(s, 'hex'), 32); const y = Buffer.from(h, 'hex'); return x.length === y.length && crypto.timingSafeEqual(x, y); }
@@ -84,7 +85,7 @@ async function api(req, res, url, user) {
   if (m === 'POST') { try { const b = await readBody(req); body = b.length ? JSON.parse(b.toString('utf8')) : {}; } catch (e) { return json(res, 400, { error: 'Bad request body' }); } }
   const catList = () => { try { return fs.readdirSync(path.join(PUBLIC_DIR, 'cat')).filter(f => f.endsWith('.json')).sort(); } catch { return []; } };
   const cfg = () => ({ otpHint: OTP.mode === 'fixed' ? OTP.fixed : null, otpMode: OTP.mode, version: VERSION, cat: catList() });
-  const full = u => ({ user: u ? u : null, db: scopeDb(store.stateAll(), u), rev: store.rev(), cfg: cfg() });
+  const full = u => ({ user: u ? u : null, db: viewOf(store.stateAll().map(r => r.key), reader(), u, true), rev: store.rev(), cfg: cfg() });
 
   if (p === '/api/health' && m === 'GET') return json(res, 200, { ok: true, rev: store.rev(), sqlite: HAS_SQLITE, version: VERSION });
   if (p === '/api/boot' && m === 'GET') { if (!user && cookies(req).bp_s) setSession(req, res, '', true); return json(res, 200, full(user)); }
@@ -143,17 +144,22 @@ async function api(req, res, url, user) {
   if (p === '/api/sync') {
     if (!user) return json(res, 401, { error: 'Please log in again.' });
     if (m === 'GET') {
-      const since = +url.searchParams.get('since') || 0; const changed = {};
-      for (const r of store.stateSince(since)) { const v = scopeValue(r.key, JSON.parse(r.json), user); if (v !== undefined) changed[r.key] = v; }
-      return json(res, 200, { rev: store.rev(), changed });
+      const since = +url.searchParams.get('since') || 0;
+      return json(res, 200, { rev: store.rev(), changed: viewOf(store.stateSince(since).map(r => r.key), reader(), user, since === 0) });
     }
     const base = Math.max(0, +body.base || 0); const changes = (body.changes && typeof body.changes === 'object') ? body.changes : {};
-    const writes = {}, changed = {};
-    const scoped = roleClass(user) !== 'staff';
+    const writes = {}, changed = {}, refused = [];
+    const staff = roleClass(user) === 'staff', scoped = !staff;
     for (const [k, cv0] of Object.entries(changes)) {
       if (!/^[A-Za-z_][\w]{0,40}$/.test(k) || cv0 === null || cv0 === undefined) continue;
       const cv = scoped ? cleanStrings(cv0) : cv0;
-      const mode = canWrite(k, user); if (!mode) continue;
+      const mode = canWrite(k, user); if (!mode) { refused.push(k); continue; }
+      if (mode === 'mine') { // a mechanic's own job cards / customers, stored per mechanic
+        const sk = MECH_OWN[k]; const sv = stateVal(sk); const merged = applyMine(sv, cv, user);
+        if (!deepEqual(merged, sv)) writes[sk] = JSON.stringify(merged);
+        if (!deepEqual(merged[user.id], cv0)) changed[k] = merged[user.id];
+        continue;
+      }
       const row = store.stateGet(k); const sv = row ? JSON.parse(row.json) : undefined;
       let merged;
       if (mode === 'own') merged = applyOwn(k, sv, cv, user);
@@ -163,8 +169,24 @@ async function api(req, res, url, user) {
       const back = scopeValue(k, merged, user);
       if (!deepEqual(back, cv0)) changed[k] = back === undefined ? null : back; // cleaned text goes back to the writer too
     }
+    // the shop's bills: a new mechanic's first bill makes their login (and fixes the code on their later bills)
+    if (staff && writes.bills) {
+      const ml = mechLogins(JSON.parse(writes.bills), writes.accounts ? JSON.parse(writes.accounts) : accounts(), today());
+      if (ml && ml.bills) { writes.bills = JSON.stringify(ml.bills); changed.bills = ml.bills; }
+      if (ml && ml.accounts) { writes.accounts = JSON.stringify(ml.accounts); if ('accounts' in changes) changed.accounts = ml.accounts; }
+      if (ml && ml.moved && ml.moved.length) {
+        const mv = moveCodes(writes.omech ? JSON.parse(writes.omech) : stateVal('omech'), writes.warranties ? JSON.parse(writes.warranties) : stateVal('warranties'), ml.moved);
+        if (mv.omech) { writes.omech = JSON.stringify(mv.omech); changed.omech = mv.omech; }
+        if (mv.warranties) { writes.warranties = JSON.stringify(mv.warranties); changed.warranties = mv.warranties; }
+      }
+    }
     const rev = Object.keys(writes).length ? store.write(writes) : store.rev();
-    for (const r of store.stateSince(base)) { if (r.key in changes) continue; const v = scopeValue(r.key, JSON.parse(r.json), user); if (v !== undefined) changed[r.key] = v; }
+    const get = reader();
+    for (const [k, v] of Object.entries(viewOf(store.stateSince(base).map(r => r.key), get, user))) if (!(k in changes)) changed[k] = v;
+    if (refused.length) { // keys this user may not write: send back what the server has, so the app shows the truth
+      const now = viewOf(store.stateAll().map(r => r.key), get, user, true);
+      for (const k of refused) if (k in now && !deepEqual(now[k], changes[k])) changed[k] = now[k];
+    }
     return json(res, 200, { rev, changed });
   }
 

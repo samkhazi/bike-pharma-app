@@ -42,9 +42,9 @@ ok(staffPw.length === 10, 'admin: staff login created with a one-time password (
 await B.waitForTimeout(800);
 const adminState = await B.request.get(BASE + '/api/sync?since=0').then(r => r.json());
 ok(adminState.changed.accounts && adminState.changed.accounts['priya@test.in'] && adminState.changed.accounts['priya@test.in'].role === 'billing', 'admin: staff account synced to the server');
-await B.evaluate(() => { S.ui.ns = { name: 'Ravi Mech', login: '9008948080', role: 'Mechanic' }; closeSheet(); go('newstaff'); createStaff(); }); await B.waitForTimeout(800);
-ok(await B.evaluate(() => DB.accounts['9008948080'] && DB.accounts['9008948080'].role === 'mechanic' && !document.querySelector('.sheet .kv b')), 'admin: mechanic login created (OTP, no password)');
-await B.evaluate(() => closeSheet());
+await B.evaluate(() => { closeSheet(); S.ui.ns = null; go('newstaff'); }); await B.waitForTimeout(300);
+ok(await B.evaluate(() => { const t = document.querySelector('#vp .screen:last-child').innerText; return !/\bMechanic\b(?! logins are made)/.test(t.replace(/Mechanic logins are made from their first bill\./, '')) && /first bill/.test(t); }), 'admin: New staff login has staff roles only (mechanics come from their first bill)');
+await B.evaluate(() => back());
 
 const cC = await b.newContext({ viewport: { width: 420, height: 860 } }); const C = await page(cC);
 await open(C); await C.fill('#loginId', 'priya@test.in'); await C.evaluate(() => sendOtp()); await C.waitForTimeout(500);
@@ -58,6 +58,38 @@ const rd = await C.request.get(BASE + '/api/files/read?path=catalogues/test/a.bi
 ok(rd.status() === 200 && buf.length === 5 && buf[0] === 10 && buf[4] === 14 && rd.headers()['x-file-size'] === '256', 'staff: files read with offset/length works');
 ok(await C.evaluate(async () => { const fs = await claude.use('files'); const r = await fs.read('catalogues/test/a.bin', { offset: 0, length: 3 }); return r.bytes.length === 3 && r.bytes[2] === 2; }), 'staff: in-app files shim reads through the server');
 
+// ---- billing: a new mechanic's first bill makes their mechanic login (Sam 2026-10-10)
+const newMechBill = (p, nm, pm) => p.evaluate(([nm, pm]) => { tab('invoice'); S.ui.inv = { party: 'mech', mc: 'new', nm, items: { p1: 1, p2: 2 }, pm, bc: '', bcErr: '' }; refresh(); const tot = P('p1').mp + 2 * P('p2').mp; genInvoice(tot); return { tot, sheet: (document.querySelector('.sheet') || {}).innerText || '' }; }, [nm, pm]);
+ok(await C.evaluate(() => { tab('invoice'); S.ui.inv = { party: 'mech', mc: 'new', items: {}, pm: 'Credit', bc: '', bcErr: '' }; refresh(); return !!document.getElementById('nm-mob') && !!document.getElementById('nm-shop') && /first bill makes their mechanic login/.test(document.querySelector('#vp .screen:last-child').innerText); }), 'billing: Mechanic > New mechanic shows the details form');
+ok(await C.evaluate(() => { S.ui.inv.items = { p1: 1 }; S.ui.inv.nm = { mob: '12345', name: '', shop: '', area: '', gst: '' }; genInvoice(P('p1').mp); return !document.querySelector('.sheet') && DB.bills.every(b => b.mob !== '12345'); }), 'billing: a wrong mobile number stops the bill');
+await C.evaluate(() => { S.ui.inv = null; });
+const nb = await newMechBill(C, { mob: '9008948080', name: 'Ravi Mech', shop: 'Ravi Test Garage', area: 'Rajajinagar', gst: '29abcde1234f1z5' }, 'Credit');
+ok(/Mechanic login created/.test(nb.sheet) && /BP-MECH-2001/.test(nb.sheet), 'billing: invoice made and the sheet says the mechanic login was created (BP-MECH-2001)');
+await C.evaluate(() => closeSheet()); await C.waitForTimeout(1500);
+const sv1 = await B.request.get(BASE + '/api/sync?since=0').then(r => r.json());
+const ma = (sv1.changed.accounts || {})['9008948080'] || {};
+ok(ma.role === 'mechanic' && ma.code === 'BP-MECH-2001' && ma.shop === 'Ravi Test Garage' && ma.area === 'Rajajinagar' && ma.gst === '29ABCDE1234F1Z5' && ma.status === 'active', 'server: mechanic account made from the bill ' + JSON.stringify(ma));
+ok((sv1.changed.omech || {})['BP-MECH-2001'] && sv1.changed.omech['BP-MECH-2001'][0].amt === nb.tot, 'server: credit bill added to that mechanic\'s outstanding');
+ok(await C.evaluate(() => realMechs().some(m => m.code === 'BP-MECH-2001' && m.mob === '9008948080')), 'billing: the new mechanic is now in the billing list');
+const nb2 = await newMechBill(C, { mob: '9008948080', name: 'Dup', shop: 'Dup Garage', area: 'X', gst: '' }, 'Cash');
+ok(!/Mechanic login created/.test(nb2.sheet), 'billing: same number again goes to the existing mechanic (no second login)');
+await C.evaluate(() => closeSheet()); await C.waitForTimeout(1200);
+const sv2 = await B.request.get(BASE + '/api/sync?since=0').then(r => r.json());
+ok(sv2.changed.accounts['9008948080'].shop === 'Ravi Test Garage' && sv2.changed.bills.filter(b => b.kind === 'mech' && b.mob === '9008948080').every(b => b.p === 'BP-MECH-2001'), 'server: second bill kept on the same mechanic + code');
+ok(await C.evaluate(() => { const d = invData(DB.bills.find(b => b.mob === '9008948080' && b.md).id); return d.gst === '29ABCDE1234F1Z5' && d.addr === 'Rajajinagar' && d.mob === '9008948080' && d.code === 'BP-MECH-2001'; }), 'billing: invoice shows the mechanic\'s own GSTIN, area, mobile and code');
+// two devices at once: this app picks a code another device already used; the server gives the next code and moves the credit row
+const race = await C.evaluate(() => { const o = window.nextMechCode; window.nextMechCode = () => 'BP-MECH-2001'; tab('invoice'); S.ui.inv = { party: 'mech', mc: 'new', nm: { mob: '9008948081', name: 'Race Mech', shop: 'Race Garage', area: 'Vijayanagar', gst: '' }, items: { p1: 1 }, pm: 'Credit', bc: '', bcErr: '' }; refresh(); genInvoice(P('p1').mp); window.nextMechCode = o; const id = DB.bills[0].id; try { closeSheet(); } catch (e) {} return id; });
+await C.waitForTimeout(1500);
+const sv4 = await B.request.get(BASE + '/api/sync?since=0').then(r => r.json());
+const rc = (sv4.changed.accounts['9008948081'] || {}).code;
+ok(rc && rc !== 'BP-MECH-2001' && sv4.changed.bills.find(b => b.id === race).p === rc && !(sv4.changed.omech['BP-MECH-2001'] || []).some(r => r.id === race) && (sv4.changed.omech[rc] || []).some(r => r.id === race), 'server: a code already taken gets the next one, and the credit row moves with it (' + rc + ')');
+ok(await C.evaluate(([id, rc]) => DB.bills.find(b => b.id === id).p === rc && !(DB.omech['BP-MECH-2001'] || []).some(r => r.id === id), [race, rc]), 'billing app gets the corrected code back');
+// a billing login cannot change who is admin
+await C.evaluate(() => { DB.accounts['priya@test.in'] = { ...DB.accounts['priya@test.in'], role: 'admin', label: 'Admin' }; save(); }); await C.waitForTimeout(1500);
+const sv3 = await B.request.get(BASE + '/api/sync?since=0').then(r => r.json());
+ok(sv3.changed.accounts['priya@test.in'].role === 'billing', 'security: billing staff cannot make themselves admin (server keeps billing)');
+ok(await C.evaluate(() => DB.accounts['priya@test.in'].role === 'billing'), 'security: the refused change is undone in the billing app too');
+
 // ---- mechanic: phone + OTP
 const cM = await b.newContext({ viewport: { width: 420, height: 860 } }); const M = await page(cM);
 await open(M); await M.fill('#loginId', '9008948080'); await M.evaluate(() => sendOtp()); await M.waitForTimeout(500);
@@ -65,6 +97,27 @@ ok(await screen(M) === 'otp', 'mechanic: known number goes straight to OTP');
 await typeOtp(M, '123456'); ok(await M.evaluate(() => S.user && S.user.role === 'mechanic'), 'mechanic: OTP login works');
 const mv = await M.request.get(BASE + '/api/sync?since=0').then(r => r.json());
 ok(Array.isArray(mv.changed.wl) && !('audit' in mv.changed) && !('grns' in mv.changed) && Object.keys(mv.changed.accounts).join() === '9008948080', 'mechanic: server sends wallet, no audit/GRN/staff data');
+ok(mv.changed.bills.length === 2 && mv.changed.bills.every(b => b.mob === '9008948080') && !('omech' in mv.changed) && !('orec' in mv.changed), 'mechanic: sees only own 2 bills, no other mechanics\' dues ' + mv.changed.bills.map(b => b.id + ':' + b.p).join(','));
+ok(mv.changed.minv.length === 2 && mv.changed.minv.some(v => v.amt === nb.tot && v.paid === 0 && v.due) && mv.changed.cl.length === 1 && mv.changed.cl[0].buy === nb.tot, 'mechanic: own invoices + credit ledger worked out from the shop\'s bills');
+await M.evaluate(() => { const b = document.querySelector('#vp .btn'); if (cur().s === 'roleok') reset(HOME[S.user.role]); }); await M.waitForTimeout(500);
+const mh = await M.evaluate(() => ({ s: cur().s, t: document.querySelector('#vp .screen:last-child').innerText }));
+ok(mh.s === 'mhome' && /Ravi Test Garage/.test(mh.t) && /BP-MECH-2001/.test(mh.t) && !/Ravi Kumar Auto Works|BP-MECH-1025/.test(mh.t), 'mechanic: home shows own garage + code, no sample mechanic');
+ok(await M.evaluate(() => outstanding() > 0 && mechDue(myCode()) === outstanding() && !creditBlocked(myCode())), 'mechanic: outstanding from own credit bill');
+await M.evaluate(() => { tab('mshop'); go('mproduct', { id: 'p1' }); }); await M.waitForTimeout(400);
+await M.evaluate(() => mBuy('p1', 3, 3 * P('p1').mp, 0)); await M.waitForTimeout(300);
+ok(await M.evaluate(() => /Order from Bike Pharma/.test((document.querySelector('.sheet') || {}).innerText || '') && DB.minv.length === 2), 'mechanic: buying in the app sends an order to the shop, no made-up invoice');
+await M.evaluate(() => { closeSheet(); S.ui.jc = { cust: 'Kiran', ph: '9900223311', bike: 'Pulsar', parts: [{ pid: 'p1', q: 1 }], labour: 300, issues: ['Oil change'] }; go('jobcard'); jcSave(); }); await M.waitForTimeout(1500);
+ok(await M.evaluate(() => DB.jobs.length === 1 && DB.minv.length === 2), 'mechanic: job card saved, parts not billed by the app');
+const mv2 = await M.request.get(BASE + '/api/sync?since=0').then(r => r.json());
+ok(mv2.changed.jobs.length === 1 && mv2.changed.jobs[0].cust === 'Kiran', 'mechanic: job card stored on the server for this mechanic');
+const adm2 = await B.request.get(BASE + '/api/sync?since=0').then(r => r.json());
+ok(!('mjobs' in adm2.changed) && !(adm2.changed.jobs || []).some(j => j.cust === 'Kiran'), 'mechanic job cards stay private (not sent to staff)');
+await M.evaluate(() => { DB.minv.unshift({ id: 'FAKE-1', d: today(), amt: 1, paid: 1 }); DB.cl.push({ d: today(), ref: 'fake', pay: 99999 }); save(); }); await M.waitForTimeout(1500);
+ok(await M.evaluate(() => !DB.minv.some(v => v.id === 'FAKE-1') && !DB.cl.some(c => c.ref === 'fake')), 'security: a mechanic cannot write own invoices / payments (server undoes it)');
+// the shop receives a payment: the mechanic's ledger shows it
+await C.evaluate(() => { payOther('BP-MECH-2001', 100, 'UPI'); closeSheet(); }); await C.waitForTimeout(1500);
+const mv3 = await M.request.get(BASE + '/api/sync?since=' + mv2.rev).then(r => r.json());
+ok(mv3.changed.cl && mv3.changed.cl.some(c => c.pay === 100) && mv3.changed.minv.some(v => v.paid === 100), 'mechanic: payment recorded by the shop shows in their credit ledger');
 
 // ---- concurrent edits from admin and staff merge instead of overwriting
 await B.evaluate(() => { DB.stock.p1 = 99; DB.tasks.unshift({ id: 'T-9001', type: 'count', ids: [], to: 'x', due: 'today', st: 'open' }); save(); });

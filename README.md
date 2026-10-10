@@ -26,10 +26,14 @@ bash /home/bikepharma/htdocs/bikepharma.com/update.sh
 Ye GitHub se latest code leta hai, server restart karta hai aur `check.sh` se site check karta hai.
 `!!` wali line aaye to wo line Claude ko bhejo.
 
-## 3. Staff aur mechanic logins
-App me Admin > Users > **New staff login**: naam + email/mobile + role (Billing / Sales / Manager / Inventory / Mechanic).
-- Staff ko ek password milta hai (sirf ek baar dikhta hai; "Set a new password" se naya bana sakte ho).
-- Mechanic apne mobile number + OTP se login karta hai. Customer khud register karta hai (mobile + OTP + naam).
+## 3. Logins (customer, mechanic, staff)
+- **Customer**: login page pe khud register / login karta hai (mobile + OTP + naam). Login page pe sirf yahi hai.
+- **Mechanic**: khud signup nahi kar sakta. Jab Bike Pharma use pehla bill banata hai tab login banta hai:
+  Billing login me Invoice > **Mechanic** > "+ New mechanic (first bill)" > mobile, naam, garage, area, GSTIN (agar hai).
+  Bill bante hi wo number mechanic portal me OTP se login karta hai aur sirf apne bills, credit aur invoices dekhta hai.
+  Admin > Users > Mechanics me login band / chalu kar sakte ho.
+- **Staff**: Admin > Users > **New staff login**: naam + email/mobile + role (Billing / Sales / Manager / Inventory).
+  Staff ko ek password milta hai (sirf ek baar dikhta hai; "Set a new password" se naya bana sakte ho).
 - Terminal se: `node admin.mjs set-password staff@email.com`
 
 ## 4. OTP (SMS) — public site ke liye zaroori
@@ -63,6 +67,13 @@ curl http://127.0.0.1:3010/api/health
 Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 
 ## Badlav
+**Update 4 (10 Oct 2026)**
+- Login page pe ab sirf customer login / register. "Join as Customer" aur "Mechanic or staff?" hata diye.
+- Mechanic login sirf uske pehle bill se banta hai (point 3). Bill pe mechanic ka naam, garage, area, GSTIN aata hai.
+- Har mechanic ab sirf apna data dekhta hai (apne bills, credit, invoices); doosre mechanics ka kuch nahi.
+- Mechanic app se khud bill ya payment nahi bana sakta: order WhatsApp / counter pe jata hai, payment shop leta hai.
+- Staff login me ab Mechanic role nahi. Billing staff apna role badal ke admin nahi ban sakta.
+
 **Update 3 (10 Oct 2026)**
 - Landing page: "Back to website" button hata (browser Back se website pe aate ho), footer se UPI/Cash/Card hata.
 - Phone (360px) aur 1024px screens pe header ke icons ab screen ke andar; 1100px se chhoti screen pe menu button.

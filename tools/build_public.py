@@ -54,20 +54,15 @@ sub1("onclick=\"S.ui.otpSent=Date.now();toast('New OTP sent');refresh()\">Resend
 a2, n = re.subn(r"<details(?:(?!</details>).)*?Demo logins(?:(?!</details>).)*?</details>", "", a, flags=re.S)
 assert n == 1, n; a = a2; n_patch += 1
 sub1("<p>Clickable prototype. Log in with a registered mobile number or email; the OTP for every account is <b style=\"color:#fff\">123456</b>. Each ID opens only its own role.</p>", "")
-# 5. staff logins get a password, mechanics can be created too
-sub1("const ROLEKEY={Billing:'billing',Sales:'sales',Manager:'manager',Inventory:'inventory'};",
-     "const ROLEKEY={Billing:'billing',Sales:'sales',Manager:'manager',Inventory:'inventory',Mechanic:'mechanic'};")
-sub1("const code={Billing:'BIL',Sales:'SAL',Manager:'MGR',Inventory:'INV'}[r];", "const code={Billing:'BIL',Sales:'SAL',Manager:'MGR',Inventory:'INV',Mechanic:'MEC'}[r];")
+# 5. staff logins get a password; mechanics are never made here (Sam 2026-10-10: their login comes from their first bill)
 sub1("<p class=\"cap\">Staff can’t sign up themselves. The login you create here works right away with OTP.</p>",
-     "<p class=\"cap\">Staff and mechanics can’t sign up themselves. Staff get a password here (shown once); mechanics log in with their mobile number and the OTP sent by SMS.</p>")
-sub1("${['Billing','Sales','Manager','Inventory'].map(x=>`<button class=\"opt ${f.role===x?'on':''}\" onclick=\"S.ui.ns.role='${x}';refresh()\">",
-     "${['Billing','Sales','Manager','Inventory','Mechanic'].map(x=>`<button class=\"opt ${f.role===x?'on':''}\" onclick=\"S.ui.ns.role='${x}';refresh()\">")
+     "<p class=\"cap\">Staff can’t sign up themselves. Each staff login gets a password here (shown once). Mechanic logins are made from their first bill.</p>")
 sub1(" audit('Staff login created · '+LABEL[role],sid,'—',id);save();S.ui.ns=null;S.ui.nsErr=null;",
-     " audit('Staff login created · '+LABEL[role],sid,'—',id);save();S.ui.ns=null;S.ui.nsErr=null;const pw=(role!=='mechanic'||id.includes('@'))?srvNewPw(id):null;")
+     " audit('Staff login created · '+LABEL[role],sid,'—',id);save();S.ui.ns=null;S.ui.nsErr=null;const pw=srvNewPw(id);")
 sub1("<div class=\"kv\"><span>Login</span><span>${esc(id)}</span></div></div><p class=\"cap\">They can log in now with this ${id.includes('@')?'email':'number'} and OTP 123456.</p>",
-     "<div class=\"kv\"><span>Login</span><span>${esc(id)}</span></div>${pw?`<div class=\"kv\"><span>Password</span><span><b>${pw}</b></span></div></div><p class=\"cap\">Give them this ${id.includes('@')?'email':'number'} and password. The password is shown only once; you can set a new one any time from their profile.</p>`:`</div><p class=\"cap\">They log in with this mobile number and the OTP sent to it.</p>`}")
+     "<div class=\"kv\"><span>Login</span><span>${esc(id)}</span></div><div class=\"kv\"><span>Password</span><span><b>${pw}</b></span></div></div><p class=\"cap\">Give them this ${id.includes('@')?'email':'number'} and password. The password is shown only once; you can set a new one any time from their profile.</p>")
 sub1("<button class=\"btn line\" onclick=\"staffRole('${k}')\">Save role</button></div>`);}",
-     "<button class=\"btn line\" onclick=\"staffRole('${k}')\">Save role</button></div>${(a.role!=='mechanic'||k.includes('@'))?`<button class=\"btn line\" onclick=\"staffPw('${k}')\">Set a new password</button>`:''}`);}")
+     "<button class=\"btn line\" onclick=\"staffRole('${k}')\">Save role</button></div><button class=\"btn line\" onclick=\"staffPw('${k}')\">Set a new password</button>`);}")
 # 6. logout tells the server
 sub1("function logout(all){S.user=null;S.uid=null;try{localStorage.removeItem('bp-user');}catch(e){}",
      "function logout(all){srvLogout();S.user=null;S.uid=null;try{localStorage.removeItem('bp-user');}catch(e){}")
@@ -82,6 +77,23 @@ sub1("th();try{new parent.MutationObserver(th).observe(parent.document.documentE
      "th();try{if(parent!==window)new parent.MutationObserver(th).observe(parent.document.documentElement,{attributes:true,attributeFilter:['data-theme']});")
 # 7c. catalogue files are staff-only on the server: do not even ask for them as a customer/mechanic
 sub1("function catFetch(url,e){const ac=", "function catFetch(url,e){if(!srvStaff())return Promise.reject(new Error('staff only'));const ac=")
+# 9. mechanics: Bike Pharma bills them at the counter, so their app never makes its own invoice, payment or reward;
+#    the server makes a new mechanic's login from the bill itself
+sub1(r"function mechLogin\(mob,m\)\{[^\n]*\}\n", "function mechLogin(){/* the server makes the mechanic login from the bill */}\n", regex=True)
+sub1("function mBuy(id,q,tot0,rew){", "function mBuy(id,q,tot0,rew){if(S.user&&S.user.role==='mechanic')return mOrder([[P(id),q]],tot0);")
+sub1("function mReorder(mode,tot){", "function mReorder(mode,tot){if(S.user&&S.user.role==='mechanic')return mOrder(Object.entries(S.ui.rq2||{}).filter(([,q])=>q>0).map(([k,q])=>[P(k),q]),tot);")
+sub1("function payOut(amt,pm,by){", "function payOut(amt,pm,by){if(!by&&S.user&&S.user.role==='mechanic')return mPayInfo(amt);")
+sub1("if(j.parts.length){const inv='INV-0'+(21+DB.minv.length);DB.minv.unshift({id:inv,d:today(),amt:cost,paid:cost});DB.wl.push({d:today(),t:'Purchase reward · '+inv,cr:Math.round(cost*0.03)});j.parts.forEach(x=>DB.stock[x.pid]=Math.max(0,DB.stock[x.pid]-x.q));}", "")
+sub1("${j.parts.length?'Parts ordered from Bike Pharma. ':''}", "${j.parts.length?'Order the parts from Bike Pharma at the counter or on WhatsApp. ':''}")
+sub1("<span class=\"grow\">Parts will be ordered from Bike Pharma at your mechanic price (${inr(cost)}).</span>", "<span class=\"grow\">Order these parts from Bike Pharma at your mechanic price (${inr(cost)}).</span>")
+sub1("const mCusts=()=>DB.mcust||(DB.mcust=MCUST_SEED.map(x=>({...x})));", "const mCusts=()=>DB.mcust||(DB.mcust=[]);")
+sub1(r" <div class=\"row\" style=\"background:var\(--g-soft\);border-radius:14px;padding:12px;color:var\(--g\)\">\$\{ic\('wallet','s18'\)\}<span class=\"cap grow\" style=\"color:var\(--g\)\">Earn \$\{inr\(rew\)\} wallet reward on this purchase</span></div>\n.*?<b>Buy on credit</b>[^\n]*\n",
+     " <div class=\"row cap\" style=\"background:var(--blue-soft);border-radius:12px;padding:12px;gap:8px\">${ic('receipt','s18')}<span class=\"grow\" style=\"color:var(--ink7)\">Bike Pharma bills your order at the counter: pay then or take it on credit. Outstanding now ${inr(outstanding())}.</span></div>${creditBlocked(myCode())?blockNote(myCode(),0):''}\n", regex=True)
+sub1("<button class=\"btn\" onclick=\"mBuy('${x.id}',${q},${tot},${rew})\" ${x.stock?'':'disabled'}>${mode==='credit'?'Buy on credit':'Pay '+inr(tot-use)}</button>",
+     "<button class=\"btn\" onclick=\"mBuy('${x.id}',${q},${tot},${rew})\" ${x.stock?'':'disabled'}>Order ${q} pcs</button>")
+sub1("<div class=\"kv\" style=\"color:var(--g)\"><span>Wallet reward (3%)</span><span>+ ${inr(tot*0.03)}</span></div>", "")
+sub1("<div class=\"foot\"><div class=\"grid2\" style=\"width:100%\"><button class=\"btn line\" ${tot?'':'disabled'} onclick=\"mReorder('now',${tot})\">Pay now</button><button class=\"btn\" ${tot&&!blocked?'':'disabled'} onclick=\"mReorder('credit',${tot})\">Buy on credit</button></div></div>",
+     "<div class=\"foot\"><button class=\"btn\" ${tot?'':'disabled'} onclick=\"mReorder('order',${tot})\">Order these parts</button></div>")
 # 8. server layer: API helper, shared DB sync, password screen, files shim
 SRVJS = r"""
 /* ===== bikepharma.com server mode: login via /api, shop database shared through /api/sync ===== */
@@ -112,6 +124,11 @@ function catOffScreen(){return bar('Find Part')+`<div class="scroll"><div class=
 function srvLogin(r){S.ui.otpErr=null;S.ui.pwErr=null;srvSetDb(r.db,r.rev);try{CAT_ALL.forEach(e=>{if(e.st===3)e.st=0;});}catch(e){}S.uid=r.user.id;S.user=ACC()[S.uid]||r.user;S.ui.signup=null;S.ui.pending=null;S.stack=[{s:'roleok',p:{}}];render('push');}
 function srvLogout(){clearTimeout(SRV.t);const ch=srvDiff();const done=()=>api('POST','/api/logout').then(r=>{if(r&&r.db)srvSetDb(r.db,r.rev);}).catch(()=>{});if(Object.keys(ch).length&&S.user){SRV.busy=false;srvPush();setTimeout(done,600);}else done();}
 function resendOtp(){api('POST','/api/otp',{id:S.ui.pending}).then(r=>{if(r.error)return toast(r.error);S.ui.otpSent=Date.now();S.ui.otpTries=0;S.ui.otpErr=null;toast('New OTP sent');refresh();}).catch(()=>toast('Could not reach the server'));}
+/* mechanics order and pay at the Bike Pharma counter (or on WhatsApp); the shop's bill then shows in their app */
+function mOrder(lines,tot){lines=lines.filter(([x,q])=>x&&q>0);if(!lines.length){toast('Choose the parts first');return;}window._mOrd=`Bike Pharma order · ${myShop()} (${myCode()})\n`+lines.map(([x,q])=>`${x.name} · ${x.pn} × ${q}`).join('\n')+`\nAbout ${inr(tot)} at mechanic price`;
+ sheet(`<div class="tile y round" style="width:64px;height:64px">${ic('cart','s28')}</div><h3 class="h2">Order from Bike Pharma</h3><p class="cap">Send this order on WhatsApp or give it at the counter. Your bill, credit and invoice show here as soon as Bike Pharma bills it.</p><div class="card">${lines.map(([x,q])=>`<div class="kv"><span>${esc(x.name)} × ${q}</span><span>${inr(x.mp*q)}</span></div>`).join('')}<div class="hr"></div><div class="kv big"><span>About</span><span>${inr(tot)}</span></div></div><button class="btn" onclick="mOrderWa()">${ic('chat','s18')} Send on WhatsApp</button><button class="link" style="align-self:center" onclick="closeSheet()">Close</button>`);}
+function mOrderWa(){const p=telOf(SHOP.ph).replace(/\D/g,'');if(p.length<10){toastWarn('The shop phone number will be added soon. Give this order at the counter.');return;}extOpen('https://wa.me/'+(p.length===10?'91'+p:p)+'?text='+encodeURIComponent(window._mOrd||''),'Opening WhatsApp…');}
+function mPayInfo(amt){sheet(`<div class="tile r round" style="width:64px;height:64px">${ic('rupee','s28')}</div><h3 class="h2">Pay at Bike Pharma</h3><p class="cap">Pay ${inr(amt)} at the Bike Pharma counter, or by UPI and show it at the counter. Bike Pharma records it and your outstanding updates here.</p><div class="card"><div class="kv"><span>Shop UPI</span><span>${esc(SHOP.upi)}</span></div><div class="kv"><span>Your code</span><span>${myCode()}</span></div></div><button class="btn" onclick="closeSheet()">OK</button>`);}
 function genPw(){const A='abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';const b=new Uint8Array(10);crypto.getRandomValues(b);return Array.from(b,x=>A[x%A.length]).join('');}
 function srvNewPw(id){const pw=genPw();api('POST','/api/users/password',{id,password:pw}).then(r=>{if(r.error)toast('Password not saved · '+r.error);}).catch(()=>toast('Password not saved · server unreachable'));return pw;}
 function staffPw(k){const a=ACC()[k];const pw=srvNewPw(k);closeSheet();sheet(`${okBadge(72)}<h3 class="h2">New password set</h3><div class="card"><div class="kv"><span>Name</span><span>${esc(a.name)}</span></div><div class="kv"><span>Login</span><span>${esc(k)}</span></div><div class="kv"><span>Password</span><span><b>${pw}</b></span></div></div><p class="cap">Give this to ${esc(a.name)}. Their old password stops working now and they are logged out everywhere.</p><button class="btn" onclick="closeSheet()">Done</button>`);}

@@ -184,7 +184,7 @@ sub1("/* ---------- boot ---------- */\nasync function start(){", NAVJS + "/* --
 # byte for byte out of the brand's own zips, which Admin uploads unchanged from Catalogue files. "jin jin brands ke MRP he o us us parts me
 # daaldo search me": the MRP of every part that has one shows on the search cards, the section table and the part page.
 CAT_IN = [os.path.join(SP, 'ktm', 'out', f) for f in ('ktm.json', 'ktm-dg.json', 'husqvarna.json', 'husqvarna-dg.json')]
-CAT_IN += [os.path.join(SP, 'brands', 'out', s + x) for s in ('hero', 'royal-enfield', 'yamaha', 'honda', 'tvs') for x in ('.json', '-dg.json')]
+CAT_IN += [os.path.join(SP, 'brands', 'out', s + x) for s in ('hero', 'royal-enfield', 'yamaha', 'honda', 'tvs', 'bajaj') for x in ('.json', '-dg.json')]
 _bv, _cc = {}, {}
 for f in CAT_IN:
     if f.endswith('-dg.json'): continue
@@ -202,6 +202,49 @@ Object.assign(BRANDS_V,""" + json.dumps(_bv, ensure_ascii=False, separators=(','
 {const cc=""" + json.dumps(_cc, ensure_ascii=False, separators=(',', ':')) + """;for(const m in cc)if(!(m in MODEL_CC))MODEL_CC[m]=cc[m];}
 """
 sub1("/* ---------- boot ---------- */\nasync function start(){", CATJS + "/* ---------- boot ---------- */\nasync function start(){")
+# Bajaj (Sam 2026-10-11): its diagrams are the pages of Bajaj's own PDF books (bajaj_spc_pdfs.zip, stored unchanged). A 'pdf:' link names the
+# book's bytes in the zip, the page and the diagram's part of it; pdf.js (vendor/pdfjs) reads just what that page needs from the server and draws it.
+PDFJS = r"""
+/* ---------- Bajaj diagrams: a page of Bajaj's own PDF book, drawn here ----------
+   'pdf:<zip>:<offset>:<length>:<page>:<x0>,<y0>,<x1>,<y1>' = where the book's PDF sits in the zip (stored as is), the page, and the diagram's part of
+   the page (fractions of the page as shown). pdf.js (Mozilla's PDF reader, vendor/pdfjs) reads only the parts of the PDF that page needs, straight out
+   of the zip on the server, and draws that part at 5 pixels per point (the books' own pictures are at most ~4 per point), kept as PNG: no quality lost. */
+let PDF_LIB=null,PDF_W=null,PDF_Q=Promise.resolve();const PDF_DOCS=new Map();
+const pdfLib=()=>PDF_LIB||(PDF_LIB=new Promise((ok,no)=>{const go=L=>{L.GlobalWorkerOptions.workerSrc=new URL('vendor/pdfjs/pdf.worker.min.js',document.baseURI).href;ok(L);};
+ if(window.pdfjsLib)return go(window.pdfjsLib);const s=document.createElement('script');s.src='vendor/pdfjs/pdf.min.js';
+ s.onload=()=>window.pdfjsLib?go(window.pdfjsLib):no({code:'pdfjs'});s.onerror=()=>{PDF_LIB=null;no({code:'pdfjs'});};document.head.appendChild(s);}));
+/* one open book per PDF (the 3 last used stay open) */
+const pdfDoc=async(fs,path,off,len)=>{const k=path+':'+off;let e=PDF_DOCS.get(k);if(e){PDF_DOCS.delete(k);PDF_DOCS.set(k,e);return e;}
+ const L=await pdfLib();if(!PDF_W)PDF_W=new L.PDFWorker();
+ let failRej;const failed=new Promise((_,rj)=>failRej=rj);failed.catch(()=>{});
+ const tr=new L.PDFDataRangeTransport(len,null);
+ const rd=(b,n,t=0)=>fs.read(path,{offset:off+b,length:n}).then(r=>r.bytes,err=>{if(t<1)return new Promise(w=>setTimeout(w,800)).then(()=>rd(b,n,t+1));throw err;});
+ tr.requestDataRange=(b,en)=>{rd(b,en-b).then(x=>{if(!x||x.length!==en-b)throw{code:'not_found'};tr.onDataRange(b,x);}).catch(err=>e.fail(err));};
+ const task=L.getDocument({range:tr,length:len,rangeChunkSize:262144,disableAutoFetch:true,disableStream:true,isEvalSupported:false,worker:PDF_W,
+  standardFontDataUrl:new URL('vendor/pdfjs/standard_fonts/',document.baseURI).href});
+ e={doc:task.promise,busy:0,failed,fail:err=>{failRej(err||{code:'unavailable'});if(PDF_DOCS.get(k)===e)PDF_DOCS.delete(k);try{task.destroy();}catch(x){}}};
+ task.promise.catch(err=>e.fail(err));PDF_DOCS.set(k,e);
+ for(const [k2,e2] of PDF_DOCS){if(PDF_DOCS.size<=3)break;if(e2!==e&&!e2.busy){PDF_DOCS.delete(k2);e2.doc.then(d=>d.destroy(),()=>{});}}
+ return e;};
+/* one page at a time (big pictures): the part of the page that is the diagram -> PNG */
+const catPdf=u=>{if(CAT_PFURL[u])return CAT_PFURL[u];const m=/^pdf:(.+):(\d+):(\d+):(\d+):([\d.]+),([\d.]+),([\d.]+),([\d.]+)$/.exec(u);
+ const p=new Promise((ok,no)=>{PDF_Q=PDF_Q.then(async()=>{let e=null,tm=null;try{if(!m)throw{code:'not_found'};const fs=await catFs();if(!fs)throw{code:'unavailable'};
+   const path=await catPfPath(fs,m[1]);e=await pdfDoc(fs,path,+m[2],+m[3]);e.busy++;
+   const T=new Promise((_,rj)=>{tm=setTimeout(()=>rj({code:'timeout'}),90000);});const race=x=>Promise.race([x,e.failed,T]);
+   const doc=await race(e.doc);const pg=await race(doc.getPage(+m[4]));
+   const v1=pg.getViewport({scale:1}),x0=+m[5],y0=+m[6],x1=+m[7],y1=+m[8],cw=(x1-x0)*v1.width,ch=(y1-y0)*v1.height;
+   const sc=Math.min(5,Math.sqrt(14e6/(cw*ch))),vp=pg.getViewport({scale:sc,offsetX:-x0*v1.width*sc,offsetY:-y0*v1.height*sc});
+   const cv=document.createElement('canvas');cv.width=Math.max(1,Math.round(cw*sc));cv.height=Math.max(1,Math.round(ch*sc));const cx=cv.getContext('2d');
+   cx.fillStyle='#fff';cx.fillRect(0,0,cv.width,cv.height);
+   const job=pg.render({canvasContext:cx,viewport:vp});try{await race(job.promise);}catch(err){try{job.cancel();}catch(x){}throw err;}
+   const b=await new Promise(r=>cv.toBlob(r,'image/png'));cv.width=cv.height=0;try{pg.cleanup();}catch(x){}if(!b)throw{code:'unavailable'};
+   CAT_PFOK=true;ok(URL.createObjectURL(b));}
+  catch(err){if(err&&err.code==='timeout'&&e)e.fail(err);if(CAT_PFOK!==true&&err&&['not_granted','capability_disabled','capability_removed'].includes(err.code))CAT_PFOK=false;no(err);}
+  finally{clearTimeout(tm);if(e)e.busy--;}});});
+ CAT_PFURL[u]=p;p.catch(()=>{delete CAT_PFURL[u];});return p;};
+"""
+sub1("const catPf=u=>{if(CAT_PFURL[u])return CAT_PFURL[u];const m=/^p([fa]):(.+):(\\d+):(\\d+)$/.exec(u);",
+     PDFJS + "const catPf=u=>{if(CAT_PFURL[u])return CAT_PFURL[u];if(u.startsWith('pdf:'))return catPdf(u);const m=/^p([fa]):(.+):(\\d+):(\\d+)$/.exec(u);")
 # part photos given only as zip byte ranges (phf + phz, no photo pages)
 sub1("const catPh=(d,pn)=>{const x=d.ph&&d.ph[pn];if(x==null)return null;",
      "const catPh=(d,pn)=>{const x=d.ph&&d.ph[pn];if(x==null){const f=!d.ph&&d.phf&&d.phf[pn];return f?{z:'pf:'+d.phz[f[0]]+':'+f[1]+':'+f[2],w:f[3],h:f[4]}:null;}")
@@ -227,7 +270,45 @@ a, k = nosample.apply(a); n_patch += k
 # real numbers on every dashboard, no demo mechanic / staff / branch names (tools/nosample2.py)
 import nosample2
 a, k = nosample2.apply(a); n_patch += k
-assert "123456" not in re.sub(r"KA0200123456|CAT_PNA='0123456789", "", a), "demo OTP text still present"
+# Sam 2026-10-11 08:01Z "admin page pe inventory add karne ka option hi nhi he": Admin's Inventory page, Stock in, real suppliers (tools/inventory.py)
+import inventory
+a, k = inventory.apply(a); n_patch += k
+# Any brand part number search opens only the brands whose numbers have the typed number's shape (CAT_PNR, catRoute). The table in the
+# app source was made from the old web files (re/edit_cat.py); make it again, the same way, from the brand files this build ships.
+import base64, collections, hashlib
+PN_AL = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+pn_pk = lambda v: re.sub(r'[^A-Z0-9]', '', str(v or '').upper())
+pn_shape = lambda k: ''.join(('d' if m[0].isdigit() else 'a') + str(len(m)) for m in re.findall(r'[A-Z]+|\d+', k))
+def pn_pb(vb, p, rem):
+    """catPb in Python: the base a colour or revision variant of the number shares"""
+    p = str(p or '').strip().upper(); k = pn_pk(p)
+    if not k: return ''
+    if vb == 'Honda' and re.fullmatch(r'[A-Z0-9]{5}-[A-Z0-9]{3}-[A-Z0-9]{5}', p): return k[:11]
+    if vb == 'Suzuki' and re.fullmatch(r'[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{3}', p): return k[:10]
+    if vb == 'Kawasaki' and re.fullmatch(r'[A-Z0-9]{5}-[A-Z0-9]{4}-[A-Z0-9]{1,4}', p): return k[:9]
+    if vb == 'Vespa' and 'Colour part' in str(rem or '') and len(k) >= 9: return k[:-2]
+    return ''
+PNR, PNR_OF = {}, []
+for f in CAT_IN:
+    if f.endswith('-dg.json'): continue
+    raw = open(f, 'rb').read(); d = json.loads(raw); vb = d['brand']
+    PNR_OF.append('%s %s' % (os.path.basename(f), hashlib.sha1(raw).hexdigest()[:10]))
+    cnt, firsts, bits = collections.Counter(), collections.defaultdict(set), bytearray(162)
+    for r in d['d']:
+        alts = [pn_pk(m.group(1)) for m in re.finditer(r'(?:Alternate|Probiking\)) no\. ([A-Z0-9][A-Z0-9-]{4,})', str(r[8] or ''))]
+        for j, k in enumerate([pn_pk(r[5]), pn_pb(vb, r[5], r[8])] + alts):
+            if not k: continue
+            if j != 1: cnt[pn_shape(k)] += 1; firsts[pn_shape(k)].add(k[:2])
+            for x, y in zip(k, k[1:]):
+                n = PN_AL.index(x) * 36 + PN_AL.index(y); bits[n >> 3] |= 1 << (n & 7)
+    PNR[vb] = [' '.join('%s:%d:%s' % (s, n, ''.join(sorted(firsts[s]))) for s, n in cnt.most_common()), base64.b64encode(bytes(bits)).decode()]
+_i = a.index('\nconst CAT_PNR={') + 1; _j = a.index('\n', _i)
+assert a[_j + 1:].startswith('const CAT_PNA='), 'CAT_PNR is not one line'
+a = a[:_i] + 'const CAT_PNR=' + json.dumps(PNR, separators=(',', ':')).replace('"', "'") + ';' + a[_j:]
+a, _n = re.subn(r'made by edit_cat\.py from these files: [^*]*\*/', 'made by tools/build_public.py from these files: ' + ', '.join(PNR_OF) + ' */', a)
+assert _n == 1, _n; n_patch += 1
+print('CAT_PNR:', ', '.join('%s %d shapes' % (vb, len(t.split())) for vb, (t, g) in PNR.items()))
+assert "123456" not in re.sub(r"KA0200123456|CAT_PNA='0123456789|\nconst CAT_PNR=[^\n]*", "", a), "demo OTP text still present"
 assert 'bp-db' not in a
 os.makedirs(OUT, exist_ok=True)
 open(os.path.join(OUT, 'app.html'), 'w', encoding='utf-8').write(a)

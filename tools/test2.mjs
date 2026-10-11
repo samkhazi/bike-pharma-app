@@ -43,9 +43,15 @@ await Sx.fill('#loginId', 'sam@bikepharma.com'); await Sx.evaluate(() => sendOtp
 ok(await Sx.evaluate(() => cur().s === 'pw'), 'admin: password screen');
 await Sx.fill('#pw1', 'Test@1234'); await Sx.evaluate(() => pwGo()); await Sx.waitForTimeout(800);
 ok(await Sx.evaluate(() => S.user && S.user.role === 'admin'), 'admin: logged in');
-ok(await Sx.evaluate(() => window.CAT_OFF === false && CAT_ALL.map(e => e.vb).sort().join() === 'Hero,Honda,Husqvarna,KTM,Royal Enfield,TVS,Yamaha'), 'admin: catalogue manifest = the 7 brands whose files are on the server');
+ok(await Sx.evaluate(() => window.CAT_OFF === false && CAT_ALL.map(e => e.vb).sort().join() === 'Bajaj,Hero,Honda,Husqvarna,KTM,Royal Enfield,TVS,Yamaha'), 'admin: catalogue manifest = the 8 brands whose files are on the server');
+// Any brand part number search opens a brand only when the typed number has the shape of that brand's numbers (catRoute): every brand's own numbers must route to it
+const route = await Sx.evaluate(async () => { const bad = []; let n = 0;
+  for (const e of CAT_ALL) { const d = await (await fetch(e.url)).json(); const step = Math.max(1, Math.floor(d.d.length / 400));
+    for (let i = 0; i < d.d.length; i += step) { const k = catPk(d.d[i][5]); if (k.length < 5) continue; n++; if (!catRoute(k).l.includes(e)) bad.push(e.vb + ' ' + k); } }
+  return { n, bad: bad.slice(0, 5), nb: bad.length }; });
+ok(route.n > 2500 && route.nb === 0, `Any brand part number search: ${route.n} sampled numbers of the 8 brands all route to their own brand ${route.nb ? JSON.stringify(route.bad) : ''}`);
 await Sx.evaluate(() => go('findpart')); await Sx.waitForTimeout(600);
-ok(await Sx.evaluate(() => cur().s === 'findpart' && /7 of \d+ brands in/.test(document.body.innerText) && document.body.innerText.includes('Catalogue coming soon')), 'admin: Find Part shows the 7 brands in, other brands coming soon');
+ok(await Sx.evaluate(() => cur().s === 'findpart' && /8 of \d+ brands in/.test(document.body.innerText) && document.body.innerText.includes('Catalogue coming soon')), 'admin: Find Part shows the 8 brands in, other brands coming soon');
 ok(await Sx.evaluate(() => !document.querySelector('a[href*="claude.ai"]')), 'admin: no claude.ai links on the screen');
 await Sx.screenshot({ path: '/tmp/claude-0/bptest/findpart-home.png' });
 await Sx.evaluate(() => go('usearch')); await Sx.waitForTimeout(400);

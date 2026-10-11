@@ -13,6 +13,7 @@ import { roleClass, viewOf, scopeValue, canWrite, merge3, applyOwn, applyMine, m
 import { otpConfig, makeOtp, deliverOtp } from './lib/sms.mjs';
 import { removeDemoData } from './lib/cleanup.mjs';
 import { photoAi, AI_VER } from './lib/photoai.mjs';
+import { billAi } from './lib/billai.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 export function loadEnv(file) {
@@ -94,13 +95,14 @@ async function api(req, res, url, user) {
   if (p === '/api/catup') return catUpload(req, res, url, user);
   if (p === '/api/photo/status') return photoStatus(req, res, url, user);
   if (p === '/api/photo') return photoUpload(req, res, user);
+  if (p === '/api/billread') return billRead(req, res, user);
   let body = {};
   if (m === 'POST') { try { const b = await readBody(req); body = b.length ? JSON.parse(b.toString('utf8')) : {}; } catch (e) { return json(res, 400, { error: 'Bad request body' }); } }
   const catList = () => { try { return fs.readdirSync(path.join(PUBLIC_DIR, 'cat')).filter(f => f.endsWith('.json')).sort(); } catch { return []; } };
   const cfg = () => ({ otpHint: OTP.mode === 'fixed' ? OTP.fixed : null, otpMode: OTP.mode, version: VERSION, cat: catList() });
   const full = u => ({ user: u ? u : null, db: viewOf(store.stateAll().map(r => r.key), reader(), u, true), rev: store.rev(), cfg: cfg() });
 
-  if (p === '/api/health' && m === 'GET') return json(res, 200, { ok: true, rev: store.rev(), sqlite: HAS_SQLITE, version: VERSION, photoAi: PHOTO_AI.summary() });
+  if (p === '/api/health' && m === 'GET') return json(res, 200, { ok: true, rev: store.rev(), sqlite: HAS_SQLITE, version: VERSION, photoAi: PHOTO_AI.summary(), billAi: BILL_AI.summary() });
   if (p === '/api/boot' && m === 'GET') { if (!user && cookies(req).bp_s) setSession(req, res, '', true); return json(res, 200, full(user)); }
 
   if (p === '/api/otp' && m === 'POST') {
@@ -371,6 +373,20 @@ async function photoUpload(req, res, user) {
   const h = name.slice(0, 32);
   PHOTO_AI.enqueue(h);
   return json(res, 200, { url: '/photos/' + h + '-c.jpg', orig: '/photos/' + name, size: b.length, ai: PHOTO_AI.status(h) });
+}
+// ---------- "Apna AI" bill reader (Sam 2026-10-11 20:10Z): a bill page in, its text out ----------
+// The phone sends the page it has cut out and straightened; ai/billread.mjs reads it in memory. Nothing is written to disk, nothing is kept.
+const BILL_AI = billAi({ root: ROOT, dataDir: DATA_DIR, env });
+const BILL_MAX = 12 * 1024 * 1024;
+async function billRead(req, res, user) {
+  if (req.method !== 'POST') { drain(req); return json(res, 405, { error: 'Method not allowed' }); }
+  if (roleClass(user) !== 'staff') { drain(req); return json(res, user ? 403 : 401, { error: user ? 'Only shop staff can read bills' : 'Please log in again' }); }
+  if (limited('bill:' + user.id, 400, 3600e3)) { drain(req); return json(res, 429, { error: 'Too many pages in one hour. Please wait a little.' }); }
+  if ((+req.headers['content-length'] || 0) > BILL_MAX) { drain(req); return json(res, 413, { error: 'This page is too big (12 MB max)' }); }
+  let b; try { b = await readBody(req, BILL_MAX); } catch (e) { return json(res, 413, { error: 'This page is too big (12 MB max)' }); }
+  if (!photoKind(b)) return json(res, 400, { error: 'Send the page as a JPG, PNG or WEBP picture' });
+  try { const r = await BILL_AI.read(b); return json(res, 200, { ok: true, ...r }); }
+  catch (e) { return json(res, 503, { error: String(e && e.message || e).slice(0, 200) }); }
 }
 // GET /api/photo/status?h=<hash>,<hash>: is the clean copy ready (the app shows "Cleaning…" until it is)
 function photoStatus(req, res, url, user) {

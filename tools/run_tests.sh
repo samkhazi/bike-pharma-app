@@ -25,9 +25,11 @@ T3=/tmp/claude-0/bptest3; MODEL=${PHOTO_AI_MODEL_FILE:-/tmp/claude-0/ai/isnet-ge
 for pid in $(pgrep -x node); do if tr "\0" "\n" < /proc/$pid/environ 2>/dev/null | grep -qx "PORT=3017"; then kill $pid; fi; done
 sleep 0.5; rm -rf $T3/data; mkdir -p $T3/pf $T3/data/models
 AI=off; if [ -f "$MODEL" ] && [ -d ai/node_modules/onnxruntime-node ]; then ln -s "$MODEL" $T3/data/models/isnet-general-use.onnx; AI=on; fi
+# the bill reader (Apna AI): its models linked in when this computer has them, else the phone reads the bill (never downloaded here)
+PP=${BILL_AI_MODELS:-/tmp/claude-0/ai/ppocr}; BAI=off; if [ -f "$PP/ch_PP-OCRv4_rec_infer.onnx" ] && [ -d ai/node_modules/onnxruntime-node ]; then ln -s "$PP" $T3/data/models/ppocr; BAI=on; fi
 python3 tools/test_photos.py $T3/ph >/dev/null
 DATA_DIR=$T3/data node --no-warnings admin.mjs add-admin sam@bikepharma.com "Sam" --password Test@1234 >/dev/null
-PHOTO_AI=$AI DATA_DIR=$T3/data FILES_DIR=$T3/pf PORT=3017 node --no-warnings server.mjs > $T3/server.log 2>&1 &
+BILL_AI=$BAI PHOTO_AI=$AI DATA_DIR=$T3/data FILES_DIR=$T3/pf PORT=3017 node --no-warnings server.mjs > $T3/server.log 2>&1 &
 sleep 1.2
 BASE3=http://127.0.0.1:3017 PH=$T3/ph node tools/test_inv8.mjs || r=1
 # update 8b: on a phone the page never zooms; a full-screen diagram / photo zooms with two fingers and a tap

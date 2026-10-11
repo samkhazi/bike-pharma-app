@@ -600,9 +600,9 @@ function render(anim){
  const {s,p}=cur();const fn=SCREENS[s];const vp=document.getElementById('vp');
  let html;
  if(S.user && fn && !allowed(s)) html=deniedScreen(s); else html=fn?scrSafe(fn,p,s):'<div class="empty">Screen not found</div>';
- const navs=S.user?NAVS[S.user.role]:null;const idx=navs?navs.findIndex(n=>n[0]===s):-1;
- const showNav=navs&&idx>-1;
- vp.innerHTML=`<div class="screen ${anim?'in-'+anim:''}">${offBar()}${html}${showNav?navHTML(navs,idx):''}</div>`;translateVp();
+ const navs=S.user?NAVS[S.user.role]:null;const idx=navs?navIdx(navs,s,html):-1;
+ const showNav=navs&&idx>-1,from=NAV_LAST;NAV_LAST=showNav?idx:-1;
+ vp.innerHTML=`<div class="screen ${anim?'in-'+anim:''}${showNav?' hasnav':''}">${offBar()}${html}${showNav?navHTML(navs,idx,from):''}</div>`;translateVp();if(showNav)navMove();
  document.getElementById('status').classList.toggle('dark',!!(vp.querySelector('.screen .hero, .screen.darkscr')));
  if(S.ui.after){const f=S.ui.after;S.ui.after=null;f();}
  navSave(false);
@@ -627,7 +627,7 @@ const ACCESS={
  sales:['findpart','tyrebat','beat','kyc','sincent','scollect','custview','shome','sorder','stocklist','usearch','saccount','masterprice','racks','scanfind'],
  manager:['findpart','tyrebat','mgstaff','mgsummary','mgexp','dayclose','creturn','batches','ccount','partorders','partorder','ourmech','mechbuy','mechpay','mechprofile','mgcards','mgcard','mgtarget','mgver','mgmech','mgmechd','mgnew','mgstock','mgpo','mgorders','mginact','mgsales','mgmargin','bills','mgdues','custview','billview','mghome','approvals','team','usearch','saccount','masterprice','stocklist','rbac','racks','warreg','scanfind'],
  inventory:['findpart','invpaste','invwait','batches','ccount','sreturn','labels','partorders','partorder','mgpo','grnedit','grnview','invlist','ihome','grn','stocklist','usearch','saccount','addproduct','stockmove','racks','warreg','scanfind'],
- admin:['ainv','invpaste','invwait','grn','grnedit','grnview','stockmove','batches','ccount','sreturn','labels','findpart','catup','tyrebat','mgstaff','mgsummary','mgexp','abranch','asupp','ascheme','agst','aexport','mgtarget','mgver','mgcards','mgmech','mgnew','mginact','mgstock','mgpo','mgorders','partorders','partorder','approvals','team','mgsales','acampaign','asales','apurch','astock','aorders','areturns','asecurity','asettings','mgmargin','ourmech','mechbuy','mechpay','mechprofile','mgcard','mgmechd','mgdues','atargets','custview','billview','masterprice','invlist','ahome','users','mfin','afinance','audit','more','usearch','rbac','newstaff','saccount','addproduct','stocklist','racks','warreg','scanfind']};
+ admin:['supbills','supdue','ainv','invpaste','invwait','grn','grnedit','grnview','stockmove','batches','ccount','sreturn','labels','findpart','catup','tyrebat','mgstaff','mgsummary','mgexp','abranch','asupp','ascheme','agst','aexport','mgtarget','mgver','mgcards','mgmech','mgnew','mginact','mgstock','mgpo','mgorders','partorders','partorder','approvals','team','mgsales','acampaign','asales','apurch','astock','aorders','areturns','asecurity','asettings','mgmargin','ourmech','mechbuy','mechpay','mechprofile','mgcard','mgmechd','mgdues','atargets','custview','billview','masterprice','invlist','ahome','users','mfin','afinance','audit','more','usearch','rbac','newstaff','saccount','addproduct','stocklist','racks','warreg','scanfind']};
 const DENY={};
 const COMMON=['login','otp','signup','submitted','roleok','rbac','invdoc'];
 function allowed(s){const r=S.user.role;if(DENY[s]&&DENY[s].includes(r))return false;return COMMON.includes(s)||ACCESS[r].includes(s);}
@@ -727,7 +727,7 @@ function pcard(p,mech,v){return `<div class="pcard"><button class="pimg" onclick
 function li(t,s,trail,icn,onclick,tone=''){return `<button class="li" ${onclick?`onclick="${onclick}"`:''}>${icn?`<div class="tile sm ${tone}">${ic(icn,'s18')}</div>`:''}<div class="grow"><div class="t">${t}</div>${s?`<div class="s">${s}</div>`:''}</div>${trail||''}${onclick?`<span class="chev">${ic('chevR','s18')}</span>`:''}</button>`;}
 function sec(t,a,on){return `<div class="sec"><h3 class="h2">${t}</h3>${a?`<button class="link" ${on?`onclick="${on}"`:''}>${a}</button>`:''}</div>`;}
 function statTile(tone,l,v,n){return `<div class="stat ${tone}"><span class="cap" style="color:inherit">${l}</span><span class="v">${v}</span><span class="cap">${n}</span></div>`;}
-function staffHead(){const u=S.user;return `<div class="row"><div class="tile k round" style="width:48px;height:48px;font-weight:800">${u.name.split(' ').map(x=>x[0]).join('')}</div><div class="grow"><div class="h2">${esc(u.name)}</div><div class="row" style="gap:6px"><span class="cap">${esc(u.sid)}</span><span class="pill k">${esc(u.label)}</span></div></div><button class="iconbtn line" onclick="toast('No new notifications')" aria-label="Notifications">${ic('bell','s20')}</button></div>`;}
+function staffHead(){const u=S.user;return `<div class="row"><div class="tile k round" style="width:48px;height:48px;font-weight:800">${u.name.split(' ').map(x=>x[0]).join('')}</div><div class="grow"><div class="h2">${esc(u.name)}</div><div class="row" style="gap:6px"><span class="cap">${esc(u.sid)}</span><span class="pill k">${esc(u.label)}</span></div></div><button class="iconbtn line" onclick="supBellOn()" aria-label="Notifications">${ic('bell','s20')}${supBellDot('cnt')}</button></div>`;}
 
 /* ---------- CUSTOMER ---------- */
 const cartCount=()=>DB.cart.reduce((a,x)=>a+x.q,0);
@@ -1161,7 +1161,7 @@ function invWallet(inv,tot){const mech=inv.party==='mech';const mc=inv.mc||MC0()
 function walletToggle(on,bal,cap,use,flip,label){if(!bal)return '';return `<button class="opt ${on?'on':''}" onclick="${flip}"><span class="tile sm g">${ic('wallet','s18')}</span><span class="grow stack" style="gap:2px;text-align:left"><b>${label||'Use wallet balance'}</b><span class="cap">Balance ${inr(bal)} · up to ${cap*100}% of the bill${on?' · using '+inr(use):''}</span></span><span class="radio"></span></button>`;}
 /* invoice document (A4 + 80mm thermal) */
 const SHOP={n:'BIKE PHARMA AUTOMOBILES',b:'Main store',a:'Address to be added',gst:'To be added',ph:'To be added',em:'',upi:'To be added'};
-const HSN=x=>x&&x.cat==='Lubricants'?'2710':x&&x.cat==='Electrical'?'8512':x&&x.cat==='Tyres'?'4011':'8714';
+const HSN=x=>x&&/^\d{4,8}$/.test(x.hsn||'')?String(x.hsn):x&&x.cat==='Lubricants'?'2710':x&&x.cat==='Electrical'?'8512':x&&x.cat==='Tyres'?'4011':'8714';
 const ONES=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'],TENS=['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
 function words(n){n=Math.round(n);if(!n)return 'Zero';const two=x=>x<20?ONES[x]:TENS[Math.floor(x/10)]+(x%10?' '+ONES[x%10]:'');const three=x=>(x>=100?ONES[Math.floor(x/100)]+' Hundred'+(x%100?' ':''):'')+(x%100?two(x%100):'');
  let s='';const cr=Math.floor(n/1e7);n%=1e7;const lk=Math.floor(n/1e5);n%=1e5;const th=Math.floor(n/1e3);n%=1e3;if(cr)s+=two(cr)+' Crore ';if(lk)s+=two(lk)+' Lakh ';if(th)s+=two(th)+' Thousand ';if(n)s+=three(n);return s.trim();}
@@ -1894,14 +1894,15 @@ SCREENS.grnedit=(p)=>{const g=geState(p.id);const isNew=p.id==='new';const tot=g
   <div class="grid2"><div class="field"><label for="ge-inv">Supplier bill no. <span style="color:var(--r)">*</span></label><div class="inp ${e.inv?'err':''}"><input id="ge-inv" value="${esc(g.inv)}" placeholder="e.g. SUP-77120" oninput="S.ui.ge.inv=this.value"></div></div>
   <div class="field"><label for="ge-amt">Bill amount</label><div class="inp"><b>₹</b><input id="ge-amt" inputmode="decimal" value="${esc(g.billAmt||'')}" placeholder="0" onchange="S.ui.ge.billAmt=this.value;refresh()"></div></div></div>
   ${e.inv?`<div class="errmsg">${e.inv}</div>`:''}
+  ${geBillMore(g,e)}
  </div>
  <div class="sec"><h3 class="h2">Items (${g.items.length+(g.nw||[]).length})</h3><div class="row" style="gap:8px"><button class="btn line sm" onclick="S.ui.ip=null;go('invpaste')">${ic('clip','s16')} Paste bill</button><button class="btn sm" onclick="geAddSheet()">+ Add</button></div></div>
  <form class="row" style="gap:8px" onsubmit="event.preventDefault();geCode(this.querySelector('input').value)"><label class="search grow" for="ge-code">${ic('scan','s20')}<input id="ge-code" autocomplete="off" placeholder="Scan barcode or type part no."></label><button class="btn line sm" type="submit">Add</button></form>
- ${g.items.length?`<div class="card flush">${g.items.map((it,i)=>{const x=P(it.pid);const d=it.exp!=null?(+it.q)-(+it.exp):null;return `<div class="li" style="flex-wrap:wrap;gap:10px"><div class="tile sm n">${ic(x.ic,'s18')}</div><div class="grow"><div class="t">${esc(x.name)}</div><div class="s">${x.pn} · Rack ${binOf(x.id)} · now ${DB.stock[x.id]} pcs</div></div><button aria-label="Remove" style="color:var(--ink5)" onclick="S.ui.ge.items.splice(${i},1);refresh()">${ic('trash','s18')}</button>
+ ${g.items.length?`<div class="card flush">${g.items.map((it,i)=>{const x=P(it.pid);const d=it.exp!=null?(+it.q)-(+it.exp):null;return `<div class="li" style="flex-wrap:wrap;gap:10px"><div class="tile sm n">${ic(x.ic,'s18')}</div><div class="grow"><div class="t">${esc(x.name)}</div><div class="s">${x.pn} · Rack ${binOf(x.id)} · now ${DB.stock[x.id]} pcs</div>${geItemNote(it,x,g)}</div><button aria-label="Remove" style="color:var(--ink5)" onclick="S.ui.ge.items.splice(${i},1);refresh()">${ic('trash','s18')}</button>
   <div class="grid2" style="width:100%"><div class="field"><label>Qty received</label><span class="qty" style="justify-content:space-between"><button onclick="S.ui.ge.items[${i}].q=Math.max(0,(+S.ui.ge.items[${i}].q)-1);refresh()" aria-label="Less">${ic('minus','s16')}</button><span class="num">${it.q}</span><button onclick="S.ui.ge.items[${i}].q=(+S.ui.ge.items[${i}].q)+1;refresh()" aria-label="More">${ic('plus','s16')}</button></span></div>
   <div class="field"><label for="ge-r${i}">Purchase rate</label><div class="inp ${e['r'+i]?'err':''}" style="height:40px"><b>₹</b><input id="ge-r${i}" inputmode="decimal" value="${esc(it.rate||'')}" placeholder="0" onchange="S.ui.ge.items[${i}].rate=this.value;refresh()"></div></div></div>
   <div class="row" style="width:100%;justify-content:space-between">${d==null?'<span class="cap">Not on order · extra item</span>':`<span class="pill ${d===0?'g':'a'}">${d===0?'Matched · ordered '+it.exp:d<0?'Short by '+(-d)+' · ordered '+it.exp:'Excess '+d+' · ordered '+it.exp}</span>`}<b class="num">${inr((+it.q||0)*(+it.rate||0))}</b></div></div>`;}).join('')}</div>`:(g.nw||[]).length||S.ui.geLk||S.ui.gePick?(e.items?`<div class="errmsg">${e.items}</div>`:''):`<div class="empty ${e.items?'errmsg':''}">${e.items||'Scan or type the part numbers you received, or paste the whole bill.'}</div>`}${geNwHTML(g,e)}
- <div class="card"><div class="kv"><span>Items total</span><span>${inr(tot)}</span></div>${bill?`<div class="kv"><span>Supplier bill</span><span>${inr(bill)}</span></div><div class="kv"><span>Difference</span><span style="color:${Math.abs(bill-tot)<1?'var(--g)':'var(--r)'}">${Math.abs(bill-tot)<1?'Matches bill':(tot>bill?'+':'−')+inr(Math.abs(bill-tot))}</span></div>`:'<div class="cap">Enter the bill amount to check it against the items.</div>'}</div>
+ ${geTotCard(g,tot,bill)}
  <div class="field"><label for="ge-note">Remarks</label><div class="inp"><input id="ge-note" value="${esc(g.note||'')}" placeholder="e.g. 5 rotors short, coming by 30 Sep" oninput="S.ui.ge.note=this.value"></div></div>
 </div></div>${geFoot(g,tot)}`;};
 function geAddSheet(){sheet(`<h3 class="h2">Add received part</h3><div class="card flush" style="max-height:50vh;overflow:auto">${PRODUCTS.map(x=>li(esc(x.name),x.pn+' · now '+DB.stock[x.id]+' pcs','',x.ic,`geAdd('${x.id}');closeSheet()`)).join('')}</div><button class="btn line" onclick="closeSheet();go('addproduct')">Part not listed? Add new product</button>`);}
@@ -1911,10 +1912,11 @@ function geCode(c){c=String(c||'').trim();if(!c)return;const x=findByCode(c);if(
 function geSave(post){const g=S.ui.ge;const e={};const sn=String(g.supplier||'').trim();if(!sn)e.sup='Enter the supplier name.';if(!g.inv.trim())e.inv='Enter the supplier bill number.';if(!g.items.length&&!(g.nw||[]).length)e.items='Add at least one part.';
  if(post){g.items.forEach((it,i)=>{if(!(+it.rate>0))e['r'+i]=1;});(g.nw||[]).forEach((it,i)=>{if(!(+it.rate>0))e['n'+i]=1;});if(g.items.concat(g.nw||[]).some(it=>!(+it.q>0)))e.items='Quantity must be at least 1 for every part (remove parts not received).';}
  if(Object.keys(e).length){S.ui.geErr=e;if(Object.keys(e).some(k=>k[0]==='r'||k[0]==='n'))toast('Enter the purchase rate for every part');return refresh();}
- {const s0=sups().find(s=>s.n.toLowerCase()===sn.toLowerCase());if(s0)g.supplier=s0.n;else{g.supplier=sn;sups().unshift({n:sn,c:'—',gst:'—',pay:0,days:30,lead:3,fill:100,rate:5,cat:'General'});audit('Supplier added',sn,'—','From stock in');}}
+ if(post){const dd=bpDup(sn,g.gstin,g.inv,g.id),dk=dd?g.inv+'|'+dd.id:'';if(dd&&S.ui.geDup!==dk){S.ui.geDup=dk;toast('Bill '+g.inv+' is already in '+dd.id+'. Tap Post again to post it anyway.');return refresh();}}
+ {const s0=sups().find(s=>s.n.toLowerCase()===sn.toLowerCase());if(s0)g.supplier=s0.n;else{g.supplier=sn;sups().unshift({n:sn,c:'—',gst:g.gstin||'—',pay:0,days:30,lead:3,fill:100,rate:5,cat:'General'});audit('Supplier added',sn,'—','From stock in');}}
  if(g.id==='new')g.id='GRN-0'+(413+DB.grns.filter(x=>x.id.startsWith('GRN-04')&&+x.id.slice(5)>=413).length);
  const idx=DB.grns.findIndex(x=>x.id===g.id);
- if(post){geNwPost(g);g.items.forEach(it=>{DB.stock[it.pid]=(+DB.stock[it.pid]||0)+(+it.q);logMove('in',it.pid,+it.q,g.id,'Stock in · '+g.supplier.split(' – ')[0]);});g.status='posted';g.postedAt=today()+' · '+nowT()+' by '+S.user.sid;audit('GRN posted',g.id,'—',grnUnits(g)+' units · '+inr(grnTotal(g)));}
+ if(post){geNwPost(g);bpPostFx(g);g.items.forEach(it=>{DB.stock[it.pid]=(+DB.stock[it.pid]||0)+(+it.q);logMove('in',it.pid,+it.q,g.id,'Stock in · '+g.supplier.split(' – ')[0]);});g.status='posted';g.postedAt=today()+' · '+nowT()+' by '+S.user.sid;audit('GRN posted',g.id,'—',grnUnits(g)+' units · '+inr(grnTotal(g)));}
  if(idx>-1)DB.grns[idx]=g;else DB.grns.push(g);save();S.ui.ge=null;toast(post?`${g.id} posted · ${grnUnits(g)} units added${S.ui.geW?' · '+S.ui.geW+' new part'+(S.ui.geW>1?'s wait':' waits')+' for photos':''}`:`${g.id} saved as draft`);S.ui.geW=0;S.ui.geOpen=null;S.ui.gePick=null;if(S.user.role==='inventory')tab('grn');else back();}
 SCREENS.grnview=(p)=>{const g=DB.grns.find(x=>x.id===p.id);return bar(g.id)+`<div class="scroll"><div class="pad">
  <div class="card"><div class="kv"><span>Supplier</span><span>${esc(g.supplier)}</span></div><div class="kv"><span>Bill no.</span><span>${esc(g.inv)}</span></div><div class="kv"><span>Received</span><span>${esc(g.date)}</span></div><div class="kv"><span>Posted</span><span>${esc(g.postedAt||'')}</span></div></div>
@@ -2219,7 +2221,7 @@ const catBin=u=>{if(CAT_BURL[u])return CAT_BURL[u];const [,f,o,l]=u.split(':'),a
 const catMk=(e,d)=>new Promise((ok,no)=>{const vb=e.vb,rows=[],n=d.d.length;let j=0;
  const sp=d.figs.map(f=>({u:d.sheets[f[0]][0],W:d.sheets[f[0]][1],H:d.sheets[f[0]][2],x:f[1],y:f[2],w:f[3],h:f[4]}));
  const step=()=>{try{const t=Date.now(),all=document.hidden;while(j<n&&(all||Date.now()-t<20)){const r=d.d[j++],vv=r[11].map(k=>d.vars[k]),b=d.bk[r[0]];
-   rows.push(catRow({kind:'d',ext:1,vb,vms:[...new Set(vv.map(v=>d.vmod[v]))],vv,src:d.src[b[0]],page:vb[0]+r[0]+'.'+r[2],fig:(d.fw||'Plate')+' '+r[2],note:b[2]||'',asm:d.asm[r[3]],ref:r[4],part:r[5],desc:d.desc[r[6]],qty:r[7],rem:r[8],ns:!!r[9],img:r[10]||null,norms:b[1],sp:r[1]>=0?sp[r[1]]:null,nofig:r[1]===-2,figp:'',txt:e.txt?1:0,ph:catPh(d,r[5]),mrp:d.mrp&&d.mrp[r[5]]||0,ymi:r[12]||null}));}}
+   rows.push(catRow({kind:'d',ext:1,vb,vms:[...new Set(vv.map(v=>d.vmod[v]))],vv,src:d.src[b[0]],page:vb[0]+r[0]+'.'+r[2],fig:(d.fw||'Plate')+' '+r[2],note:b[2]||'',asm:d.asm[r[3]],ref:r[4],part:r[5],desc:d.desc[r[6]],qty:r[7],rem:r[8],ns:!!r[9],img:r[10]||null,norms:b[1],sp:r[1]>=0?sp[r[1]]:null,nofig:r[1]===-2,figp:'',txt:e.txt?1:0,ph:catPh(d,r[5]),mrp:catMrpFix(r[5],d.mrp&&d.mrp[r[5]]||0),ymi:r[12]||null}));}}
   catch(x){no(x);return;}if(j<n)catYield(step);else ok(rows);};step();});
 function catGet(e){e.st=1;e.paused=0;(e.pfz?catZipJson(e):e.pf?catPfJson(e.pf,e).catch(()=>catFetch(e.url,e)):catFetch(e.url,e)).then(d=>catMk(e,d).then(rows=>{e.pre=rows;e.d=d;e.st=2;Object.assign(CAT_VMOD,d.vmod);CAT_VARS=CAT_VARS.concat(d.vars.map(v=>[e.vb,v]));CAT_VOCAB=null;CAT_PKV=null;}))
  .then(()=>{catRefresh();catLoad();},()=>{e.st=e.paused?0:3;e.paused=0;catRefresh();catLoad();});}
@@ -3982,7 +3984,7 @@ const brData=()=>{const b=brSel();const l=b==='All branches'?BRANCHES:BRANCHES.f
 const L=v=>v>=1e7?'₹'+(v/1e7).toFixed(2)+' Cr':v>=1e5?'₹'+(v/1e5).toFixed(1)+' L':inr(v);
 const SEC_ALERTS=[];
 SCREENS.ahome=()=>{const d=brData();const br=brSel();const sec_=(DB.secDone||[]);const openSec=SEC_ALERTS.filter(a=>!sec_.includes(a.id)).length;
- return `<div class="scroll"><div class="pad">${staffHead()}
+ return `<div class="scroll"><div class="pad">${staffHead()}${supDueCard()}
  <div class="chips">${['All branches',...BRANCHES.map(b=>b.n)].map(b=>`<button class="chip ${br===b?'on':''}" onclick="S.ui.abr='${b}';refresh()">${b==='All branches'?ic('globe','s16'):ic('store','s16')}${b}</button>`).join('')}</div>
  <button class="dark-card" style="text-align:left" onclick="go('asales')"><div class="sec"><span class="micro" style="color:var(--ink3)">Total sales · ${moName()} · ${br}</span>${ic('chevR','s18')}</div><div class="row" style="gap:10px;align-items:baseline"><span class="amt" style="color:#fff">${L(d.sales)}</span><span class="cap" style="color:#7CD4A2">${chgTxt(d.sales,sumAmt(perBills('prevmonth')),moName(-1,1))}</span></div></button>
  ${(()=>{const T=DB.targets||tgtSeed();const rows=TGT_DEF.map(([k])=>tgtRow(k));const on=rows.filter(r=>r.st[1]==='g').length;return `<button class="card" style="text-align:left;width:100%;gap:10px;border:1.5px solid var(--y)" onclick="go('mgtarget')"><div class="row"><div class="tile y">${ic('award','s20')}</div><div class="grow"><div class="h3">Targets</div><div class="cap">${T.month} · ${on}/${rows.length} on track · ${rows[0].left} days left</div></div><span class="link" onclick="event.stopPropagation();S.ui.te=null;go('atargets')">Edit</span></div>${['sales','collect'].map(k=>tgtCard(k,1)).join('')}</button>`;})()}
@@ -4353,7 +4355,7 @@ const invTh=(u,i)=>`<div class="inv-th">${u?`<img src="${esc(phSrc(u))}" alt="" 
 const invGallery=x=>x.photos&&x.photos.length?`<div class="inv-gal">${x.photos.map((u,i)=>`<a href="${esc(phSrc(u))}" target="_blank" rel="noopener"><img src="${esc(phSrc(u))}" alt="${esc(x.name)} photo ${i+1}" loading="lazy"></a>`).join('')}</div>`:'';
 /* a new product from a part that has its photos (Stock in line, waiting part) */
 function invMkProduct(n,stock){const pr=invPrices(n.mrp),id='n'+Date.now()+Math.floor(Math.random()*1000);
- const p={id,name:String(n.name).trim(),brand:String(n.brand).trim().toUpperCase(),type:n.hand?'OEM':'Genuine',cat:n.cat||'OEM Parts',pn:String(n.pn).trim().toUpperCase(),pack:'',mrp:r2(n.mrp),price:pr.price,mp:pr.mp,stock:stock||0,warDays:0,reorder:10,ic:INV_IC[n.cat]||'package',fits:n.fits||[],bin:String(n.bin||'').trim().toUpperCase(),barcode:'',pending:false,photos:n.photos.slice(0,4),unit:'pcs',gst:'18',hsn:'8714',src:n.vb&&!n.hand?{vb:n.vb}:null,at:isoToday(),by:S.user.sid};
+ const p={id,name:String(n.name).trim(),brand:String(n.brand).trim().toUpperCase(),type:n.hand?'OEM':'Genuine',cat:n.cat||'OEM Parts',pn:String(n.pn).trim().toUpperCase(),pack:'',mrp:r2(n.mrp),price:pr.price,mp:pr.mp,stock:stock||0,warDays:0,reorder:10,ic:INV_IC[n.cat]||'package',fits:n.fits||[],bin:String(n.bin||'').trim().toUpperCase(),barcode:'',pending:false,photos:n.photos.slice(0,4),unit:'pcs',gst:n.gst!=null&&n.gst!==''&&BP_GST.includes(+n.gst)?String(+n.gst):'18',hsn:/^\d{4,8}$/.test(n.hsn||'')?String(n.hsn):'8714',src:n.vb&&!n.hand?{vb:n.vb}:null,at:isoToday(),by:S.user.sid};
  if(p.bin)DB.bins[id]=p.bin;DB.newProducts=DB.newProducts||[];DB.newProducts.push(p);PRODUCTS.push(p);DB.stock[id]=p.stock;
  audit('Product added',p.pn,'—','From '+(n.grn||'stock in')+' · '+p.photos.length+' photos');return p;}
 
@@ -4522,11 +4524,11 @@ function geFoot(g,tot){const nw=g.nw||[],nr=nw.filter(n=>!invNwReady(n)).length,
 /* posting: new parts with photos and MRP become products and go into stock with the bill; the rest wait for photos */
 function geNwPost(g){const nw=g.nw||[];g.nw=[];let w=0;
  nw.forEach(n=>{const ex=PRODUCTS.find(p=>catPk(p.pn)===n.pk);
-  if(ex){g.items.push({pid:ex.id,exp:null,q:+n.q,rate:n.rate});return;}
-  if(invNwReady(n)){const p=invMkProduct({...n,grn:g.id},0);g.items.push({pid:p.id,exp:null,q:+n.q,rate:n.rate});return;}
+  if(ex){g.items.push({pid:ex.id,exp:null,q:+n.q,rate:n.rate,...bpEx(n)});return;}
+  if(invNwReady(n)){const p=invMkProduct({...n,grn:g.id},0);g.items.push({pid:p.id,exp:null,q:+n.q,rate:n.rate,...bpEx(n)});return;}
   const id='W'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-  (DB.waitParts=DB.waitParts||[]).push({id,pn:n.pn,pk:n.pk,name:n.name,brand:n.brand,vb:n.vb,cat:n.cat,sec:n.sec,qty:n.qty,mrp:n.mrp,mrpCat:!!n.mrpCat,fits:n.fits,photos:n.photos.slice(0,4),bin:n.bin,q:+n.q,rate:n.rate,grn:g.id,inv:g.inv,sup:g.supplier,at:today()+' · '+nowT(),by:S.user.sid,hand:n.hand||0});
-  (g.wait=g.wait||[]).push({wid:id,pn:n.pn,name:n.name||n.pn,q:+n.q,rate:n.rate});w++;});
+  (DB.waitParts=DB.waitParts||[]).push({id,pn:n.pn,pk:n.pk,name:n.name,brand:n.brand,vb:n.vb,cat:n.cat,sec:n.sec,qty:n.qty,mrp:n.mrp,mrpCat:!!n.mrpCat,fits:n.fits,photos:n.photos.slice(0,4),bin:n.bin,q:+n.q,rate:n.rate,grn:g.id,inv:g.inv,sup:g.supplier,at:today()+' · '+nowT(),by:S.user.sid,hand:n.hand||0,...bpEx(n)});
+  (g.wait=g.wait||[]).push({wid:id,pn:n.pn,name:n.name||n.pn,q:+n.q,rate:n.rate,...bpEx(n)});w++;});
  S.ui.geW=w;}
 
 /* ---------- Paste supplier bill ---------- */
@@ -4691,6 +4693,626 @@ function invPasteAdd(all){const st=S.ui.ip;if(!st)return;const rows=invParse(st.
   const h=r.kind==='new'?r.hits[0]:r.kind==='pick'?r.hits.find(x=>x.vb===st.pick[l.pk]):null;const line=invNwLine(h||{pn:l.pn},!h);line.q=l.q;line.rate=l.rate||'';g.nw.push(line);n++;});
  S.ui.ip=null;if(S.ui.geErr)delete S.ui.geErr.items;toast(n+' line'+(n===1?'':'s')+' added to Stock in');const prev=S.stack[S.stack.length-2];if(prev&&prev.s==='grnedit'&&String(prev.p&&prev.p.id)===String(g.id))back();else go('grnedit',{id:g.id});}
 
+/* ---- update 8c (Sam 2026-10-11 19:53Z-20:24Z): reading a supplier bill ----
+   A page's text (Apna AI on our server, the phone's own reader, or a PDF's own text) -> the bill's header (supplier GSTIN with its check
+   digit, bill no., date, name), totals (taxable, GST, round off, grand total, amount in words) and item lines (part no., qty, rate,
+   discount, MRP, HSN, GST %, amount), read by the table's own column titles. Every line is checked: qty x rate (less discount) = amount. */
+const BP_UNIT=/^(nos?\.?|no\.|pcs?\.?|pc|sets?|kits?|prs?|pairs?|ltrs?\.?|l|ml|mtrs?|kgs?|gms?|box(es)?|pkts?|ea|each|units?|rolls?|btls?|bottles?|cans?|tins?|doz|dzn|jars?|pouch|nr)$/i;
+const GST_CH='0123'+'456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+function gstSum(g){let s=0;for(let i=0;i<14;i++){const p=GST_CH.indexOf(g[i])*(i%2?2:1);s+=Math.floor(p/36)+p%36;}return GST_CH[(36-s%36)%36];}
+const gstOk=g=>/^(0[1-9]|[12]\d|3[0-8]|97|99)[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(g)&&gstSum(g)===g[14];
+const GST_D={O:'0',D:'0',Q:'0',U:'0',I:'1',L:'1',J:'1',T:'7',Z:'2',S:'5',B:'8',G:'6',A:'4'},GST_A={'0':'O','1':'I','2':'Z','5':'S','8':'B','6':'G','4':'A','7':'T'};
+/* a GSTIN as read: letters and digits put back in their places (O/0, I/1, S/5 ...), then the check digit decides. A wrong one stays
+   marked (bad) unless it is one letter away from a supplier we already know. */
+function gstFix(raw,known){const r=catPk(raw).slice(0,15);if(r.length!==15)return null;const a=r.split('');
+ [0,1,7,8,9,10].forEach(i=>{if(GST_D[a[i]])a[i]=GST_D[a[i]];});[2,3,4,5,6,11].forEach(i=>{if(GST_A[a[i]])a[i]=GST_A[a[i]];});if(a[13]==='2')a[13]='Z';
+ let g=a.join('');if(!/^\d{2}[A-Z]{5}\d{4}[A-Z][0-9A-Z]Z[0-9A-Z]$/.test(g))return null;
+ if(gstOk(g))return {g,fixed:g!==r};
+ const c=gstSum(g),eq=(x,y)=>x===y||OCR_EQ.includes(x+y)||OCR_EQ.includes(y+x);
+ if(eq(c,g[14])&&gstOk(g.slice(0,14)+c))return {g:g.slice(0,14)+c,fixed:true};
+ const near=(known||[]).filter(k=>k.length===15&&[...k].reduce((n,ch,i)=>n+(ch===g[i]?0:eq(ch,g[i])?1:9),0)===1);
+ if(near.length===1)return {g:near[0],fixed:true};
+ return {g,bad:true};}
+/* money and counts as printed: 1,180.00 / 1,18,000 / 118,00 (point read as a comma) / l18.0O (letters read for digits) */
+function bpNum(s){let t=String(s==null?'':s).trim().replace(/^(₹|rs\.?|inr)\s*/i,'').replace(/\/-?$/,'').replace(/^\((.*)\)$/,'-$1');
+ if(/^-?[\d.,OoIlSBZ|]+$/.test(t)&&/\d/.test(t)){const dg=(t.match(/\d/g)||[]).length,al=(t.match(/[OoIlSBZ|]/g)||[]).length;if(al&&al*3<=dg)t=t.replace(/[Oo]/g,'0').replace(/[Il|]/g,'1').replace(/S/g,'5').replace(/B/g,'8').replace(/Z/g,'2');}
+ if(!/^-?[\d.,]+$/.test(t)||!/\d/.test(t))return NaN;const neg=t[0]==='-';if(neg)t=t.slice(1);
+ if(/,\d{2}$/.test(t)&&!/\./.test(t))t=t.replace(/,(\d{2})$/,'.$1');
+ const dots=(t.match(/\./g)||[]).length;if(dots>1){const i=t.lastIndexOf('.');t=t.slice(0,i).replace(/\./g,'')+t.slice(i);}
+ t=t.replace(/,/g,'');if(!/^(\d+\.?\d*|\.\d+)$/.test(t))return NaN;const v=parseFloat(t);return neg?-v:v;}
+const bpIsN=w=>isFinite(bpNum(w));
+const bpPct=w=>{const m=/^(\d+(?:\.\d+)?)\s*%$/.exec(String(w).trim());return m?+m[1]:null;};
+/* a part number, not a size, oil grade, HSN, GSTIN, phone or money */
+const bpPnLike=w=>{w=String(w||'').replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g,'');return ocrPnLike(w)&&!/^\d{1,2}W-?\d{2}$/i.test(w)&&!/^\d+(\.\d+)?(ML|LTR|LT|GMS?|KGS?|MM|CM|V|W|AH|CC|HP)$/i.test(w);};
+/* a row of the page -> its cells (2+ spaces, tabs or | between columns); numbers stuck to a name are taken off it */
+function bpCells(row){const raw=String(row).replace(/[|¦]/g,'  ').replace(/\t/g,'  ').split(/\s{2,}/).map(c=>c.trim()).filter(Boolean),out=[];
+ const N=w=>bpIsN(w)||bpPct(w)!=null||BP_UNIT.test(w);
+ for(const c of raw){const t=c.split(/\s+/);if(t.length===1){out.push(c);continue;}
+  if(t.every(N)){out.push(...t);continue;}
+  let a=0,b=t.length;const L=[],R=[];
+  while(a<b-1&&/^\d{1,3}\.?$/.test(t[a])&&a===0)L.push(t[a++]);                                  // a serial no. stuck to the name
+  while(b>a+1&&N(t[b-1])&&(/[.,%]/.test(t[b-1])&&bpIsN(t[b-1].replace(/%$/,''))||BP_UNIT.test(t[b-1])&&b-2>a&&bpIsN(t[b-2])||/^\d{6}(\d{2})?$/.test(t[b-1])||R.length&&!BP_UNIT.test(t[b-1])))R.unshift(t[--b]);
+  out.push(...L,t.slice(a,b).join(' '),...R);}
+ const m=[];for(const c of out){const p=m[m.length-1],tx=x=>/^[A-Za-z][A-Za-z ,&.\/()'-]*$/.test(x)&&!BP_UNIT.test(x);if(p!=null&&tx(c)&&tx(p))m[m.length-1]=p+' '+c;else m.push(c);}
+ return m;}
+/* the table's column titles, in order */
+const BP_HRE=/(s\.?\s?no\b\.?|sr\.?\s?no\b\.?|sl\.?\s?no\b\.?)|(part\s*(?:no\b\.?|number|#|code)|item\s*code|cat(?:alogue)?\.?\s*no\b\.?|\bp\s*\/\s*n\b)|(hsn(?:\s*\/\s*sac)?(?:\s*code)?|\bsac\b)|(unit\s*(?:price|rate)|\brate\b|\bprice\b)|(\bm\.?\s?r\.?\s?p\b\.?)|(\bqty\b\.?|quantity|\bqnty\b)|(\bunit\b|\buom\b)|(disc(?:ount)?\.?\s*(?:%|amt\.?|amount)?|\bdis\.?\s*%)|((?:c|s|i|ut)?gst\s*(?:%|rate|amt\.?|amount)?|\btax\s*(?:%|rate)?(?![a-z]))|(taxable(?:\s*(?:value|amt\.?|amount))?)|(description|particulars?|item\s*(?:name|description)|product(?:\s*name)?|\bitem\b|\bgoods\b)|(\bamount\b|\bamt\b\.?|\btotal\b|\bvalue\b)/gi;
+const BP_HK=['sl','pn','hsn','rate','mrp','qty','unit','disc','gst','taxable','desc','amt'];
+function bpHeadKinds(s){const k=[];let m;BP_HRE.lastIndex=0;
+ while((m=BP_HRE.exec(s))){for(let g=1;g<=12;g++)if(m[g]){let kd=BP_HK[g-1];if(kd==='disc'&&/amt|amount/i.test(m[g]))kd='disca';k.push(kd);break;}if(!m[0])BP_HRE.lastIndex++;}
+ const has=x=>k.includes(x);
+ return k.length>=3&&(has('qty')||has('rate'))&&(has('amt')||has('rate')||has('taxable'))&&(has('pn')||has('desc'))?k:null;}
+/* how well a cell fits a column */
+function bpFit(c,k){const v=bpNum(c),num=isFinite(v),pc=bpPct(c),txt=/[A-Za-z]{2,}/.test(c),unit=BP_UNIT.test(c);
+ switch(k){
+  case 'sl':return /^\d{1,3}\.?$/.test(c)?0:3;
+  case 'pn':return c.split(/\s+/).some(bpPnLike)?0:txt&&!num?1.6:3;
+  case 'desc':return txt&&!unit?0:/[A-Za-z]/.test(c)?.8:2.5;
+  case 'hsn':return /^\d{4}(\d{2}){0,2}$/.test(c)?0:3;
+  case 'qty':return num&&v>0&&v<1e5?(/^\d+$/.test(c)?0:.4):/^\d+(\.\d+)?\s*[A-Za-z]{1,5}$/.test(c)&&BP_UNIT.test(c.replace(/^[\d.]+\s*/,''))?.3:3;
+  case 'unit':return unit?0:2.2;
+  case 'disc':case 'disca':case 'gst':return pc!=null||num||/^-+$/.test(c)?0:3;
+  default:return num?0:3;}}
+const BP_SKIPC={sl:.8,pn:1,desc:1,hsn:1,unit:.6,disc:.6,disca:.6,gst:.6,mrp:1,taxable:1,qty:2,rate:2,amt:2};
+/* cells -> columns: the cheapest way to line them up (a missing cell or an extra one costs a little) */
+function bpAlign(cells,cols){const n=cells.length,m=cols.length,D=[],B=[];
+ for(let i=0;i<=n;i++){D.push(new Array(m+1).fill(1e9));B.push(new Array(m+1).fill(0));}D[0][0]=0;
+ for(let i=0;i<=n;i++)for(let j=0;j<=m;j++){const d=D[i][j];if(d>=1e9)continue;
+  if(i<n&&j<m){const v=d+bpFit(cells[i],cols[j]);if(v<D[i+1][j+1]){D[i+1][j+1]=v;B[i+1][j+1]=1;}}
+  if(j<m){const v=d+(BP_SKIPC[cols[j]]||1);if(v<D[i][j+1]){D[i][j+1]=v;B[i][j+1]=2;}}
+  if(i<n){const v=d+1.5;if(v<D[i+1][j]){D[i+1][j]=v;B[i+1][j]=3;}}}
+ const map=new Array(m).fill(-1);let i=n,j=m;while(i>0||j>0){const b=B[i][j];if(b===1){map[j-1]=i-1;i--;j--;}else if(b===2)j--;else if(b===3)i--;else break;}
+ return map;}
+const BP_GST=[0,.25,3,5,12,18,28];
+function bpFromCols(cells,cols,map){const o={},gs=[];
+ cols.forEach((k,j)=>{const ci=map[j];if(ci<0)return;const c=cells[ci];
+  if(k==='pn'){const t=c.split(/\s+/),i=t.findIndex(bpPnLike);if(i>-1){o.pn=t[i];const rest=t.filter((_,x)=>x!==i).join(' ');if(/[A-Za-z]{2}/.test(rest))o.name=rest;}else o.name=c;}
+  else if(k==='desc')o.name=(o.name?o.name+' ':'')+c;
+  else if(k==='hsn')o.hsn=c;
+  else if(k==='qty')o.q=bpNum(c.replace(/\s*[A-Za-z]+\.?$/,''));
+  else if(k==='rate')o.r=bpNum(c);else if(k==='mrp')o.mrp=bpNum(c);else if(k==='amt')o.amt=bpNum(c);else if(k==='taxable')o.tx=bpNum(c);
+  else if(k==='disc'){const p=bpPct(c);if(p!=null)o.dp=p;else{const v=bpNum(c);if(isFinite(v))o.dv=v;}}
+  else if(k==='disca'){const v=bpNum(c);if(isFinite(v))o.da=v;}
+  else if(k==='gst'){const p=bpPct(c),v=p!=null?p:bpNum(c);if(isFinite(v))gs.push({v,p:p!=null});}});
+ const rates=gs.filter(g=>g.p||[2.5,6,9,14].concat(BP_GST).includes(g.v)).map(g=>g.v);
+ if(rates.length){const s=rates.length>=2&&rates[0]===rates[1]&&[2.5,6,9,14].includes(rates[0])?rates[0]*2:rates[0];if(BP_GST.includes(s))o.gst=s;}
+ if(!o.pn&&o.name){const t=o.name.split(/\s+/),i=t.findIndex(bpPnLike);if(i>-1){o.pn=t[i];o.name=t.filter((_,x)=>x!==i).join(' ');}}
+ return o;}
+/* qty x rate (less a discount) = amount (or the line's taxable value) */
+function bpCheck(o){const q=o.q,r=o.r;if(!(q>0&&r>0))return false;const g=q*r,tol=t=>Math.max(.6,t*.012),T=[o.tx,o.amt].filter(t=>t>0);
+ if(!T.length)return null;
+ for(const t of T){
+  if(o.dp>0&&Math.abs(g*(1-o.dp/100)-t)<=tol(t))return true;
+  if(o.da>0&&Math.abs(g-o.da-t)<=tol(t)){o.dp=Math.round(o.da/g*1e4)/100;return true;}
+  if(o.dv>0&&Math.abs(g-o.dv-t)<=tol(t)){o.dp=Math.round(o.dv/g*1e4)/100;return true;}
+  if(o.dv>0&&o.dv<100&&Math.abs(g*(1-o.dv/100)-t)<=tol(t)){o.dp=o.dv;return true;}
+  if(Math.abs(g-t)<=tol(t)){if(o.dp>0||o.dv>0){o.dg=1;if(!(o.dp>0))o.dp=o.dv<100?o.dv:0;}return true;}
+  if(o.gst>0&&Math.abs(g*(1-(o.dp>0?o.dp:0)/100)*(1+o.gst/100)-t)<=tol(t)){o.incl=1;return true;}}
+ return false;}
+/* no column titles (or they did not fit): the numbers after the part no. that make qty x rate = amount */
+function bpMath(nums,order,pcts){
+ const alt=n=>{const v=bpNum(n),a=[[v,0]];if(!/[.,]/.test(n)){if(n.length>=3)a.push([v/100,.6]);if(n.length>=2)a.push([Math.floor(v/10),1.5]);}return a;};
+ let best=null;
+ for(let i=0;i<nums.length;i++)for(let j=i+1;j<nums.length;j++)for(let k=j+1;k<nums.length;k++)
+  for(const [a,pa] of alt(nums[i]))for(const [b,pb] of alt(nums[j]))for(const [c,pc] of alt(nums[k])){
+   const q=order==='rq'?b:a,r=order==='rq'?a:b;if(!(q>0&&q<=99999&&r>0&&c>0))continue;
+   for(const d of [0,...pcts]){if(Math.abs(q*r*(1-d/100)-c)>Math.max(.6,c*.012))continue;
+    const sc=pa+pb+pc+(Number.isInteger(q)?0:.8)+(k-j-1)*.3+(j-i-1)*.3+(d?.2:0);if(!best||sc<best.sc)best={q,r,amt:c,dp:d,sc,ix:[i,j,k]};}}
+ return best;}
+const BP_HSNC=/^(27|34|38|39|40|48|49|56|59|68|70|73|74|76|83|84|85|87|90|94|96)\d{2}(\d{2}){0,2}$/;
+function bpRow(cells0,cols,order){const cells=bpCells(cells0.join('  '));
+ let o=null;
+ if(cols&&cells.length>=3){o=bpFromCols(cells,cols,bpAlign(cells,cols));o.ok=bpCheck(o);}
+ if(!o||o.ok!==true){
+  const toks=cells.join('  ').split(/\s+/).map(w=>w.replace(/^[^\w₹(.-]+|[^\w.%)]+$/g,'')).filter(Boolean);
+  let s0=/^\d{1,3}\.?$/.test(toks[0])?1:0,pi=-1;for(let i=s0;i<toks.length;i++)if(bpPnLike(toks[i])){pi=i;break;}
+  const rest=toks.slice(pi>-1?pi+1:s0),nums=[],pcts=[],pos=[];
+  rest.forEach((w,i)=>{const p=bpPct(w);if(p!=null){pcts.push(p);return;}const m=/^(\d[\d.,]*)(?:[A-Za-z]{1,5})?$/.exec(w);if(m&&bpIsN(m[1])&&!(/[A-Za-z]$/.test(w)&&!BP_UNIT.test(w.replace(/^[\d.,]+/,'')))){nums.push(m[1]);pos.push(i);}});
+  const M=bpMath(nums,order,pcts);
+  if(M){const was=o||{};o={pn:pi>-1?toks[pi]:was.pn,name:was.name,q:M.q,r:M.r,amt:M.amt,dp:M.dp||was.dp,ok:true};
+   if(!o.name){const nm=rest.slice(0,pos.length?pos[0]:rest.length).filter(w=>/[A-Za-z]{2}/.test(w)&&!BP_UNIT.test(w));const pre=pi>-1?[]:toks.slice(s0,s0+(pos[0]||0)).filter(w=>/[A-Za-z]/.test(w));o.name=(pi>-1?nm:pre).join(' ')||'';}
+   const used=new Set(M.ix),ri=M.ix[order==='rq'?0:1];
+   if(was.hsn)o.hsn=was.hsn;if(was.gst!=null)o.gst=was.gst;if(was.mrp>0)o.mrp=was.mrp;
+   nums.forEach((n,i)=>{if(used.has(i))return;const v=bpNum(n);
+    if(!o.hsn&&/^\d{4}(\d{2}){0,2}$/.test(n)&&BP_HSNC.test(n))o.hsn=n;
+    else if(!(o.mrp>0)&&/[.,]/.test(n)&&v>=o.r*.3&&v<=o.r*6&&(i===ri-1||i===ri+1||i<ri))o.mrp=v;});
+   if(o.gst==null){const g=pcts.filter(p=>p!==o.dp);const s=g.length>=2&&g[0]===g[1]&&[2.5,6,9,14].includes(g[0])?g[0]*2:g[0];if(BP_GST.includes(s))o.gst=s;}}
+  else if(o&&o.q>0&&o.r>0)o.bad=1;
+  else return null;}
+ if(!(o.q>0&&o.r>0))return null;
+ o.pn=o.pn?String(o.pn).replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g,'').toUpperCase():'';
+ if(o.hsn&&!/^\d{4}(\d{2}){0,2}$/.test(o.hsn))o.hsn='';
+ o.name=String(o.name||'').replace(/\s+/g,' ').trim().slice(0,80);
+ if(!o.pn&&(!o.name||o.ok!==true))return null;   // a row without a part no. counts only when its numbers add up
+ return o;}
+/* ---- the header ---- */
+const BP_MON={JAN:1,FEB:2,MAR:3,APR:4,MAY:5,JUN:6,JUL:7,AUG:8,SEP:9,OCT:10,NOV:11,DEC:12};
+function bpIso(d,m,y){d=+d;m=+m;y=+y;if(y<100)y+=2000;if(!(y>=2015&&y<=2099&&m>=1&&m<=12&&d>=1&&d<=31))return '';const t=new Date(y,m-1,d);if(t.getMonth()!==m-1)return '';return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');}
+function bpDateIn(s){const out=[];let m;
+ const A=/(?<!\d)(\d{1,2})\s*[\/\-.]\s*(\d{1,2})\s*[\/\-.]\s*(\d{4}|\d{2})(?!\d)/g,Bm=/(?<!\d)(\d{1,2})[\s\-\/.]*(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*[\s\-\/.,']*(\d{4}|\d{2})(?!\d)/gi,C=/(?<!\d)(20\d{2})[\-\/.](\d{1,2})[\-\/.](\d{1,2})(?!\d)/g;
+ while((m=A.exec(s))){const v=bpIso(m[1],m[2],m[3]);if(v)out.push([m.index,v]);}
+ while((m=Bm.exec(s))){const v=bpIso(m[1],BP_MON[m[2].toUpperCase().slice(0,3)],m[3]);if(v)out.push([m.index,v]);}
+ while((m=C.exec(s))){const v=bpIso(m[3],m[2],m[1]);if(v)out.push([m.index,v]);}
+ out.sort((a,b)=>a[0]-b[0]);return out.length?out[0][1]:'';}
+const BP_BUY=/bill(ed)?\s*to|buyer|consignee|ship(ped)?\s*to|sold\s*to|customer|party\s*(name|details)|recipient|\bm\/s\b/i;
+function bpHead(rows,upto,known){const H={gsts:[]};upto=Math.max(1,upto);
+ // GSTINs: after a GSTIN label, or a word shaped like one; the buyer's (ours) is the one under Bill to / Buyer
+ rows.forEach((r,i)=>{const up=r.toUpperCase(),cand=[];let m;const re=/G\s*S\s*T\s*(?:I\s*N|N\s*O|N)?\s*(?:N\s*O\.?|#|NUMBER)?\s*[:.\-]?\s*/g;
+  while((m=re.exec(up))){const rest=up.slice(m.index+m[0].length).replace(/[^A-Z0-9]/g,'');if(rest.length>=15)cand.push(rest.slice(0,15));if(m[0]==='')re.lastIndex++;}
+  up.split(/[^A-Z0-9]+/).forEach(w=>{if(w.length===15&&/^[0-9OISZBDQ]{2}[A-Z0-9]{5}/.test(w))cand.push(w);});
+  cand.forEach(c=>{const f=gstFix(c,known);if(f&&!H.gsts.some(x=>x.g===f.g)){const ctx=rows.slice(Math.max(0,i-2),i+1).join(' '),near=up.slice(0,up.indexOf(c.slice(0,4))>-1?up.indexOf(c.slice(0,4)):up.length);
+   H.gsts.push({...f,i,buy:BP_BUY.test(near)||BP_BUY.test(ctx)&&!/GSTIN/i.test(rows[Math.max(0,i-1)]||'')&&i>0&&BP_BUY.test(rows.slice(Math.max(0,i-2),i).join(' '))});}});});
+ // bill no.
+ const IV=/(?:[il1|]nv[o0][il1|]ce|\binv|b[il1|]ll|voucher|vch|memo)\.?\s*(?:n[o0]\b\.?|number|num\b|#)\s*[:\-.#]?\s*([A-Z0-9][A-Z0-9\/\-_.]{0,30})?/i;
+ for(let i=0;i<Math.min(rows.length,upto+3)&&!H.inv;i++){const m=IV.exec(rows[i]);if(!m)continue;let v=m[1]||'';
+  if(!v){const w=/^[A-Z0-9][A-Z0-9\/\-_.]{1,30}/i.exec(((rows[i+1]||'').split(/\s{2,}/)[0]||'').trim());v=w?w[0]:'';}
+  v=v.replace(/(?<=[0-9\/\-.])(date|dated|dt|bill|inv|invoice|to)[a-z]*$/i,'').replace(/[.\-\/:_]+$/,'');
+  if(v.length>=2&&/\d/.test(v)&&!/^(date|dated)$/i.test(v))H.inv=v.toUpperCase();}
+ // date: after a Date label first, else the first date on the top of the page
+ for(let i=0;i<Math.min(rows.length,upto+3)&&!H.date;i++){const m=/dat(?:e|ed)\b|\bdt\b/i.exec(rows[i]);if(m)H.date=bpDateIn(rows[i].slice(m.index));}
+ for(let i=0;i<Math.min(rows.length,upto+1)&&!H.date;i++)H.date=bpDateIn(rows[i]);
+ // the supplier's name: the first line of the page that reads like a business name (not ours, not an address)
+ const own=catPk(typeof SHOP!=='undefined'&&SHOP.n||'');
+ for(let i=0;i<Math.min(rows.length,upto,8)&&!H.name;i++){let s=rows[i].replace(/\s{2,}/g,' ').trim();const up=s.toUpperCase(),core=up.replace(/[^A-Z0-9]/g,'');
+  if(/TAX\s*INVOICE|^INVOICE$|ORIGINAL|DUPLICATE|TRIPLICATE|GSTIN|PHONE|\bPH\b|MOBILE|E-?MAIL|@|BILL\s*TO|ESTIMATE|QUOTATION|CREDIT\s*NOTE|DEBIT\s*NOTE|CASH\s*MEMO/.test(up))continue;
+  if(core.length<5||(core.match(/[A-Z]/g)||[]).length<core.length*.75||/\d{6}/.test(up))continue;
+  if(own&&core.includes(own))continue;
+  if(!/\s/.test(s)&&s.length>12)s=s.replace(/(AUTOMOBILES|AUTO|MOTORS|AGENCIES|AGENCY|ENTERPRISES|TRADERS|TRADING|DISTRIBUTORS|SPARES|PARTS|SALES|INDUSTRIES|PVT|LTD|LLP|COMPANY|STORES|CORPORATION)/g,' $1').trim();
+  H.name=s.replace(/\s+/g,' ').replace(/[,.:;\-]+$/,'').slice(0,60);}
+ return H;}
+/* ---- totals ---- */
+const BP_W={zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19,twenty:20,thirty:30,forty:40,fourty:40,fifty:50,sixty:60,seventy:70,eighty:80,ninety:90};
+function bpWordsNum(t){let total=0,cur=0,any=0;for(const w of String(t).toLowerCase().replace(/-/g,' ').split(/[^a-z]+/)){if(!w||w==='and')continue;
+  if(w in BP_W){cur+=BP_W[w];any=1;}else if(w==='hundred'){cur=(cur||1)*100;any=1;}else if(w==='thousand'){total+=(cur||1)*1e3;cur=0;any=1;}
+  else if(/^(lakhs?|lacs?)$/.test(w)){total+=(cur||1)*1e5;cur=0;any=1;}else if(/^crores?$/.test(w)){total+=(cur||1)*1e7;cur=0;any=1;}else return NaN;}
+ return any?total+cur:NaN;}
+function bpWords(s){const m=/(?:rupees|\brs\b\.?|\binr\b)\s*:?\s*([a-z][a-z\s,\-]*?)\s*(?:only\b|\.|$)/i.exec(s);if(!m)return NaN;let t=m[1].replace(/,/g,' '),p=0;
+ const pm=/\b(?:and\s+)?((?:(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fourty|fifty|sixty|seventy|eighty|ninety)[\s\-]*)+)paise\b/i.exec(t);if(pm){p=bpWordsNum(pm[1]);t=t.slice(0,pm.index);}
+ const r=bpWordsNum(t.replace(/\band\s*$/i,''));return isFinite(r)?Math.round((r+(isFinite(p)?p/100:0))*100)/100:NaN;}
+const BP_TOT=/\b(sub\s*total|grand\s*total|total|round(?:ed)?\s*off|r\/off|cgst|sgst|igst|utgst|cess|taxable\s*(?:value|amount)|net\s*(?:amount|payable|amt)|amount\s*(?:in\s*words|payable|chargeable)|rupees|bank\s*details|ifsc|declaration|terms\s*(?:&|and)\s*conditions)\b/i;
+function bpTotals(rows,from){const T={};
+ T.nums=[];
+ for(let i=Math.max(0,from);i<rows.length;i++){const s=rows[i].replace(/\(\s*-\s*\)\s*/g,'-'),l=s.toLowerCase();
+  const toks=s.replace(/₹/g,' ').split(/\s+/).map(w=>w.replace(/^[^\d(-]+|[^\d)%]+$/g,'')).filter(Boolean),money=[],pc=[];
+  toks.forEach(w=>{const p=bpPct(w);if(p!=null)pc.push(p);else if(/[\d]/.test(w)&&bpIsN(w))money.push(bpNum(w));});
+  (s.match(/(\d+(?:\.\d+)?)\s*%/g)||[]).forEach(x=>{const v=parseFloat(x);if(!pc.includes(v))pc.push(v);});
+  const last=money.length?money[money.length-1]:NaN,ok=isFinite(last);if(/total|taxable|amount|value/.test(l))money.forEach(v=>{if(v>0&&!T.nums.includes(v)&&T.nums.length<24)T.nums.push(v);});
+  if(/amount\s*in\s*words|rupees|\binr\b/.test(l)){const w=bpWords(s);if(w>0)T.words=w;continue;}
+  if(/taxable/.test(l)&&ok)T.taxable=last;
+  else if(/\bcgst\b/.test(l)&&ok){T.cgst=last;if(pc.length)T.cr=pc[0];}
+  else if(/\b(sgst|utgst)\b/.test(l)&&ok){T.sgst=last;if(pc.length)T.sr=pc[0];}
+  else if(/\bigst\b/.test(l)&&ok){T.igst=last;if(pc.length)T.ir=pc[0];}
+  else if(/\bcess\b/.test(l)&&ok)T.cess=last;
+  else if(/round(?:ed)?\s*off|r\/off/.test(l)&&ok)T.round=/less|-\s*\d/.test(l)&&last>0?-last:last;
+  else if(/grand\s*total|net\s*(amount|payable|total|amt|bill)|invoice\s*(total|value|amount)|total\s*(amount|payable|invoice\s*value|invoice|value)|amount\s*payable|bill\s*amount/.test(l)&&ok)T.grand=last;
+  else if(/disc(ount)?\b|\bless\b/.test(l)&&ok&&!/%\s*$/.test(s.trim()))T.disc=Math.abs(last);
+  else if(/^\s*(sub\s*)?total\b/.test(l)&&ok)T.sub=Math.max(T.sub||0,last);}
+ T.tax=Math.round(((T.cgst||0)+(T.sgst||0)+(T.igst||0)+(T.cess||0))*100)/100;
+ T.rate=(T.cr||0)+(T.sr||0)+(T.ir||0);if(!BP_GST.includes(T.rate))T.rate=T.taxable>0&&T.tax>0?BP_GST.find(g=>Math.abs(T.taxable*g/100-T.tax)<=Math.max(1,T.tax*.01))||0:0;
+ if(!T.grand&&T.words)T.grand=T.words;
+ if(!T.grand&&T.taxable&&T.tax)T.grand=Math.round((T.taxable+T.tax+(T.round||0))*100)/100;
+ return T;}
+/* ---- a whole page ---- */
+const BP_HEADY=/gstin|invoice|bill\s*(no|to)|date|phone|mobile|e-?mail|address|state\s*code|pin\s*code|place\s*of\s*supply|vehicle|transport|e-?way|irn|ack/i;
+function bpParse(text,ctx){ctx=ctx||{};
+ const rows=String(text||'').split(/\r?\n/).map(r=>r.replace(/[“”"`~»«]/g,' ').replace(/[–—]/g,'-').replace(/\s+$/,'')).filter(r=>r.trim());
+ let h=-1,cols=null;for(let i=0;i<rows.length;i++){const k=bpHeadKinds(rows[i]);if(k){h=i;cols=k;break;}}
+ const use=cols||ctx.cols||null,order=use&&use.indexOf('rate')>-1&&use.indexOf('qty')>-1&&use.indexOf('rate')<use.indexOf('qty')?'rq':ctx.order||'qr';
+ const lines=[],np=[];let first=-1,last=-1;
+ for(let i=h+1;i<rows.length;i++){const s=rows[i];
+  if(BP_TOT.test(s)){if(first>-1)break;continue;}
+  if(first<0&&BP_HEADY.test(s))continue;
+  if(OCR_SKIP.test(s))continue;
+  const r=bpRow(bpCells(s),use,order);if(!r)continue;if(first<0)first=i;last=i;(r.pn?lines:np).push(r);}
+ const H=bpHead(rows,h>-1?h:first>-1?first:Math.min(rows.length,15),ctx.known),T=bpTotals(rows,last>-1?last+1:h>-1?h+1:0);
+ // a discount printed but not taken off the amounts: the bill's taxable value says whether it is taken off later or the rate is net already
+ const dg=lines.concat(np).filter(o=>o.dg&&o.dp>0);
+ if(dg.length&&T.taxable>0){const all=lines.concat(np),gross=all.reduce((a,o)=>a+(o.amt||o.q*o.r),0),net=all.reduce((a,o)=>a+(o.dg&&o.dp>0?o.q*o.r*(1-o.dp/100):(o.amt||o.q*o.r)),0);
+  if(Math.abs(gross-T.taxable)<Math.abs(net-T.taxable))dg.forEach(o=>{o.dp=0;});}
+ return {hdr:H,tot:T,cols,order,lines,np};}
+/* a line for the Pasted box: part no., qty, rate, then what else the bill says */
+function bpLineTxt(o){const f=v=>String(Math.round(v*100)/100),net=o.q*o.r*(1-(o.dp>0?o.dp:0)/100),amt=o.tx>0?o.tx:o.incl&&o.gst>0?Math.round(net*100)/100:o.amt;
+ return [String(o.pn).toUpperCase(),f(o.q),(+o.r).toFixed(2),o.mrp>0?'MRP '+(+o.mrp).toFixed(2):'',o.hsn?'HSN '+o.hsn:'',o.gst!=null&&o.gst!==''?'GST '+o.gst+'%':'',o.dp>0?'DISC '+f(o.dp)+'%':'',amt>0?'AMT '+(+amt).toFixed(2):''].filter(Boolean).join('  ');}
+/* ---- update 8c (Sam 2026-10-11 19:53Z-20:30Z): a supplier bill read by "Apna AI" on our own server (free; each page is read in memory and
+   never kept), PDF bills, many pages, the bill's header and totals checked, MRP / discount / HSN / GST per line, tap a line to fix its
+   part no. (remembered for that supplier), the bill's MRP and HSN into the list on posting, supplier bills to pay with due alerts ---- */
+const BP_MAXP=40,bpQ=q=>String(r2(q)),bpErr=e=>String(e&&e.message||e||'').slice(0,160),bpNk=s=>catPk(s).slice(0,30);
+const bpDef=o=>{const r={};for(const k in o)if(o[k]!==undefined&&o[k]!==null&&o[k]!=='')r[k]=o[k];return r;};
+function bpInit(st){['pages','np','npSkip','fixed'].forEach(k=>{if(!Array.isArray(st[k]))st[k]=[];});
+ ['names','fixes','nfixes','seen'].forEach(k=>{if(!st[k]||typeof st[k]!=='object')st[k]={};});
+ if(!st.bill)st.bill={tot:{nums:[]}};return st;}
+/* -- reading: Apna AI on the server first, this device's reader when the server cannot; a PDF with text is read exactly -- */
+async function bpAi(c){const blob=await new Promise(ok=>c.toBlob(ok,'image/jpeg',.92));if(!blob)throw new Error('could not get the page ready');
+ let r;try{r=await fetch('/api/billread',{method:'POST',body:blob,headers:{'Content-Type':'image/jpeg'},credentials:'same-origin'});}catch(e){throw new Error('no internet');}
+ let j=null;try{j=await r.json();}catch(e){}
+ if(!r.ok||!j||!j.ok)throw new Error(j&&j.error||'server '+r.status);
+ return String(j.text||'');}
+async function bpReadC(c,rd){
+ try{
+  if(!rd.aiOff){try{const t=await bpAi(c);rd.how.ai=(rd.how.ai||0)+1;return t;}catch(e){rd.aiOff=1;rd.aiErr=bpErr(e);}}
+  rd.msg=rd.N>1?`Reading page ${rd.k+1} of ${rd.N} on this device…`:'Reading the bill on this device…';rd.show();
+  if(!rd.w)rd.w=ocrWorker(m=>{if(m&&m.status==='recognizing text'){const v=Math.round((rd.k+(m.progress||0))/rd.N*100);if(v!==rd.pct){rd.pct=v;rd.show();}}});
+  const w=await rd.w,r=await w.recognize(c);rd.how.phone=(rd.how.phone||0)+1;return r.data&&r.data.text||'';
+ }finally{c.width=c.height=0;}}
+async function bpPdfDoc(f){const L=await pdfLib();if(!PDF_W)PDF_W=new L.PDFWorker();
+ try{return await L.getDocument({data:new Uint8Array(await f.arrayBuffer()),isEvalSupported:false,worker:PDF_W,standardFontDataUrl:new URL('vendor/pdfjs/standard_fonts/',document.baseURI).href}).promise;}
+ catch(e){throw new Error(e&&e.name==='PasswordException'?f.name+' has a password. Save it without the password and try again.':f.name+' could not be opened as a PDF.');}}
+/* the words of a PDF page in rows, left to right; a wide gap between words is a new column (two spaces) */
+async function bpPdfText(pg){const tc=await pg.getTextContent(),R=[];
+ for(const x of tc.items){if(!x.str||!x.str.trim())continue;const t=x.transform,y=t[5],h=Math.abs(t[3])||x.height||8,w=x.width||0;
+  let r=null;for(const q of R)if(Math.abs(q.y-y)<=Math.max(2,Math.min(q.h,h)*.5)){r=q;break;}
+  if(!r){r={y,h,it:[]};R.push(r);}r.it.push({x:t[4],w,s:x.str,cw:x.str.length?w/x.str.length:h*.5});}
+ R.sort((a,b)=>b.y-a.y);
+ return R.map(r=>{r.it.sort((a,b)=>a.x-b.x);let s='',end=null;
+  for(const t of r.it){const cw=Math.max(1.5,t.cw);if(end!=null){const gap=t.x-end;s+=gap>cw*1.6?'  ':gap>cw*.3?' ':'';}s+=t.s;end=t.x+t.w;}
+  return s.trim();}).filter(Boolean).join('\n');}
+const bpTextOk=t=>{const a=(String(t).match(/[A-Za-z0-9]/g)||[]).length;return a>=40&&a>=String(t).replace(/\s/g,'').length*.5;};
+/* a scanned PDF page: drawn as a picture, then cut out and straightened like a photo */
+async function bpPdfPage(pg){const v0=pg.getViewport({scale:1}),k=Math.min(4,2600/Math.max(v0.width,v0.height)),v=pg.getViewport({scale:k}),c=document.createElement('canvas');
+ c.width=Math.round(v.width);c.height=Math.round(v.height);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
+ await pg.render({canvasContext:x,viewport:v}).promise;
+ const b=await new Promise(ok=>c.toBlob(ok,'image/png'));c.width=c.height=0;if(!b)throw new Error('could not get the page ready');
+ const u=URL.createObjectURL(b);try{return await ocrPrep(u);}finally{URL.revokeObjectURL(u);}}
+/* photos (one per page) or PDFs: every page read in turn, its lines added once, the bill's header and totals kept */
+async function invBillRead(inp){const files=[...(inp.files||[])];inp.value='';if(!files.length)return;
+ const st=bpInit(S.ui.ip||(S.ui.ip={txt:'',pick:{}}));if(st.rd&&st.rd.st==='busy')return;
+ const rd=st.rd={st:'busy',pct:0,msg:'Getting the bill ready…',errs:[],how:{},k:0,N:1};
+ rd.show=()=>{if(S.ui.ip===st&&cur().s==='invpaste')invRefresh();};rd.show();
+ const docs=[],jobs=[];let cut=0;
+ try{
+  for(const f of files){
+   if(/pdf$/i.test(f.type)||/\.pdf$/i.test(f.name)){let d;try{d=await bpPdfDoc(f);}catch(e){rd.errs.push(bpErr(e));continue;}docs.push(d);
+    for(let i=1;i<=d.numPages;i++){if(jobs.length<BP_MAXP)jobs.push({d,i});else cut++;}}
+   else if(/^image\//i.test(f.type)||/\.(jpe?g|png|webp|heic|heif)$/i.test(f.name)){if(jobs.length<BP_MAXP)jobs.push({f});else cut++;}
+   else rd.errs.push(f.name+' is not a photo or a PDF.');}
+  if(cut)rd.errs.push(cut+' more page'+(cut>1?'s were':' was')+' not read: '+BP_MAXP+' pages at a time.');
+  rd.N=Math.max(1,jobs.length);
+  for(let k=0;k<jobs.length;k++){if(S.ui.ip!==st)return;const j=jobs[k],lab=jobs.length>1?'Page '+(k+1)+': ':'';
+   rd.k=k;rd.pct=Math.round(k/rd.N*100);rd.msg=jobs.length>1?`Reading page ${k+1} of ${jobs.length}…`:'Reading the bill…';rd.show();
+   try{let text='';
+    if(j.d){const pg=await j.d.getPage(j.i);try{text=await bpPdfText(pg);if(bpTextOk(text))rd.how.pdf=(rd.how.pdf||0)+1;else text=await bpReadC(await bpPdfPage(pg),rd);}finally{pg.cleanup();}}
+    else{const u=URL.createObjectURL(j.f);let c;try{c=await ocrPrep(u);}catch(e){throw new Error((j.f.name||'This photo')+' could not be opened. Take it again as a normal photo.');}finally{URL.revokeObjectURL(u);}
+     text=await bpReadC(c,rd);}
+    if(S.ui.ip!==st)return;
+    bpAddPage(st,text,lab);
+   }catch(e){rd.errs.push(lab+bpErr(e));}}
+  bpAfter(st);rd.st='done';rd.pct=100;
+ }catch(e){rd.st='err';rd.msg=bpErr(e);}
+ finally{docs.forEach(d=>{try{d.destroy();}catch(e){}});if(rd.w){const w=rd.w;rd.w=null;w.then(x=>x.terminate()).catch(()=>{});}}
+ rd.show();if(rd.st==='done')bpFixRun(st);}
+/* -- what one page says, added to the bill -- */
+function bpOwn(g){if(!g)return false;const o=(DB.billFmt||{})['~own'];return Array.isArray(o)&&o.includes(g)||catPk(SHOP&&SHOP.gst||'')===g;}
+function bpKnownG(){const s=new Set();sups().forEach(x=>{if(/^[0-9A-Z]{15}$/.test(x.gst||''))s.add(x.gst);});Object.keys(DB.billFmt||{}).forEach(k=>{if(/^[0-9A-Z]{15}$/.test(k))s.add(k);});return [...s];}
+function bpFmt(B){const F=DB.billFmt||{},n=B.sup||B.name;return B.gstin&&F[B.gstin]||n&&F['N:'+catPk(n).slice(0,40)]||null;}
+function bpAddPage(st,text,lab){const B=st.bill,pi=st.pages.length,known=bpKnownG();let P=bpParse(text,{known});const hd=P.hdr||{gsts:[]};
+ const gs=(hd.gsts||[]).filter(x=>!bpOwn(x.g)),val=gs.filter(x=>!x.bad),nb=val.filter(x=>!x.buy),sel=nb[0]||(val.length>=2?val[0]:null);
+ val.forEach(x=>{if(x.buy&&(!sel||x.g!==sel.g))B.ourG=x.g;});
+ let warn='';
+ if(pi&&hd.inv&&B.inv&&catPk(hd.inv)!==catPk(B.inv))warn=`${lab}it shows bill no. ${hd.inv}, the first page ${B.inv}. Check it is the same bill.`;
+ else if(pi&&sel&&B.gstin&&sel.g!==B.gstin)warn=`${lab}it shows GSTIN ${sel.g}, the first page ${B.gstin}. Check it is the same bill.`;
+ if(sel&&!B.gstin){B.gstin=sel.g;B.gstBad='';}
+ if(!B.gstin&&!B.gstBad){const b=gs.find(x=>x.bad&&!x.buy);if(b)B.gstBad=b.g;}
+ if(hd.inv&&!B.inv)B.inv=hd.inv;if(hd.date&&!B.date)B.date=hd.date;if(hd.name&&!B.name)B.name=hd.name;
+ // no column titles on this page: read it again with the layout this supplier's bills had before
+ const F=bpFmt(B);
+ if(!P.cols&&F&&F.cols){const P2=bpParse(text,{known,cols:F.cols,order:F.order});if(P2.lines.length+P2.np.length>=P.lines.length+P.np.length)P=Object.assign(P2,{hdr:hd});}
+ if(P.cols&&!B.cols){B.cols=P.cols;B.order=P.order;}
+ // totals: a later page wins (the last page has the bill's totals)
+ const T=P.tot||{},BT=B.tot;Object.keys(T).forEach(k=>{if(k==='nums')(T.nums||[]).forEach(v=>{if(!BT.nums.includes(v))BT.nums.push(v);});else if(T[k])BT[k]=T[k];});
+ // the lines: misreads this supplier's bills had before are put right; a line on two pages (the same page read twice) counts once
+ const pg={n:0,dup:0,err:warn},fx=Object.assign({},F&&F.fix||{},st.fixes),nfx=Object.assign({},F&&F.nfix||{},st.nfixes),add=[];
+ const seen=key=>{const p=st.seen[key];if(p!=null&&p!==pi){pg.dup++;return true;}st.seen[key]=pi;return false;};
+ P.lines.forEach(o=>{let pk=catPk(o.pn);if(fx[pk]&&catPk(fx[pk])!==pk){st.fixed.push([String(o.pn).toUpperCase(),fx[pk]]);o.pn=fx[pk];pk=catPk(o.pn);}
+  if(seen(pk+'|'+r2(o.q)+'|'+r2(o.r)))return;if(o.name)st.names[pk]=o.name;add.push(bpLineTxt(o));pg.n++;});
+ P.np.forEach(o=>{const nk=bpNk(o.name),pn=nfx[nk];
+  if(pn){o.pn=pn;const pk=catPk(pn);if(seen(pk+'|'+r2(o.q)+'|'+r2(o.r)))return;st.names[pk]=o.name;add.push(bpLineTxt(o));pg.n++;return;}
+  if(!seen('~'+nk+'|'+r2(o.q)+'|'+r2(o.r)))st.np.push(o);});
+ if(add.length)st.txt=(String(st.txt||'').trim()?st.txt.replace(/\s*$/,'\n'):'')+add.join('\n');
+ st.pages.push(pg);}
+/* the supplier: the one with this GSTIN, else the name this supplier's bills had before, else the name on the bill */
+function bpAfter(st){const B=st.bill;if(B.sup)return;const L=sups();let s=B.gstin&&L.find(x=>x.gst===B.gstin);
+ const F=bpFmt(B);if(!s&&F&&F.n)s=L.find(x=>x.n===F.n)||{n:F.n};
+ if(!s&&B.name){const k=catPk(B.name);s=L.find(x=>{const y=catPk(x.n);return y&&(y===k||Math.min(y.length,k.length)>=6&&(y.includes(k)||k.includes(y)));});}
+ B.sup=s?s.n:B.name||'';}
+/* when the catalogues for the lines have loaded: numbers found nowhere are matched to the nearest one they could be misread from */
+async function bpFixRun(st){const rd=st.rd,t0=Date.now(),L=()=>invParse(st.txt).lines;
+ while(Date.now()-t0<90000&&L().some(l=>!invFind(l.pn)&&invLook(l.pn,true).st==='wait')){if(S.ui.ip!==st)return;invNeed(L().map(l=>invLook(l.pn,true)));await new Promise(r=>setTimeout(r,400));}
+ if(S.ui.ip!==st)return;const rows=String(st.txt||'').split('\n');let ch=0;
+ L().forEach(l=>{if(invFind(l.pn)||invLook(l.pn,true).hits.length)return;const m=ocrNear(l.pk);if(!m||catPk(m.pn)===l.pk||rows[l.ln]==null)return;
+  rows[l.ln]=bpSwapPn(rows[l.ln],l.tok,m.pn);st.fixed.push([l.pn,m.pn]);if(st.names[l.pk])st.names[catPk(m.pn)]=st.names[l.pk];ch++;});
+ if(ch)st.txt=rows.join('\n');if(rd)rd.chk=1;if(cur().s==='invpaste')invRefresh();}
+const bpSwapPn=(row,tok,pn)=>{const i=row.indexOf(tok);return i<0?pn+'  '+row:row.slice(0,i)+pn+row.slice(i+tok.length);};
+/* -- a line of the box: part no., qty, rate, and what else the bill says (MRP, HSN, GST, DISC %, AMT) -- */
+function invParse(txt){const lines=[];let skip=0;
+ String(txt||'').split(/\r?\n/).forEach((row,ln)=>{const x={};
+  let s=row.replace(/(^|\s)(MRP|HSN|GST|DISC|AMT)(?:\s*[:=]\s*|\s+)(?:₹\s*)?(\d[\d.,]*)\s*%?(?=\s|$)/gi,(m,a,k,v)=>{x[k.toLowerCase()]=v.replace(/,/g,'');return a+' ';});
+  s=s.replace(/(\d),(\d{3})(?!\d)/g,'$1$2').trim();if(!s)return;
+  const t=s.split(/[\t,;|]+|\s+/).map(y=>y.trim()).filter(Boolean);let pi=-1;
+  for(let i=0;i<t.length;i++){const k=catPk(t[i]);if(k.length>=5&&/\d/.test(k)&&!/^\d+(\.\d+)?$/.test(t[i])||/^\d{6,}$/.test(t[i])){pi=i;break;}}
+  if(pi<0){if(/\d/.test(s))skip++;return;}
+  const nums=t.slice(pi+1).map(y=>y.replace(/^(\d+)(pcs?|nos?|no\.|qty)$/i,'$1')).filter(y=>/^\d+(\.\d+)?$/.test(y));let q=0,rate='';
+  if(nums.length>=2&&/\./.test(nums[1])&&+nums[0]>0){q=+nums[0];rate=nums[1];}
+  else if(nums.length&&/^\d+$/.test(nums[0])){q=parseInt(nums[0]);if(nums[1])rate=nums[1];}else if(nums.length)rate=nums[0];
+  const g=x.gst!=null&&x.gst!==''&&isFinite(+x.gst)?+x.gst:null;
+  lines.push({pn:t[pi].toUpperCase(),pk:catPk(t[pi]),tok:t[pi],q:q||1,rate,ln,mrp:+x.mrp||0,hsn:/^\d{4,8}$/.test(x.hsn||'')?x.hsn:'',gst:g,disc:Math.min(99,+x.disc||0),amt:+x.amt||0});});
+ return {lines,skip};}
+const bpNet=l=>r2((+l.rate||0)*(1-(+l.disc||0)/100));
+const bpCalcDisc=(rate,mrp,g)=>mrp>0?Math.round((mrp-rate*(1+(+g||0)/100))/mrp*1000)/10:0;
+const bpLx=l=>bpDef({lr:l.disc>0?String(l.rate):undefined,disc:l.disc>0?l.disc:undefined,bmrp:l.mrp>0?l.mrp:undefined,hsn:l.hsn||undefined,gst:l.gst!=null?l.gst:BP_BG!=null?BP_BG:undefined});
+/* a bill with one GST rate for all its lines (CGST 9% + SGST 9% at the bottom): that rate for the lines that show none */
+let BP_BG=null;const bpBillG=st=>{const r=+(st&&st.bill&&st.bill.tot&&st.bill.tot.rate);return r>0&&BP_GST.includes(r)?r:null;};
+const bpEx=n=>bpDef({lr:n.lr,disc:n.disc,bmrp:n.bmrp,hsn:n.hsn,gst:n.gst});
+/* the rate each part had on its last posted bill */
+function bpLastMap(ex){const m=new Map();for(const g of DB.grns||[]){if(g.status!=='posted'||g.id===ex)continue;const d=g.bdate||g.iso||ddmmm2iso(g.date);
+ for(const it of g.items||[]){if(!(+it.rate>0))continue;const o=m.get(it.pid);if(!o||d>=o.d)m.set(it.pid,{r:+it.rate,d,inv:g.inv||g.id});}}return m;}
+/* the same bill again: same bill no. from the same supplier (GSTIN or name) */
+function bpDup(sup,gstin,inv,ex){const k=catPk(inv||'');if(k.length<2)return null;const sk=catPk(sup||'');
+ return (DB.grns||[]).find(g=>g.id!==ex&&catPk(g.inv||'')===k&&(gstin&&g.gstin===gstin||sk&&catPk(g.supplier||'')===sk||!gstin&&!sk&&k.length>=6))||null;}
+/* what the bill says about a line, and what to look at: MRP not the list's, rate above MRP, rate changed since the last bill, qty x rate */
+function bpNote(l,r,last){const out=[],w=[],x=r.x||null,h=r.hits?r.hits.find(y=>y.vb===((S.ui.ip||{}).pick||{})[l.pk])||r.hits[0]:null;
+ const net=bpNet(l),mrp=+l.mrp||0,g=l.gst!=null?l.gst:BP_BG;
+ if(mrp>0){out.push('MRP '+invInr(mrp));const cm=x?+x.mrp||0:h?+h.mrp||0:0;
+  if(cm>0&&r2(cm)!==r2(mrp))w.push(['a',`MRP on the bill ${invInr(mrp)}, ${x?'your list':'the catalogue'} ${invInr(cm)}. The bill’s MRP goes into your list${x?' and catalogue':''} when you post.`]);}
+ if(l.hsn){out.push('HSN '+esc(l.hsn));if(x&&x.hsn&&String(x.hsn)!==String(l.hsn))w.push(['i',`HSN ${esc(x.hsn)} in your list becomes ${esc(l.hsn)} when you post.`]);}
+ if(g!=null)out.push('GST '+bpQ(g)+'%');
+ if(l.disc>0)out.push('Disc '+bpQ(l.disc)+'% · net '+invInr(net));
+ else if(mrp>0&&g!=null&&net>0){const d=bpCalcDisc(net,mrp,g);if(d>0)out.push('Disc '+d+'% (calculated from MRP)');}
+ if(mrp>0&&net>mrp)w.push(['r',`Rate ${invInr(net)} is above the MRP ${invInr(mrp)}.`]);
+ else if(mrp>0&&g!=null&&net*(1+g/100)>mrp+.5)w.push(['a',`Rate + GST ${invInr(r2(net*(1+g/100)))} is above the MRP ${invInr(mrp)}.`]);
+ if(x&&net>0){const o=last.get(x.id);if(o&&Math.abs(o.r-net)>Math.max(.5,o.r*.005))w.push([net>o.r?'a':'g',`Rate ${net>o.r?'up':'down'} ${invInr(Math.abs(r2(net-o.r)))} from ${invInr(o.r)} on the last bill (${esc(o.inv)}${o.d?', '+fmtD(o.d):''}).`]);}
+ if(l.amt>0&&net>0){const a=r2(l.q*net);if(Math.abs(a-l.amt)>Math.max(1,l.amt*.01))w.push(['a',`${bpQ(l.q)} × ${invInr(net)} = ${invInr(a)}, the bill says ${invInr(l.amt)}. Check qty and rate.`]);}
+ return (out.length?`<div class="cap bp-i">${out.join(' · ')}</div>`:'')+w.map(([t,s])=>`<div class="bp-w ${t}">${s}</div>`).join('');}
+/* -- the bill's totals against the lines read -- */
+function bpTot(st){const L=invParse(st.txt).lines,T=st.bill&&st.bill.tot||{};let it=0,itG=0,allG=L.length>0;
+ L.forEach(l=>{const a=l.amt>0?l.amt:r2(l.q*bpNet(l));it+=a;if(l.gst!=null)itG+=a*(1+l.gst/100);else allG=false;});
+ (st.np||[]).concat(st.npSkip||[]).forEach(o=>{const n=o.q*o.r*(1-(o.dp>0?o.dp:0)/100),a=o.tx>0?o.tx:o.incl?n:o.amt>0?o.amt:n;it+=a;if(o.gst>0)itG+=a*(1+o.gst/100);else allG=false;});
+ it=r2(it);itG=r2(itG);const bd=+T.disc||0,tol=v=>Math.max(1,v*.004),C=[];
+ if(T.taxable>0)C.push(['taxable value',T.taxable]);if(T.sub>0)C.push(['total',T.sub]);
+ if(T.grand>0&&T.tax>0)C.push(['total before GST',r2(T.grand-T.tax-(T.round||0))]);
+ (T.nums||[]).forEach(v=>C.push(['total',v]));
+ let m=C.find(([,v])=>Math.abs(v-it)<=tol(v)),ud=0;
+ if(!m&&bd>0){m=C.find(([,v])=>Math.abs(v-(it-bd))<=tol(v));if(m)ud=1;}
+ if(!m&&allG&&T.grand>0&&Math.abs(T.grand-(itG+(T.round||0)))<=tol(T.grand))m=['total',T.grand];
+ const ref=m?m[1]:T.taxable>0?T.taxable:T.sub>0?T.sub:T.grand>0&&T.tax>0?r2(T.grand-T.tax-(T.round||0)):0;
+ return {it,ok:!!m,lab:m?m[0]:T.taxable>0?'taxable value':T.sub>0?'total':'total before GST',ref,ud,T};}
+function bpTotHTML(st){const r=bpTot(st),T=r.T,kv=(k,v)=>`<div class="kv"><span>${k}</span><span>${v}</span></div>`;
+ let h=kv('Lines read come to',invInr(r.it));
+ if(T.taxable>0)h+=kv('Taxable value',invInr(T.taxable));
+ if(T.disc>0)h+=kv('Discount on the bill',invInr(T.disc));
+ if(T.tax>0)h+=kv('GST'+(T.rate?' '+bpQ(T.rate)+'%':''),invInr(T.tax));
+ if(T.round)h+=kv('Round off',(T.round>0?'+':'−')+invInr(Math.abs(T.round)));
+ if(T.grand>0)h+=kv('Bill total',`<b>${invInr(T.grand)}</b>`);
+ if(r.ok)h+=`<div class="bp-w g">${ic('checkC','s16')}<span>The lines add up to the bill’s ${r.lab}${r.ud?' after its discount':''}.</span></div>`;
+ else if(r.ref>0)h+=`<div class="bp-w">${ic('alert','s16')}<span>The lines come to ${invInr(r.it)}, the bill’s ${r.lab} is ${invInr(r.ref)} (${invInr(Math.abs(r2(r.ref-r.it)))} ${r.it<r.ref?'less':'more'}). A line may be missing or misread: check the lines against the bill.</span></div>`;
+ else h+=`<div class="cap">The bill’s total was not found, so the lines could not be checked against it.</div>`;
+ if(T.words>0&&T.grand>0&&Math.abs(T.words-T.grand)>1)h+=`<div class="bp-w">${ic('alert','s16')}<span>The amount in words (${invInr(T.words)}) is not the bill total (${invInr(T.grand)}). Check the total.</span></div>`;
+ return h;}
+/* -- the paste screen: what was read, the bill's header, the lines, each line checked -- */
+function bpReadNote(st){const rd=st.rd;if(!rd)return '';
+ if(rd.st==='busy')return `<div class="inv-ocr"><div class="inv-ocr-bar"><i style="width:${Math.max(4,rd.pct||0)}%"></i></div><div class="cap">${esc(rd.msg)}</div></div>`;
+ if(rd.st==='err')return `<div class="inv-ocr no"><b>Could not read the bill</b><div class="cap">${esc(rd.msg||'Please try again.')}</div></div>`;
+ const pg=st.pages,n=pg.reduce((a,p)=>a+p.n,0),dup=pg.reduce((a,p)=>a+p.dup,0),how=rd.how||{},np=st.np.length;
+ const by=[how.pdf?'from the PDF':'',how.ai?'by Apna AI':'',how.phone?'on this device':''].filter(Boolean).join(' and ');
+ const errs=(rd.errs||[]).concat(pg.filter(p=>p.err).map(p=>p.err));
+ return `<div class="inv-ocr ${n||np?'ok':'no'}"><b>${n?`Read ${n} line${n>1?'s':''} with a part no.${pg.length>1?' from '+pg.length+' pages':''}`:np?'No part numbers read':'Nothing read from the bill'}</b>
+  <div class="cap">${n||np?(by?'Read '+by+'. ':'')+'Check the lines against the bill. Tap “Type the right part no.” on a line that was misread.':'Take it again: the whole page, flat, close, in good light.'} The photo or PDF is not saved.</div>
+  ${dup?`<div class="cap">${dup} line${dup>1?'s':''} read on two pages counted once.</div>`:''}
+  ${rd.aiErr&&how.phone?`<div class="cap">Apna AI could not read it (${esc(rd.aiErr)}), so this device read it.</div>`:''}
+  ${errs.map(e=>`<div class="bp-w">${esc(e)}</div>`).join('')}
+  ${st.fixed.length?`<div class="cap"><b>Corrected:</b></div><pre>${st.fixed.map(([a,b])=>esc(a)+' → '+esc(b)).join('\n')}</pre>`:''}
+  ${n&&!rd.chk?'<div class="cap">Checking the part numbers in the catalogues…</div>':''}</div>`;}
+function bpBillCard(st){if(!st.pages.length)return '';const B=st.bill,d=bpDup(B.sup||B.name,B.gstin,B.inv,null),known=!!B.sup&&sups().some(s=>s.n===B.sup);
+ return `<div class="bp-bill">
+  <div class="field"><label for="bp-sup">Supplier</label><div class="inp"><input id="bp-sup" list="bp-sups" autocomplete="off" value="${esc(B.sup||'')}" placeholder="Supplier name" onchange="S.ui.ip.bill.sup=this.value.trim();refresh()"><datalist id="bp-sups">${supN().map(x=>`<option value="${esc(x)}"></option>`).join('')}</datalist></div>
+   ${B.sup&&!known?'<div class="cap">New supplier: added when you post the bill.</div>':''}</div>
+  <div class="grid2"><div class="field"><label for="bp-inv">Bill no.</label><div class="inp ${d?'err':''}"><input id="bp-inv" value="${esc(B.inv||'')}" autocomplete="off" onchange="S.ui.ip.bill.inv=this.value.trim();refresh()"></div></div>
+  <div class="field"><label for="bp-dt">Bill date</label><div class="inp"><input id="bp-dt" type="date" value="${esc(B.date||'')}" max="${isoToday()}" onchange="S.ui.ip.bill.date=this.value"></div></div></div>
+  <div class="kv"><span>GSTIN</span><span>${B.gstin?`<span class="num">${esc(B.gstin)}</span><span class="bp-ok" title="Check digit is right">${ic('checkC','s16')}</span>`:B.gstBad?`<span class="num">${esc(B.gstBad)}</span>`:'Not found'}</span></div>
+  ${B.gstBad&&!B.gstin?`<div class="bp-w">${ic('alert','s16')}<span>This GSTIN’s last letter does not match its check digit: it may be misread. Check it on the bill.</span></div>`:''}
+  ${d?`<div class="bp-w r">${ic('alert','s16')}<span>Bill ${esc(B.inv)} from ${esc(d.supplier)} is already in Stock in (${esc(d.id)}, ${esc(d.date)}). Is this the same bill again?</span></div>`:''}
+  ${bpTotHTML(st)}</div>`;}
+const bpFixForm=l=>`<form class="bp-fix" onsubmit="event.preventDefault();bpFixSave(${l.ln},this.elements[0].value)"><input id="bp-fx" value="${esc(l.pn)}" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="The right part no."><button class="btn sm" type="submit">Check</button><button class="link" type="button" onclick="S.ui.bpFix=null;refresh()">Cancel</button></form>`;
+function bpFixOpen(ln){S.ui.bpFix=ln;S.ui.after=()=>{const i=document.getElementById('bp-fx');if(i){i.focus();try{i.select();}catch(e){}}};refresh();}
+/* the right part no. typed on a line: the line changes, is checked again at once, and this supplier's bills get the same fix next time */
+function bpFixSave(ln,v){const st=S.ui.ip;if(!st)return;v=String(v||'').trim().toUpperCase().replace(/\s+/g,'');
+ if(catPk(v).length<4){toast('Type the part no. as on the bill');return;}
+ const rows=String(st.txt||'').split('\n'),row=rows[ln],l=row!=null&&invParse(row).lines[0];S.ui.bpFix=null;if(!l)return refresh();
+ const k=catPk(v);if(k!==l.pk){rows[ln]=bpSwapPn(row,l.tok,v);st.txt=rows.join('\n');st.fixes[l.pk]=v;if(st.names[l.pk]&&!st.names[k])st.names[k]=st.names[l.pk];invLook(v);toast('Checking '+v+'…');}
+ refresh();}
+function bpNpSave(i,v){const st=S.ui.ip;if(!st)return;const o=st.np[i];if(!o)return;v=String(v||'').trim().toUpperCase().replace(/\s+/g,'');
+ if(catPk(v).length<4){toast('Type the part no. as on the bill or the box');return;}
+ st.names[catPk(v)]=o.name;st.nfixes[bpNk(o.name)]=v;st.np.splice(i,1);
+ st.txt=(String(st.txt||'').trim()?st.txt.replace(/\s*$/,'\n'):'')+bpLineTxt({...o,pn:v});invLook(v);refresh();}
+function bpNpSkip(i){const st=S.ui.ip;if(!st)return;const o=st.np.splice(i,1)[0];if(o)st.npSkip.push(o);refresh();}
+SCREENS.invpaste=()=>{const st=bpInit(S.ui.ip||(S.ui.ip={txt:'',pick:{}}));BP_BG=bpBillG(st);const P0=invParse(st.txt),rows=P0.lines.map(invCheck);invNeed(rows.map(r=>r.o).filter(Boolean));
+ const ready=rows.filter(r=>r.kind==='ready'),need=rows.length-ready.length,look=rows.some(r=>r.kind==='look'),unpicked=rows.some(r=>r.kind==='pick'&&!st.pick[r.l.pk]);
+ const busy=!!(st.rd&&st.rd.st==='busy'),last=bpLastMap(),dis=busy?' dis':'',off=busy?' disabled':'';
+ const b=(t,c)=>`<span class="pill ${c} inv-bd">${t}</span>`,qr=l=>`${bpQ(l.q)} × ${l.rate?invInr(l.rate):'rate not given'}`;
+ const fx=(l,t)=>S.ui.bpFix===l.ln?bpFixForm(l):`<button class="link bp-fl" onclick="bpFixOpen(${l.ln})">${ic('edit','s16')} ${t}</button>`;
+ const nm=l=>st.names[l.pk]?`<div class="cap">On the bill: ${esc(st.names[l.pk])}</div>`:'';
+ const one=r=>{const l=r.l,wt=r.w?` · already waiting for photos from bill ${esc(r.w.inv||r.w.grn||'')}`:'',note=r.kind==='look'?'':bpNote(l,r,last);
+  if(r.kind==='ready')return `<div class="inv-cl ok">${b('+'+bpQ(l.q),'g')}<div class="grow"><b>${esc(r.x.name)}</b><div class="cap">${esc(r.x.brand)} · in your list · <span class="num">${esc(l.pn)}</span> · ${qr(l)}</div>${note}${fx(l,'Change part no.')}</div>${ic('checkC','s20')}</div>`;
+  if(r.kind==='look')return `<div class="inv-cl">${b('…','n')}<div class="grow"><b class="num">${esc(l.pn)}</b><div class="cap">Checking the ${esc((r.o.pend||[]).join(', ')||'')} catalogues…</div></div></div>`;
+  if(r.kind==='none')return `<div class="inv-cl no">${b('Not found','r')}<div class="grow"><b class="num">${esc(l.pn)}</b>${nm(l)}<div class="cap">Not in any catalogue we looked in. Misread? Type the right part no. If it is right, fill name, brand and MRP by hand, then take its photo. ${qr(l)}${wt}</div>${note}${fx(l,'Type the right part no.')}</div></div>`;
+  const h=r.hits.find(x=>x.vb===st.pick[l.pk])||r.hits[0];
+  return `<div class="inv-cl nw">${b('New','a')}<div class="grow"><b>${esc(h.name)}${r.kind==='new'?' · '+esc(h.vb)+' catalogue':''}</b><div class="cap"><span class="num">${esc(l.pn)}</span> · ${qr(l)} · ${r.kind==='pick'?'this number is in the '+esc(r.hits.map(x=>x.vb).join(' and '))+' catalogues. Pick the brand:':'needs '+(h.mrp||l.mrp?'':'MRP + ')+'a photo'}${wt}</div>
+   ${r.kind==='pick'?`<div class="inv-chips">${r.hits.map(x=>`<button class="chip ${st.pick[l.pk]===x.vb?'on':''}" onclick="S.ui.ip.pick['${l.pk}']='${m2Q(x.vb)}';refresh()">${esc(x.vb)}${x.mrp?' · MRP '+invInr(x.mrp):''}</button>`).join('')}</div>`:''}${note}${fx(l,'Change part no.')}</div></div>`;};
+ const np=(o,i)=>`<div class="inv-cl bp-np">${b('No part no.','a')}<div class="grow"><b>${esc(o.name||'Item')}</b><div class="cap">${bpQ(o.q)} × ${invInr(o.r)}${o.mrp>0?' · MRP '+invInr(o.mrp):''}</div>
+   <form class="bp-fix" onsubmit="event.preventDefault();bpNpSave(${i},this.elements[0].value)"><input placeholder="Type its part no." autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Part no. for ${esc(o.name||'this item')}"><button class="btn sm" type="submit">Add</button></form>
+   <button class="link bp-fl" onclick="bpNpSkip(${i})">Not a part (skip it)</button></div></div>`;
+ const up=isWv()?`<label class="btn line inv-ocr-b${dis}">${ic('file','s18')} Upload a photo or PDF of the bill<input type="file" accept="image/*,application/pdf,.pdf" multiple aria-label="Photo or PDF of the bill" onchange="invBillRead(this)"${off}></label>`
+  :`<div class="grid2"><label class="btn line inv-ocr-b${dis}">${ic('camera','s18')} Take a photo<input type="file" accept="image/*" capture="environment" aria-label="Take a photo of the bill" onchange="invBillRead(this)"${off}></label><label class="btn line inv-ocr-b${dis}">${ic('file','s18')} Photos or PDF<input type="file" accept="image/*,application/pdf,.pdf" multiple aria-label="Photos or PDF of the bill" onchange="invBillRead(this)"${off}></label></div>`;
+ return bar('Paste supplier bill')+`<div class="scroll"><div class="pad">
+ <p class="cap">Take a photo of each page of the printed bill, upload its PDF, or paste the lines from the supplier’s Excel sheet or WhatsApp message. Each line is checked against your list and all catalogues.</p>
+ <div class="inv-2c paste"><div class="inv-col"><div class="card"><div class="sec"><span class="h3">Read the bill</span>${st.pages.length?`<span class="cap">${st.pages.length} page${st.pages.length>1?'s':''}</span>`:''}</div>
+  ${up}
+  ${bpReadNote(st)}
+  ${bpBillCard(st)}</div>
+  <div class="card"><div class="sec"><span class="h3">Lines${P0.lines.length?' · '+P0.lines.length:''}</span>${st.txt||st.pages.length?`<button class="link" onclick="S.ui.ip={txt:'',pick:{}};S.ui.bpFix=null;refresh()">Clear</button>`:''}</div>
+  <textarea id="ip-ta" class="inv-ta" spellcheck="false" placeholder="Paste here, one part per line:&#10;45125-AAH-F0099  10  118.00&#10;94050-06000, 50, 3.20" oninput="S.ui.ip.txt=this.value;clearTimeout(window._ipT);window._ipT=setTimeout(invRefresh,600)">${esc(st.txt)}</textarea>
+  <div class="cap">Works with Excel columns or WhatsApp lines: part no., qty, rate. Spaces, tabs or commas are fine. Lines read from a bill also carry its MRP, HSN, GST, discount and amount.</div></div></div>
+ <div class="inv-col"><div class="card"><div class="sec"><span class="h3">Checked</span><div class="inv-chips">${ready.length?`<span class="pill g">${ready.length} ready</span>`:''}${need?`<span class="pill a">${need} need${need>1?'':'s'} you</span>`:''}</div></div>
+  ${rows.length?rows.map(one).join(''):st.np.length?'':'<div class="empty">Read or paste the bill. Each line shows here: in your list, new from a catalogue, or not found.</div>'}
+  ${st.np.length?`<div class="cap"><b>${st.np.length} item line${st.np.length>1?'s':''} without a part no.</b> Type the part no. to add it, or skip it.</div>${st.np.map(np).join('')}`:''}
+  ${P0.skip?`<div class="cap">${P0.skip} line${P0.skip>1?'s':''} skipped: no part number found.</div>`:''}
+  ${rows.length?`<div class="grid2"><button class="btn" ${ready.length&&!busy?'':'disabled'} onclick="invPasteAdd(0)">Add ${ready.length} ready line${ready.length===1?'':'s'} to bill</button><button class="btn line" ${need&&!look&&!unpicked&&!busy?'':'disabled'} onclick="invPasteAdd(1)">Add all ${rows.length} lines</button></div>
+  <div class="cap">${busy?'Still reading the bill…':look?'Still checking some lines in the catalogues…':unpicked?'Pick the brand for the lines that need it.':'Ready lines go into stock when you post the bill. New parts wait until they have a photo.'}</div>`:''}
+ </div></div></div></div></div>`;};
+/* -- the lines into Stock in, with the bill's header, totals, MRP, HSN, GST and discount; this supplier's bill layout and fixes kept -- */
+function invPasteAdd(all){const st=S.ui.ip;if(!st)return;bpInit(st);BP_BG=bpBillG(st);const rows=invParse(st.txt).lines.map(invCheck);
+ const g=S.ui.ge&&S.ui.ge.status!=='posted'?S.ui.ge:geState('new');S.ui.ge=g;g.nw=g.nw||[];let n=0;
+ if(st.pages.length){const B=st.bill,T=B.tot||{},tc=bpTot(st);
+  if(g.id==='new'&&!String(g.supplier||'').trim()&&(B.sup||B.name))g.supplier=B.sup||B.name;
+  if(!String(g.inv||'').trim()&&B.inv)g.inv=B.inv;
+  if(B.gstin&&!g.gstin)g.gstin=B.gstin;
+  if(B.date&&!g.bdate)g.bdate=B.date;
+  if(!(parseFloat(String(g.billAmt||'').replace(/[^\d.]/g,''))>0)&&T.grand>0)g.billAmt=String(T.grand);
+  if(T.tax>0&&g.tax==null)g.tax=T.tax;if(T.round&&g.round==null)g.round=T.round;if(T.taxable>0&&g.taxable==null)g.taxable=T.taxable;
+  if(tc.ud&&T.disc>0&&g.bdisc==null)g.bdisc=T.disc;
+  bpLearn(st);}
+ rows.forEach(r=>{const l=r.l,ex=bpLx(l),rate=l.rate?(l.disc>0?String(bpNet(l)):l.rate):'';
+  if(r.kind==='ready'){const it=g.items.find(i=>i.pid===r.x.id);if(it){it.q=(+it.q||0)+l.q;if(rate){it.rate=rate;Object.assign(it,ex);}}else g.items.push({pid:r.x.id,exp:null,q:l.q,rate,...ex});n++;return;}
+  if(!all||r.kind==='look')return;const e0=g.nw.find(x=>x.pk===l.pk);if(e0){e0.q=(+e0.q||0)+l.q;if(rate){e0.rate=rate;Object.assign(e0,ex);}n++;return;}
+  const h=r.kind==='new'?r.hits[0]:r.kind==='pick'?r.hits.find(x=>x.vb===st.pick[l.pk]):null;const line=invNwLine(h||{pn:l.pn},!h);line.q=l.q;line.rate=rate;Object.assign(line,ex);
+  if(l.mrp>0){line.mrp=String(r2(l.mrp));line.mrpCat=false;}
+  if(!h&&st.names[l.pk])line.name=String(st.names[l.pk]).slice(0,80);
+  g.nw.push(line);n++;});
+ S.ui.ip=null;S.ui.bpFix=null;if(S.ui.geErr)delete S.ui.geErr.items;toast(n+' line'+(n===1?'':'s')+' added to Stock in');const prev=S.stack[S.stack.length-2];if(prev&&prev.s==='grnedit'&&String(prev.p&&prev.p.id)===String(g.id))back();else go('grnedit',{id:g.id});}
+/* each supplier's bills: the column layout (for pages without column titles), part no. fixes, and our own GSTIN */
+function bpLearn(st){const B=st.bill;if(!B)return;const nm=B.sup||B.name||'',key=B.gstin||(nm?'N:'+catPk(nm).slice(0,40):'');if(!key)return;
+ const F=DB.billFmt=DB.billFmt||{},f=F[key]&&typeof F[key]==='object'&&!Array.isArray(F[key])?F[key]:{};
+ if(nm)f.n=nm;if(B.gstin)f.gst=B.gstin;if(B.cols){f.cols=B.cols;f.order=B.order;}
+ f.fix=Object.assign({},f.fix||{},st.fixes);f.nfix=Object.assign({},f.nfix||{},st.nfixes);
+ ['fix','nfix'].forEach(k=>{const e=Object.keys(f[k]);if(e.length>400)e.slice(0,e.length-400).forEach(x=>delete f[k][x]);});
+ f.c=(+f.c||0)+1;f.at=isoToday();F[key]=f;
+ if(B.ourG){const o=Array.isArray(F['~own'])?F['~own'].slice():[];if(!o.includes(B.ourG)){o.push(B.ourG);F['~own']=o.slice(-5);}}}
+/* -- Stock in: bill date, GSTIN, the same bill twice; each line's MRP / discount / HSN / GST; the bill's GST and discount in the totals -- */
+function geBillMore(g,e){const k=catPk(g.gstin||''),ok=k?gstOk(k):null,d=bpDup(g.supplier,g.gstin,g.inv,g.id);
+ return `<div class="grid2"><div class="field"><label for="ge-bd">Bill date</label><div class="inp"><input id="ge-bd" type="date" value="${esc(g.bdate||'')}" max="${isoToday()}" onchange="S.ui.ge.bdate=this.value"></div></div>
+  <div class="field"><label for="ge-gst">Supplier GSTIN</label><div class="inp ${ok===false?'err':''}"><input id="ge-gst" value="${esc(g.gstin||'')}" placeholder="Optional" autocapitalize="characters" spellcheck="false" onchange="S.ui.ge.gstin=catPk(this.value);refresh()">${ok?`<span class="bp-ok">${ic('checkC','s18')}</span>`:''}</div></div></div>
+  ${ok===false?'<div class="errmsg">This GSTIN does not check out (15 letters, last one a check digit). Check it against the bill.</div>':''}
+  ${d?`<div class="bp-w r">${ic('alert','s16')}<span>Bill ${esc(g.inv)} from this supplier is already in ${esc(d.id)} (${esc(d.date)}). Same bill again?</span></div>`:''}`;}
+function geItemNote(it,x,g){const a=[];if(+it.bmrp>0)a.push('MRP '+invInr(it.bmrp)+(x&&+x.mrp>0&&r2(x.mrp)!==r2(it.bmrp)?' (list '+invInr(x.mrp)+', changes when posted)':''));
+ if(+it.disc>0)a.push('Disc '+bpQ(it.disc)+'% of '+invInr(it.lr||it.rate));
+ else if(+it.bmrp>0&&it.gst!=null&&+it.rate>0){const d=bpCalcDisc(+it.rate,+it.bmrp,+it.gst);if(d>0)a.push('Disc '+d+'% (calculated from MRP)');}
+ if(it.hsn)a.push('HSN '+esc(it.hsn));if(it.gst!=null&&it.gst!=='')a.push('GST '+bpQ(it.gst)+'%');
+ const o=bpLastMap(g.id).get(it.pid),net=+it.rate||0;let w='';
+ if(o&&net>0&&Math.abs(o.r-net)>Math.max(.5,o.r*.005))w+=`<div class="bp-w ${net>o.r?'a':'g'}">Rate ${net>o.r?'up':'down'} from ${invInr(o.r)} on the last bill (${esc(o.inv)})</div>`;
+ if(+it.bmrp>0&&net>+it.bmrp)w+=`<div class="bp-w r">Rate is above the MRP ${invInr(it.bmrp)}</div>`;
+ return (a.length?`<div class="s bp-i">${a.join(' · ')}</div>`:'')+w;}
+function geTotCard(g,tot,bill){const bd=+g.bdisc||0,tx=+g.tax||0,ro=+g.round||0,due=r2(tot-bd+tx+ro),more=bd||tx||ro;
+ return `<div class="card"><div class="kv"><span>Items total</span><span>${inr(tot)}</span></div>${bd?`<div class="kv"><span>Bill discount</span><span>−${invInr(bd)}</span></div>`:''}${tx?`<div class="kv"><span>GST</span><span>${invInr(tx)}</span></div>`:''}${ro?`<div class="kv"><span>Round off</span><span>${ro>0?'+':'−'}${invInr(Math.abs(ro))}</span></div>`:''}${more?`<div class="kv"><span>Comes to</span><span>${invInr(due)}</span></div>`:''}
+ ${bill?`<div class="kv"><span>Supplier bill</span><span>${inr(bill)}</span></div><div class="kv"><span>Difference</span><span style="color:${Math.abs(bill-due)<1?'var(--g)':'var(--r)'}">${Math.abs(bill-due)<1?'Matches bill':(due>bill?'+':'−')+inr(Math.abs(bill-due))}</span></div>`:'<div class="cap">Enter the bill amount to check it against the items.</div>'}</div>`;}
+/* posting: the bill's MRP (prices follow the Admin % rule), HSN and GST go into the list; the catalogue shows the bill's MRP too */
+function bpSetP(p,ch){Object.assign(p,ch);const n=(DB.newProducts||[]).find(x=>x.id===p.id);if(n&&n!==p)Object.assign(n,ch);
+ if(!String(p.id).startsWith('n')||(DB.prices||{})[p.id]){DB.prices=DB.prices||{};DB.prices[p.id]=Object.assign({},DB.prices[p.id]||{},ch);}}
+function bpApplyItem(it,g){const p=P(it.pid);if(!p)return;const ch={},m=r2(+it.bmrp||0),inv=g.inv||g.id;
+ if(m>0&&m!==r2(p.mrp)){const pr=invPrices(m);audit('MRP changed from supplier bill',p.pn,invInr(p.mrp||0),invInr(m)+' · bill '+inv);Object.assign(ch,{mrp:m,price:pr.price,mp:pr.mp});}
+ if(/^\d{4,8}$/.test(it.hsn||'')&&String(p.hsn||'')!==String(it.hsn)){audit('HSN changed from supplier bill',p.pn,p.hsn||'—',String(it.hsn));ch.hsn=String(it.hsn);}
+ if(it.gst!=null&&it.gst!==''&&BP_GST.includes(+it.gst)&&String(p.gst||'')!==String(+it.gst)){audit('GST changed from supplier bill',p.pn,(p.gst||'—')+'%',+it.gst+'%');ch.gst=String(+it.gst);}
+ if(Object.keys(ch).length)bpSetP(p,ch);
+ if(m>0){const pk=catPk(p.pn),f=(DB.mrpFix||{})[pk];if(invHits(pk).some(h=>+h.mrp>0&&r2(h.mrp)!==m)||f&&r2(f.m)!==m){(DB.mrpFix=DB.mrpFix||{})[pk]={m,d:isoToday(),b:inv};catMrpLive(pk,m);}}}
+function bpPostFx(g){(g.items||[]).forEach(it=>bpApplyItem(it,g));
+ const s=sups().find(x=>x.n===g.supplier);if(s&&g.gstin&&!/^[0-9A-Z]{15}$/.test(s.gst||''))s.gst=g.gstin;
+ if(!g.bdate)g.bdate=ddmmm2iso(g.date);g.iso=isoToday();g.pays=g.pays||[];}
+function catMrpFix(pn,m){const F=typeof DB!=='undefined'&&DB&&DB.mrpFix;if(!F)return m;const f=F[catPk(pn)];return f&&+f.m>0?+f.m:m;}
+function catMrpLive(pk,m){try{CAT_ALL.forEach(e=>{if(e.st===2)catPkRows(e.vb,pk).forEach(r=>{r.mrp=m;});});INV_LK.delete(pk);}catch(e){}}
+/* -- supplier bills to pay (Sam 20:16Z-20:22Z): each posted bill is in its supplier's list, paid in parts or at once; Admin is told
+   3 days before the due date, on the day, and every day it is late -- */
+const bpAmt=g=>{const b=parseFloat(String(g.billAmt||'').replace(/[^\d.]/g,''));return b>0?r2(b):r2(grnTotal(g)-(+g.bdisc||0)+(+g.tax||0)+(+g.round||0));};
+const bpPaid=g=>r2((g.pays||[]).reduce((a,p)=>a+(+p.amt||0),0));
+const bpBal=g=>Math.max(0,r2(bpAmt(g)-bpPaid(g)));
+const bpDayN=iso=>Math.round(new Date(iso+'T00:00:00').getTime()/864e5);
+function bpDueOf(g){const s=sups().find(x=>x.n===g.supplier),days=s&&isFinite(+s.days)?+s.days:30,base=g.bdate||g.iso||ddmmm2iso(g.date),d=new Date(base+'T00:00:00');
+ d.setDate(d.getDate()+days);const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');return {iso,left:bpDayN(iso)-bpDayN(isoToday()),days};}
+function bpStat(g){const bal=bpBal(g);if(bal<=0)return ['Paid','g'];const d=bpDueOf(g),pp=bpPaid(g)>0?'Part paid · ':'';
+ if(d.left<0)return [pp+(-d.left)+' day'+(d.left===-1?'':'s')+' late','r'];if(d.left===0)return [pp+'Due today','r'];
+ if(d.left<=3)return [pp+'Due in '+d.left+' day'+(d.left===1?'':'s'),'a'];return [pp+'Due '+fmtD(d.iso),''];}
+const supBills=n=>(DB.grns||[]).filter(g=>g.status==='posted'&&g.supplier===n);
+const supOut=s=>r2(supBills(s.n).reduce((a,g)=>a+bpBal(g),0)+(+s.pay||0));
+function supAlerts(){const out=[];(DB.grns||[]).forEach(g=>{if(g.status!=='posted')return;const bal=bpBal(g);if(!(bal>0))return;const d=bpDueOf(g);if(d.left<=3)out.push({g,bal,left:d.left,iso:d.iso});});return out.sort((a,b)=>a.left-b.left);}
+function supBellOn(){if(S.user&&S.user.role==='admin'&&supAlerts().length){go('supdue');return;}toast('No new notifications');}
+const supBellDot=c=>{if(!S.user||S.user.role!=='admin')return '';const n=supAlerts().length;return n?`<span class="${c}">${n}</span>`:'';};
+function supDueCard(){const al=supAlerts();if(!al.length)return '';const late=al.filter(a=>a.left<0).length,tod=al.filter(a=>a.left===0).length,soon=al.length-late-tod,amt=al.reduce((s,a)=>s+a.bal,0);
+ return `<button class="card sup-due ${late||tod?'r':''}" style="text-align:left" onclick="go('supdue')"><div class="row"><div class="tile ${late||tod?'r':'a'}">${ic('bell','s20')}</div><div class="grow"><div class="h3">Supplier bills to pay · ${inr(amt)}</div><div class="cap">${[late?late+' late':'',tod?tod+' due today':'',soon?soon+' due in 3 days':''].filter(Boolean).join(' · ')}</div></div>${ic('chevR','s18')}</div></button>`;}
+const supBillCard=g=>{const a=bpAmt(g),bal=bpBal(g),pd=bpPaid(g),st=bpStat(g),bd=g.bdate||g.iso||ddmmm2iso(g.date);
+ return `<div class="card sup-b"><div class="row top"><div class="grow"><div class="h3">Bill ${esc(g.inv||g.id)} <button class="link" onclick="go('grnview',{id:'${esc(m2Q(g.id))}'})">View</button></div>
+  <div class="cap">${esc(fmtD(bd))} · ${esc(g.id)} · ${(g.items||[]).length+(g.wait||[]).length} item${(g.items||[]).length+(g.wait||[]).length===1?'':'s'}</div></div><b class="num">${invInr(a)}</b></div>
+  <div class="row" style="justify-content:space-between;gap:8px"><span class="pill ${st[1]}">${esc(st[0])}</span>${bal>0?`<button class="btn sm" onclick="supPaySheet('${esc(m2Q(g.id))}')">${ic('rupee','s16')} Pay</button>`:''}</div>
+  ${pd>0&&bal>0?`<div class="cap">Paid ${invInr(pd)} · balance ${invInr(bal)}</div>`:''}</div>`;};
+SCREENS.asupp=()=>{const l=sups(),q=(S.ui.spq||'').toLowerCase(),f=l.filter(s=>(s.n+s.cat+(s.gst||'')).toLowerCase().includes(q)),out=r2(l.reduce((a,s)=>a+supOut(s),0)),al=supAlerts(),late=al.filter(a=>a.left<=0).length;
+ return bar('Suppliers',{action:`<button class="iconbtn" onclick="supAdd()" aria-label="Add supplier">${ic('plus','s20')}</button>`})+`<div class="scroll"><div class="pad">
+ <div class="grid2">${tileBtn('r','We owe suppliers',inr(out),l.filter(s=>supOut(s)>0).length+' supplier'+(l.filter(s=>supOut(s)>0).length===1?'':'s'),"go('supdue')")}${tileBtn(late?'r':al.length?'a':'g','To pay in 3 days',String(al.length)+' bill'+(al.length===1?'':'s'),late?late+' due or late':al.length?'pay soon':'nothing due',"go('supdue')")}</div>
+ <label class="search" for="spq">${ic('search','s20')}<input id="spq" placeholder="Supplier, category or GSTIN" value="${esc(S.ui.spq||'')}" onchange="S.ui.spq=this.value;refresh()"></label>
+ <div class="stack" style="gap:10px">${f.length?f.map(s=>{const o=supOut(s),bl=supBills(s.n),un=bl.filter(g=>bpBal(g)>0),nx=un.map(bpDueOf).sort((a,b)=>a.left-b.left)[0];
+  return `<button class="card" style="text-align:left;gap:8px" onclick="supView('${esc(m2Q(s.n))}')"><div class="row"><div class="tile ${nx&&nx.left<0?'r':o>0?'a':'g'}">${ic('truck','s20')}</div><div class="grow"><div class="h3">${esc(s.n)}</div><div class="cap">${esc(s.cat||'General')} · pays in ${s.days} days${/^[0-9A-Z]{15}$/.test(s.gst||'')?' · '+esc(s.gst):''}</div></div>${ic('chevR','s18')}</div>
+  <div class="grid3" style="gap:6px">${[['Outstanding',o>0?inr(o):'Nil'],['Unpaid bills',String(un.length)],['Next due',nx?(nx.left<0?(-nx.left)+'d late':nx.left===0?'Today':'in '+nx.left+'d'):'—']].map(([k,v])=>`<div style="background:var(--paper);border-radius:10px;padding:7px;text-align:center"><div style="font-weight:800;font-size:13px">${v}</div><div class="cap" style="font-size:10px">${k}</div></div>`).join('')}</div></button>`;}).join(''):`<div class="empty">${l.length?'No supplier matches.':'No suppliers yet. A supplier is added when you post its first bill in Stock in, or with +.'}</div>`}</div>
+</div></div>`;};
+function supView(n){go('supbills',{n});}
+SCREENS.supbills=p=>{const s=sups().find(x=>x.n===p.n);if(!s)return bar('Supplier')+'<div class="scroll"><div class="pad"><div class="empty">This supplier is not in the list any more.</div></div></div>';
+ const all=supBills(s.n).sort((a,b)=>String(b.bdate||b.iso||'').localeCompare(String(a.bdate||a.iso||''))),fl=S.ui.sbf||'all',L=all.filter(g=>fl==='all'||(fl==='due'?bpBal(g)>0:bpBal(g)<=0)),out=supOut(s),dn=(DB.sret||[]).filter(d=>d.sup===s.n),qn=esc(m2Q(s.n));
+ return bar(s.n)+`<div class="scroll"><div class="pad">
+ <div class="card"><div class="kv big"><span>Outstanding</span><span style="color:${out>0?'var(--r)':'var(--g)'}">${inr(out)}</span></div>
+  <div class="kv"><span>Pays in</span><span>${s.days} days after the bill date <button class="link" onclick="supDaysSheet('${qn}')">Change</button></span></div>
+  <div class="kv"><span>GSTIN</span><span class="num">${esc(s.gst||'—')}</span></div><div class="kv"><span>Contact</span><span>${esc(s.c||'—')}</span></div>
+  ${+s.pay>0?`<div class="kv"><span>Old balance (before bills)</span><span>${inr(s.pay)} <button class="link" onclick="supPay('${qn}')">Mark paid</button></span></div>`:''}
+  ${dn.length?`<div class="cap">${dn.length} debit note${dn.length>1?'s':''} · ${inr(dn.reduce((a,d)=>a+(+d.amt||0),0))}</div>`:''}</div>
+ <div class="chips">${[['all','All ('+all.length+')'],['due','Unpaid ('+all.filter(g=>bpBal(g)>0).length+')'],['paid','Paid']].map(([k,t])=>`<button class="chip ${fl===k?'on':''}" onclick="S.ui.sbf='${k}';refresh()">${t}</button>`).join('')}</div>
+ ${L.length?L.map(supBillCard).join(''):`<div class="empty">${all.length?'No bills here.':'No bills yet. A bill comes here when its Stock in is posted.'}</div>`}
+</div></div>`;};
+SCREENS.supdue=()=>{const L=(DB.grns||[]).filter(g=>g.status==='posted'&&bpBal(g)>0).map(g=>({g,d:bpDueOf(g)})).sort((a,b)=>a.d.left-b.d.left),grp=[['Late',x=>x.d.left<0],['Due today',x=>x.d.left===0],['Due in 3 days',x=>x.d.left>0&&x.d.left<=3],['Later',x=>x.d.left>3]],tot=r2(L.reduce((a,x)=>a+bpBal(x.g),0));
+ return bar('Supplier bills to pay')+`<div class="scroll"><div class="pad">
+ <div class="card"><div class="kv big"><span>We owe suppliers</span><span style="color:${tot>0?'var(--r)':'var(--g)'}">${inr(tot)}</span></div><div class="cap">${L.length} unpaid bill${L.length===1?'':'s'}. Payment days are set per supplier (Suppliers › a supplier › Change).</div></div>
+ ${L.length?grp.map(([t,f])=>{const x=L.filter(f);return x.length?sec(t+' ('+x.length+')')+x.map(y=>`<div class="stack" style="gap:4px"><div class="cap"><b>${esc(y.g.supplier)}</b></div>${supBillCard(y.g)}</div>`).join(''):'';}).join(''):'<div class="empty">No supplier bills to pay.</div>'}
+</div></div>`;};
+function supPaySheet(id){const g=(DB.grns||[]).find(x=>x.id===id);if(!g)return;const bal=bpBal(g);S.ui.spm=S.ui.spm||'UPI';
+ sheet(`<h3 class="h2">Pay bill ${esc(g.inv||g.id)}</h3><div class="cap">${esc(g.supplier)} · bill ${invInr(bpAmt(g))} · balance ${invInr(bal)}</div>
+ <div class="grid2"><div class="field"><label for="spy-a">Amount paid</label><div class="inp"><b>₹</b><input id="spy-a" inputmode="decimal" value="${bal}"></div></div>
+ <div class="field"><label for="spy-d">Date</label><div class="inp"><input id="spy-d" type="date" value="${isoToday()}" max="${isoToday()}"></div></div></div>
+ <div class="field"><label>Paid by</label><div class="chips">${['Cash','UPI','Bank','Cheque'].map(m=>`<button class="chip ${S.ui.spm===m?'on':''}" onclick="S.ui.spm='${m}';this.parentNode.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===this))">${m}</button>`).join('')}</div></div>
+ <div class="field"><label for="spy-r">Reference</label><div class="inp"><input id="spy-r" placeholder="UTR or cheque no. (optional)"></div></div>
+ <div class="errmsg" id="spy-e"></div>
+ <button class="btn" onclick="supPaySave('${esc(m2Q(id))}')">Save payment</button>`);}
+function supPaySave(id){const g=(DB.grns||[]).find(x=>x.id===id);if(!g)return;const bal=bpBal(g),v=k=>(document.getElementById(k)||{}).value||'',e=document.getElementById('spy-e');
+ const a=r2(parseFloat(v('spy-a').replace(/[^\d.]/g,''))||0),d=/^\d{4}-\d{2}-\d{2}$/.test(v('spy-d'))?v('spy-d'):isoToday(),mode=S.ui.spm||'UPI';
+ if(!(a>0)){e.textContent='Enter the amount paid.';return;}if(a>bal+.5){e.textContent='That is more than the balance ('+invInr(bal)+').';return;}
+ (g.pays=g.pays||[]).push({id:'P'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),amt:a,d,mode,ref:v('spy-r').trim().slice(0,40),by:S.user.sid,at:isoToday()});
+ audit('Supplier bill paid',g.supplier+' · bill '+(g.inv||g.id),invInr(bal),invInr(Math.max(0,r2(bal-a)))+' left · '+mode);save();closeSheet();toast(bpBal(g)>0?'Part payment saved':'Bill paid');refresh();}
+function supDaysSheet(n){const s=sups().find(x=>x.n===n);if(!s)return;sheet(`<h3 class="h2">Payment days</h3><p class="cap">${esc(s.n)} is paid this many days after the bill date. Admin is told 3 days before, on the day, and every day it is late.</p>
+ <div class="field"><label for="sdy">Days</label><div class="inp"><input id="sdy" inputmode="numeric" value="${esc(s.days)}"></div></div><div class="errmsg" id="sdy-e"></div><button class="btn" onclick="supDaysSave('${esc(m2Q(n))}')">Save</button>`);}
+function supDaysSave(n){const s=sups().find(x=>x.n===n);if(!s)return;const v=parseInt((document.getElementById('sdy')||{}).value,10);if(!(v>=0&&v<=365)){document.getElementById('sdy-e').textContent='Enter 0 to 365 days.';return;}
+ if(v!==+s.days)audit('Supplier payment days',s.n,s.days+' days',v+' days');s.days=v;save();closeSheet();toast('Payment days saved');refresh();}
+/* View: what the bill brought, at what rate and discount, and what is paid */
+SCREENS.grnview=p=>{const g=(DB.grns||[]).find(x=>x.id===p.id);if(!g)return bar('Bill')+'<div class="scroll"><div class="pad"><div class="empty">This bill is not here any more.</div></div></div>';
+ const adm=allowed('supbills'),posted=g.status==='posted',amt=bpAmt(g),pd=bpPaid(g),bal=bpBal(g),st=posted?bpStat(g):null,due=posted?bpDueOf(g):null,tot=grnTotal(g);
+ const kv=(k,v)=>`<div class="kv"><span>${k}</span><span>${v}</span></div>`;
+ const line=it=>{const x=P(it.pid),net=+it.rate||0,disc=+it.disc>0?+it.disc:0,cd=!disc&&+it.bmrp>0&&it.gst!=null&&net>0?bpCalcDisc(net,+it.bmrp,+it.gst):0;
+  const info=[+it.bmrp>0?'MRP '+invInr(it.bmrp):'',disc?'Disc '+bpQ(disc)+'%':cd>0?'Disc '+cd+'% (calculated from MRP)':'',it.hsn?'HSN '+esc(it.hsn):'',it.gst!=null&&it.gst!==''?'GST '+bpQ(it.gst)+'%':''].filter(Boolean).join(' · ');
+  return `<div class="li bp-vl"><div class="tile sm n">${ic(x?x.ic:'package','s18')}</div><div class="grow"><div class="t">${esc(x?x.name:it.pid)}</div><div class="s">${esc(x?x.pn:'')} · ${bpQ(it.q)} × ${invInr(net)}${disc?' (rate '+invInr(it.lr||net)+' less '+bpQ(disc)+'%)':''}${it.exp!=null&&+it.q!==+it.exp?' · ordered '+it.exp:''}</div>${info?`<div class="s bp-i">${info}</div>`:''}</div><b class="num">${invInr(r2((+it.q||0)*net))}</b></div>`;};
+ return bar('Bill '+(g.inv||g.id))+`<div class="scroll"><div class="pad">
+ <div class="card">${kv('Supplier',adm&&sups().some(s=>s.n===g.supplier)?`<button class="link" onclick="go('supbills',{n:'${esc(m2Q(g.supplier))}'})">${esc(g.supplier)}</button>`:esc(g.supplier))}${g.gstin?kv('GSTIN',`<span class="num">${esc(g.gstin)}</span>`):''}${kv('Bill no.',esc(g.inv||'—'))}${g.bdate?kv('Bill date',esc(fmtD(g.bdate))):''}${kv('Received',esc(g.date||''))}${kv('Stock in',esc(g.id)+(posted?' · posted '+esc(g.postedAt||''):' · not posted yet'))}
+  ${posted?kv('Pay by',esc(fmtD(due.iso))+` <span class="pill ${st[1]}">${esc(st[0])}</span>`):''}</div>
+ ${sec('Parts ('+((g.items||[]).length+(g.wait||[]).length)+')')}
+ <div class="card flush">${(g.items||[]).map(line).join('')}${(g.wait||[]).map(w=>li(esc(w.name||w.pn),`${esc(w.pn)} · ${bpQ(w.q)} × ${invInr(w.rate)}`,'<span class="pill a">Waiting for photos</span>','camera',`S.ui.iw='${w.wid}';go('invwait')`,'y')).join('')}${(g.nw||[]).map(n=>li(esc(n.name||n.pn),`${esc(n.pn)} · ${bpQ(n.q)} × ${invInr(n.rate)}`,'<span class="pill a">New part</span>','package','','n')).join('')}</div>
+ <div class="card">${kv('Items',invInr(tot))}${+g.bdisc>0?kv('Bill discount','−'+invInr(g.bdisc)):''}${+g.tax>0?kv('GST',invInr(g.tax)):''}${+g.round?kv('Round off',(+g.round>0?'+':'−')+invInr(Math.abs(+g.round))):''}
+  <div class="kv big"><span>Bill amount</span><span>${invInr(amt)}</span></div>
+  ${posted?kv('Paid',invInr(pd))+`<div class="kv big"><span>Balance</span><span style="color:${bal>0?'var(--r)':'var(--g)'}">${invInr(bal)}</span></div>`:''}
+  ${g.note?`<div class="cap">Remarks: ${esc(g.note)}</div>`:''}</div>
+ ${posted&&(g.pays||[]).length?sec('Payments')+`<div class="card flush">${g.pays.map(y=>li(invInr(y.amt),`${esc(fmtD(y.d))} · ${esc(y.mode||'')}${y.ref?' · '+esc(y.ref):''}`,'','rupee','','g')).join('')}</div>`:''}
+ ${posted&&adm&&bal>0?`<button class="btn" onclick="supPaySheet('${esc(m2Q(g.id))}')">${ic('rupee','s18')} Record a payment</button>`:''}
+</div></div>`;};
+/* -- the phone's bottom menu stays on every page (not where the page has its own buttons at the bottom), and moves with a little bounce -- */
+const NAV_HIDE=['invdoc','photofind','chat','qr'];
+function navIdx(navs,s,html){const i=navs.findIndex(n=>n[0]===s);if(i>-1)return i;
+ if(NAV_PRE.includes(s)||NAV_HIDE.includes(s)||/class="foot"|darkscr/.test(html))return -1;
+ for(const e of S.stack){const j=navs.findIndex(n=>n[0]===e.s);if(j>-1)return j;}return 0;}
+function navHTML(navs,idx,from){const mv=from!=null&&from>-1&&from!==idx;
+ return `<nav class="nav${from==null||from<0?' rise':''}" style="--i:${mv?from:idx}" data-to="${idx}" aria-label="Main">
+ <div class="bubble" aria-hidden="true">${ic(navs[idx][2],'s')}</div>
+ ${navs.map((n,i)=>`<button class="${i===idx?'on':''}" onclick="tab('${n[0]}')" aria-label="${n[1]}"${i===idx?' aria-current="page"':''}>${ic(n[2],'s20')}<span>${n[1]}</span></button>`).join('')}</nav>`;}
+function navMove(){const n=document.querySelector('#vp .nav[data-to]');if(!n)return;const to=n.dataset.to;if(n.style.getPropertyValue('--i').trim()===to)return;
+ requestAnimationFrame(()=>requestAnimationFrame(()=>{n.style.setProperty('--i',to);n.classList.add('go');}));}
+var NAV_LAST=-1;
 /* ---------- Waiting for photos ---------- */
 SCREENS.invwait=()=>{const L=DB.waitParts||[];if(S.ui.iw&&!L.some(w=>w.id===S.ui.iw))S.ui.iw=null;if(!S.ui.iw&&L.length&&isWv())S.ui.iw=L[0].id;
  const sel=L.find(w=>w.id===S.ui.iw),units=L.reduce((a,w)=>a+(+w.q||0),0),bills=new Set(L.map(w=>w.inv||w.grn)).size;
@@ -4729,7 +5351,7 @@ function invWaitSave(id){const L=DB.waitParts||[],w=L.find(x=>x.id===id);if(!w)r
  const q=parseInt(w.q);let p=PRODUCTS.find(x=>catPk(x.pn)===w.pk);if(!p)p=invMkProduct(w,0);else if(!(p.photos||[]).length){p.photos=w.photos.slice(0,4);}
  if(w.bin&&!DB.bins[p.id])DB.bins[p.id]=String(w.bin).trim().toUpperCase();
  DB.stock[p.id]=(+DB.stock[p.id]||0)+q;logMove('in',p.id,q,w.grn||'—','Stock in · photos done'+(w.sup?' · '+String(w.sup).split(' – ')[0]:''));
- const g=DB.grns.find(x=>x.id===w.grn);if(g){g.wait=(g.wait||[]).filter(x=>x.wid!==w.id);g.items.push({pid:p.id,exp:null,q,rate:w.rate});}
+ const g=DB.grns.find(x=>x.id===w.grn);if(g){g.wait=(g.wait||[]).filter(x=>x.wid!==w.id);const it={pid:p.id,exp:null,q,rate:w.rate,...bpEx(w)};g.items.push(it);if(g.status==='posted')bpApplyItem(it,g);}
  DB.waitParts=L.filter(x=>x.id!==id);audit('Photos done · into stock',p.pn,'—',q+' pcs'+(w.grn?' · '+w.grn:''));save();
  S.ui.iwErr=null;S.ui.iwMrp=null;const nx=DB.waitParts[0];S.ui.iw=nx&&isWv()?nx.id:null;toast(p.name+' · '+q+' pcs in stock');refresh();}
 function invWaitDel(id){const w=invW(id);sheet(`<h3 class="h2">Remove ${esc(w.name||w.pn)}?</h3><p class="cap">It will not go into stock. The bill ${esc(w.inv||w.grn||'')} keeps it as not received.</p><div class="grid2"><button class="btn line" onclick="closeSheet()">Cancel</button><button class="btn" style="background:var(--r);color:#fff" onclick="invWaitDel2('${id}')">Remove</button></div>`);}
@@ -4846,6 +5468,34 @@ html.wv .wv-top{display:flex;flex:none;align-items:center;gap:12px;height:70px;p
 .inv-ocr-bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
 .inv-ocr-bar i{display:block;height:100%;background:var(--y);transition:width .2s}
 .inv-ocr pre{margin:0;white-space:pre-wrap;word-break:break-word;font:500 12px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--ink7)}
+/* ---- update 8c: supplier bill read by Apna AI, bills to pay, phone bottom menu on every page ---- */
+.bp-i{color:var(--ink5)}
+.bp-w{display:flex;gap:6px;align-items:flex-start;margin-top:5px;padding:6px 9px;border-radius:9px;font-size:12px;font-weight:600;line-height:1.35;background:var(--amber-soft);color:var(--amber)}
+.bp-w svg{flex:none;margin-top:1px}
+.bp-w.r{background:var(--r-soft);color:var(--r)}
+.bp-w.g{background:var(--g-soft);color:var(--g)}
+.bp-w.i{background:var(--paper);color:var(--ink7);border:1px solid var(--line)}
+.bp-ok{color:var(--g);display:grid;place-items:center;flex:none}
+.bp-bill{display:flex;flex-direction:column;gap:10px}
+.bp-fix{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px}
+.bp-fix input{flex:1 1 140px;min-width:0;height:38px;border:1.5px solid var(--line2);border-radius:10px;padding:0 10px;font:inherit;font-weight:700;letter-spacing:.02em;text-transform:uppercase;background:var(--card);color:var(--ink)}
+.bp-fix input:focus{outline:none;border-color:var(--ink)}
+.bp-fl{display:inline-block;margin-top:4px;font-size:12px}
+.sup-due{width:100%;border:1.5px solid var(--amber)}
+.sup-due.r{border-color:var(--r)}
+.sup-b{display:flex;flex-direction:column;gap:8px}
+.sup-b .h3 .link{margin-left:6px;font-size:12px}
+.nav.rise{animation:navRise .42s cubic-bezier(.2,.9,.3,1.15) both}
+@keyframes navRise{from{transform:translateY(110%)}to{transform:none}}
+.nav.go .bubble{animation:navHop .42s cubic-bezier(.3,1.3,.5,1)}
+@keyframes navHop{0%{transform:none}35%{transform:translateY(-7px) scale(.9,1.08)}100%{transform:none}}
+.nav button{transition:color .2s,transform .15s}
+.nav button:active{transform:scale(.9)}
+html:not(.wv) .screen.hasnav.in-push,html:not(.wv) .screen.hasnav.in-back,html:not(.wv) .screen.hasnav.in-fade{animation:none}
+html:not(.wv) .screen.hasnav.in-push>:not(.nav){animation:push .32s cubic-bezier(.2,.8,.2,1)}
+html:not(.wv) .screen.hasnav.in-back>:not(.nav){animation:back .32s cubic-bezier(.2,.8,.2,1)}
+html:not(.wv) .screen.hasnav.in-fade>:not(.nav){animation:fade .28s ease-out}
+@media (prefers-reduced-motion:reduce){.nav.rise,.nav.go .bubble{animation:none}html:not(.wv) .screen.hasnav>:not(.nav){animation:none!important}}
 /* ---- inventory (update 8): phone stacks, website two columns ---- */
 .inv-2c{display:flex;flex-direction:column;gap:14px;min-width:0}
 .inv-col{display:flex;flex-direction:column;gap:14px;min-width:0}
@@ -5104,7 +5754,7 @@ function buildTop(){const u=S.user,r=u.role,t=pageTitle();const nav=NAVS[r]||[];
  <div class="wv-crumb"><span>${esc(u.label||ROLE[r]||r)}</span>${ic('chevR','s16')}<b>${esc(t)}</b></div>
  ${canQ?`<label class="wv-search">${ic('search','s18')}<input id="wvQ" placeholder="${r==='customer'?'Search parts, part no., brand…':'Search mobile, name, invoice, part no.…'}" onkeydown="if(event.key==='Enter'&&this.value.trim())wvSearch(this.value.trim())"><kbd>Enter</kbd></label>`:'<span class="wv-gap"></span>'}
  <span class="wv-date">${dstr()}</span>
- <button class="wv-ibtn" onclick="${notif?"go('notifs')":"toast('No new notifications')"}" aria-label="Notifications">${ic('bell','s20')}</button>
+ <button class="wv-ibtn" onclick="${notif?"go('notifs')":"supBellOn()"}" aria-label="Notifications">${ic('bell','s20')}${notif?'':supBellDot('wv-cnt')}</button>
  ${r==='customer'?`<button class="wv-ibtn" onclick="go('cart')" aria-label="Cart">${ic('cart','s20')}${cartCount()?`<span class="wv-cnt">${cartCount()}</span>`:''}</button>`:''}
  ${PD&&PD.getElementById('themeBtn')?`<button class="wv-ibtn" onclick="wvTheme()" aria-label="Light or dark">${ic(R.dataset.theme==='dark'?'sun':'moon','s20')}</button>`:''}`;}
 window.wvSearch=q=>{if(S.user.role==='customer'){S.stack=[{s:'shop',p:{}}];go('list',{q});return;}S.ui.sq=q;tab('usearch');};

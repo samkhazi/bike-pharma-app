@@ -18,3 +18,5 @@ if [ "$(cat node_modules/.bp-hash 2>/dev/null)" != "$want" ] || [ ! -f node_modu
 fi
 node worker.mjs --model
 node worker.mjs --check
+# the bill reader ("Apna AI", Sam 2026-10-11): its models (~16 MB) once; if it does not start, the phone's own reader is used
+node billread.mjs --model && node billread.mjs --check || echo "   !! bill reader (Apna AI) abhi nahi chala: bill phone wale reader se padhe jayenge. Ye output mujhe bhejo"

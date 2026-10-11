@@ -289,6 +289,10 @@ a, k = invcat.apply(a); n_patch += k
 # Sam 2026-10-11 18:56Z: "Photo of the bill" on Paste supplier bill; the phone reads it, the photo is never kept (tools/billocr.py)
 import billocr
 a, k = billocr.apply(a); n_patch += k
+# Sam 2026-10-11 19:53Z-20:51Z: update 8c, bills read by Apna AI (PDF, many pages, header, totals, MRP/discount/HSN/GST, tap to fix),
+# supplier bills to pay with due alerts, View of a bill, the phone's bottom menu on every page (tools/bill8c.py)
+import bill8c
+a, k = bill8c.apply(a); n_patch += k
 # Sam 2026-10-11 18:19Z (phone video): "zoom nhi hona he sirf diagram/photos utna hi zoom hona he poora page zoom nhi hona he".
 # The page never zooms (no pinch, no double tap, no zoom when a box is tapped); a diagram or part photo opened full screen zooms with
 # two fingers or a tap. index.html (the landing page that holds the app) gets the same below.
@@ -363,7 +367,7 @@ _ix = open(os.path.join(SP, 'site', 'com', 'index.html'), encoding='utf-8').read
 _vp = '<meta name="viewport" content="width=device-width, initial-scale=1">'
 assert _ix.count(_vp) == 1, 'index.html viewport'
 _ix = _ix.replace(_vp, '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">\n'
-                  '<style>html{touch-action:pan-x pan-y}</style>\n<script>document.addEventListener(\'gesturestart\',e=>e.preventDefault());</script>')
+                  '<style>html{touch-action:pan-x pan-y}html:has(body.appopen),body.appopen{overflow:hidden;overscroll-behavior:none}</style>\n<script>document.addEventListener(\'gesturestart\',e=>e.preventDefault());</script>')
 open(os.path.join(OUT, 'index.html'), 'w', encoding='utf-8').write(_ix)
 CAT_DIRS = ['cat', 'bj', 'ph', 'phh', 'figs']
 if '--no-cat' in sys.argv:  # Sam 2026-10-10: no catalogue data on the site, brands come one by one later

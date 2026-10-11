@@ -18,6 +18,13 @@ case "$pa" in
   '') ;;
   *) bad "photo AI: $pa (photos abhi waise hi dikh rahi hain). Ye line mujhe bhejo";;
 esac
+ba=$(printf '%s' "$h" | grep -o '"billAi":{[^}]*}' || true)
+case "$ba" in
+  *'"state":"off"'*) ok "bill reader band hai (.env me BILL_AI=off), bill phone wale reader se padhe jayenge";;
+  *'"model":true'*) ok "bill reader (Apna AI) taiyaar";;
+  '') ;;
+  *) bad "bill reader (Apna AI): $ba (bill phone wale reader se padhe jayenge). Ye line mujhe bhejo";;
+esac
 
 c=$(code "${NG[@]}" "https://$DOM/"); [ "$c" = 200 ] && ok "https://$DOM/ khulta hai" || bad "https://$DOM/ ka jawab $c"
 LP=$(curl -sk --max-time 20 "${NG[@]}" "https://$DOM/" 2>/dev/null || true)

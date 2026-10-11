@@ -76,6 +76,24 @@ curl http://127.0.0.1:3010/api/health
 Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 
 ## Badlav
+**Update 8c (11 Oct 2026)**
+- Supplier bill "Apna AI" se padha jata hai: aapke apne server pe (free, koi paid service nahi). Bill ka page memory me padha jata
+  hai, kahin save nahi hota. Server ka reader na chale to phone khud padhta hai. App aur website dono me.
+- Paste supplier bill: phone pe "Take a photo" + "Photos or PDF" (ek bill ke 10-12 page ek saath), computer pe "Upload a photo or
+  PDF". PDF ka text seedha padha jata hai. Do page pe aayi same line ek hi baar gini jaati hai.
+- Bill se aata hai: supplier (GSTIN se pehchana), GSTIN (check digit jaancha), bill no., bill date, har line ka MRP, HSN, GST %,
+  discount aur amount. Lines ka total bill ke Taxable / Total se milaya jata hai. Same bill dobara aaye to chetavni.
+- Rate alert: pichle bill se rate badha/ghata, rate MRP se upar. Bill ka MRP list/catalogue se alag ho to dikhata hai.
+- Jo part no. galat padha gaya: line pe tap karo, sahi number likho, turant dobara check. Ye fix us supplier ke agle bills pe khud
+  lagta hai (supplier ka bill layout bhi yaad rehta hai).
+- Post karne pe: bill ka MRP list me jata hai (customer/mechanic price % rule se), catalogue me bhi wahi MRP dikhta hai; HSN aur
+  GST % bhi list me. Naye part bill ke HSN ke saath bante hain.
+- Suppliers: har supplier ke bills (date, no., amount, Pending/Paid), part payment (date, Cash/UPI/Bank/Cheque), Outstanding,
+  payment days. Admin ko due date se 3 din pehle, us din, aur late hone pe bell + home pe card. Bill no. ke aage "View": kya
+  aaya, qty, rate, discount (bill pe na ho to MRP se nikala), HSN, GST, paid, balance.
+- Phone ka neeche wala menu ab andar ke pages pe bhi rehta hai (jahan page ke apne neeche buttons hain wahan nahi), bubble
+  ek tab se doosre tab pe slide karta hai.
+
 **Update 8b (11 Oct 2026)**
 - Product photo: ab sirf part rehta hai. Haath, ungliyan, peeche padi cheezein aur chhote tukde hat jaate hain, photo part pe
   square katti hai. Ye har nayi photo pe chalta hai. Purani photos ki copy bhi apne aap dobara banti hai (naya version, `.ai` file).

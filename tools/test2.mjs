@@ -36,16 +36,16 @@ await P.goto(BASE + '/app.html', { waitUntil: 'load' }); await bootApp(P);
 ok(await P.evaluate(() => cur().s === 'login' && !document.documentElement.classList.contains('wv-login')), 'phone: login screen, not wide mode');
 ok(await P.evaluate(() => { const h = document.querySelector('.screen>.hero'); return h && h.getBoundingClientRect().height > 100 && h.querySelector('.lg-lang'); }), 'phone: brand hero + language pills unchanged');
 
-// ---- staff: Find Part has only the brands whose catalogue is in (11 Oct: KTM + Husqvarna), the rest say coming soon (no claude.ai links, no errors)
+// ---- staff: Find Part has only the brands whose catalogue is in (11 Oct: KTM, Husqvarna, Hero, Royal Enfield, Yamaha, Honda, TVS), the rest say coming soon (no claude.ai links, no errors)
 const cS = await b.newContext({ viewport: { width: 1366, height: 860 } }); const Sx = await page(cS);
 await Sx.goto(BASE + '/app.html', { waitUntil: 'load' }); await bootApp(Sx);
 await Sx.fill('#loginId', 'sam@bikepharma.com'); await Sx.evaluate(() => sendOtp()); await Sx.waitForTimeout(500);
 ok(await Sx.evaluate(() => cur().s === 'pw'), 'admin: password screen');
 await Sx.fill('#pw1', 'Test@1234'); await Sx.evaluate(() => pwGo()); await Sx.waitForTimeout(800);
 ok(await Sx.evaluate(() => S.user && S.user.role === 'admin'), 'admin: logged in');
-ok(await Sx.evaluate(() => window.CAT_OFF === false && CAT_ALL.map(e => e.vb).join() === 'KTM,Husqvarna'), 'admin: catalogue manifest = KTM + Husqvarna only');
+ok(await Sx.evaluate(() => window.CAT_OFF === false && CAT_ALL.map(e => e.vb).sort().join() === 'Hero,Honda,Husqvarna,KTM,Royal Enfield,TVS,Yamaha'), 'admin: catalogue manifest = the 7 brands whose files are on the server');
 await Sx.evaluate(() => go('findpart')); await Sx.waitForTimeout(600);
-ok(await Sx.evaluate(() => cur().s === 'findpart' && /2 of \d+ brands in/.test(document.body.innerText) && document.body.innerText.includes('Catalogue coming soon')), 'admin: Find Part shows KTM + Husqvarna in, other brands coming soon');
+ok(await Sx.evaluate(() => cur().s === 'findpart' && /7 of \d+ brands in/.test(document.body.innerText) && document.body.innerText.includes('Catalogue coming soon')), 'admin: Find Part shows the 7 brands in, other brands coming soon');
 ok(await Sx.evaluate(() => !document.querySelector('a[href*="claude.ai"]')), 'admin: no claude.ai links on the screen');
 await Sx.screenshot({ path: '/tmp/claude-0/bptest/findpart-home.png' });
 await Sx.evaluate(() => go('usearch')); await Sx.waitForTimeout(400);

@@ -179,6 +179,47 @@ sub1("function reset(s,p={}){S.stack=[{s,p}];render('fade');}",
 sub1(" if(S.ui.after){const f=S.ui.after;S.ui.after=null;f();}\n}\nfunction navHTML(", " if(S.ui.after){const f=S.ui.after;S.ui.after=null;f();}\n navSave(false);\n}\nfunction navHTML(")
 sub1("render('');splash();", "render('');splash();NAVH.on=1;NAVH.i=0;navSave(false);")
 sub1("/* ---------- boot ---------- */\nasync function start(){", NAVJS + "/* ---------- boot ---------- */\nasync function start(){")
+# Sam 2026-10-11 "sabhi brands ke catalogue ... sabhi upload karna he aaj": every brand of his package (All Catalogues >
+# BikeSurgeon_Catalog_Import) as cat/<slug>.json + <slug>-dg.json (brands/tools/brands_build.py). Their diagrams and part photos are read
+# byte for byte out of the brand's own zips, which Admin uploads unchanged from Catalogue files. "jin jin brands ke MRP he o us us parts me
+# daaldo search me": the MRP of every part that has one shows on the search cards, the section table and the part page.
+CAT_IN = [os.path.join(SP, 'ktm', 'out', f) for f in ('ktm.json', 'ktm-dg.json', 'husqvarna.json', 'husqvarna-dg.json')]
+CAT_IN += [os.path.join(SP, 'brands', 'out', s + x) for s in ('hero', 'royal-enfield', 'yamaha', 'honda', 'tvs') for x in ('.json', '-dg.json')]
+_bv, _cc = {}, {}
+for f in CAT_IN:
+    if f.endswith('-dg.json'): continue
+    d = json.load(open(f, encoding='utf-8'))
+    _bv[d['brand']] = d['models']
+    for m, c in (d.get('cc') or {}).items(): _cc[m] = c
+CATJS = """
+/* ---------- every brand's catalogue on this server (Sam 2026-10-11): its list is cat/<slug>.json, its diagrams and part photos come out of
+   the brand's own zips that Admin uploads (Catalogue files), its MRP shows wherever the part does ---------- */
+DG_SLUG.Yamaha='yamaha';DG_SLUG.Bajaj='bajaj';
+CAT_ALL.forEach(e=>{delete e.pf;delete e.pfz;delete e.pfe;if(DG_SLUG[e.vb])e.url='cat/'+DG_SLUG[e.vb]+'.json';e.lazy=1;e.txt=1;});CAT_EXT.length=0;
+for(const k in CAT_PHOTO)delete CAT_PHOTO[k];
+/* the vehicle form lists each brand's models exactly as its catalogue names them */
+Object.assign(BRANDS_V,""" + json.dumps(_bv, ensure_ascii=False, separators=(',', ':')) + """);
+{const cc=""" + json.dumps(_cc, ensure_ascii=False, separators=(',', ':')) + """;for(const m in cc)if(!(m in MODEL_CC))MODEL_CC[m]=cc[m];}
+"""
+sub1("/* ---------- boot ---------- */\nasync function start(){", CATJS + "/* ---------- boot ---------- */\nasync function start(){")
+# part photos given only as zip byte ranges (phf + phz, no photo pages)
+sub1("const catPh=(d,pn)=>{const x=d.ph&&d.ph[pn];if(x==null)return null;",
+     "const catPh=(d,pn)=>{const x=d.ph&&d.ph[pn];if(x==null){const f=!d.ph&&d.phf&&d.phf[pn];return f?{z:'pf:'+d.phz[f[0]]+':'+f[1]+':'+f[2],w:f[3],h:f[4]}:null;}")
+# TVS diagrams are PNG files: keep them PNG, byte for byte
+sub1("if(!b||b[0]!==0xFF||b[1]!==0xD8)throw{code:'not_found'};CAT_PFOK=true;ok(URL.createObjectURL(new Blob([b],{type:'image/jpeg'})));return;",
+     "const png=!!b&&b[0]===0x89&&b[1]===0x50&&b[2]===0x4E&&b[3]===0x47;if(!b||!png&&(b[0]!==0xFF||b[1]!==0xD8))throw{code:'not_found'};CAT_PFOK=true;ok(URL.createObjectURL(new Blob([b],{type:png?'image/png':'image/jpeg'})));return;")
+# the price on search cards and the part page says what it is: the catalogue MRP
+sub1('return v?`<b class="num">${inr(v)}</b> <span class="micro muted">incl. GST</span>`:`<span class="cap">Price on request</span>`;};',
+     'return v?`<span class="micro muted">MRP</span> <b class="num">${inr(v)}</b> <span class="micro muted">incl. GST</span>`:`<span class="cap">Price on request</span>`;};')
+# Catalogue files: which folder of Sam's package to pick, and the free space on the server (Honda's zip alone is 8 GB)
+sub1("const vb=Object.keys(DG_SLUG).find(k=>DG_SLUG[k]===s);if(vb&&!o.brands.includes(vb))o.brands.push(vb);",
+     "const vb=Object.keys(DG_SLUG).find(k=>DG_SLUG[k]===s);if(vb&&!o.brands.includes(vb))o.brands.push(vb);if(d.pick&&!o.pick)o.pick=d.pick;")
+sub1("CUP.sets=sets;CUP.st=2;refresh();}).catch(()=>{CUP.st=3;refresh();});}",
+     "try{const r=await fetch('/api/catup?space=1',{credentials:'same-origin'});if(r.ok){const j=await r.json();CUP.free=typeof j.free==='number'?j.free:null;}}catch(e){}\n  CUP.sets=sets;CUP.st=2;refresh();}).catch(()=>{CUP.st=3;refresh();});}\nconst cupSpace=o=>{const t=cupStat(o),need=t.tb-t.b;return CUP.free!=null&&need>CUP.free?`<p class=\"cap\" style=\"margin:0;color:var(--r)\">Not enough space on your server: these files need ${cupMB(need)} and ${cupMB(CUP.free)} is free.</p>`:'';};")
+sub1("<p class=\"cap\" style=\"margin:0\">On your computer: the ${esc(o.brands[0])} folder inside All Catalogues. Only the files this catalogue needs are sent. Keep this page open until it says Done.</p>`}</div>`;}",
+     "<p class=\"cap\" style=\"margin:0\">On your computer: ${o.pick?'<b>'+esc(o.pick)+'</b>':'the '+esc(o.brands[0])+' folder inside All Catalogues'}. Only the files this catalogue needs are sent. Keep this page open until it says Done.</p>${cupSpace(o)}`}</div>`;}")
+sub1("Every staff profile with Find Part uses these same files.</p>${body}",
+     "Every staff profile with Find Part uses these same files.</p>${CUP.free!=null?`<p class=\"cap\" style=\"margin:0\">Free space on your server: <b>${cupMB(CUP.free)}</b></p>`:''}${body}")
 # Sam 2026-10-11 "sample data jo kuch bhi he sabhi delete karde": no demo shop data in the server build (tools/nosample.py)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import nosample
@@ -201,7 +242,6 @@ for d in (['vendor'] if '--no-cat' in sys.argv else CAT_DIRS + ['vendor']):
     if os.path.isdir(dst): shutil.rmtree(dst)
     shutil.copytree(src, dst)
 # Sam 2026-10-11: catalogues come back brand by brand from his own files; their data (no pictures) ships here, the PDFs go up from Admin
-CAT_IN = [os.path.join(SP, 'ktm', 'out', f) for f in ('ktm.json', 'ktm-dg.json', 'husqvarna.json', 'husqvarna-dg.json')]
 os.makedirs(os.path.join(OUT, 'cat'), exist_ok=True)
 for f in CAT_IN: shutil.copyfile(f, os.path.join(OUT, 'cat', os.path.basename(f)))
 # cat/xref.json: part numbers that two of these brands' books share (same number = interchangeable), as proto/xref_build.py makes it

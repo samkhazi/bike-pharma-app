@@ -51,11 +51,14 @@ App me Admin > More > **Business settings** > "Shop details on invoice". Jab tak
 "To be added" dikhta hai aur Call/WhatsApp button "number will be added soon" bolte hain.
 
 ## 6. Catalogue (brand by brand)
-Abhi site pe **KTM + Husqvarna** ka catalogue hai; baaki brands Find Part me "Catalogue coming soon" dikhate hain aur
-aapki files aane pe ek ek karke aayenge.
+Abhi site pe **KTM, Husqvarna, Hero, Royal Enfield, Yamaha, Honda, TVS** ka catalogue hai; baaki brands Find Part me
+"Catalogue coming soon" dikhate hain aur aapki files aane pe ek ek karke aayenge.
+- Kaunsa folder chunna hai (aapke Mac pe All Catalogues > BikeSurgeon_Catalog_Import ke andar), kitna bada:
+  Hero 2 zip 1.63 GB · Royal_Enfield 2 zip 1.05 GB · Yamaha 6 zip 5.35 GB · Honda 1 zip 8.09 GB · TVS 1 zip 0.28 GB.
+  Zips jaise hain waise hi jati hain (unzip mat karna). Upload page server ki khali jagah (free space) bhi dikhata hai.
 - Part list (`public/cat/<brand>.json`) GitHub se update ke saath aati hai (private repo). Ye sirf staff login se khulti hai.
-- Diagrams brand ki apni PDF files se khulte hain, bilkul original quality me (koi compression nahi). PDFs Admin >
-  More > **Catalogue files** se upload hoti hain aur `data/project-files/catalogues/<brand>/` me rehti hain
+- Diagrams aur part photos brand ki apni PDF / zip files se khulte hain, bilkul original quality me (koi compression nahi).
+  Files Admin > More > **Catalogue files** se upload hoti hain aur `data/project-files/catalogues/<brand>/` me rehti hain
   (update me kabhi delete nahi hoti, backup me `data/` aata hai).
 - Upload page sirf wahi files bhejta hai jo catalogue ko chahiye. Jo file server pe pehle se hai (same size) wo dobara
   nahi jati. Connection toot jaye to wahi folder dobara chuno: file wahi se aage chalti hai.
@@ -73,6 +76,17 @@ curl http://127.0.0.1:3010/api/health
 Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 
 ## Badlav
+**Update 7 (11 Oct 2026)**
+- Hero, Royal Enfield, Yamaha, Honda, TVS ka catalogue aapke package se (All Catalogues > BikeSurgeon_Catalog_Import):
+  Hero 49 models, Royal Enfield 28, Yamaha 96, Honda 44, TVS 27. Har section ka diagram aur Hero / Royal Enfield ke part
+  photos aapki zip ke andar se byte-to-byte original.
+- MRP: jin brands ka MRP hai (Hero, Royal Enfield, Yamaha, Honda, TVS) wo search ke har card, section ki table aur part page
+  pe dikhta hai ("MRP ₹…"). KTM / Husqvarna ki files me MRP nahi hai.
+- Compatible: ek hi part number doosre brand ki book me bhi ho to part page pe "Same part number in other brands" dikhta hai.
+- Catalogue files page: har brand ka card, kaunsa folder chunna hai, aur server pe kitni khali jagah hai.
+
+**Update 6c (11 Oct 2026)**: website ke andar khule app me bhi diagram khulte hain (pehle sirf seedha app.html me khulte the).
+
 **Update 6 (11 Oct 2026)**
 - Saara sample (demo) data hataya: demo products, demo mechanics (Ravi Kumar BP-MECH-1025 wagaira), unke bills, orders,
   suppliers, kharche, targets. Update ke baad server pehli baar chalte hi ye khud karta hai. Aapke logins, staff, settings,

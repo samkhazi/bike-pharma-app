@@ -286,13 +286,18 @@ async function catUpload(req, res, url, user) {
   if (req.method !== 'GET' && req.method !== 'POST') return json(res, 405, { error: 'Method not allowed' });
   if (!user) { drain(req); return json(res, 401, { error: 'Please log in again' }); }
   if (user.role !== 'admin') { drain(req); return json(res, 403, { error: 'Only Admin can upload catalogues' }); }
+  if (req.method === 'GET' && url.searchParams.get('space') === '1') { // free disk space where the catalogue files go (Honda's zip alone is 8 GB)
+    let free = null, total = null;
+    try { fs.mkdirSync(FILES_DIR, { recursive: true }); const st = fs.statfsSync(FILES_DIR); free = st.bavail * st.bsize; total = st.blocks * st.bsize; } catch (e) {}
+    return json(res, 200, { free, total });
+  }
   const rel = path.posix.normalize('/' + (url.searchParams.get('path') || '')).replace(/^\/+/, '');
   const segs = rel.split('/');
   if (segs[0] !== 'catalogues' || segs.length < 3 || segs.some(x => !/^[A-Za-z0-9][A-Za-z0-9 ._()+,&-]{0,150}$/.test(x) || x.includes('..')) || !CAT_EXTS.has(path.extname(rel).toLowerCase()) || rel.endsWith('.part')) {
     drain(req); return json(res, 400, { error: 'This file name or type cannot be uploaded' });
   }
   const size = Math.floor(+url.searchParams.get('size'));
-  if (!(size > 0 && size <= 4 * 1024 ** 3)) { drain(req); return json(res, 400, { error: 'Bad file size' }); }
+  if (!(size > 0 && size <= 64 * 1024 ** 3)) { drain(req); return json(res, 400, { error: 'Bad file size' }); }
   const abs = path.join(FILES_DIR, rel), part = abs + '.part';
   const sizeOf = f => { try { const st = fs.statSync(f); return st.isFile() ? st.size : -1; } catch (e) { return -1; } };
   if (sizeOf(abs) === size) { drain(req); return json(res, 200, { have: size, done: true }); }

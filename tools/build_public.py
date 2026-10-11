@@ -280,6 +280,9 @@ a, k = nosample2.apply(a); n_patch += k
 # Sam 2026-10-11 08:01Z "admin page pe inventory add karne ka option hi nhi he": Admin's Inventory page, Stock in, real suppliers (tools/inventory.py)
 import inventory
 a, k = inventory.apply(a); n_patch += k
+# Sam 2026-10-11 14:18Z: Admin sets a staff login's password (New staff login, Users > Staff) (tools/staffpw.py)
+import staffpw
+a, k = staffpw.apply(a); n_patch += k
 # Any brand part number search opens only the brands whose numbers have the typed number's shape (CAT_PNR, catRoute). The table in the
 # app source was made from the old web files (re/edit_cat.py); make it again, the same way, from the brand files this build ships.
 import base64, collections, hashlib

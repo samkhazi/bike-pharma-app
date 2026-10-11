@@ -48,9 +48,16 @@ await B.fill('#pw1', 'wrongpass'); await B.evaluate(() => pwGo()); await B.waitF
 await B.fill('#pw1', ADMIN_PW); await B.evaluate(() => pwGo()); await B.waitForTimeout(600);
 ok(await screen(B) === 'roleok' && await B.evaluate(() => S.user.role === 'admin'), 'admin: password login works');
 ok(await B.evaluate(() => DB.accounts['9876543210'] && DB.accounts['9876543210'].name === 'Test Customer'), 'admin: sees the new customer account');
-await B.evaluate(() => { S.ui.ns = { name: 'Priya Test', login: 'priya@test.in', role: 'Billing' }; go('newstaff'); createStaff(); }); await B.waitForTimeout(800);
+// Sam 2026-10-11 14:18Z: Admin sets the staff password himself; no login is made without one
+await B.evaluate(() => { S.ui.ns = null; go('newstaff'); }); await B.waitForTimeout(300);
+await B.fill('#ns1', 'Priya Test'); await B.fill('#ns2', 'priya@test.in');
+await B.click('#vp .screen:last-child .foot .btn'); await B.waitForTimeout(400);
+ok((await B.evaluate(() => S.ui.nsErr || '')).includes('Enter a password') && await B.evaluate(() => !DB.accounts['priya@test.in']), 'admin: New staff login asks for a password and makes no login without one');
+await B.click('#vp .screen:last-child button:has-text("Make one")'); const made = await B.inputValue('#ns3');
+ok(made.length === 8 && await B.evaluate(() => S.ui.ns.pw.length === 8), 'admin: Make one fills an 8-character password (' + made.length + ')');
+await B.fill('#ns3', 'priya123'); await B.click('#vp .screen:last-child .foot .btn'); await B.waitForTimeout(900);
 const staffPw = await B.evaluate(() => { const b = document.querySelector('.sheet .kv b'); return b ? b.textContent.trim() : ''; });
-ok(staffPw.length === 10, 'admin: staff login created with a one-time password (' + (staffPw ? 'shown' : 'missing') + ')');
+ok(staffPw === 'priya123', 'admin: staff login created with the password Admin typed (' + staffPw + ')');
 await B.waitForTimeout(800);
 const adminState = await B.request.get(BASE + '/api/sync?since=0').then(r => r.json());
 ok(adminState.changed.accounts && adminState.changed.accounts['priya@test.in'] && adminState.changed.accounts['priya@test.in'].role === 'billing', 'admin: staff account synced to the server');
@@ -62,7 +69,7 @@ const cC = await b.newContext({ viewport: { width: 420, height: 860 } }); const 
 await open(C); await C.fill('#loginId', 'priya@test.in'); await C.evaluate(() => sendOtp()); await C.waitForTimeout(500);
 ok(await screen(C) === 'pw', 'staff: password screen');
 await C.fill('#pw1', staffPw); await C.evaluate(() => pwGo()); await C.waitForTimeout(600);
-ok(await screen(C) === 'roleok' && await C.evaluate(() => S.user.role === 'billing'), 'staff: logs in with the one-time password');
+ok(await screen(C) === 'roleok' && await C.evaluate(() => S.user.role === 'billing'), 'staff: logs in with the password Admin set');
 ok(![401, 403].includes((await C.request.get(BASE + '/cat/xref.json')).status()), 'staff: catalogue files open (not locked; 404 while no catalogue is uploaded)');
 const list = await C.request.get(BASE + '/api/files/list?path=').then(r => r.json());
 ok(list.entries.some(e => e.path === 'catalogues' && e.isDirectory), 'staff: files list works');
@@ -152,8 +159,15 @@ ok(custView.changed.orders.length === 1 && custView.changed.orders[0].id === 'BP
 // ---- logout + password reset
 await C.evaluate(() => logout()); await C.waitForTimeout(800); ok(await screen(C) === 'login', 'staff: logout returns to login');
 ok((await C.request.get(BASE + '/cat/xref.json')).status() === 401, 'staff: catalogue locked again after logout');
-await B.evaluate(() => staffPw('priya@test.in')); await B.waitForTimeout(800);
-const newPw = await B.evaluate(() => { const b = document.querySelector('.sheet .kv b'); return b ? b.textContent.trim() : ''; }); await B.evaluate(() => closeSheet());
+await B.evaluate(() => { S.ui.ut = 'Staff'; tab('users'); }); await B.waitForTimeout(300);
+await B.click('#vp .screen:last-child .li:has-text("Priya Test")'); await B.waitForTimeout(400);
+ok(await B.evaluate(() => !!document.querySelector('.sheet #sp-pw') && /set a new password/i.test(document.querySelector('#vp .screen:last-child').innerText)), 'admin: Users › Staff › tap a name shows Set a new password at the top');
+await B.fill('.sheet #sp-pw', '123'); await B.click('.sheet button:has-text("Save password")'); await B.waitForTimeout(300);
+ok((await B.textContent('.sheet #sp-err')).includes('at least 6'), 'admin: a short password is refused');
+await B.click('.sheet button:has-text("Make one")'); const newPw = await B.inputValue('.sheet #sp-pw');
+await B.click('.sheet button:has-text("Save password")'); await B.waitForTimeout(800);
+ok(await B.evaluate(() => (document.querySelector('.sheet h3') || {}).textContent === 'Password saved' && (document.querySelector('.sheet .kv b') || {}).textContent === S.ui.pwShow), 'admin: new password saved and shown (' + newPw.length + ' chars)');
+await B.evaluate(() => closeSheet());
 await C.fill('#loginId', 'priya@test.in'); await C.evaluate(() => sendOtp()); await C.waitForTimeout(500); await C.fill('#pw1', staffPw); await C.evaluate(() => pwGo()); await C.waitForTimeout(500);
 ok((await C.evaluate(() => S.ui.pwErr || '')).includes('Wrong'), 'staff: old password rejected after reset');
 await C.fill('#pw1', newPw); await C.evaluate(() => pwGo()); await C.waitForTimeout(600); ok(await C.evaluate(() => S.user && S.user.role === 'billing'), 'staff: new password works');

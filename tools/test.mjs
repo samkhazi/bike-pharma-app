@@ -147,9 +147,11 @@ ok((await C.evaluate(() => S.ui.pwErr || '')).includes('Wrong'), 'staff: old pas
 await C.fill('#pw1', newPw); await C.evaluate(() => pwGo()); await C.waitForTimeout(600); ok(await C.evaluate(() => S.user && S.user.role === 'billing'), 'staff: new password works');
 
 // ---- landing page iframe path (index.html loads app.html into the frame)
-const L = await page(cA); await L.goto(BASE + '/', { waitUntil: 'load' }); await L.waitForTimeout(800);
-ok(await L.evaluate(() => document.getElementById('appv').hidden), 'landing page: shows the website first, not the login');
-await L.evaluate(() => document.querySelector('[data-login]').click()); await L.waitForTimeout(2500);
+const cV = await b.newContext({ viewport: { width: 1280, height: 860 } }); const V = await page(cV); await V.goto(BASE + '/', { waitUntil: 'load' }); await V.waitForTimeout(800);
+ok(await V.evaluate(() => document.getElementById('appv').hidden), 'landing page: a visitor sees the website first, not the login');
+// a browser where the customer is logged in (Sam 2026-10-11: no landing page until log out) goes straight into the app
+const L = await page(cA); await L.goto(BASE + '/', { waitUntil: 'load' }); await L.waitForTimeout(2500);
+ok(await L.evaluate(() => !document.getElementById('appv').hidden && location.hash === '#login'), 'landing page: logged-in browser opens straight into the app');
 const fr = L.frames().find(f => f !== L.mainFrame());
 ok(!!fr && await fr.evaluate(() => typeof S !== 'undefined' && S.user && S.user.role === 'customer').catch(() => false), 'landing page: app in the frame boots from the server with the customer session');
 

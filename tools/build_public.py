@@ -65,12 +65,13 @@ sub1("<button class=\"btn line\" onclick=\"staffRole('${k}')\">Save role</button
      "<button class=\"btn line\" onclick=\"staffRole('${k}')\">Save role</button></div><button class=\"btn line\" onclick=\"staffPw('${k}')\">Set a new password</button>`);}")
 # 6. logout tells the server
 sub1("function logout(all){S.user=null;S.uid=null;try{localStorage.removeItem('bp-user');}catch(e){}",
-     "function logout(all){srvLogout();S.user=null;S.uid=null;try{localStorage.removeItem('bp-user');}catch(e){}")
+     "function logout(all){srvLogout();bpIn(0);S.user=null;S.uid=null;try{localStorage.removeItem('bp-user');}catch(e){}")
 # 7. boot from the server
 sub1(r"function start\(\)\{load\(\);perCust\(\);applySettings\(\);applyTheme\(\);S\.ui\.lgLang=LANG;\n.*?render\(''\);splash\(\);", r"""async function start(){SCREENS.boot=()=>'<div class="scroll"></div>';S.stack=[{s:'boot',p:{}}];let b=null;try{b=await api('GET','/api/boot');}catch(e){}
  if(!b||b.error||!b.db){document.getElementById('vp').innerHTML='<div class="screen"><div class="scroll"><div class="pad" style="padding-top:60px;text-align:center;gap:12px"><h1 class="h1">Can’t reach the server</h1><p class="cap">Check your internet connection and try again.</p><button class="btn" onclick="start()">Try again</button></div></div></div>';return;}
  SRV.cfg=b.cfg||{};catManifest(SRV.cfg.cat);srvSetDb(b.db,b.rev);applyTheme();S.ui.lgLang=LANG;
  if(b.user){S.uid=b.user.id;S.user=ACC()[S.uid]||b.user;S.stack=[{s:HOME[S.user.role]||'login',p:{}}];}else{S.uid=null;S.user=null;S.stack=[{s:'login',p:{}}];}
+ bpIn(!!b.user);
  render('');splash();""", regex=True)
 # 7b. theme sync from the landing page only when really inside it (direct app.html would observe itself and loop)
 sub1("th();try{new parent.MutationObserver(th).observe(parent.document.documentElement,{attributes:true,attributeFilter:['data-theme']});",
@@ -114,14 +115,14 @@ function srvPoll(){if(!S.user||SRV.busy||document.hidden)return;if(Object.keys(s
  fetch('/api/sync?since='+SRV.rev,{credentials:'same-origin'}).then(r=>r.status===401?(srvExpired(),null):r.ok?r.json():null).then(j=>{if(j){SRV.rev=j.rev;srvApply(j.changed);}}).catch(()=>{});}
 setInterval(srvPoll,15000);
 addEventListener('visibilitychange',()=>{if(document.hidden){clearTimeout(SRV.t);srvPush();}else srvPoll();});
-function srvExpired(){if(!S.user)return;S.user=null;S.uid=null;S.ui={};S.stack=[{s:'login',p:{}}];render('fade');toast('Your login expired · please log in again');api('GET','/api/boot').then(b=>{if(b&&b.db)srvSetDb(b.db,b.rev);}).catch(()=>{});}
+function srvExpired(){if(!S.user)return;bpIn(0);S.user=null;S.uid=null;S.ui={};S.stack=[{s:'login',p:{}}];render('fade');toast('Your login expired · please log in again');api('GET','/api/boot').then(b=>{if(b&&b.db)srvSetDb(b.db,b.rev);}).catch(()=>{});}
 const srvStaff=()=>!!S.user&&['billing','sales','manager','inventory','admin'].includes(S.user.role);
 /* catalogue brands = the files present in public/cat (the server lists them); none -> Find Part says so instead of failing */
 function catManifest(list){if(!Array.isArray(list))return;const have=new Set(list);[CAT_ALL,typeof CAT_EXT!=='undefined'?CAT_EXT:[],typeof CAT_NEED!=='undefined'?CAT_NEED:[]].forEach(arr=>{for(let i=arr.length-1;i>=0;i--){const u=(arr[i].url||'').split('/').pop();if(!have.has(u))arr.splice(i,1);}});window.CAT_OFF=CAT_ALL.length===0;}
 const _fpScreen=SCREENS.findpart;SCREENS.findpart=(...a)=>window.CAT_OFF?catOffScreen():_fpScreen(...a);
 function catOffScreen(){return bar('Find Part')+`<div class="scroll"><div class="pad" style="gap:16px"><div class="card stack g8" style="align-items:center;text-align:center;padding:28px 18px"><div class="tile y">${ic('pin','s20')}</div><h2 class="h2">Catalogue not uploaded yet</h2><p class="cap">Brand catalogues will be added one by one. Search, diagrams and part numbers appear here as each brand is uploaded.</p></div></div></div>`;}
 
-function srvLogin(r){S.ui.otpErr=null;S.ui.pwErr=null;srvSetDb(r.db,r.rev);try{CAT_ALL.forEach(e=>{if(e.st===3)e.st=0;});}catch(e){}S.uid=r.user.id;S.user=ACC()[S.uid]||r.user;S.ui.signup=null;S.ui.pending=null;S.stack=[{s:'roleok',p:{}}];render('push');}
+function srvLogin(r){bpIn(1);S.ui.otpErr=null;S.ui.pwErr=null;srvSetDb(r.db,r.rev);try{CAT_ALL.forEach(e=>{if(e.st===3)e.st=0;});}catch(e){}S.uid=r.user.id;S.user=ACC()[S.uid]||r.user;S.ui.signup=null;S.ui.pending=null;S.stack=[{s:'roleok',p:{}}];render('push');}
 function srvLogout(){clearTimeout(SRV.t);const ch=srvDiff();const done=()=>api('POST','/api/logout').then(r=>{if(r&&r.db)srvSetDb(r.db,r.rev);}).catch(()=>{});if(Object.keys(ch).length&&S.user){SRV.busy=false;srvPush();setTimeout(done,600);}else done();}
 function resendOtp(){api('POST','/api/otp',{id:S.ui.pending}).then(r=>{if(r.error)return toast(r.error);S.ui.otpSent=Date.now();S.ui.otpTries=0;S.ui.otpErr=null;toast('New OTP sent');refresh();}).catch(()=>toast('Could not reach the server'));}
 /* mechanics order and pay at the Bike Pharma counter (or on WhatsApp); the shop's bill then shows in their app */
@@ -160,11 +161,12 @@ window.addEventListener('popstate',e=>{const h=e.state&&e.state.bpnav;if(!h||!NA
  else if(st.length>S.stack.length&&same(S.stack,st))st=S.stack.concat(st.slice(S.stack.length));
  const ok=x=>x&&SCREENS[x.s]&&(S.user?!NAV_PRE.includes(x.s)&&allowed(x.s):NAV_PRE.includes(x.s));
  try{closeSheet();}catch(err){}
- if(!st.length||!st.every(ok)){navSave(false);
-  /* Back from the first screen after login lands on the login entry: keep going, out to the website */
-  if(dir==='back'&&S.user&&st.length&&st.every(x=>x&&NAV_PRE.includes(x.s))){try{history.back();}catch(err){}}
-  return;}
+ /* a screen this login may not see (the login screens once logged in, staff screens after log out): stay where we are.
+    Logged in, the website stays behind the app until log out (Sam 2026-10-11): the landing page re-opens the app on Back (bpIn) */
+ if(!st.length||!st.every(ok)){navSave(false);return;}
  S.stack=st;render(dir);});
+/* tells the landing page (same site) that someone is logged in on this browser */
+function bpIn(on){try{if(on)localStorage.setItem('bp_in','1');else localStorage.removeItem('bp_in');}catch(e){}}
 """
 sub1("function go(s,p={}){S.stack.push({s,p});render('push');}", "function go(s,p={}){S.stack.push({s,p});navSave(true);render('push');}")
 sub1("function back(){if(S.stack.length>1){S.stack.pop();render('back');}}",

@@ -78,7 +78,8 @@ Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
   suppliers, kharche, targets. Update ke baad server pehli baar chalte hi ye khud karta hai. Aapke logins, staff, settings,
   Inventory me daale products aur unke bills waise hi rehte hain. Jo hataya uski copy `data/removed-sample-data-<date>.json` me.
 - Nayi shop ab bilkul khali shuru hoti hai. Invoice number saal ke hisaab se 1 se chalta hai (INV-2026-00001).
-- Mac trackpad swipe / browser Back ab app ki pichhli screen pe jata hai, website pe nahi. Home screen se Back = website.
+- Mac trackpad swipe / browser Back ab app ki pichhli screen pe jata hai, website pe nahi.
+- Login ke baad logout karne tak landing page nahi aata: Back se bhi nahi, aur bikepharma.com dobara kholo to seedha app khulta hai.
 
 **Update 5 (11 Oct 2026)**
 - KTM + Husqvarna catalogue aapki 97 HD PDF se: KTM 32 models (87 model years, 6,559 part numbers), Husqvarna 3 models

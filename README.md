@@ -76,6 +76,17 @@ curl http://127.0.0.1:3010/api/health
 Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 
 ## Badlav
+**Update 8 (11 Oct 2026)**
+- Inventory catalogue se: Add product, Stock in aur "Paste supplier bill" me part number daalo, brand, naam, MRP aur kaunsi
+  bikes me lagta hai catalogue se khud aata hai. Customer aur mechanic price Admin ke % rule se (MRP − 5 % / − 15 %, badal sakte ho).
+- Photo ke bina koi part stock me nahi jata: kam se kam 1 photo, zyada se zyada 4. Bina photo wala naya part "Waiting for photos" me rukta hai.
+- Find Part: jo catalogue part stock me nahi hai, Inventory staff aur Admin ko uspe "Add to stock".
+- Product photo: background khud white ho jata hai aur Bike Pharma ka logo halka sa part ke peeche. Kheenchi hui asli photo
+  waisi hi rehti hai (sirf staff khol sakta hai); kisi photo pe "Original" tick karo to wo jaisi kheenchi waisi dikhti hai (logo peeche).
+  Ye kaam server pe AI karta hai (`ai/` folder, apne process me, ek photo ek baar me). Pehle update me AI ka model (178 MB) ek baar
+  download hota hai, isliye kuch minute lagte hain. Purani photos ki clean copy bhi apne aap banti hai. AI ko kaam ke waqt ~1 GB
+  khali memory chahiye; kam ho to photo waisi hi dikhti hai aur AI thodi der baad phir try karta hai (`check.sh` batata hai).
+
 **Update 7 (11 Oct 2026)**
 - Hero, Royal Enfield, Yamaha, Honda, TVS ka catalogue aapke package se (All Catalogues > BikeSurgeon_Catalog_Import):
   Hero 49 models, Royal Enfield 28, Yamaha 96, Honda 44, TVS 27. Har section ka diagram aur Hero / Royal Enfield ke part

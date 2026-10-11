@@ -12,6 +12,7 @@ import { openStore, HAS_SQLITE } from './lib/store.mjs';
 import { roleClass, viewOf, scopeValue, canWrite, merge3, applyOwn, applyMine, mechLogins, moveCodes, deepEqual, cleanStrings, safeText, STAFF_ROLES, MECH_OWN } from './lib/merge.mjs';
 import { otpConfig, makeOtp, deliverOtp } from './lib/sms.mjs';
 import { removeDemoData } from './lib/cleanup.mjs';
+import { photoAi } from './lib/photoai.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 export function loadEnv(file) {
@@ -91,13 +92,15 @@ async function api(req, res, url, user) {
     if (origin && origin !== 'null') { try { if (new URL(origin).host !== req.headers.host) return json(res, 403, { error: 'Bad origin' }); } catch (e) { return json(res, 403, { error: 'Bad origin' }); } }
   }
   if (p === '/api/catup') return catUpload(req, res, url, user);
+  if (p === '/api/photo/status') return photoStatus(req, res, url, user);
+  if (p === '/api/photo') return photoUpload(req, res, user);
   let body = {};
   if (m === 'POST') { try { const b = await readBody(req); body = b.length ? JSON.parse(b.toString('utf8')) : {}; } catch (e) { return json(res, 400, { error: 'Bad request body' }); } }
   const catList = () => { try { return fs.readdirSync(path.join(PUBLIC_DIR, 'cat')).filter(f => f.endsWith('.json')).sort(); } catch { return []; } };
   const cfg = () => ({ otpHint: OTP.mode === 'fixed' ? OTP.fixed : null, otpMode: OTP.mode, version: VERSION, cat: catList() });
   const full = u => ({ user: u ? u : null, db: viewOf(store.stateAll().map(r => r.key), reader(), u, true), rev: store.rev(), cfg: cfg() });
 
-  if (p === '/api/health' && m === 'GET') return json(res, 200, { ok: true, rev: store.rev(), sqlite: HAS_SQLITE, version: VERSION });
+  if (p === '/api/health' && m === 'GET') return json(res, 200, { ok: true, rev: store.rev(), sqlite: HAS_SQLITE, version: VERSION, photoAi: PHOTO_AI.summary() });
   if (p === '/api/boot' && m === 'GET') { if (!user && cookies(req).bp_s) setSession(req, res, '', true); return json(res, 200, full(user)); }
 
   if (p === '/api/otp' && m === 'POST') {
@@ -335,6 +338,71 @@ async function catUpload(req, res, url, user) {
   return json(res, 200, { have, done: false });
 }
 
+// ---------- product photos (Sam 2026-10-11: 1 to 4 photos for every product, shown in the app) ----------
+// Saved exactly as sent (no resizing or re-compression). The name is the photo's own fingerprint, so the same photo is kept once.
+// The app shows the copies lib/photoai.mjs makes (background white or as taken, the faint logo behind the part): <hash>-c.jpg / <hash>-w.jpg.
+// The photo as taken is for shop staff only.
+const PHOTO_DIR = path.join(DATA_DIR, 'photos');
+const PHOTO_MAX = 25 * 1024 * 1024;
+const PHOTO_URL = /^\/photos\/([a-f0-9]{32})(?:-([cw]))?\.(jpg|png|webp)$/;
+const PHOTO_AI = photoAi({ root: ROOT, photoDir: PHOTO_DIR, dataDir: DATA_DIR, env });
+setTimeout(() => PHOTO_AI.backfill(), 5000).unref();
+function photoKind(b) {
+  if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'jpg';
+  if (b.length > 8 && b.readUInt32BE(0) === 0x89504e47 && b.readUInt32BE(4) === 0x0d0a1a0a) return 'png';
+  if (b.length > 12 && b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP') return 'webp';
+  return '';
+}
+async function photoUpload(req, res, user) {
+  if (req.method !== 'POST') { drain(req); return json(res, 405, { error: 'Method not allowed' }); }
+  if (roleClass(user) !== 'staff') { drain(req); return json(res, user ? 403 : 401, { error: user ? 'Only shop staff can add product photos' : 'Please log in again' }); }
+  if (limited('photo:' + user.id, 600, 3600e3)) { drain(req); return json(res, 429, { error: 'Too many photos in one hour. Please wait a little.' }); }
+  if ((+req.headers['content-length'] || 0) > PHOTO_MAX) { drain(req); return json(res, 413, { error: 'This photo is too big (25 MB max)' }); }
+  let b; try { b = await readBody(req, PHOTO_MAX); } catch (e) { return json(res, 413, { error: 'This photo is too big (25 MB max)' }); }
+  const kind = photoKind(b);
+  if (!kind) return json(res, 400, { error: 'Only JPG, PNG or WEBP photos can be saved' });
+  const name = crypto.createHash('sha256').update(b).digest('hex').slice(0, 32) + '.' + kind, file = path.join(PHOTO_DIR, name);
+  if (!fs.existsSync(file)) {
+    fs.mkdirSync(PHOTO_DIR, { recursive: true });
+    const tmp = file + '.' + crypto.randomBytes(6).toString('hex') + '.tmp';
+    fs.writeFileSync(tmp, b); fs.renameSync(tmp, file);
+    console.log(new Date().toISOString(), 'product photo saved', name, b.length, 'by', user.id);
+  }
+  const h = name.slice(0, 32);
+  PHOTO_AI.enqueue(h);
+  return json(res, 200, { url: '/photos/' + h + '-c.jpg', orig: '/photos/' + name, size: b.length, ai: PHOTO_AI.status(h) });
+}
+// GET /api/photo/status?h=<hash>,<hash>: is the clean copy ready (the app shows "Cleaning…" until it is)
+function photoStatus(req, res, url, user) {
+  if (req.method !== 'GET') return json(res, 405, { error: 'Method not allowed' });
+  if (roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: 'Staff login needed' });
+  const st = {};
+  for (const h of String(url.searchParams.get('h') || '').split(',').filter(x => /^[a-f0-9]{32}$/.test(x)).slice(0, 40)) st[h] = PHOTO_AI.status(h);
+  return json(res, 200, { ai: PHOTO_AI.summary(), st });
+}
+function servePhoto(req, res, m, user) {
+  const [, h, v, ext] = m;
+  let file, type, cache, etag;
+  if (v) {   // the copies the app shows, to everyone (customers see them in the shop)
+    if (ext !== 'jpg') return json(res, 404, { error: 'Not found' });
+    file = path.join(PHOTO_DIR, `${h}-${v}.jpg`); type = MIME['.jpg']; cache = 'public, max-age=31536000, immutable'; etag = `"${h}-${v}"`;
+    if (!fs.existsSync(file)) {   // not ready yet (or the photo AI is off): the photo as taken until then, asked again next time
+      file = ''; for (const e of ['jpg', 'png', 'webp']) { const f = path.join(PHOTO_DIR, `${h}.${e}`); if (fs.existsSync(f)) { file = f; type = MIME['.' + e]; break; } }
+      if (!file) return json(res, 404, { error: 'Not found' });
+      PHOTO_AI.enqueue(h); cache = 'no-cache'; etag = `"${h}-o"`;
+    }
+  } else {   // the photo exactly as taken: shop staff only
+    if (roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: 'Staff login needed' });
+    file = path.join(PHOTO_DIR, `${h}.${ext}`); type = MIME['.' + ext]; cache = 'private, max-age=31536000, immutable'; etag = `"${h}"`;
+  }
+  let st; try { st = fs.statSync(file); } catch (e) { return json(res, 404, { error: 'Not found' }); }
+  const hd = { 'Content-Type': type, 'ETag': etag, 'Cache-Control': cache, 'X-Content-Type-Options': 'nosniff' };
+  if (req.headers['if-none-match'] === etag) { res.writeHead(304, hd); return res.end(); }
+  res.writeHead(200, { ...hd, 'Content-Length': st.size });
+  if (req.method === 'HEAD') return res.end();
+  fs.createReadStream(file).pipe(res);
+}
+
 // ---------- static files ----------
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.txt': 'text/plain; charset=utf-8', '.pdf': 'application/pdf', '.mp4': 'video/mp4', '.wasm': 'application/wasm', '.map': 'application/json', '.xml': 'application/xml', '.webmanifest': 'application/manifest+json' };
 const GZ_TYPES = new Set(['.html', '.js', '.mjs', '.css', '.json', '.svg', '.txt', '.xml', '.map', '.webmanifest']);
@@ -385,6 +453,7 @@ const server = http.createServer(async (req, res) => {
     const user = userOf(req);
     if (url.pathname.startsWith('/api/')) return await api(req, res, url, user);
     if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'Method not allowed' });
+    const ph = PHOTO_URL.exec(url.pathname); if (ph) return servePhoto(req, res, ph, user);
     return serveStatic(req, res, url, user);
   } catch (e) {
     console.error(new Date().toISOString(), req.method, req.url, e);
@@ -394,4 +463,4 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, HOST, () => {
   console.log(`[bikepharma] v${VERSION} on http://${HOST}:${PORT}  public=${PUBLIC_DIR}  data=${DATA_DIR}  files=${FILES_DIR}  store=${HAS_SQLITE ? 'sqlite' : 'json'}  otp=${OTP.mode}`);
 });
-for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { server.close(); store.close(); process.exit(0); });
+for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { PHOTO_AI.stop(); server.close(); store.close(); process.exit(0); });

@@ -11,6 +11,13 @@ echo "== bikepharma.com check"
 
 h=$(curl -s --max-time 8 "http://127.0.0.1:$PORT/api/health" 2>/dev/null)
 case "$h" in *'"ok":true'*) ok "app chal raha hai (port $PORT) $h";; *) bad "app port $PORT pe jawab nahi de raha. Logs: npx pm2 logs bikepharma --lines 50";; esac
+pa=$(printf '%s' "$h" | grep -o '"photoAi":{[^}]*}' || true)
+case "$pa" in
+  *'"state":"ready"'*|*'"state":"working"'*) ok "photo AI taiyaar (photo ka background white + halka logo)";;
+  *'"state":"off"'*) ok "photo AI band hai (.env me PHOTO_AI=off), photos waise hi dikhti hain";;
+  '') ;;
+  *) bad "photo AI: $pa (photos abhi waise hi dikh rahi hain). Ye line mujhe bhejo";;
+esac
 
 c=$(code "${NG[@]}" "https://$DOM/"); [ "$c" = 200 ] && ok "https://$DOM/ khulta hai" || bad "https://$DOM/ ka jawab $c"
 LP=$(curl -sk --max-time 20 "${NG[@]}" "https://$DOM/" 2>/dev/null || true)

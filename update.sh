@@ -20,6 +20,8 @@ fi
 # purane installer zips ki ab zaroorat nahi; site folder me download hone layak kuch nahi rehna chahiye
 rm -f bikepharma-site.zip bikepharma-update-*.zip
 [ "$(id -u)" = "0" ] && chown -R "$SITE_USER":"$SITE_USER" "$SITE_DIR"
+echo "== Photo AI (product photos: background white + halka logo)"
+as_site "bash ai/install.sh" || echo "   !! photo AI install nahi hua: website chalti rahegi, photos waise hi dikhengi. Ye output mujhe bhejo"
 echo "== Server restart"
 as_site "bash restart.sh"
 sleep 2

@@ -1,0 +1,10 @@
+{
+  "name": "bikepharma-photo-ai",
+  "private": true,
+  "type": "module",
+  "description": "Product photo cleanup for bikepharma.com: background white, faint logo behind the part. Installed by ai/install.sh, run by server.mjs.",
+  "dependencies": {
+    "onnxruntime-node": "1.20.1",
+    "sharp": "0.33.5"
+  }
+}

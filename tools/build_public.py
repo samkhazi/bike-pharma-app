@@ -184,7 +184,7 @@ sub1("/* ---------- boot ---------- */\nasync function start(){", NAVJS + "/* --
 # byte for byte out of the brand's own zips, which Admin uploads unchanged from Catalogue files. "jin jin brands ke MRP he o us us parts me
 # daaldo search me": the MRP of every part that has one shows on the search cards, the section table and the part page.
 CAT_IN = [os.path.join(SP, 'ktm', 'out', f) for f in ('ktm.json', 'ktm-dg.json', 'husqvarna.json', 'husqvarna-dg.json')]
-CAT_IN += [os.path.join(SP, 'brands', 'out', s + x) for s in ('hero', 'royal-enfield', 'yamaha', 'honda', 'tvs', 'bajaj') for x in ('.json', '-dg.json')]
+CAT_IN += [os.path.join(SP, 'brands', 'out', s + x) for s in ('hero', 'royal-enfield', 'yamaha', 'honda', 'tvs', 'bajaj', 'suzuki') for x in ('.json', '-dg.json')]
 _bv, _cc = {}, {}
 for f in CAT_IN:
     if f.endswith('-dg.json'): continue
@@ -243,8 +243,13 @@ const catPdf=u=>{if(CAT_PFURL[u])return CAT_PFURL[u];const m=/^pdf:(.+):(\d+):(\
   finally{clearTimeout(tm);if(e)e.busy--;}});});
  CAT_PFURL[u]=p;p.catch(()=>{delete CAT_PFURL[u];});return p;};
 """
+# Suzuki (Sam 2026-10-11): its diagrams are pages of Suzuki's own PDF books, uploaded as they are: the same 'pdf:' link with offset 0 and the file's size
 sub1("const catPf=u=>{if(CAT_PFURL[u])return CAT_PFURL[u];const m=/^p([fa]):(.+):(\\d+):(\\d+)$/.exec(u);",
      PDFJS + "const catPf=u=>{if(CAT_PFURL[u])return CAT_PFURL[u];if(u.startsWith('pdf:'))return catPdf(u);const m=/^p([fa]):(.+):(\\d+):(\\d+)$/.exec(u);")
+# Sam's Suzuki folder has a PDF book named "oct150cc gixxer.txt": the file picker offers .txt too (the server already takes it)
+sub1('accept=".pdf,.jpg,.jpeg,.png,.zip,.json,.csv"', 'accept=".pdf,.jpg,.jpeg,.png,.zip,.json,.csv,.txt"')
+# model codes in section names and remarks stay capitals: "Front Wheel (UZ125NE)", not "(Uz125ne)"
+sub1("|Led|[A-Z]?\\d+[A-Za-z0-9.x/]*)\\b/g,w=>w.toUpperCase());", "|Led|[A-Z]?\\d+[A-Za-z0-9.x/]*|[A-Za-z]{1,6}\\d[A-Za-z0-9]*)\\b/g,w=>w.toUpperCase());")
 # part photos given only as zip byte ranges (phf + phz, no photo pages)
 sub1("const catPh=(d,pn)=>{const x=d.ph&&d.ph[pn];if(x==null)return null;",
      "const catPh=(d,pn)=>{const x=d.ph&&d.ph[pn];if(x==null){const f=!d.ph&&d.phf&&d.phf[pn];return f?{z:'pf:'+d.phz[f[0]]+':'+f[1]+':'+f[2],w:f[3],h:f[4]}:null;}")
@@ -308,6 +313,15 @@ a = a[:_i] + 'const CAT_PNR=' + json.dumps(PNR, separators=(',', ':')).replace('
 a, _n = re.subn(r'made by edit_cat\.py from these files: [^*]*\*/', 'made by tools/build_public.py from these files: ' + ', '.join(PNR_OF) + ' */', a)
 assert _n == 1, _n; n_patch += 1
 print('CAT_PNR:', ', '.join('%s %d shapes' % (vb, len(t.split())) for vb, (t, g) in PNR.items()))
+# the brand tiles' counts (models, part numbers) from the same brand files; the table in the source counted the old web files
+CNT = {}
+for f in CAT_IN:
+    if f.endswith('-dg.json'): continue
+    d = json.load(open(f, encoding='utf-8'))
+    CNT[d['brand']] = {'m': len(d['models']), 'pn': len({pn_pk(r[5]) for r in d['d'] if pn_pk(r[5])})}
+a, _n = re.subn(r'const M2_CNT=\{[^\n;]*\};', lambda m: 'const M2_CNT=' + json.dumps(CNT, separators=(',', ':')) + ';', a)
+assert _n == 1, _n; n_patch += 1
+print('M2_CNT:', CNT)
 assert "123456" not in re.sub(r"KA0200123456|CAT_PNA='0123456789|\nconst CAT_PNR=[^\n]*", "", a), "demo OTP text still present"
 assert 'bp-db' not in a
 os.makedirs(OUT, exist_ok=True)

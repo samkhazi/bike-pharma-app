@@ -94,6 +94,7 @@ async function api(req, res, url, user) {
   }
   if (p === '/api/catup') return catUpload(req, res, url, user);
   if (p === '/api/photo/status') return photoStatus(req, res, url, user);
+  if (p === '/api/photo/wrong') return photoWrong(req, res, url, user);
   if (p === '/api/photo') return photoUpload(req, res, user);
   if (p === '/api/billread') return billRead(req, res, user);
   let body = {};
@@ -228,7 +229,8 @@ async function api(req, res, url, user) {
     if (!user) return json(res, 401, { error: 'not_granted' });
     if (roleClass(user) !== 'staff') return json(res, 403, { error: 'not_granted' });
     const rel = path.posix.normalize('/' + (url.searchParams.get('path') || '')).replace(/^\/+/, '');
-    if (rel.includes('..')) return json(res, 404, { error: 'not_found' });
+    // a '..' folder step is never allowed; two dots inside a file name are (Sam's TVS book "APACHE 160 4V PC ,..pdf")
+    if (rel.split('/').includes('..') || rel.includes('\0')) return json(res, 404, { error: 'not_found' });
     const abs = path.join(FILES_DIR, rel);
     let st; try { st = fs.statSync(abs); } catch (e) { return json(res, 404, { error: 'not_found' }); }
     if (p === '/api/files/list') {
@@ -298,7 +300,7 @@ async function catUpload(req, res, url, user) {
   }
   const rel = path.posix.normalize('/' + (url.searchParams.get('path') || '')).replace(/^\/+/, '');
   const segs = rel.split('/');
-  if (segs[0] !== 'catalogues' || segs.length < 3 || segs.some(x => !/^[A-Za-z0-9][A-Za-z0-9 ._()+,&-]{0,150}$/.test(x) || x.includes('..')) || !CAT_EXTS.has(path.extname(rel).toLowerCase()) || rel.endsWith('.part')) {
+  if (segs[0] !== 'catalogues' || segs.length < 3 || segs.some(x => !/^[A-Za-z0-9][A-Za-z0-9 ._()+,&-]{0,150}$/.test(x) || x === '..') || !CAT_EXTS.has(path.extname(rel).toLowerCase()) || rel.endsWith('.part')) {
     drain(req); return json(res, 400, { error: 'This file name or type cannot be uploaded' });
   }
   const size = Math.floor(+url.searchParams.get('size'));
@@ -392,16 +394,31 @@ async function billRead(req, res, user) {
 function photoStatus(req, res, url, user) {
   if (req.method !== 'GET') return json(res, 405, { error: 'Method not allowed' });
   if (roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: 'Staff login needed' });
-  const st = {};
-  for (const h of String(url.searchParams.get('h') || '').split(',').filter(x => /^[a-f0-9]{32}$/.test(x)).slice(0, 40)) st[h] = PHOTO_AI.status(h);
-  return json(res, 200, { ai: PHOTO_AI.summary(), st });
+  const st = {}, chk = {};
+  for (const h of String(url.searchParams.get('h') || '').split(',').filter(x => /^[a-f0-9]{32}$/.test(x)).slice(0, 40)) { st[h] = PHOTO_AI.status(h); if (st[h] === 'done') chk[h] = PHOTO_AI.check(h); }
+  return json(res, 200, { ai: PHOTO_AI.summary(), st, chk });
+}
+// POST /api/photo/wrong?h=<hash>: staff say the clean copy is not right; it is made again another way (and the AI learns from it)
+function photoWrong(req, res, url, user) {
+  if (req.method !== 'POST') { drain(req); return json(res, 405, { error: 'Method not allowed' }); }
+  drain(req);
+  if (roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: 'Staff login needed' });
+  if (limited('photowrong:' + user.id, 120, 3600e3)) return json(res, 429, { error: 'Too many in one hour. Please wait a little.' });
+  const h = String(url.searchParams.get('h') || '');
+  if (!/^[a-f0-9]{32}$/.test(h)) return json(res, 400, { error: 'Photo not found' });
+  const r = PHOTO_AI.wrong(h);
+  if (!r.ok) return json(res, 409, { error: r.error });
+  console.log(new Date().toISOString(), 'photo-ai', 'photo', h, 'marked not right by', user.id, '·', r.left, 'way(s) left');
+  return json(res, 200, { ok: true, left: r.left, st: PHOTO_AI.status(h) });
 }
 function servePhoto(req, res, m, user) {
   const [, h, v, ext] = m;
   let file, type, cache, etag;
   if (v) {   // the copies the app shows, to everyone (customers see them in the shop)
     if (ext !== 'jpg') return json(res, 404, { error: 'Not found' });
-    file = path.join(PHOTO_DIR, `${h}-${v}.jpg`); type = MIME['.jpg']; cache = 'public, max-age=31536000, immutable'; etag = `"${h}-${v}-${AI_VER}"`;
+    // an hour in the phone's cache: a copy made again after "Not right" reaches every phone and the shop within the hour
+    const ck = PHOTO_AI.check(h);
+    file = path.join(PHOTO_DIR, `${h}-${v}.jpg`); type = MIME['.jpg']; cache = 'public, max-age=3600'; etag = `"${h}-${v}-${AI_VER}-${ck ? ck.tries : 0}"`;
     if (!PHOTO_AI.current(h)) { PHOTO_AI.enqueue(h); cache = 'no-cache'; etag = `"${h}-${v}-old"`; }   // an older copy: shown until the new one is made
     if (!fs.existsSync(file)) {   // not ready yet (or the photo AI is off): the photo as taken until then, asked again next time
       file = ''; for (const e of ['jpg', 'png', 'webp']) { const f = path.join(PHOTO_DIR, `${h}.${e}`); if (fs.existsSync(f)) { file = f; type = MIME['.' + e]; break; } }

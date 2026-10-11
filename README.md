@@ -76,6 +76,17 @@ curl http://127.0.0.1:3010/api/health
 Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 
 ## Badlav
+**Update 8e (11 Oct 2026)**
+- Product photo ki safai (v3): kamre ki peeli/neeli roshni ka rang hat jaata hai (photo ke apne background se), part ke neeche halki
+  parchhai (safed part bhi safed background pe dikhta hai), Bike Pharma logo aur halka. 12 MP photo ab ~3.5 second (pehle 6-7).
+- Photo khud apna kaam check karti hai: part kata to nahi, haath to nahi bacha. Gadbad lage to 2-3 tareeke se dobara banti hai aur
+  sabse achhi rakhi jaati hai. Kaunsa tareeka kis tarah ki photo pe jeeta, server yaad rakhta hai (data/photos/ai-learn.json) aur
+  agli baar pehle wahi lagata hai. Claude ke tokens nahi lagte: sab aapke server pe chalta hai.
+- Photo ke neeche "Not right?": dabane pe wo photo dusre tareeke se dobara banti hai, aur us tareeke ka ek point kat jaata hai
+  (isse bhi seekhta hai). Photo me dikkat ho to neeche likha aata hai, jaise "Retake: hand on the part".
+- Purani saari photos ek baar naye tareeke se dobara banengi (khud, peeche-peeche).
+- Catalogue file ke naam me do dot (jaise "APACHE 160 4V PC ,..pdf") ab upload aur open hote hain.
+
 **Update 8d (11 Oct 2026)**
 - Supplier bill jisme "Rate" column asal me MRP hai aur Amount discount ke baad (jaise TVS distributor ka bill): ab rate = amount ÷ qty
   aata hai (taxable, GST ke bina), aur bill ka rate MRP me jaata hai. Har line pe GST 18% aur "Disc 23% (calculated from MRP)".

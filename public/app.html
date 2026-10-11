@@ -4306,7 +4306,11 @@ const invFitsTxt=f=>!f||!f.length?'Not set':f.slice(0,3).join(', ')+(f.length>3?
 /* ---- photo cleanup (Sam 16:59Z-17:25Z): the server keeps each photo exactly as taken and makes two copies with the faint logo
    behind the part: <hash>-c.jpg white background (used by default) and <hash>-w.jpg the photo as taken ("Original").
    A product keeps the copy's address, so every page and the shop show it; "Original" under a photo switches the copy. ---- */
-const PH_ST={},PH_V={},PH_AI=2;let phT=0;   // PH_AI = AI_VER in lib/photoai.mjs: a newer cleanup gets a new address, so phones never keep the older copy
+const PH_ST={},PH_V={},PH_CHK={},PH_AI=3;let phT=0;   // PH_AI = AI_VER in lib/photoai.mjs: a newer cleanup gets a new address, so phones never keep the older copy
+/* update 8e: the cleaner checks its own work (PH_CHK[hash].why) and says what would make the photo better; "Not right?" makes it
+   again another way and the cleaner learns from it (Sam 22:35Z "o khud ko improve karte rehna he") */
+const PH_WHY={edge:['Part goes out of the photo','Step back a little so the whole part is in the photo, then take it again.'],small:['Part is small: go closer','Go closer so the part fills more of the photo.'],unsure:['Busy background','Put the part on a plain table or sheet and take it again.'],bite:['Hand on the part','Hold the part by its edge (or put it down) so the hand does not cover it, then take it again.'],hand:['Hand on the part','Hold the part by its edge (or put it down) so the hand does not cover it, then take it again.'],nopart:['No part found','Take the photo again with the part in the middle.'],tried:['Take this photo again','Every way of cleaning was tried on this photo. Please take it again.']};
+const phWhy=k=>{const c=PH_CHK[k];if(!c||!c.why||phBusy(k))return null;const w=['tried','nopart','bite','hand','edge','small','unsure'].find(x=>c.why.includes(x));return w?PH_WHY[w]:null;};
 const phH=u=>(/^\/photos\/([a-f0-9]{32})/.exec(u||'')||[])[1]||'';
 const phOrig=u=>/-w\.jpg$/.test(u||'');
 const phSrc=u=>{const k=phH(u);return k?u+'?v='+(PH_V[k]||PH_AI):u;};
@@ -4316,12 +4320,20 @@ function phWatch(k,st){if(!k)return;if(st)PH_ST[k]=st;else if(!(k in PH_ST))PH_S
 async function phPoll(){phT=0;const hs=Object.keys(PH_ST).filter(k=>PH_ST[k]==='?'||phBusy(k)).slice(0,40);if(!hs.length)return;
  try{const r=await fetch('/api/photo/status?h='+hs.join(','),{credentials:'same-origin',cache:'no-store'});if(!r.ok)throw new Error(r.status);const j=await r.json();
   document.documentElement.classList.toggle('phai',!!j.ai&&['ready','working'].includes(j.ai.state));
-  hs.forEach(k=>{const st=(j.st||{})[k]||'missing',was=PH_ST[k];if(st===was)return;if(st==='done'&&was!=='?')PH_V[k]=Date.now();PH_ST[k]=st;phPaint(k);});}
+  hs.forEach(k=>{const st=(j.st||{})[k]||'missing',was=PH_ST[k];if((j.chk||{})[k])PH_CHK[k]=j.chk[k];if(st===was)return;if(st==='done'&&was!=='?')PH_V[k]=Date.now();PH_ST[k]=st;phPaint(k);});}
  catch(e){hs.forEach(k=>{if(PH_ST[k]==='?')PH_ST[k]='';});return;}
  if(hs.some(phBusy))phT=setTimeout(phPoll,2500);}
 /* only the photo boxes change (a whole redraw would take the cursor out of the field being typed in) */
 function phPaint(k){document.querySelectorAll('[data-ph="'+k+'"]').forEach(el=>{el.classList.toggle('pend',phBusy(k));el.classList.toggle('noai',phNoAi(k));
+  const w=phWhy(k);el.querySelectorAll('.inv-why').forEach(x=>{x.textContent=w?'Retake: '+w[0].toLowerCase():'';x.title=w?w[1]:'';x.hidden=!w;});
   if(PH_V[k])el.querySelectorAll('img').forEach(im=>{im.src=im.getAttribute('src').split('?')[0]+'?v='+PH_V[k];});});}
+/* "Not right?": the server makes the clean copy again the next best way it has not had yet (and that way loses a point) */
+async function phWrong(k){if(!k||phBusy(k))return;
+ try{const r=await fetch('/api/photo/wrong?h='+k,{method:'POST',credentials:'same-origin'});if(r.status===401){srvExpired();return;}
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'Could not do this now');
+  if(!j.left){PH_CHK[k]=Object.assign({},PH_CHK[k],{why:['tried']});phPaint(k);toastWarn('Every way was tried on this photo. Please take it again.');return;}
+  PH_ST[k]=j.st==='done'?'queued':(j.st||'queued');phPaint(k);phWatch(k,PH_ST[k]);toast('Cleaning it again another way…');}
+ catch(e){toast(e&&e.message&&!/fetch|network/i.test(e.message)?e.message:'Could not do this now. Check the internet and try again.');}}
 function invOrig(arr,i){const u=arr[i];if(!phH(u)||!/-[cw]\.jpg$/.test(u))return;arr[i]=u.replace(/-[cw]\.jpg$/,phOrig(u)?'-c.jpg':'-w.jpg');save();invRefresh();}
 /* products saved before update 8 kept their photos inside the database (sent to every phone): moved to the server once, by Admin */
 let phMig=false;
@@ -4345,11 +4357,11 @@ async function invUp(files,arr,max=4){const list=[...(files||[])].slice(0,Math.m
   S.ui.upN=Math.max(0,(S.ui.upN||1)-1);invRefresh();}}
 function invSlots(arr,pick,rm,tg){const up=S.ui.upN||0;let h='';for(let i=0;i<4;i++){const lab=PHOTO_SLOTS[i];
   if(arr[i]){const k=phH(arr[i]),u=phSrc(arr[i]);if(k&&!(k in PH_ST))phWatch(k);
-   h+=`<div class="inv-sw${phBusy(k)?' pend':''}${phNoAi(k)?' noai':''}"${k?` data-ph="${k}"`:''}><div class="inv-slot"><a href="${esc(u)}" target="_blank" rel="noopener" aria-label="Open the ${lab} photo"><img src="${esc(u)}" alt="${lab}" loading="lazy"></a><button class="x" onclick="${rm(i)}" aria-label="Remove ${lab} photo">${ic('x','s16')}</button><span class="inv-ai">Cleaning…</span><span class="lab">${lab}</span></div><label class="inv-orig" title="Keep this photo as taken (the logo stays behind the part)"><input type="checkbox"${phOrig(arr[i])?' checked':''} onchange="${tg(i)}">Original</label></div>`;}
+   h+=`<div class="inv-sw${phBusy(k)?' pend':''}${phNoAi(k)?' noai':''}"${k?` data-ph="${k}"`:''}><div class="inv-slot"><a href="${esc(u)}" target="_blank" rel="noopener" aria-label="Open the ${lab} photo"><img src="${esc(u)}" alt="${lab}" loading="lazy"></a><button class="x" onclick="${rm(i)}" aria-label="Remove ${lab} photo">${ic('x','s16')}</button><span class="inv-ai">Cleaning…</span><span class="lab">${lab}</span></div><div class="inv-ft"><label class="inv-orig" title="Keep this photo as taken (the logo stays behind the part)"><input type="checkbox"${phOrig(arr[i])?' checked':''} onchange="${tg(i)}">Original</label>${k?`<button type="button" class="inv-wrong" onclick="phWrong('${k}')" title="The cleaning is wrong: make it again another way (the cleaner learns from this)">Not right?</button>`:''}</div>${k?(()=>{const w=phWhy(k);return `<div class="inv-why"${w?` title="${esc(w[1])}"`:' hidden'}>${w?'Retake: '+esc(w[0].toLowerCase()):''}</div>`;})():''}</div>`;}
   else if(i<arr.length+up)h+=`<div class="inv-slot busy"><span>Saving…</span></div>`;
   else h+=`<label class="inv-slot ${i===arr.length+up?'next':''}">${ic(i===0?'camera':'plus','s20')}<span>${lab}</span>${i<1?'':'<span class="micro">optional</span>'}<input type="file" accept="image/*" multiple style="display:none" onchange="${pick}"></label>`;}
  return `<div class="inv-ph">${h}</div>`;}
-const invPhotoTip=()=>(isWv()?'Click a box to choose photos from this computer, or take them on the phone: they show here too.':'Tap a box to take a photo or pick from the gallery.')+'<span class="inv-aitip"> The background turns white by itself, with the Bike Pharma logo faint behind the part. Tick Original to keep a photo as taken.</span>';
+const invPhotoTip=()=>(isWv()?'Click a box to choose photos from this computer, or take them on the phone: they show here too.':'Tap a box to take a photo or pick from the gallery.')+'<span class="inv-aitip"> The background turns white by itself, with the Bike Pharma logo faint behind the part. Tick Original to keep a photo as taken. If the cleaning looks wrong, tap Not right? under it: it is made again another way, and the cleaner learns from it.</span>';
 const invTile=x=>x.photos&&x.photos[0]?`<div class="tile sm n inv-tile"><img src="${esc(phSrc(x.photos[0]))}" alt="" loading="lazy"></div>`:`<div class="tile sm n">${ic(x.ic,'s18')}</div>`;
 const invTh=(u,i)=>`<div class="inv-th">${u?`<img src="${esc(phSrc(u))}" alt="" loading="lazy">`:ic(i||'camera','s20')}</div>`;
 const invGallery=x=>x.photos&&x.photos.length?`<div class="inv-gal">${x.photos.map((u,i)=>`<a href="${esc(phSrc(u))}" target="_blank" rel="noopener"><img src="${esc(phSrc(u))}" alt="${esc(x.name)} photo ${i+1}" loading="lazy"></a>`).join('')}</div>`:'';
@@ -5553,6 +5565,12 @@ html.wv .inv-2c.side>.inv-panel{order:0;position:sticky;top:12px}
 .inv-orig input{width:16px;height:16px;margin:0;accent-color:var(--ink);flex:none}
 .inv-sw.pend .inv-orig{visibility:hidden}
 .inv-sw.noai .inv-orig{display:none}
+.inv-ft{display:flex;flex-wrap:wrap;align-items:center;column-gap:8px;min-width:0}
+.inv-wrong{font-size:11px;font-weight:700;color:var(--ink5);text-decoration:underline;text-underline-offset:2px;min-height:24px;padding:0;background:none;border:0;cursor:pointer;white-space:nowrap}
+.inv-wrong:hover{color:var(--ink)}
+.inv-sw.pend .inv-wrong,.inv-sw.noai .inv-wrong{display:none}
+.inv-why{font-size:10.5px;font-weight:700;line-height:1.25;color:var(--amber);overflow-wrap:anywhere}
+.inv-sw.pend .inv-why{display:none}
 .inv-aitip{display:none}
 html.phai .inv-aitip{display:inline}
 label.inv-slot{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:1.5px dashed var(--ink3);font-size:11px;font-weight:700;color:var(--ink5);cursor:pointer;text-align:center;padding:4px;line-height:1.2}

@@ -93,6 +93,18 @@ if (AI === 'ready') {
   await M.click(SC + ' .inv-ph > :nth-child(2) .inv-orig input'); await M.waitForTimeout(250);
   ok(await M.evaluate(() => /-w\.jpg$/.test(S.ui.ap.photos[1]) && /-c\.jpg$/.test(S.ui.ap.photos[0]) && /-c\.jpg$/.test(S.ui.ap.photos[2])), 'ticking "Original" under a photo keeps that one as taken (its -w copy), the others stay clean');
   w = await wide(M); ok(!w.length, 'phone: photo boxes with "Original" fit 390 px ' + w.join(' | '));
+  // update 8e (Sam 22:24Z-22:41Z): the cleaner checks itself, says what would make a photo better, and learns from "Not right?"
+  const h0 = urls[0].slice(8, 40), st0 = await M.request.get(BASE + '/api/photo/status?h=' + h0).then(r => r.json());
+  ok(st0.chk && st0.chk[h0] && Array.isArray(st0.chk[h0].why) && /^(std|mend|none)$/.test(st0.chk[h0].way), 'photo AI 8e: the status says which way cleaned the photo and what its check found ' + JSON.stringify(st0.chk));
+  ok(await M.evaluate(() => [...document.querySelectorAll('#vp .screen:last-child .inv-sw')].every(e => !!e.querySelector('.inv-wrong'))), 'photo AI 8e: every cleaned photo has "Not right?" under it');
+  { const an = await b.newContext(); ok((await an.request.post(BASE + '/api/photo/wrong?h=' + h0)).status() === 401, 'photo AI 8e: "Not right?" is for staff only'); await an.close(); }
+  await M.click(SC + ' .inv-ph > :nth-child(1) .inv-wrong'); await M.waitForTimeout(400);
+  ok(await M.evaluate(k => PH_ST[k] === 'queued' || PH_ST[k] === 'working' || PH_ST[k] === 'done', h0), 'photo AI 8e: "Not right?" sends the photo back to the cleaner');
+  await M.waitForFunction(k => PH_ST[k] === 'done', h0, { timeout: 120000 });
+  const st1 = await M.request.get(BASE + '/api/photo/status?h=' + h0).then(r => r.json());
+  ok(st1.chk[h0].way !== st0.chk[h0].way && st1.chk[h0].tries === 1, 'photo AI 8e: made again another way (' + st0.chk[h0].way + ' → ' + st1.chk[h0].way + ')');
+  const cc2 = await corners(M, urls[0]);
+  ok(cc2.every(c => c.every(v => v >= 245)), 'photo AI 8e: the remade copy is clean too ' + JSON.stringify(cc2));
 } else console.log('SKIP photo AI checks (test server photo AI: ' + AI + ')');
 await photos(M, ['front.jpg']); await M.waitForFunction(() => !S.ui.upN, null, { timeout: 30000 }); await M.waitForTimeout(200);
 ok(await M.evaluate(() => S.ui.ap.photos.length === 3), 'the same photo is not added twice');

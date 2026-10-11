@@ -4697,7 +4697,7 @@ function invPasteAdd(all){const st=S.ui.ip;if(!st)return;const rows=invParse(st.
    A page's text (Apna AI on our server, the phone's own reader, or a PDF's own text) -> the bill's header (supplier GSTIN with its check
    digit, bill no., date, name), totals (taxable, GST, round off, grand total, amount in words) and item lines (part no., qty, rate,
    discount, MRP, HSN, GST %, amount), read by the table's own column titles. Every line is checked: qty x rate (less discount) = amount. */
-const BP_UNIT=/^(nos?\.?|no\.|pcs?\.?|pc|sets?|kits?|prs?|pairs?|ltrs?\.?|l|ml|mtrs?|kgs?|gms?|box(es)?|pkts?|ea|each|units?|rolls?|btls?|bottles?|cans?|tins?|doz|dzn|jars?|pouch|nr)$/i;
+const BP_UNIT=/^(qtys?\.?|nos?\.?|no\.|pcs?\.?|pc|sets?|kits?|prs?|pairs?|ltrs?\.?|l|ml|mtrs?|kgs?|gms?|box(es)?|pkts?|ea|each|units?|rolls?|btls?|bottles?|cans?|tins?|doz|dzn|jars?|pouch|nr)$/i;
 const GST_CH='0123'+'456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 function gstSum(g){let s=0;for(let i=0;i<14;i++){const p=GST_CH.indexOf(g[i])*(i%2?2:1);s+=Math.floor(p/36)+p%36;}return GST_CH[(36-s%36)%36];}
 const gstOk=g=>/^(0[1-9]|[12]\d|3[0-8]|97|99)[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(g)&&gstSum(g)===g[14];
@@ -4800,15 +4800,15 @@ function bpMath(nums,order,pcts){
     const sc=pa+pb+pc+(Number.isInteger(q)?0:.8)+(k-j-1)*.3+(j-i-1)*.3+(d?.2:0);if(!best||sc<best.sc)best={q,r,amt:c,dp:d,sc,ix:[i,j,k]};}}
  return best;}
 const BP_HSNC=/^(27|34|38|39|40|48|49|56|59|68|70|73|74|76|83|84|85|87|90|94|96)\d{2}(\d{2}){0,2}$/;
-function bpRow(cells0,cols,order){const cells=bpCells(cells0.join('  '));
+function bpRow(cells0,cols,order,xd){const cells=bpCells(cells0.join('  '));
  let o=null;
  if(cols&&cells.length>=3){o=bpFromCols(cells,cols,bpAlign(cells,cols));o.ok=bpCheck(o);}
- if(!o||o.ok!==true){
+ if(!o||o.ok!==true||xd!=null){
   const toks=cells.join('  ').split(/\s+/).map(w=>w.replace(/^[^\w₹(.-]+|[^\w.%)]+$/g,'')).filter(Boolean);
   let s0=/^\d{1,3}\.?$/.test(toks[0])?1:0,pi=-1;for(let i=s0;i<toks.length;i++)if(bpPnLike(toks[i])){pi=i;break;}
   const rest=toks.slice(pi>-1?pi+1:s0),nums=[],pcts=[],pos=[];
   rest.forEach((w,i)=>{const p=bpPct(w);if(p!=null){pcts.push(p);return;}const m=/^(\d[\d.,]*)(?:[A-Za-z]{1,5})?$/.exec(w);if(m&&bpIsN(m[1])&&!(/[A-Za-z]$/.test(w)&&!BP_UNIT.test(w.replace(/^[\d.,]+/,'')))){nums.push(m[1]);pos.push(i);}});
-  const M=bpMath(nums,order,pcts);
+  const M=bpMath(nums,order,xd!=null?pcts.concat(xd):pcts);
   if(M){const was=o||{};o={pn:pi>-1?toks[pi]:was.pn,name:was.name,q:M.q,r:M.r,amt:M.amt,dp:M.dp||was.dp,ok:true};
    if(!o.name){const nm=rest.slice(0,pos.length?pos[0]:rest.length).filter(w=>/[A-Za-z]{2}/.test(w)&&!BP_UNIT.test(w));const pre=pi>-1?[]:toks.slice(s0,s0+(pos[0]||0)).filter(w=>/[A-Za-z]/.test(w));o.name=(pi>-1?nm:pre).join(' ')||'';}
    const used=new Set(M.ix),ri=M.ix[order==='rq'?0:1];
@@ -4848,15 +4848,20 @@ function bpHead(rows,upto,known){const H={gsts:[]};upto=Math.max(1,upto);
   if(!v){const w=/^[A-Z0-9][A-Z0-9\/\-_.]{1,30}/i.exec(((rows[i+1]||'').split(/\s{2,}/)[0]||'').trim());v=w?w[0]:'';}
   v=v.replace(/(?<=[0-9\/\-.])(date|dated|dt|bill|inv|invoice|to)[a-z]*$/i,'').replace(/[.\-\/:_]+$/,'');
   if(v.length>=2&&/\d/.test(v)&&!/^(date|dated)$/i.test(v))H.inv=v.toUpperCase();}
+ // no bill no. after its title (a stray word read there instead): a number with the financial year in it, like ABC 1234/26-27
+ for(let i=0;i<Math.min(rows.length,upto+3)&&!H.inv;i++){const re=/(?<![A-Z0-9])((?:[A-Z]{1,6}[ \/-]?)?\d{1,8}\s?[\/-]\s?((?:20)?2\d)\s?-\s?((?:20)?2\d))(?![0-9])/gi;let m;
+  while(!H.inv&&(m=re.exec(rows[i])))if(+m[3].slice(-2)===+m[2].slice(-2)+1)H.inv=m[1].replace(/\s+/g,' ').toUpperCase();}
  // date: after a Date label first, else the first date on the top of the page
  for(let i=0;i<Math.min(rows.length,upto+3)&&!H.date;i++){const m=/dat(?:e|ed)\b|\bdt\b/i.exec(rows[i]);if(m)H.date=bpDateIn(rows[i].slice(m.index));}
  for(let i=0;i<Math.min(rows.length,upto+1)&&!H.date;i++)H.date=bpDateIn(rows[i]);
  // the supplier's name: the first line of the page that reads like a business name (not ours, not an address)
  const own=catPk(typeof SHOP!=='undefined'&&SHOP.n||'');
  for(let i=0;i<Math.min(rows.length,upto,8)&&!H.name;i++){let s=rows[i].replace(/\s{2,}/g,' ').trim();const up=s.toUpperCase(),core=up.replace(/[^A-Z0-9]/g,'');
-  if(/TAX\s*INVOICE|^INVOICE$|ORIGINAL|DUPLICATE|TRIPLICATE|GSTIN|PHONE|\bPH\b|MOBILE|E-?MAIL|@|BILL\s*TO|ESTIMATE|QUOTATION|CREDIT\s*NOTE|DEBIT\s*NOTE|CASH\s*MEMO/.test(up))continue;
+  if(/TAX\s*INVOICE|^INVOICE$|ORIGINAL|DUPLICATE|TRIPLICATE|GSTIN|PHONE|\bPH\b|MOBILE|E-?MAIL|@|BILL\s*TO|ESTIMATE|QUOTATION|CREDIT\s*NOTE|DEBIT\s*NOTE|CASH\s*MEMO|INVOICE\s*N[O0]|BILL\s*N[O0]|\bDATED?\b|\bIRN\b|ACK\s*N[O0]/.test(up))continue;
   if(core.length<5||(core.match(/[A-Z]/g)||[]).length<core.length*.75||/\d{6}/.test(up))continue;
   if(own&&core.includes(own))continue;
+  // print from the back of the page shows through as words like "letec moiavnl gAfmo": not a name
+  const W=s.split(' ').filter(w=>(w.match(/[A-Za-z]/g)||[]).length>=3);if(/[#$%^*=<>{}~]/.test(s)||W.length&&W.filter(w=>/^[a-z]|[A-Z]{2}[a-z][A-Z]|[a-z][A-Z]{2}/.test(w)).length*2>W.length)continue;
   if(!/\s/.test(s)&&s.length>12)s=s.replace(/(AUTOMOBILES|AUTO|MOTORS|AGENCIES|AGENCY|ENTERPRISES|TRADERS|TRADING|DISTRIBUTORS|SPARES|PARTS|SALES|INDUSTRIES|PVT|LTD|LLP|COMPANY|STORES|CORPORATION)/g,' $1').trim();
   H.name=s.replace(/\s+/g,' ').replace(/[,.:;\-]+$/,'').slice(0,60);}
  return H;}
@@ -4871,12 +4876,14 @@ function bpWords(s){const m=/(?:rupees|\brs\b\.?|\binr\b)\s*:?\s*([a-z][a-z\s,\-
  const r=bpWordsNum(t.replace(/\band\s*$/i,''));return isFinite(r)?Math.round((r+(isFinite(p)?p/100:0))*100)/100:NaN;}
 const BP_TOT=/\b(sub\s*total|grand\s*total|total|round(?:ed)?\s*off|r\/off|cgst|sgst|igst|utgst|cess|taxable\s*(?:value|amount)|net\s*(?:amount|payable|amt)|amount\s*(?:in\s*words|payable|chargeable)|rupees|bank\s*details|ifsc|declaration|terms\s*(?:&|and)\s*conditions)\b/i;
 function bpTotals(rows,from){const T={};
- T.nums=[];
+ T.nums=[];T.any=[];
  for(let i=Math.max(0,from);i<rows.length;i++){const s=rows[i].replace(/\(\s*-\s*\)\s*/g,'-'),l=s.toLowerCase();
-  const toks=s.replace(/₹/g,' ').split(/\s+/).map(w=>w.replace(/^[^\d(-]+|[^\d)%]+$/g,'')).filter(Boolean),money=[],pc=[];
-  toks.forEach(w=>{const p=bpPct(w);if(p!=null)pc.push(p);else if(/[\d]/.test(w)&&bpIsN(w))money.push(bpNum(w));});
+  // an amount printed as one (2,214.37) counts before a number stuck to letters or one without paise (print from the back of the page)
+  const money=[],pc=[],cash=[];s.replace(/₹/g,' ').split(/\s+/).filter(Boolean).forEach(r=>{const w=r.replace(/^[^\d(-]+|[^\d)%]+$/g,'');if(!w)return;
+   const p=bpPct(w);if(p!=null)pc.push(p);else if(/[\d]/.test(w)&&bpIsN(w)){const v=bpNum(w);money.push(v);if(/^(?:rs\.?|inr)?[(-]?[\d,]*\d\.\d{2}\)?[,;:]?$/i.test(r))cash.push(v);}});
   (s.match(/(\d+(?:\.\d+)?)\s*%/g)||[]).forEach(x=>{const v=parseFloat(x);if(!pc.includes(v))pc.push(v);});
-  const last=money.length?money[money.length-1]:NaN,ok=isFinite(last);if(/total|taxable|amount|value/.test(l))money.forEach(v=>{if(v>0&&!T.nums.includes(v)&&T.nums.length<24)T.nums.push(v);});
+  money.forEach(v=>{if(v>0&&T.any.length<120)T.any.push(v);});
+  const last=cash.length?cash[cash.length-1]:money.length?money[money.length-1]:NaN,ok=isFinite(last);if(/total|taxable|amount|value/.test(l))money.forEach(v=>{if(v>0&&!T.nums.includes(v)&&T.nums.length<24)T.nums.push(v);});
   if(/amount\s*in\s*words|rupees|\binr\b/.test(l)){const w=bpWords(s);if(w>0)T.words=w;continue;}
   if(/taxable/.test(l)&&ok)T.taxable=last;
   else if(/\bcgst\b/.test(l)&&ok){T.cgst=last;if(pc.length)T.cr=pc[0];}
@@ -4898,17 +4905,42 @@ function bpParse(text,ctx){ctx=ctx||{};
  const rows=String(text||'').split(/\r?\n/).map(r=>r.replace(/[“”"`~»«]/g,' ').replace(/[–—]/g,'-').replace(/\s+$/,'')).filter(r=>r.trim());
  let h=-1,cols=null;for(let i=0;i<rows.length;i++){const k=bpHeadKinds(rows[i]);if(k){h=i;cols=k;break;}}
  const use=cols||ctx.cols||null,order=use&&use.indexOf('rate')>-1&&use.indexOf('qty')>-1&&use.indexOf('rate')<use.indexOf('qty')?'rq':ctx.order||'qr';
- const lines=[],np=[];let first=-1,last=-1;
+ const lines=[],np=[],src=new Map(),seq=[];let first=-1,last=-1;
  for(let i=h+1;i<rows.length;i++){const s=rows[i];
   if(BP_TOT.test(s)){if(first>-1)break;continue;}
   if(first<0&&BP_HEADY.test(s))continue;
   if(OCR_SKIP.test(s))continue;
-  const r=bpRow(bpCells(s),use,order);if(!r)continue;if(first<0)first=i;last=i;(r.pn?lines:np).push(r);}
+  const cs=bpCells(s),r=bpRow(cs,use,order);if(!r)continue;if(first<0)first=i;last=i;(r.pn?lines:np).push(r);src.set(r,cs);seq.push(r);}
+ // a serial no. read into the name ("10 IQUBE COVER FRONT", "11NTORQ Fender ..."): when the names start 1, 2, 3 ... it is the Sl. No. column
+ {const SN=/^(\d{1,3})(?:\.?\s+|(?=[A-Z]{2}))/,sn=seq.map(o=>{const m=SN.exec(o.name||'');return m?+m[1]:null;});
+  if(seq.length>=2&&sn.filter((v,i)=>v!=null&&(v===i+1||i>0&&v===sn[i-1]+1)).length>=seq.length*.6)seq.forEach((o,i)=>{if(sn[i]!=null)o.name=o.name.replace(SN,'').trim();});}
  const H=bpHead(rows,h>-1?h:first>-1?first:Math.min(rows.length,15),ctx.known),T=bpTotals(rows,last>-1?last+1:h>-1?h+1:0);
  // a discount printed but not taken off the amounts: the bill's taxable value says whether it is taken off later or the rate is net already
  const dg=lines.concat(np).filter(o=>o.dg&&o.dp>0);
  if(dg.length&&T.taxable>0){const all=lines.concat(np),gross=all.reduce((a,o)=>a+(o.amt||o.q*o.r),0),net=all.reduce((a,o)=>a+(o.dg&&o.dp>0?o.q*o.r*(1-o.dp/100):(o.amt||o.q*o.r)),0);
   if(Math.abs(gross-T.taxable)<Math.abs(net-T.taxable))dg.forEach(o=>{o.dp=0;});}
+ // the price column is the MRP and the amount is after the dealer's discount (Sam's TVS bill 2026-10-11: 2 x 290 = 378.47, 3 x 430 =
+ // 841.78, 1 x 765 = 499.20, all 65.25%): when most lines share one ratio amount / (qty x price) below 1 and the bill shows no MRP or
+ // discount of its own, the price is the MRP and the rate is amount / qty. A ratio of 1 / (1 + GST) is a price with GST in it: the
+ // rate is amount / qty, the price is not taken for the MRP. A line that does not fit was misread (print from the back of the page
+ // read as a number, a lost decimal point): its numbers are read again with the bill's own ratio.
+ {const all=lines.concat(np),A=o=>o.tx>0?o.tx:o.amt,c=all.filter(o=>!(o.mrp>0)&&!(o.dp>0)&&!o.incl&&o.q>0&&o.r>0&&A(o)>0),rt=c.map(o=>A(o)/(o.q*o.r));
+  const k=rt.filter(v=>v>.3&&v<.97),cnt=v=>k.filter(w=>Math.abs(w-v)<=.004).length,best=k.reduce((b,v)=>cnt(v)>cnt(b)?v:b,k[0]);
+  if(k.length&&cnt(best)>=2&&cnt(best)>=c.length*.5){const g=BP_GST.find(x=>x>0&&Math.abs(best-1/(1+x/100))<=.003),d0=(1-best)*100;
+   const mk=(o,q,p,a)=>{o.q=q;if(o.tx>0)o.tx=a;else o.amt=a;if(g==null)o.mrp=p;else if(o.gst==null)o.gst=g;o.r=Math.round(a/q*100)/100;o.mg=1;o.bad=0;o.ok=true;};
+   c.forEach((o,i)=>{if(Math.abs(rt[i]-best)<=.004)return mk(o,o.q,o.r,A(o));if(Math.abs(rt[i]-1)<=.012)return;
+    const n=src.has(o)?bpRow(src.get(o),use,order,d0):null;if(!n||n.ok!==true||!(n.q>0&&n.r>0&&n.amt>0))return;
+    if(Math.abs((n.dp||0)-d0)<1e-6)mk(o,n.q,n.r,n.amt);else if(!(n.dp>0)){o.q=n.q;o.r=n.r;o.amt=n.amt;o.bad=0;o.ok=true;}});}}
+ // totals printed without their titles (a TVS dealer's bill: the taxable value under the amounts, then CGST and SGST with no title beside them, then the total): CGST and
+ // SGST are always the same, the lines add up to the taxable value, taxable value + GST is the bill total
+ {const any=T.any||[],r2=v=>Math.round(v*100)/100,near=(a,b)=>Math.abs(a-b)<=Math.max(1,b*.002),gOf=(v,t)=>BP_GST.find(x=>x>0&&Math.abs(v*x/100-t)<=Math.max(1,t*.01));
+  if(T.sgst>0&&!(T.cgst>0)&&!(T.igst>0))T.cgst=T.sgst;else if(T.cgst>0&&!(T.sgst>0)&&!(T.igst>0))T.sgst=T.cgst;
+  T.tax=r2((T.cgst||0)+(T.sgst||0)+(T.igst||0)+(T.cess||0));
+  const sum=r2(lines.concat(np).reduce((a,o)=>a+((o.tx>0?o.tx:o.amt)||0),0));
+  if(!(T.taxable>0)&&!(T.sub>0)&&sum>0&&!(T.grand>0&&near(T.grand,sum))){const v=any.find(x=>near(x,sum));if(v&&T.tax>0&&(gOf(v,T.tax)||any.some(x=>near(x,v+T.tax))))T.taxable=v;}
+  const pr=(T.cr||0)+(T.sr||0)+(T.ir||0);T.rate=pr>0&&BP_GST.includes(pr)?pr:T.taxable>0&&T.tax>0?gOf(T.taxable,T.tax)||0:0;
+  if(!(T.grand>0)&&T.taxable>0&&T.tax>0){const e=T.taxable+T.tax+(T.round||0),v=any.find(x=>Math.abs(x-e)<=1);T.grand=r2(v||e);if(v&&!T.round&&Math.abs(v-e)>=.01)T.round=r2(v-e);}
+  delete T.any;}
  return {hdr:H,tot:T,cols,order,lines,np};}
 /* a line for the Pasted box: part no., qty, rate, then what else the bill says */
 function bpLineTxt(o){const f=v=>String(Math.round(v*100)/100),net=o.q*o.r*(1-(o.dp>0?o.dp:0)/100),amt=o.tx>0?o.tx:o.incl&&o.gst>0?Math.round(net*100)/100:o.amt;

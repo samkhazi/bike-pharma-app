@@ -316,6 +316,26 @@ if (AI === 'ready') { await aiDone(Dk, 'PRODUCTS.flatMap(p => p.photos || [])').
   ok(rd8.length === (o.how.ai ? 1 : 0) && !posts.some(([u, n]) => u !== '/api/billread' && (n > 20000 || /\/photos?\b|\/api\/photo/.test(u))), 'the bill page goes only to our own reader (read in memory, not saved) ' + JSON.stringify(posts.filter(([u, n]) => n > 2000 || u === '/api/billread')));
   w = await wide(M); ok(!w.length, 'phone: the read bill fits 390 px ' + w.join(' | '));
   await shot(M, 'p9-billread', 1);
+  // Sam's TVS bill (21:55Z): the price column is the MRP and the amount is after the dealer's discount (all lines 65.25% of qty x price)
+  o = await M.evaluate(() => bpParse(['SRI GANESH TVS PARTS', 'GSTIN: 27ABCDE1234F1Z0  Invoice No: TV/2526/0412  Date: 11/10/2026', 'Part No  Description  HSN  Qty  Price  Amount',
+    'K2150210  CONTROL LEVER ASSY R  87141090  2  290.00  378.47', 'NR320750  KIT FUEL PUMP RTR200/RONIN/160 4V BS6 GB  87141090  3  430.00  841.78', 'KE223869  COVER FRONT  87141010  1  765.00  499.20',
+    'Taxable Value 1,719.45', 'CGST 9% 154.75', 'SGST 9% 154.75', 'Grand Total 2,028.95'].join('\n'), {}).lines.map(bpLineTxt));
+  ok(o.length === 3 && o[0].startsWith('K2150210  2  189.24  MRP 290.00') && o[1].startsWith('NR320750  3  280.59  MRP 430.00') && o[2].startsWith('KE223869  1  499.20  MRP 765.00'), 'a bill whose price column is the MRP (amount after the dealer discount): rate = amount ÷ qty, the price is the MRP ' + JSON.stringify(o));
+  // the same kind of bill as a phone photo (Sam's TVS bill photo, 22:04Z): print from the back of the page read as words and numbers
+  // ("088" before the qty, "0038838" after the amount), a lost decimal point (56445 for 564.45), the Sl. No. stuck to the name, the bill
+  // no. after a stray word, and totals printed without their titles
+  o = await M.evaluate(() => { const P = bpParse(['TAX INVOICE  (ORIGINAL FOR RECIPIENT)', 'letec  moiavnl  gAfmo', 'Invoice No.  WSI  Dated  2098A0', 'NO 12 Main Road  CRE 1234/26-27  8-Oct-26',
+    'SI  Description of Goods  HSN/SAC  Part No.  Quantity  Rate  per  Amount', '1  Rtr Hex Fl Bolt  73181500  N9200030  10 Qty  15.00  Qty  97.88',
+    '2  Fiero Oil Filter  84212300  M1080540  20 Qty  60.00  Qty  783.05', '3  Ntorq Clutch Rollers  87141090  K2080170  18Qty  65.00  Qty  763.47',
+    '4  Ntorq Control Lever Assy  87141090  K2150210  2 Qty  290.00  Qty  378.47', '5NTORQ Fender Front Center Bla  87141090  K22239000D  1Qty  865.00  Qty  iynow  56445  Aasibnl',
+    '6 ZEST PANEL FRONT+TAPESET B  87141090  K42201300DA  TA  1Qty  2,935.00  Qty  1,915.21  0038838', '7 Alloy Wheel Black Front Ntorq  87141090  KE2271200D  088  1Qty  3,830.00  Qty  2,499.24  DoreA/T8',
+    'Pe.0A  TA.OT  201  685  7,001.77  7S', 'CGST  Apa,S', '88,08  Ee.AA  9  630.16  Or0t418', 'SGST  630.16', 'wTb###  8,262.09  uomAxsT'].join('\n'), {});
+    return { l: P.lines.map(bpLineTxt), n: P.lines.map(x => x.name), inv: P.hdr.inv, nm: P.hdr.name || '', t: P.tot }; });
+  ok(o.l.length === 7 && ['N9200030  10  9.79  MRP 15.00', 'M1080540  20  39.15  MRP 60.00', 'K2080170  18  42.42  MRP 65.00', 'K2150210  2  189.24  MRP 290.00', 'K22239000D  1  564.45  MRP 865.00',
+    'K42201300DA  1  1915.21  MRP 2935.00', 'KE2271200D  1  2499.24  MRP 3830.00'].every((x, i) => o.l[i].startsWith(x)) && o.n[0] === 'Rtr Hex Fl Bolt' && o.n[4] === 'NTORQ Fender Front Center Bla',
+    'a phone photo of that bill: the misread lines are read again with the bill’s own ratio, the Sl. No. is not in the name ' + JSON.stringify(o.l) + JSON.stringify(o.n));
+  ok(o.inv === 'CRE 1234/26-27' && !o.nm && o.t.taxable === 7001.77 && o.t.cgst === 630.16 && o.t.rate === 18 && o.t.grand === 8262.09 && !('any' in o.t),
+    'that bill’s no. (with the financial year), no made-up supplier name, totals without titles (taxable, CGST = SGST, GST 18%, total) ' + JSON.stringify([o.inv, o.nm, o.t]));
   // a misread part no.: tap, type the right one, it is checked again at once
   await M.click(SC + ' .inv-cl.no .bp-fl'); await M.waitForTimeout(200);
   await M.fill('#bp-fx', NF.slice(0, -1) + '3'); await M.click(SC + ' .bp-fix button[type=submit]'); await M.waitForTimeout(500);

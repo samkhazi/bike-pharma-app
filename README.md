@@ -76,6 +76,14 @@ curl http://127.0.0.1:3010/api/health
 Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 
 ## Badlav
+**Update 8d (11 Oct 2026)**
+- Supplier bill jisme "Rate" column asal me MRP hai aur Amount discount ke baad (jaise TVS distributor ka bill): ab rate = amount ÷ qty
+  aata hai (taxable, GST ke bina), aur bill ka rate MRP me jaata hai. Har line pe GST 18% aur "Disc 23% (calculated from MRP)".
+- Phone photo me peeche ke page ki printing beech me aa jaye (jaise "088" qty ke aage, "0038838" amount ke baad) ya decimal chhoot jaye
+  (56445 = 564.45): line dobara bill ke apne hisaab se padhi jaati hai. Sl. No. naam me nahi aata.
+- Bill no. jisme saal ho (jaise ABC 1234/26-27), aur bina naam ke totals (Taxable, CGST = SGST, Total) ab padhe jaate hain. Peeche ki
+  printing ke ulte shabd supplier ka naam nahi bante.
+
 **Update 8c (11 Oct 2026)**
 - Supplier bill "Apna AI" se padha jata hai: aapke apne server pe (free, koi paid service nahi). Bill ka page memory me padha jata
   hai, kahin save nahi hota. Server ka reader na chale to phone khud padhta hai. App aur website dono me.

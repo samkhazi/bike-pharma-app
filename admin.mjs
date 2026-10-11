@@ -4,13 +4,14 @@
 //   node admin.mjs set-password <login> [--password <pw>]                   new password for any staff login
 //   node admin.mjs list                                                      all logins
 //   node admin.mjs has-admin                                                 exit 0 when an admin exists
-//   node admin.mjs clear-demo                                                remove the demo orders/bills/stock moves (keeps logins, settings, products)
-//   node admin.mjs reset-demo                                                put the demo data back (keeps logins)
+//   node admin.mjs clear-demo                                                remove the old demo shop data again (the server does it once by itself;
+//                                                                            keeps logins, settings, real products and bills; a copy goes to data/)
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { openStore } from './lib/store.mjs';
+import { removeDemoData } from './lib/cleanup.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 try { for (const line of fs.readFileSync(path.join(ROOT, '.env'), 'utf8').split('\n')) { const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/.exec(line); if (m && !(m[1] in process.env)) process.env[m[1]] = m[2].replace(/^"(.*)"$/, '$1'); } } catch (e) {}
@@ -69,21 +70,9 @@ async function main() {
     return;
   }
   if (cmd === 'clear-demo') {
-    const keep = accounts(); const w = {};
-    const empty = { orders: [], wl: [], cl: [], minv: [], pos: [], tasks: [], sorders: [], omech: {}, approvals: [], audit: [], bills: [], moves: [], grns: [], warranties: [], cu: {}, cwl: {}, chats: {}, reviews: [], returns: [], jobs: [], ests: [], kyc: [], mcust: [], held: [], campaigns: [], closings: [], exp: [], fcol: [], orec: [], sret: [], retSt: {}, visits: {}, nprefs: {}, discReq: {}, damaged: {}, batches: [], sups: [], secDone: [], schemes: [], seedOT: 1, seed10: 1, cwlFix: 1, noSeed: 1, notifs: 0 };
-    for (const [k, v] of Object.entries(empty)) w[k] = JSON.stringify(v);
-    for (const k of ['docs']) if (state(k) !== undefined) w[k] = null;
-    w.accounts = JSON.stringify(keep);
-    store.write(w);
-    console.log('demo rows removed (logins, settings, products and stock kept)');
-    return;
-  }
-  if (cmd === 'reset-demo') {
-    const keep = accounts(); const s = seed(); const w = {};
-    for (const [k, v] of Object.entries(s)) w[k] = JSON.stringify(v);
-    w.accounts = JSON.stringify(keep); w.noSeed = JSON.stringify(0);
-    store.write(w);
-    console.log('demo data restored (logins kept)');
+    const r = removeDemoData(store, DATA_DIR, path.join(ROOT, 'lib', 'demo-data.json'));
+    store.kvSet('meta', 'demoRemoved', { at: new Date().toISOString(), n: r.n, file: r.file ? path.basename(r.file) : '', keys: r.keys });
+    console.log(r.n ? `removed ${r.n} sample records; a copy is in ${r.file}` : 'no sample data found');
     return;
   }
   console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').filter(l => l.startsWith('//')).map(l => l.slice(3)).join('\n'));

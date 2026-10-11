@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { openStore, HAS_SQLITE } from './lib/store.mjs';
 import { roleClass, viewOf, scopeValue, canWrite, merge3, applyOwn, applyMine, mechLogins, moveCodes, deepEqual, cleanStrings, safeText, STAFF_ROLES, MECH_OWN } from './lib/merge.mjs';
 import { otpConfig, makeOtp, deliverOtp } from './lib/sms.mjs';
+import { removeDemoData } from './lib/cleanup.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 export function loadEnv(file) {
@@ -28,13 +29,21 @@ const OTP = otpConfig(env);
 const store = openStore(DATA_DIR);
 const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 
-// ---------- first run: demo shop data, no accounts ----------
+// ---------- first run: an empty shop, no accounts ----------
 if (store.rev() === 0) {
   const seed = JSON.parse(fs.readFileSync(path.join(ROOT, 'lib', 'seed.json'), 'utf8'));
   seed.accounts = {};
   const w = {}; for (const [k, v] of Object.entries(seed)) w[k] = JSON.stringify(v);
   store.write(w);
   console.log('[bikepharma] new database created in', DATA_DIR);
+}
+// ---------- once: the old demo shop data goes (Sam 2026-10-11 "sample data jo kuch bhi he sabhi delete karde"); a copy is kept in data/ ----------
+if (!store.kvGet('meta', 'demoRemoved')) {
+  try {
+    const r = removeDemoData(store, DATA_DIR, path.join(ROOT, 'lib', 'demo-data.json'));
+    store.kvSet('meta', 'demoRemoved', { at: new Date().toISOString(), n: r.n, file: r.file ? path.basename(r.file) : '', keys: r.keys });
+    if (r.n) console.log('[bikepharma] removed ' + r.n + ' sample records; a copy is in ' + r.file);
+  } catch (e) { console.error('[bikepharma] sample data clean-up skipped (the site keeps running; try: node admin.mjs clear-demo):', e.message); }
 }
 
 // ---------- helpers ----------

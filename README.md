@@ -67,11 +67,19 @@ npx pm2 logs bikepharma        # logs
 bash restart.sh                # restart
 bash check.sh                  # site ki jaanch
 node admin.mjs list            # saare logins
+node admin.mjs clear-demo      # purana demo data dobara hatao (server ye ek baar khud karta hai)
 curl http://127.0.0.1:3010/api/health
 ```
 Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 
 ## Badlav
+**Update 6 (11 Oct 2026)**
+- Saara sample (demo) data hataya: demo products, demo mechanics (Ravi Kumar BP-MECH-1025 wagaira), unke bills, orders,
+  suppliers, kharche, targets. Update ke baad server pehli baar chalte hi ye khud karta hai. Aapke logins, staff, settings,
+  Inventory me daale products aur unke bills waise hi rehte hain. Jo hataya uski copy `data/removed-sample-data-<date>.json` me.
+- Nayi shop ab bilkul khali shuru hoti hai. Invoice number saal ke hisaab se 1 se chalta hai (INV-2026-00001).
+- Mac trackpad swipe / browser Back ab app ki pichhli screen pe jata hai, website pe nahi. Home screen se Back = website.
+
 **Update 5 (11 Oct 2026)**
 - KTM + Husqvarna catalogue aapki 97 HD PDF se: KTM 32 models (87 model years, 6,559 part numbers), Husqvarna 3 models
   (10 model years, 1,891 part numbers). Har line ke saath usi model year ka apna diagram, PDF ke andar wali original

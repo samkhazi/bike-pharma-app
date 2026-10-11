@@ -147,6 +147,41 @@ function dgMiss(){return '<div class="cap">This diagram is not on the server yet
 """
 sub1("/* ---------- boot ---------- */\nasync function start(){", SRVJS + "/* ---------- boot ---------- */\nasync function start(){")
 sub1("'<div class=\"cap\">The diagram could not be opened: the project’s files are not readable from here.</div>'", "dgMiss()")
+# Sam 2026-10-11 (screen recording): the browser's Back / Forward and the Mac trackpad swipe step through the app's own
+# screens, like the app's back button, instead of leaving the app for the website. One browser history entry per screen.
+NAVJS = r"""
+/* ---------- browser Back / Forward = the app's own screens ---------- */
+var NAVH={on:0,i:0};
+var NAV_PRE=['login','otp','signup','pw','roleok','boot'];
+function navSave(push){if(!NAVH||!NAVH.on)return;let st;try{st=JSON.parse(JSON.stringify(S.stack));}catch(e){return;}if(push)NAVH.i++;try{history[push?'pushState':'replaceState']({bpnav:{i:NAVH.i,st}},'');}catch(e){}}
+window.addEventListener('popstate',e=>{const h=e.state&&e.state.bpnav;if(!h||!NAVH.on)return;
+ const dir=h.i<NAVH.i?'back':'push';NAVH.i=h.i;let st=h.st||[];const same=(a,b)=>a.every((x,k)=>b[k]&&x&&x.s===b[k].s);
+ if(st.length<S.stack.length&&same(st,S.stack))st=S.stack.slice(0,st.length);
+ else if(st.length>S.stack.length&&same(S.stack,st))st=S.stack.concat(st.slice(S.stack.length));
+ const ok=x=>x&&SCREENS[x.s]&&(S.user?!NAV_PRE.includes(x.s)&&allowed(x.s):NAV_PRE.includes(x.s));
+ try{closeSheet();}catch(err){}
+ if(!st.length||!st.every(ok)){navSave(false);
+  /* Back from the first screen after login lands on the login entry: keep going, out to the website */
+  if(dir==='back'&&S.user&&st.length&&st.every(x=>x&&NAV_PRE.includes(x.s))){try{history.back();}catch(err){}}
+  return;}
+ S.stack=st;render(dir);});
+"""
+sub1("function go(s,p={}){S.stack.push({s,p});render('push');}", "function go(s,p={}){S.stack.push({s,p});navSave(true);render('push');}")
+sub1("function back(){if(S.stack.length>1){S.stack.pop();render('back');}}",
+     "function back(){if(S.stack.length>1){if(NAVH&&NAVH.on&&NAVH.i>0&&history.state&&history.state.bpnav){history.back();return;}S.stack.pop();render('back');}}")
+sub1("function tab(s){S.stack=[{s,p:{}}];render('fade');}", "function tab(s){S.stack=[{s,p:{}}];navSave(true);render('fade');}")
+sub1("function reset(s,p={}){S.stack=[{s,p}];render('fade');}",
+     "function reset(s,p={}){const was=cur();S.stack=[{s,p}];navSave(!!(S.user&&was&&!NAV_PRE.includes(was.s)&&!NAV_PRE.includes(s)));render('fade');}")
+sub1(" if(S.ui.after){const f=S.ui.after;S.ui.after=null;f();}\n}\nfunction navHTML(", " if(S.ui.after){const f=S.ui.after;S.ui.after=null;f();}\n navSave(false);\n}\nfunction navHTML(")
+sub1("render('');splash();", "render('');splash();NAVH.on=1;NAVH.i=0;navSave(false);")
+sub1("/* ---------- boot ---------- */\nasync function start(){", NAVJS + "/* ---------- boot ---------- */\nasync function start(){")
+# Sam 2026-10-11 "sample data jo kuch bhi he sabhi delete karde": no demo shop data in the server build (tools/nosample.py)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import nosample
+a, k = nosample.apply(a); n_patch += k
+# real numbers on every dashboard, no demo mechanic / staff / branch names (tools/nosample2.py)
+import nosample2
+a, k = nosample2.apply(a); n_patch += k
 assert "123456" not in re.sub(r"KA0200123456|CAT_PNA='0123456789", "", a), "demo OTP text still present"
 assert 'bp-db' not in a
 os.makedirs(OUT, exist_ok=True)

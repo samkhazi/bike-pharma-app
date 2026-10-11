@@ -17,6 +17,7 @@ ok(await D.evaluate(() => !document.getElementById('appv').hidden), 'desktop: Lo
 await D.waitForTimeout(1500); const fr = D.frames().find(f => f !== D.mainFrame()); await fr.waitForFunction(() => typeof S !== 'undefined' && S.stack && S.stack.length && cur().s === 'login', null, { timeout: 15000 });
 await D.waitForTimeout(600);
 ok(await fr.evaluate(() => document.documentElement.classList.contains('wv-login')), 'desktop login: wide login mode on');
+ok(await fr.evaluate(async () => { const f = window.claude && claude.use && await claude.use('files'); return !!(f && f.list && f.read); }), 'website frame: the app reads catalogue files from this server (diagrams open inside the website too)');
 ok(await fr.evaluate(() => { const h = document.querySelector('.screen>.hero'); return !h || h.getBoundingClientRect().width === 0; }), 'desktop login: left brand panel gone');
 ok(await fr.evaluate(() => { const s = document.querySelector('.screen>.sheet-card'); return s && s.getBoundingClientRect().width > innerWidth * 0.95; }), 'desktop login: form card spans the page');
 ok(await fr.evaluate(() => { const l = document.querySelector('.sheet-card>.lg-lang'); return l && l.getBoundingClientRect().height > 10 && l.querySelectorAll('button').length === 3; }), 'desktop login: EN/KN/HI pills kept inside the form card');

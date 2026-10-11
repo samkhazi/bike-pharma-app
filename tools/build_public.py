@@ -141,7 +141,9 @@ function pwGo(){const el=document.getElementById('pw1');const pw=el?el.value:'';
 /* diagrams and photos: the app reads them through a "files" object; here it is this server's /api/files (staff only) */
 const FILES_SHIM={list:async o=>{const r=await fetch('/api/files/list?path='+encodeURIComponent((o&&o.path)||''),{credentials:'same-origin'});if(!r.ok)throw{code:r.status===401||r.status===403?'not_granted':r.status===404?'not_found':'unavailable'};return r.json();},
  read:async(p,o)=>{const r=await fetch('/api/files/read?path='+encodeURIComponent(p)+'&offset='+((o&&o.offset)||0)+'&length='+((o&&o.length)||0)+(o&&o.a85?'&a85=1':''),{credentials:'same-origin'});if(!r.ok)throw{code:r.status===401||r.status===403?'not_granted':r.status===404?'not_found':'unavailable'};return {bytes:new Uint8Array(await r.arrayBuffer()),size:+r.headers.get('x-file-size')||0,revision:''};}};
-window.claude={use:async n=>n==='files'?FILES_SHIM:null};
+/* defined, not assigned: inside the website's frame the app's first script already made window.claude a read-only "use the parent's"
+   (for claude.ai), so a plain assignment was silently ignored there and no diagram opened (Sam 2026-10-11 "Diagram show nhi ho raha") */
+try{Object.defineProperty(window,'claude',{configurable:true,enumerable:true,writable:true,value:{use:async n=>n==='files'?FILES_SHIM:null}});}catch(e){window.claude={use:async n=>n==='files'?FILES_SHIM:null};}
 /* the claude.ai catalogue pages are not open to staff here: each brand's diagrams come from its own files on this server */
 for(const k in CAT_SITE)delete CAT_SITE[k];
 function dgMiss(){return '<div class="cap">This diagram is not on the server yet: its catalogue file is still to be uploaded.</div>'+(S.user&&S.user.role==='admin'?`<button class="btn line sm" style="margin-top:8px" onclick="go('catup')">${ic('upload','s16')} Upload catalogue files</button>`:'');}

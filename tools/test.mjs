@@ -12,6 +12,15 @@ const open = async (p) => { await p.goto(BASE + '/app.html', { waitUntil: 'load'
 // ---- customer: register with OTP, data saved on the server, survives reload
 const cA = await b.newContext({ viewport: { width: 420, height: 860 } }); const A = await page(cA);
 await open(A); ok(await screen(A) === 'login', 'customer: login screen first');
+// Sam 2026-10-11 12:06Z: on a phone the field showed only the number pad, so staff could not type their email.
+// The number pad stays for a mobile number; "Use email instead" opens the letter keyboard (with @) at once, and switches back
+const km = await A.evaluate(() => { const i = document.getElementById('loginId'), r = { phone: i.getAttribute('inputmode') };
+  document.getElementById('lg-mode').click(); const j = document.getElementById('loginId');
+  Object.assign(r, { mail: j.getAttribute('inputmode'), cap: j.getAttribute('autocapitalize'), focus: document.activeElement === j, pre: getComputedStyle(document.getElementById('lg-pre')).display,
+    ph: j.placeholder, btn: document.getElementById('lg-mode').innerText });
+  document.getElementById('lg-mode').click(); r.back = document.getElementById('loginId').getAttribute('inputmode'); r.pre2 = getComputedStyle(document.getElementById('lg-pre')).display; return r; });
+ok(km.phone === 'tel' && km.mail === 'email' && km.cap === 'none' && km.focus && km.pre === 'none' && /@/.test(km.ph) && /mobile/i.test(km.btn) && km.back === 'tel' && km.pre2 !== 'none',
+  'login: number pad for a mobile number, "Use email instead" opens the letter keyboard: ' + JSON.stringify(km));
 await A.fill('#loginId', '9876543210'); await A.evaluate(() => sendOtp()); await A.waitForTimeout(500);
 ok(await screen(A) === 'signup', 'customer: unknown number goes to signup');
 await A.fill('#su-name', 'Test Customer'); await A.evaluate(() => signupNext()); await A.waitForTimeout(300);

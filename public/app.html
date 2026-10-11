@@ -638,25 +638,26 @@ function deniedScreen(s){const fp=s==='findpart';return bar(fp?'Staff only':'Adm
 function splash(){S.ui.splashT=setTimeout(endSplash,5300);}
 function endSplash(){clearTimeout(S.ui.splashT);const d=document.getElementById('splash');if(!d||d.classList.contains('out'))return;d.classList.add('out');setTimeout(()=>d.remove(),500);}
 const SCREENS={};
-const LG_TX={en:{hi:'Welcome! 👋',t:'Login to Bike Pharma',s:'Log in or register with your mobile number. We’ll send a one-time password.',l:'Mobile number or staff email',btn:'Get OTP'},
- kn:{hi:'ನಮಸ್ಕಾರ! 👋',t:'Bike Pharma ಗೆ ಲಾಗಿನ್ ಮಾಡಿ',s:'ನಿಮ್ಮ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯಿಂದ ಲಾಗಿನ್ ಅಥವಾ ನೋಂದಣಿ ಮಾಡಿ. ನಾವು OTP ಕಳುಹಿಸುತ್ತೇವೆ.',l:'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಅಥವಾ ಸಿಬ್ಬಂದಿ ಇಮೇಲ್',btn:'OTP ಪಡೆಯಿರಿ'},
- hi:{hi:'नमस्ते! 👋',t:'Bike Pharma में लॉगिन करें',s:'अपने मोबाइल नंबर से लॉगिन या रजिस्टर करें। हम OTP भेजेंगे।',l:'मोबाइल नंबर या स्टाफ ईमेल',btn:'OTP पाएं'}};
+const LG_TX={en:{hi:'Welcome! 👋',t:'Login to Bike Pharma',s:'Log in or register with your mobile number. We’ll send a one-time password.',l:'Mobile number or staff email',btn:'Get OTP',em:'Use email instead',ph:'Use mobile number instead'},
+ kn:{hi:'ನಮಸ್ಕಾರ! 👋',t:'Bike Pharma ಗೆ ಲಾಗಿನ್ ಮಾಡಿ',s:'ನಿಮ್ಮ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯಿಂದ ಲಾಗಿನ್ ಅಥವಾ ನೋಂದಣಿ ಮಾಡಿ. ನಾವು OTP ಕಳುಹಿಸುತ್ತೇವೆ.',l:'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಅಥವಾ ಸಿಬ್ಬಂದಿ ಇಮೇಲ್',btn:'OTP ಪಡೆಯಿರಿ',em:'ಇಮೇಲ್ ಬಳಸಿ',ph:'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಬಳಸಿ'},
+ hi:{hi:'नमस्ते! 👋',t:'Bike Pharma में लॉगिन करें',s:'अपने मोबाइल नंबर से लॉगिन या रजिस्टर करें। हम OTP भेजेंगे।',l:'मोबाइल नंबर या स्टाफ ईमेल',btn:'OTP पाएं',em:'ईमेल से लॉगिन करें',ph:'मोबाइल नंबर से लॉगिन करें'}};
 const lgT=()=>LG_TX[S.ui.lgLang||'en'];
 function lgKind(v){v=String(v||'').trim();if(!v)return {k:'none'};if(/[a-z@]/i.test(v)){return {k:'email',ok:/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(v)};}const d=v.replace(/\D/g,'').replace(/^(91|0)(?=\d{10}$)/,'');return {k:'phone',d,ok:d.length===10&&/^[6-9]/.test(d)};}
 function lgInput(el){S.ui.loginVal=el.value;S.ui.loginErr=null;const k=lgKind(el.value);const box=el.closest('.inp');box.classList.remove('err');const e=document.getElementById('lg-err');if(e)e.textContent='';
- document.getElementById('lg-pre').style.display=k.k==='phone'?'':'none';document.getElementById('lg-ic').innerHTML=ic(k.k==='email'?'user':'phone','s18');
+ const mail=!!S.ui.lgMail||k.k==='email';document.getElementById('lg-pre').style.display=(k.k==='phone'||k.k==='none')&&!mail?'':'none';document.getElementById('lg-ic').innerHTML=ic(mail?'user':'phone','s18');
  const tag=document.getElementById('lg-tag');tag.innerHTML=k.ok?(k.k==='email'?'<span class="pill b">Staff login</span>':`<span style="color:var(--g)">${ic('checkC','s18')}</span>`):'';
  const btn=document.getElementById('lg-btn');btn.disabled=!k.ok;
  if(k.k==='phone'&&k.d&&k.d.length<=10){const f=k.d.length>5?k.d.slice(0,5)+' '+k.d.slice(5):k.d;if(el.value!==f&&!/[^\d\s+]/.test(el.value)){el.value=f;S.ui.loginVal=f;}}}
 const ROLE_IC={customer:['user','y'],mechanic:['wrench','k'],billing:['receipt','b'],sales:['trend','g'],manager:['chart','a'],inventory:['package','n'],admin:['shield','r']};
-SCREENS.login=()=>{const e=S.ui.loginErr;const T=lgT();const k=lgKind(S.ui.loginVal||'');const ch=S.ui.otpCh||'SMS';
+SCREENS.login=()=>{const e=S.ui.loginErr;const T=lgT();const k=lgKind(S.ui.loginVal||'');const ch=S.ui.otpCh||'SMS';const mail=!!S.ui.lgMail||k.k==='email';
  return `<div class="hero"><div class="lg-lang">${[['en','EN'],['kn','KN'],['hi','HI']].map(([c,l])=>`<button class="${(S.ui.lgLang||'en')===c?'on':''}" onclick="setLang('${c}')" aria-label="Language ${l}">${l}</button>`).join('')}</div><button class="lg-theme" type="button" onclick="toggleTheme()" aria-label="${document.documentElement.dataset.theme==='dark'?'Light mode':'Dark mode'}">${ic(document.documentElement.dataset.theme==='dark'?'sun':'moon','s18')}</button><svg class="heroMark idle" viewBox="0 0 370 190" role="img" aria-label="Bike Pharma Automobiles"><use href="#logoMark"/></svg><div class="lg-tagline">${['Genuine spares','Trusted mechanics','Warranty tracked'].map(t=>`<span>${t}</span>`).join('')}</div><div class="lg-road"><i></i><span class="lg-bike">${ic('bike','s20')}</span></div></div>
 <div class="sheet-card scroll lg-sheet">
  <div class="stack g6"><div class="lg-hi">${T.hi}</div><h1 class="h1" style="font-size:28px;line-height:1.15">${T.t}</h1><p class="cap">${T.s}</p></div>
  <form class="field" onsubmit="event.preventDefault();sendOtp()" novalidate>
   <label for="loginId">${T.l}</label>
-  <div class="inp lg-inp ${e?'err':''}" style="gap:8px"><span id="lg-ic">${ic(k.k==='email'?'user':'phone','s18')}</span><b id="lg-pre" style="${k.k==='phone'||k.k==='none'?'':'display:none'};border-right:1px solid var(--line);padding-right:8px">+91</b><input id="loginId" autocomplete="username" inputmode="${k.k==='email'?'email':'tel'}" placeholder="98450 12345" value="${esc(S.ui.loginVal||'')}" oninput="lgInput(this)" style="min-width:0;flex:1"><span id="lg-tag">${k.ok?(k.k==='email'?'<span class="pill b">Staff login</span>':`<span style="color:var(--g)">${ic('checkC','s18')}</span>`):''}</span></div>
+  <div class="inp lg-inp ${e?'err':''}" style="gap:8px"><span id="lg-ic">${ic(mail?'user':'phone','s18')}</span><b id="lg-pre" style="${(k.k==='phone'||k.k==='none')&&!mail?'':'display:none'};border-right:1px solid var(--line);padding-right:8px">+91</b><input id="loginId" autocomplete="username" inputmode="${mail?'email':'tel'}" ${mail?'autocapitalize="none" autocorrect="off" spellcheck="false" ':''}placeholder="${mail?'name@bikepharma.com':'98450 12345'}" value="${esc(S.ui.loginVal||'')}" oninput="lgInput(this)" style="min-width:0;flex:1"><span id="lg-tag">${k.ok?(k.k==='email'?'<span class="pill b">Staff login</span>':`<span style="color:var(--g)">${ic('checkC','s18')}</span>`):''}</span></div>
   <div id="lg-err" class="errmsg" role="alert">${e?esc(e):''}</div>
+  <button type="button" id="lg-mode" class="link" style="align-self:flex-end;font-size:12px;margin-top:-2px" onclick="lgMode()">${mail?T.ph:T.em}</button>
   <div class="row" style="gap:6px;margin-top:2px"><span class="cap">Send OTP on</span>${['SMS','WhatsApp'].map(c=>`<button type="button" class="chip ${ch===c?'on':''}" style="padding:5px 12px;font-size:12px" onclick="S.ui.otpCh='${c}';refresh()">${c}</button>`).join('')}</div>
   <button id="lg-btn" class="btn lg-go" style="margin-top:8px" type="submit" ${k.ok?'':'disabled'}>${T.btn} <span class="lg-arr">${ic('chevR','s18')}</span></button>
  </form>
@@ -664,6 +665,7 @@ SCREENS.login=()=>{const e=S.ui.loginErr;const T=lgT();const k=lgKind(S.ui.login
  <div class="lg-trust">${[['shield','100% genuine'],['wrench','Verified mechanics'],['award','Warranty in app']].map(([i,t])=>`<span>${ic(i,'s16')}${t}</span>`).join('')}</div>
  <p class="cap" style="text-align:center;font-size:11px">By continuing you agree to our <button class="link" style="font-size:11px" onclick="legalSheet('terms')">Terms</button> & <button class="link" style="font-size:11px" onclick="legalSheet('privacy')">Privacy Policy</button> · <button class="link" style="font-size:11px" onclick="extOpen('tel:'+telOf(SHOP.ph),'Calling Bike Pharma support…')">Help</button><br><span style="color:var(--ink5)">v1.0 · Bike Pharma Automobiles, Bengaluru</span></p>
 </div>`;};
+function lgMode(){S.ui.lgMail=!(S.ui.lgMail||lgKind(S.ui.loginVal||'').k==='email');S.ui.loginVal='';S.ui.loginErr=null;refresh();const i=document.getElementById('loginId');if(i)i.focus();}
 function fillLogin(k){S.ui.loginVal=k;S.ui.loginErr=null;refresh();const i=document.getElementById('loginId');if(i){i.focus();lgInput(i);}}
 function sendOtp(){const v=document.getElementById('loginId').value;S.ui.loginVal=v;const id=normId(v);
  if(!id){S.ui.loginErr='Enter your mobile number or email.';return refresh();}

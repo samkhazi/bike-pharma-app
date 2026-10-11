@@ -70,10 +70,10 @@ const invFitsTxt=f=>!f||!f.length?'Not set':f.slice(0,3).join(', ')+(f.length>3?
 /* ---- photo cleanup (Sam 16:59Z-17:25Z): the server keeps each photo exactly as taken and makes two copies with the faint logo
    behind the part: <hash>-c.jpg white background (used by default) and <hash>-w.jpg the photo as taken ("Original").
    A product keeps the copy's address, so every page and the shop show it; "Original" under a photo switches the copy. ---- */
-const PH_ST={},PH_V={};let phT=0;
+const PH_ST={},PH_V={},PH_AI=2;let phT=0;   // PH_AI = AI_VER in lib/photoai.mjs: a newer cleanup gets a new address, so phones never keep the older copy
 const phH=u=>(/^\/photos\/([a-f0-9]{32})/.exec(u||'')||[])[1]||'';
 const phOrig=u=>/-w\.jpg$/.test(u||'');
-const phSrc=u=>{const k=phH(u);return k&&PH_V[k]?u+'?v='+PH_V[k]:u;};
+const phSrc=u=>{const k=phH(u);return k?u+'?v='+(PH_V[k]||PH_AI):u;};
 const phBusy=k=>PH_ST[k]==='queued'||PH_ST[k]==='working';
 const phNoAi=k=>!k||['off','failed','waiting','missing'].includes(PH_ST[k]);
 function phWatch(k,st){if(!k)return;if(st)PH_ST[k]=st;else if(!(k in PH_ST))PH_ST[k]='?';if(!phT&&Object.keys(PH_ST).some(x=>PH_ST[x]==='?'||phBusy(x)))phT=setTimeout(phPoll,st?2500:300);}
@@ -491,6 +491,8 @@ def apply(a):
         n += 1
 
     assert '123456' not in INVJS + INVCSS
+    _v = __import__('re').search(r'export const AI_VER = (\d+);', open(__import__('os').path.join(__import__('os').path.dirname(__file__), '..', 'lib', 'photoai.mjs')).read())
+    assert _v and f'PH_AI={_v.group(1)};' in INVJS, 'invcat.py: PH_AI must be AI_VER of lib/photoai.mjs'
     # who opens the new screens: Admin and the Inventory login
     sub(" admin:['ainv','grn','grnedit',", " admin:['ainv','invpaste','invwait','grn','grnedit',")
     sub(" inventory:['findpart','batches','ccount',", " inventory:['findpart','invpaste','invwait','batches','ccount',")

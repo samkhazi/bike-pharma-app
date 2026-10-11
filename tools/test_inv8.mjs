@@ -43,6 +43,7 @@ const A2 = '06455-AAC-J10';    // Hero only: BRAKE PAD KIT, MRP 235
 const B = '14771-GB4-680';     // in Hero and Honda
 const C = '36JP0057', C2 = 'JP351010', C3 = '36JP0058';  // KTM (no MRP in the catalogue)
 const D = 'ZX9988776';         // in no catalogue
+const NF = 'KX7731942';        // in no catalogue and never added (the bill photo test)
 const Y = '90340-12813';       // Yamaha only, MRP 55
 
 // ===== phone, Admin, nothing loaded yet =====
@@ -260,5 +261,47 @@ ok(await Dk.evaluate(pns => pns.every(([pn, n]) => { const x = PRODUCTS.find(p =
 if (AI === 'ready') { await aiDone(Dk, 'PRODUCTS.flatMap(p => p.photos || [])').catch(() => {}); const hs = await Dk.evaluate(() => PRODUCTS.flatMap(p => p.photos || []).map(phH));
   const st = await Dk.request.get(BASE + '/api/photo/status?h=' + hs.join(',')).then(r => r.json());
   ok(hs.length >= 7 && hs.every(h => st.st[h] === 'done'), 'photo AI: every product photo got its copies (' + Object.values(st.st).join(',') + ')'); }
+// ===== Sam 18:56Z: "Photo of the bill" on Paste supplier bill. The phone reads it (a printed bill, photographed on a table, turned a
+// little, light falling across it); nothing is sent to the server, nothing is kept. Every row with a part number becomes a line, the
+// row without one is listed, a misread number is matched to the catalogue one.
+{
+  const BILL = `<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:Arial,Helvetica,sans-serif;width:1240px;margin:0;padding:40px;background:#fff;color:#111;font-size:19px}
+  h1{font-size:30px;margin:0 0 4px}.s{font-size:16px;color:#333}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{border:1px solid #444;padding:7px 8px;text-align:left}th{background:#eee;font-size:17px}td.n{text-align:right}</style></head><body>
+  <h1>SHREE GANESH AUTO DISTRIBUTORS</h1><div class="s">12, Station Road, Pune 411001 · Ph: 9822012345 · GSTIN: 27ABCDE1234F1Z5</div>
+  <div class="s" style="margin-top:10px">TAX INVOICE &nbsp; Invoice No: SGA/2425/0817 &nbsp; Date: 11/10/2026 &nbsp; Bill To: BIKE PHARMA AUTOMOBILES</div>
+  <table><tr><th>S.No</th><th>Part No.</th><th>Description</th><th>HSN</th><th>Qty</th><th>Unit</th><th>Rate</th><th>Amount</th></tr>
+  ${[[A, 'SHOE COMP BRAKE', '87141090', 10, 'NOS', '118.00', '1,180.00'], [B, 'VALVE EX', '84099990', 4, 'NOS', '31.50', '126.00'], [Y, 'PLUG, DRAIN', '87141090', 6, 'NOS', '44.00', '264.00'],
+     [C2, 'CLUTCH COVER GASKET', '84099990', 2, 'NOS', '2,150.00', '4,300.00'], [A2, 'BRAKE PAD KIT', '87141090', 5, 'SET', '188.00', '940.00'], [D, 'SIDE STAND SPRING', '73202000', 1, 'NOS', '99.00', '99.00'],
+     [NF, 'HORN RELAY', '85365090', 2, 'NOS', '57.00', '114.00'], ['', 'GREASE 100G', '34039900', 3, 'NOS', '65.00', '195.00']].map((r, i) => `<tr><td>${i + 1}</td><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td class="n">${r[3]}</td><td>${r[4]}</td><td class="n">${r[5]}</td><td class="n">${r[6]}</td></tr>`).join('')}
+  <tr><td></td><td></td><td>Taxable Value</td><td></td><td></td><td></td><td></td><td class="n">7,218.00</td></tr><tr><td></td><td></td><td>CGST 9%</td><td></td><td></td><td></td><td></td><td class="n">649.62</td></tr>
+  <tr><td></td><td></td><td>SGST 9%</td><td></td><td></td><td></td><td></td><td class="n">649.62</td></tr><tr><td></td><td></td><td>Grand Total</td><td></td><td></td><td></td><td></td><td class="n">8,517.24</td></tr></table>
+  <div class="s" style="margin-top:14px">Amount in words: Rupees Eight Thousand Five Hundred Seventeen Only. E.&amp; O.E.</div></body></html>`;
+  const bc = await b.newContext({ viewport: { width: 1320, height: 900 }, deviceScaleFactor: 2 }), bp = await bc.newPage();
+  await bp.setContent(BILL); const png = await bp.screenshot({ fullPage: true });
+  // the phone photo: 3024 x 4032, the bill on a dark table, turned 2.2 degrees, darker on the left
+  const jpg = Buffer.from(await bp.evaluate(async src => { const im = new Image(); im.src = src; await im.decode(); const c = document.createElement('canvas'); c.width = 3024; c.height = 4032; const x = c.getContext('2d');
+    x.fillStyle = '#5c402c'; x.fillRect(0, 0, 3024, 4032); x.save(); x.translate(1512, 1300); x.rotate(2.2 * Math.PI / 180); x.drawImage(im, -im.width * 0.55, -im.height * 0.55, im.width * 1.1, im.height * 1.1); x.restore();
+    const g = x.createLinearGradient(0, 0, 3024, 0); g.addColorStop(0, 'rgba(0,0,0,.28)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, 3024, 4032);
+    return c.toDataURL('image/jpeg', .85).split(',')[1]; }, 'data:image/png;base64,' + png.toString('base64')), 'base64');
+  await bc.close();
+  await M.evaluate(() => { S.ui.ip = null; go('invpaste'); }); await M.waitForTimeout(300);
+  t = await T(M); ok(/Photo of the bill/i.test(t) && /Take a photo of the printed bill/.test(t), 'Paste supplier bill: "Photo of the bill" button');
+  const sent = []; const watch = r => { if (r.method() !== 'GET') sent.push([r.url(), (r.postDataBuffer() || Buffer.alloc(0)).length]); else if (/\/photos\/|\/api\/photo/.test(r.url())) sent.push([r.url(), 0]); };
+  M.on('request', watch); const tOcr = Date.now();
+  await M.locator(SC + ' input[type=file][aria-label="Photo of the bill"]').setInputFiles({ name: 'bill.jpg', mimeType: 'image/jpeg', buffer: jpg });
+  await M.waitForFunction(() => S.ui.ip && S.ui.ip.ocr && (S.ui.ip.ocr.st === 'err' || S.ui.ip.ocr.st === 'done' && S.ui.ip.ocr.chk), null, { timeout: 180000 }).catch(() => {});
+  const ocrMs = Date.now() - tOcr; M.off('request', watch);
+  const o = await M.evaluate(() => ({ ...S.ui.ip.ocr, txt: S.ui.ip.txt }));
+  const want = [`${A} 10 118.00`, `${B} 4 31.50`, `${Y} 6 44.00`, `${C2} 2 2150.00`, `${A2} 5 188.00`, `${D} 1 99.00`, `${NF} 2 57.00`];
+  ok(o.st === 'done' && o.n === 7 && want.every(l => o.txt.split('\n').includes(l)), `bill photo read: 7 lines with part no., qty and rate (${ocrMs} ms) ` + JSON.stringify(o.txt.split('\n')) + (o.st === 'err' ? ' ' + o.msg : ''));
+  ok(o.raw && o.raw.length === 1 && /GREASE 100G/.test(o.raw[0]), 'the item row without a part number is listed (not lost) ' + JSON.stringify(o.raw));
+  ok(!/27ABCDE|9822012345|87141090|85365090|SGA|8517/.test(o.txt), 'GSTIN, phone, HSN, invoice no. and totals are never taken for parts');
+  t = await T(M); ok(/Read from the photo: 7 lines/.test(t) && /The photo is not saved/.test(t) && /in your list/i.test(t) && /Not found/i.test(t) && new RegExp(NF).test(t), 'the check shows every line: found ones and the one not found ' + t.replace(/\s+/g, ' ').slice(0, 160));
+  ok(!sent.some(([u, n]) => n > 100000 || /\/photos\/|\/api\/photo/.test(u)), 'the bill photo never leaves the phone (no upload, nothing saved) ' + JSON.stringify(sent.filter(([u, n]) => n > 2000).slice(0, 3)));
+  w = await wide(M); ok(!w.length, 'phone: Paste supplier bill with the photo result fits 390 px ' + w.join(' | '));
+  await shot(M, 'p9-billphoto', 1);
+  ok(await M.evaluate(([bad, good]) => { const m = ocrNear(catPk(bad)); return !!m && catPk(m.pn) === catPk(good); }, ['45I25-AAH-F0O99', A]), 'a misread number (45I25-AAH-F0O99) is matched to the catalogue number');
+  ok(await M.evaluate(() => !ocrNear(catPk('QQ7777777'))), 'a number like no catalogue number is left as read');
+}
 ok(errs.length === 0, 'no page errors: ' + errs.slice(0, 4).join(' | '));
 await b.close(); console.log(fails ? `\n${fails} FAILED` : '\nALL OK'); process.exit(fails ? 1 : 0);

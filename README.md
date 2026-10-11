@@ -76,6 +76,17 @@ curl http://127.0.0.1:3010/api/health
 Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 
 ## Badlav
+**Update 8b (11 Oct 2026)**
+- Product photo: ab sirf part rehta hai. Haath, ungliyan, peeche padi cheezein aur chhote tukde hat jaate hain, photo part pe
+  square katti hai. Ye har nayi photo pe chalta hai. Purani photos ki copy bhi apne aap dobara banti hai (naya version, `.ai` file).
+- Phone pe poora page zoom nahi hota (do ungli se, ya box tap karne pe bhi nahi). Diagram ya photo poori screen pe kholo to
+  sirf wahi zoom hota hai: do ungli se, ya tap se (dobara tap = wapas poori screen).
+- Inventory > Paste supplier bill: "Photo of the bill" button. Chhape hue bill ki photo kheencho, phone khud padhta hai: har line
+  ka part no., qty aur rate box me aata hai aur neeche har line ka hisaab (list me hai / catalogue me mila / Not found). Jis line
+  me part no. nahi mila wo alag dikhti hai (haath se daalo). Galat padha number catalogue se theek hota hai. Photo kahin upload
+  ya save nahi hoti, sab phone pe hota hai (`public/vendor/ocr`, ~15 MB, pehli baar phone pe aata hai). Haath se likha bill theek
+  se nahi padha jata.
+
 **Update 8 (11 Oct 2026)**
 - Inventory catalogue se: Add product, Stock in aur "Paste supplier bill" me part number daalo, brand, naam, MRP aur kaunsi
   bikes me lagta hai catalogue se khud aata hai. Customer aur mechanic price Admin ke % rule se (MRP − 5 % / − 15 %, badal sakte ho).

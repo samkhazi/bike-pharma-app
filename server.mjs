@@ -12,7 +12,7 @@ import { openStore, HAS_SQLITE } from './lib/store.mjs';
 import { roleClass, viewOf, scopeValue, canWrite, merge3, applyOwn, applyMine, mechLogins, moveCodes, deepEqual, cleanStrings, safeText, STAFF_ROLES, MECH_OWN } from './lib/merge.mjs';
 import { otpConfig, makeOtp, deliverOtp } from './lib/sms.mjs';
 import { removeDemoData } from './lib/cleanup.mjs';
-import { photoAi } from './lib/photoai.mjs';
+import { photoAi, AI_VER } from './lib/photoai.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 export function loadEnv(file) {
@@ -385,7 +385,8 @@ function servePhoto(req, res, m, user) {
   let file, type, cache, etag;
   if (v) {   // the copies the app shows, to everyone (customers see them in the shop)
     if (ext !== 'jpg') return json(res, 404, { error: 'Not found' });
-    file = path.join(PHOTO_DIR, `${h}-${v}.jpg`); type = MIME['.jpg']; cache = 'public, max-age=31536000, immutable'; etag = `"${h}-${v}"`;
+    file = path.join(PHOTO_DIR, `${h}-${v}.jpg`); type = MIME['.jpg']; cache = 'public, max-age=31536000, immutable'; etag = `"${h}-${v}-${AI_VER}"`;
+    if (!PHOTO_AI.current(h)) { PHOTO_AI.enqueue(h); cache = 'no-cache'; etag = `"${h}-${v}-old"`; }   // an older copy: shown until the new one is made
     if (!fs.existsSync(file)) {   // not ready yet (or the photo AI is off): the photo as taken until then, asked again next time
       file = ''; for (const e of ['jpg', 'png', 'webp']) { const f = path.join(PHOTO_DIR, `${h}.${e}`); if (fs.existsSync(f)) { file = f; type = MIME['.' + e]; break; } }
       if (!file) return json(res, 404, { error: 'Not found' });

@@ -286,6 +286,31 @@ a, k = staffpw.apply(a); n_patch += k
 # Sam 2026-10-11 "Code karde": inventory from catalogues (part no. fills details, 1 to 4 photos, 1 must, price rule, bill paste, waiting for photos, Find Part Add to stock) (tools/invcat.py)
 import invcat
 a, k = invcat.apply(a); n_patch += k
+# Sam 2026-10-11 18:56Z: "Photo of the bill" on Paste supplier bill; the phone reads it, the photo is never kept (tools/billocr.py)
+import billocr
+a, k = billocr.apply(a); n_patch += k
+# Sam 2026-10-11 18:19Z (phone video): "zoom nhi hona he sirf diagram/photos utna hi zoom hona he poora page zoom nhi hona he".
+# The page never zooms (no pinch, no double tap, no zoom when a box is tapped); a diagram or part photo opened full screen zooms with
+# two fingers or a tap. index.html (the landing page that holds the app) gets the same below.
+NOZOOM_META = 'maximum-scale=1,user-scalable=no,'
+sub1('<meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>',
+     '<meta name=viewport content="width=device-width,initial-scale=1,' + NOZOOM_META + 'viewport-fit=cover"><style>html{touch-action:pan-x pan-y}')
+sub1("const img=d.querySelector('.fpz-in>*'),box=d.querySelector('.fpz-in');img.onclick=e=>{const fx=e.offsetX/img.clientWidth,fy=e.offsetY/img.clientHeight;d.classList.toggle('z');if(d.classList.contains('z')){box.scrollLeft=fx*img.clientWidth-box.clientWidth/2;box.scrollTop=fy*img.clientHeight-box.clientHeight/2;}};",
+     "fpzWire(d);", count=2)
+sub1("Tap to zoom in or out</div>", "Tap or pinch to zoom</div>", count=2)
+sub1("function catZoom(i){", r"""document.addEventListener('gesturestart',e=>e.preventDefault());   // iPhone: no page pinch zoom
+// full-screen diagram / photo: a tap zooms in or out where tapped, two fingers zoom from 1x to 8x round the fingers
+function fpzWire(d){const box=d.querySelector('.fpz-in'),fig=box&&box.firstElementChild;if(!fig)return;
+ const fit=()=>box.clientWidth;let p=null,pz=0;
+ const at=(x,y)=>{const f=fig.getBoundingClientRect();return [(x-f.left)/f.width,(y-f.top)/f.height];};
+ const size=(w,fx,fy,cx,cy)=>{w=Math.round(Math.max(fit(),Math.min(fit()*8,w)));fig.style.width=w+'px';fig.style.maxWidth='none';fig.style.flex='none';d.classList.toggle('z',w>fit()+1);
+  const f=fig.getBoundingClientRect();box.scrollLeft+=f.left+fx*f.width-cx;box.scrollTop+=f.top+fy*f.height-cy;};
+ fig.onclick=e=>{if(Date.now()-pz<500)return;const [fx,fy]=at(e.clientX,e.clientY),r=box.getBoundingClientRect();size(fig.offsetWidth>fit()+1?fit():Math.max(1430,fit()*2),fx,fy,r.left+r.width/2,r.top+r.height/2);};
+ const gap=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY)||1,mid=t=>[(t[0].clientX+t[1].clientX)/2,(t[0].clientY+t[1].clientY)/2];
+ box.addEventListener('touchstart',e=>{if(e.touches.length===2){const [cx,cy]=mid(e.touches);p={g:gap(e.touches),w:fig.offsetWidth,f:at(cx,cy)};}},{passive:true});
+ box.addEventListener('touchmove',e=>{if(!p||e.touches.length<2)return;e.preventDefault();const [cx,cy]=mid(e.touches);size(p.w*gap(e.touches)/p.g,p.f[0],p.f[1],cx,cy);},{passive:false});
+ box.addEventListener('touchend',e=>{if(p&&e.touches.length<2){p=null;pz=Date.now();}});}
+function catZoom(i){""")
 # Any brand part number search opens only the brands whose numbers have the typed number's shape (CAT_PNR, catRoute). The table in the
 # app source was made from the old web files (re/edit_cat.py); make it again, the same way, from the brand files this build ships.
 import base64, collections, hashlib
@@ -334,7 +359,12 @@ assert "123456" not in re.sub(r"KA0200123456|CAT_PNA='0123456789|\nconst CAT_PNR
 assert 'bp-db' not in a
 os.makedirs(OUT, exist_ok=True)
 open(os.path.join(OUT, 'app.html'), 'w', encoding='utf-8').write(a)
-shutil.copyfile(os.path.join(SP, 'site', 'com', 'index.html'), os.path.join(OUT, 'index.html'))
+_ix = open(os.path.join(SP, 'site', 'com', 'index.html'), encoding='utf-8').read()
+_vp = '<meta name="viewport" content="width=device-width, initial-scale=1">'
+assert _ix.count(_vp) == 1, 'index.html viewport'
+_ix = _ix.replace(_vp, '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">\n'
+                  '<style>html{touch-action:pan-x pan-y}</style>\n<script>document.addEventListener(\'gesturestart\',e=>e.preventDefault());</script>')
+open(os.path.join(OUT, 'index.html'), 'w', encoding='utf-8').write(_ix)
 CAT_DIRS = ['cat', 'bj', 'ph', 'phh', 'figs']
 if '--no-cat' in sys.argv:  # Sam 2026-10-10: no catalogue data on the site, brands come one by one later
     for d in CAT_DIRS:

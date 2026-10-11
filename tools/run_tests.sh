@@ -30,4 +30,6 @@ DATA_DIR=$T3/data node --no-warnings admin.mjs add-admin sam@bikepharma.com "Sam
 PHOTO_AI=$AI DATA_DIR=$T3/data FILES_DIR=$T3/pf PORT=3017 node --no-warnings server.mjs > $T3/server.log 2>&1 &
 sleep 1.2
 BASE3=http://127.0.0.1:3017 PH=$T3/ph node tools/test_inv8.mjs || r=1
+# update 8b: on a phone the page never zooms; a full-screen diagram / photo zooms with two fingers and a tap
+BASE3=http://127.0.0.1:3017 node tools/test_zoom.mjs || r=1
 exit $r

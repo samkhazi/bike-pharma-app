@@ -6,7 +6,11 @@ const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' })
 const errs = [];
 async function page(ctx) { const p = await ctx.newPage(); p.on('pageerror', e => errs.push(e.message)); p.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push('console: ' + m.text()); }); p.on('response', r => { if (r.status() >= 400 && !/fonts\./.test(r.url())) errs.push('http ' + r.status() + ' ' + r.url()); }); return p; }
 const screen = p => p.evaluate(() => cur().s);
-const typeOtp = async (p, code) => { for (let i = 0; i < 6; i++) await p.fill('#otp' + i, code[i]); await p.evaluate(() => verify()); await p.waitForTimeout(600); };
+// the 6th digit sends the OTP by itself (otpIn); press Verify only when that did not happen, else a fast server answer gets
+// overwritten by "Enter all 6 digits." (the boxes are already empty again)
+const typeOtp = async (p, code) => { for (let i = 0; i < 6; i++) await p.fill('#otp' + i, code[i]);
+  await p.evaluate(() => { const v = [0, 1, 2, 3, 4, 5].map(i => (document.getElementById('otp' + i) || {}).value || '').join(''); if (cur().s === 'otp' && v.length === 6 && !S.ui.otpBusy) verify(); });
+  await p.waitForTimeout(600); };
 const open = async (p) => { await p.goto(BASE + '/app.html', { waitUntil: 'load' }); await p.waitForFunction(() => typeof S !== 'undefined' && S.stack && S.stack.length, null, { timeout: 15000 }); await p.waitForTimeout(400); };
 
 // ---- customer: register with OTP, data saved on the server, survives reload

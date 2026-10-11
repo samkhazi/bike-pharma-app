@@ -81,6 +81,7 @@ async function api(req, res, url, user) {
     const origin = req.headers.origin; // same-site only
     if (origin && origin !== 'null') { try { if (new URL(origin).host !== req.headers.host) return json(res, 403, { error: 'Bad origin' }); } catch (e) { return json(res, 403, { error: 'Bad origin' }); } }
   }
+  if (p === '/api/catup') return catUpload(req, res, url, user);
   let body = {};
   if (m === 'POST') { try { const b = await readBody(req); body = b.length ? JSON.parse(b.toString('utf8')) : {}; } catch (e) { return json(res, 400, { error: 'Bad request body' }); } }
   const catList = () => { try { return fs.readdirSync(path.join(PUBLIC_DIR, 'cat')).filter(f => f.endsWith('.json')).sort(); } catch { return []; } };
@@ -218,19 +219,106 @@ async function api(req, res, url, user) {
     let st; try { st = fs.statSync(abs); } catch (e) { return json(res, 404, { error: 'not_found' }); }
     if (p === '/api/files/list') {
       if (!st.isDirectory()) return json(res, 404, { error: 'not_found' });
-      const entries = fs.readdirSync(abs, { withFileTypes: true }).filter(e => !e.name.startsWith('.')).map(e => ({ path: (rel ? rel + '/' : '') + e.name, isDirectory: e.isDirectory() }));
+      const entries = fs.readdirSync(abs, { withFileTypes: true }).filter(e => !e.name.startsWith('.') && !e.name.endsWith('.part')).map(e => {
+        const o = { path: (rel ? rel + '/' : '') + e.name, isDirectory: e.isDirectory() };
+        if (e.isFile()) { try { o.size = fs.statSync(path.join(abs, e.name)).size; } catch (x) {} }
+        return o;
+      });
       return json(res, 200, { entries, cursor: null });
     }
     if (!st.isFile()) return json(res, 404, { error: 'not_found' });
     const off = Math.max(0, +url.searchParams.get('offset') || 0); let len = +url.searchParams.get('length') || 0;
     if (!len || len > 32 * 1024 * 1024) len = Math.min(st.size - off, 32 * 1024 * 1024);
     len = Math.max(0, Math.min(len, st.size - off));
-    res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Length': len, 'X-File-Size': st.size, 'Cache-Control': 'private, max-age=3600' });
+    const a85 = url.searchParams.get('a85') === '1';
+    const etag = `W/"${st.size.toString(16)}-${Math.floor(st.mtimeMs).toString(16)}-${off.toString(16)}-${len.toString(16)}${a85 ? '-a' : ''}"`;
+    const head = { 'X-File-Size': st.size, 'Cache-Control': 'private, max-age=604800', 'ETag': etag, 'X-Content-Type-Options': 'nosniff' };
+    if (req.headers['if-none-match'] === etag) { res.writeHead(304, head); return res.end(); }
+    if (a85) { // a diagram stored in a catalogue PDF as ASCII85 text: send the JPEG bytes exactly as they were put in
+      const buf = Buffer.alloc(len); const fd = fs.openSync(abs, 'r'); try { fs.readSync(fd, buf, 0, len, off); } finally { fs.closeSync(fd); }
+      const img = ascii85(buf);
+      if (!img || img[0] !== 0xFF || img[1] !== 0xD8) return json(res, 422, { error: 'not_an_image' });
+      res.writeHead(200, { ...head, 'Content-Type': 'image/jpeg', 'Content-Length': img.length });
+      return res.end(img);
+    }
+    res.writeHead(200, { ...head, 'Content-Type': 'application/octet-stream', 'Content-Length': len });
     if (!len) return res.end();
     fs.createReadStream(abs, { start: off, end: off + len - 1 }).pipe(res);
     return;
   }
   return json(res, 404, { error: 'Not found' });
+}
+
+// ---------- catalogue files (Sam's brand catalogues: PDFs, diagrams, photos) uploaded by Admin into data/project-files/catalogues ----------
+// GET  /api/catup?path=catalogues/ktm/X.pdf&size=N   -> { have, done }  (how much of it the server already has)
+// POST /api/catup?path=...&size=N&offset=K, body = the next bytes (one piece of the file) -> { have, done }
+// A file already here with the same size is never taken again (one copy only); a cut connection resumes where it stopped.
+const CAT_EXTS = new Set(['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.zip', '.json', '.csv', '.xlsx', '.xls', '.txt']);
+const CAT_CHUNK_MAX = 16 * 1024 * 1024;
+const catBusy = new Set();
+function ascii85(buf) {
+  let s = buf.toString('latin1').replace(/\s+/g, '');
+  if (s.startsWith('<~')) s = s.slice(2);
+  const end = s.indexOf('~>'); if (end < 0) return null; s = s.slice(0, end);
+  let zc = 0; for (let i = 0; i < s.length; i++) if (s.charCodeAt(i) === 122) zc++;
+  const out = Buffer.alloc(Math.ceil((s.length - zc) / 5) * 4 + zc * 4 + 4); let n = 0, acc = 0, cnt = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c === 122 && cnt === 0) { out.writeUInt32BE(0, n); n += 4; continue; } // 'z' = four zero bytes
+    if (c < 33 || c > 117) return null;
+    acc = acc * 85 + (c - 33); cnt++;
+    if (cnt === 5) { out.writeUInt32BE(acc >>> 0, n); n += 4; acc = 0; cnt = 0; }
+  }
+  if (cnt) { for (let k = cnt; k < 5; k++) acc = acc * 85 + 84; const b = Buffer.alloc(4); b.writeUInt32BE(acc >>> 0, 0); b.copy(out, n, 0, cnt - 1); n += cnt - 1; }
+  return out.subarray(0, n);
+}
+function drain(req) { req.resume(); }
+async function catUpload(req, res, url, user) {
+  if (req.method !== 'GET' && req.method !== 'POST') return json(res, 405, { error: 'Method not allowed' });
+  if (!user) { drain(req); return json(res, 401, { error: 'Please log in again' }); }
+  if (user.role !== 'admin') { drain(req); return json(res, 403, { error: 'Only Admin can upload catalogues' }); }
+  const rel = path.posix.normalize('/' + (url.searchParams.get('path') || '')).replace(/^\/+/, '');
+  const segs = rel.split('/');
+  if (segs[0] !== 'catalogues' || segs.length < 3 || segs.some(x => !/^[A-Za-z0-9][A-Za-z0-9 ._()+,&-]{0,150}$/.test(x) || x.includes('..')) || !CAT_EXTS.has(path.extname(rel).toLowerCase()) || rel.endsWith('.part')) {
+    drain(req); return json(res, 400, { error: 'This file name or type cannot be uploaded' });
+  }
+  const size = Math.floor(+url.searchParams.get('size'));
+  if (!(size > 0 && size <= 4 * 1024 ** 3)) { drain(req); return json(res, 400, { error: 'Bad file size' }); }
+  const abs = path.join(FILES_DIR, rel), part = abs + '.part';
+  const sizeOf = f => { try { const st = fs.statSync(f); return st.isFile() ? st.size : -1; } catch (e) { return -1; } };
+  if (sizeOf(abs) === size) { drain(req); return json(res, 200, { have: size, done: true }); }
+  const have0 = Math.max(0, sizeOf(part));
+  if (req.method === 'GET') return json(res, 200, { have: have0 > size ? 0 : have0, done: false });
+  const off = Math.floor(+url.searchParams.get('offset'));
+  const len = +req.headers['content-length'] || 0;
+  if (catBusy.has(abs)) { drain(req); return json(res, 409, { error: 'This file is already being uploaded', have: have0 }); }
+  if (have0 > size) { try { fs.truncateSync(part, 0); } catch (e) {} drain(req); return json(res, 409, { have: 0 }); }
+  if (off !== have0) { drain(req); return json(res, 409, { have: have0 }); }
+  if (!len || len > CAT_CHUNK_MAX || off + len > size) { drain(req); return json(res, 400, { error: 'Bad piece of the file' }); }
+  try { let d = path.dirname(abs); while (!fs.existsSync(d)) d = path.dirname(d); const fsx = fs.statfsSync(d); if (fsx.bavail * fsx.bsize < (size - off) + 256 * 1024 * 1024) { drain(req); return json(res, 507, { error: 'The server disk is full' }); } } catch (e) {}
+  fs.mkdirSync(path.dirname(abs), { recursive: true });
+  catBusy.add(abs);
+  try {
+    await new Promise((ok, no) => {
+      const w = fs.createWriteStream(part, { flags: 'a' }); let n = 0, bad = false;
+      req.on('data', d => { n += d.length; if (n > len && !bad) { bad = true; req.unpipe(w); w.end(); no(new Error('too long')); } });
+      req.on('aborted', () => { if (!bad) { bad = true; w.end(); no(new Error('aborted')); } });
+      req.on('error', e => { if (!bad) { bad = true; w.end(); no(e); } });
+      w.on('error', e => { if (!bad) { bad = true; no(e); } });
+      w.on('finish', () => { if (!bad) ok(); });
+      req.pipe(w);
+    });
+  } catch (e) {
+    try { fs.truncateSync(part, off); } catch (x) {}
+    catBusy.delete(abs);
+    if (!res.headersSent && !res.destroyed) return json(res, 400, { error: 'The piece did not arrive whole, sending it again', have: off });
+    return;
+  }
+  catBusy.delete(abs);
+  let have = sizeOf(part);
+  if (have !== off + len) { try { fs.truncateSync(part, off); } catch (x) {} return json(res, 400, { error: 'The piece did not arrive whole, sending it again', have: off }); }
+  if (have === size) { fs.renameSync(part, abs); console.log(new Date().toISOString(), 'catalogue file uploaded', rel, size, 'by', user.id); return json(res, 200, { have, done: true }); }
+  return json(res, 200, { have, done: false });
 }
 
 // ---------- static files ----------

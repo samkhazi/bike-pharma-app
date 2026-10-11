@@ -51,9 +51,14 @@ App me Admin > More > **Business settings** > "Shop details on invoice". Jab tak
 "To be added" dikhta hai aur Call/WhatsApp button "number will be added soon" bolte hain.
 
 ## 6. Catalogue (brand by brand)
-Site pe abhi koi catalogue nahi hai; Find Part "Catalogue not uploaded yet" dikhata hai.
-Jis brand ki file `public/cat/<brand>.json` me rakhi jayegi, wahi brand staff ke Find Part me dikhega.
-Ye files sirf staff login se khulti hain aur GitHub me kabhi nahi jaati (`.gitignore`).
+Abhi site pe **KTM + Husqvarna** ka catalogue hai; baaki brands Find Part me "Catalogue coming soon" dikhate hain aur
+aapki files aane pe ek ek karke aayenge.
+- Part list (`public/cat/<brand>.json`) GitHub se update ke saath aati hai (private repo). Ye sirf staff login se khulti hai.
+- Diagrams brand ki apni PDF files se khulte hain, bilkul original quality me (koi compression nahi). PDFs Admin >
+  More > **Catalogue files** se upload hoti hain aur `data/project-files/catalogues/<brand>/` me rehti hain
+  (update me kabhi delete nahi hoti, backup me `data/` aata hai).
+- Upload page sirf wahi files bhejta hai jo catalogue ko chahiye. Jo file server pe pehle se hai (same size) wo dobara
+  nahi jati. Connection toot jaye to wahi folder dobara chuno: file wahi se aage chalti hai.
 
 ## 7. Kaam ke commands (site folder me, site user se)
 ```bash
@@ -67,6 +72,15 @@ curl http://127.0.0.1:3010/api/health
 Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 
 ## Badlav
+**Update 5 (11 Oct 2026)**
+- KTM + Husqvarna catalogue aapki 97 HD PDF se: KTM 32 models (87 model years, 6,559 part numbers), Husqvarna 3 models
+  (10 model years, 1,891 part numbers). Har line ke saath usi model year ka apna diagram, PDF ke andar wali original
+  photo byte-to-byte same.
+- Admin > More > **Catalogue files**: KTM folder chuno, 78 PDF (1.30 GB) server pe jati hain. Baaki 19 PDF ke saare
+  diagrams in 78 me same hain, wo nahi jati. Jab tak koi PDF nahi aayi, us diagram ki jagah "not on the server yet" likha aata hai.
+- Find Part me sirf wahi brands chalte hain jinka catalogue aa gaya; baaki "Catalogue coming soon".
+- Ek hi part number KTM aur Husqvarna dono me ho to part page pe "Same part number in other brands" dikhta hai.
+
 **Update 4 (10 Oct 2026)**
 - Login page pe ab sirf customer login / register. "Join as Customer" aur "Mechanic or staff?" hata diye.
 - Mechanic login sirf uske pehle bill se banta hai (point 3). Bill pe mechanic ka naam, garage, area, GSTIN aata hai.

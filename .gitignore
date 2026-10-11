@@ -6,7 +6,8 @@ node_modules/
 bikepharma-*.zip
 _to_delete/
 .check-*
-public/cat/
+public/cat/*
+!public/cat/*.json
 public/bj/
 public/ph/
 public/phh/

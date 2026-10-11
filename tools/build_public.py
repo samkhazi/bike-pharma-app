@@ -2,7 +2,7 @@
 """Build srv/public/ for the bikepharma.com Node server:
    app.html = website app (site/com/app.html) patched for server mode (API login, shared DB sync, files shim),
    index.html = landing page as is, plus the catalogue/photo folders from proto/."""
-import os, re, shutil, sys
+import json, os, re, shutil, sys
 SP = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SRC = os.path.join(SP, 'site', 'com', 'app.html')
 OUT = os.path.join(SP, 'srv', 'public')
@@ -139,10 +139,14 @@ SCREENS.pw=()=>{const id=S.ui.pending||'';return bar('')+`<div class="scroll"><d
 function pwGo(){const el=document.getElementById('pw1');const pw=el?el.value:'';if(!pw){S.ui.pwErr='Enter your password.';return refresh();}if(S.ui.pwBusy)return;S.ui.pwBusy=1;api('POST','/api/login',{id:S.ui.pending,password:pw}).then(r=>{S.ui.pwBusy=0;if(r.error){S.ui.pwErr=r.error;return refresh();}srvLogin(r);}).catch(()=>{S.ui.pwBusy=0;S.ui.pwErr='Could not reach the server.';refresh();});}
 /* diagrams and photos: the app reads them through a "files" object; here it is this server's /api/files (staff only) */
 const FILES_SHIM={list:async o=>{const r=await fetch('/api/files/list?path='+encodeURIComponent((o&&o.path)||''),{credentials:'same-origin'});if(!r.ok)throw{code:r.status===401||r.status===403?'not_granted':r.status===404?'not_found':'unavailable'};return r.json();},
- read:async(p,o)=>{const r=await fetch('/api/files/read?path='+encodeURIComponent(p)+'&offset='+((o&&o.offset)||0)+'&length='+((o&&o.length)||0),{credentials:'same-origin'});if(!r.ok)throw{code:r.status===401||r.status===403?'not_granted':r.status===404?'not_found':'unavailable'};return {bytes:new Uint8Array(await r.arrayBuffer()),size:+r.headers.get('x-file-size')||0,revision:''};}};
+ read:async(p,o)=>{const r=await fetch('/api/files/read?path='+encodeURIComponent(p)+'&offset='+((o&&o.offset)||0)+'&length='+((o&&o.length)||0)+(o&&o.a85?'&a85=1':''),{credentials:'same-origin'});if(!r.ok)throw{code:r.status===401||r.status===403?'not_granted':r.status===404?'not_found':'unavailable'};return {bytes:new Uint8Array(await r.arrayBuffer()),size:+r.headers.get('x-file-size')||0,revision:''};}};
 window.claude={use:async n=>n==='files'?FILES_SHIM:null};
+/* the claude.ai catalogue pages are not open to staff here: each brand's diagrams come from its own files on this server */
+for(const k in CAT_SITE)delete CAT_SITE[k];
+function dgMiss(){return '<div class="cap">This diagram is not on the server yet: its catalogue file is still to be uploaded.</div>'+(S.user&&S.user.role==='admin'?`<button class="btn line sm" style="margin-top:8px" onclick="go('catup')">${ic('upload','s16')} Upload catalogue files</button>`:'');}
 """
 sub1("/* ---------- boot ---------- */\nasync function start(){", SRVJS + "/* ---------- boot ---------- */\nasync function start(){")
+sub1("'<div class=\"cap\">The diagram could not be opened: the project’s files are not readable from here.</div>'", "dgMiss()")
 assert "123456" not in re.sub(r"KA0200123456|CAT_PNA='0123456789", "", a), "demo OTP text still present"
 assert 'bp-db' not in a
 os.makedirs(OUT, exist_ok=True)
@@ -157,5 +161,32 @@ for d in (['vendor'] if '--no-cat' in sys.argv else CAT_DIRS + ['vendor']):
     if os.path.isdir(dst) and len(os.listdir(dst)) == len(os.listdir(src)) and '--assets' not in sys.argv: continue
     if os.path.isdir(dst): shutil.rmtree(dst)
     shutil.copytree(src, dst)
+# Sam 2026-10-11: catalogues come back brand by brand from his own files; their data (no pictures) ships here, the PDFs go up from Admin
+CAT_IN = [os.path.join(SP, 'ktm', 'out', f) for f in ('ktm.json', 'ktm-dg.json', 'husqvarna.json', 'husqvarna-dg.json')]
+os.makedirs(os.path.join(OUT, 'cat'), exist_ok=True)
+for f in CAT_IN: shutil.copyfile(f, os.path.join(OUT, 'cat', os.path.basename(f)))
+# cat/xref.json: part numbers that two of these brands' books share (same number = interchangeable), as proto/xref_build.py makes it
+import collections
+norm = lambda x: re.sub(r'[^A-Z0-9]', '', str(x or '').upper())
+by = collections.defaultdict(lambda: collections.defaultdict(set))
+for f in sorted(os.listdir(os.path.join(OUT, 'cat'))):
+    if not f.endswith('.json') or f.endswith('-dg.json') or f == 'xref.json': continue
+    d = json.load(open(os.path.join(OUT, 'cat', f), encoding='utf-8')); vb = d.get('brand') or f[:-5].title()
+    for r in d['d']:
+        pk = norm(r[5])
+        if len(pk) >= 5:
+            for k in r[11]: by[pk][vb].add(d['vmod'][d['vars'][k]])
+brands = sorted({b for v in by.values() for b in v}); bi = {b: i for i, b in enumerate(brands)}
+models = [[] for _ in brands]; mi = [{} for _ in brands]; xr = {}
+for pk, bv in by.items():
+    if len(bv) < 2: continue
+    o = {}
+    for b, ms in bv.items():
+        for m in sorted(ms):
+            if m not in mi[bi[b]]: mi[bi[b]][m] = len(models[bi[b]]); models[bi[b]].append(m)
+        o[bi[b]] = [mi[bi[b]][m] for m in sorted(ms)]
+    xr[pk] = o
+open(os.path.join(OUT, 'cat', 'xref.json'), 'w', encoding='utf-8').write(json.dumps({'b': brands, 'm': models, 'x': xr}, separators=(',', ':'), ensure_ascii=False))
+print('xref:', len(xr), 'shared part numbers between', ', '.join(brands))
 n_files = sum(len(f) for _, _, f in os.walk(OUT)); size = sum(os.path.getsize(os.path.join(r, f)) for r, _, fs in os.walk(OUT) for f in fs)
 print(f'{n_patch} patches applied; public/: {n_files} files, {size/1e6:.1f} MB')

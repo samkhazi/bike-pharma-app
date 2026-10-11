@@ -17,7 +17,10 @@ ok(await screen(A) === 'signup', 'customer: unknown number goes to signup');
 await A.fill('#su-name', 'Test Customer'); await A.evaluate(() => signupNext()); await A.waitForTimeout(300);
 ok(await screen(A) === 'otp', 'customer: otp screen');
 ok(await A.evaluate(() => document.body.innerText.includes('Test OTP')), 'customer: test OTP hint shown (fixed mode)');
-await typeOtp(A, '111111'); ok((await A.evaluate(() => S.ui.otpErr || '')).includes('incorrect'), 'customer: wrong OTP rejected by server');
+// the server's answer can take longer than typeOtp's 600 ms when the machine is busy: wait for it (up to 5 s) instead of failing
+await typeOtp(A, '111111'); const tOtp = Date.now();
+await A.waitForFunction(() => (S.ui.otpErr || '').includes('incorrect'), null, { timeout: 5000 }).catch(() => {});
+ok((await A.evaluate(() => S.ui.otpErr || '')).includes('incorrect'), `customer: wrong OTP rejected by server (+${Date.now() - tOtp} ms after 600)`);
 await typeOtp(A, '123456'); ok(await screen(A) === 'roleok', 'customer: correct OTP logs in');
 ok(await A.evaluate(() => S.user && S.user.role === 'customer' && S.user.name === 'Test Customer'), 'customer: account created as customer');
 await A.evaluate(() => { DB.wish.push('p4'); DB.bikes.push({ m: 'Honda Activa 6G', reg: 'KA01AB1234' }); save(); }); await A.waitForTimeout(1200);

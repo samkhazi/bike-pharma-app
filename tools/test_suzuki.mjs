@@ -26,24 +26,24 @@ ok(await p.evaluate(() => S.user && S.user.role === 'admin'), 'admin logged in')
 await p.evaluate(() => go('catup'));
 await p.waitForFunction(() => CUP.st === 2 && CUP.sets && CUP.sets['catalogues/suzuki'], null, { timeout: 20000 });
 const card = await p.evaluate(() => document.querySelector('#vp .screen').innerText);
-ok(/Suzuki\s+0 of 21 files on the server/.test(card) && card.includes('All Catalogues > Suzuki'), 'Catalogue files: the Suzuki card asks for All Catalogues > Suzuki (0 of 21 files)');
+ok(/Suzuki\s+0 of 26 files on the server/.test(card) && card.includes('All Catalogues > Suzuki'), 'Catalogue files: the Suzuki card asks for All Catalogues > Suzuki (0 of 26 files)');
 const inFolder = fs.readdirSync(SRC).filter(f => !f.startsWith('.'));
 await p.setInputFiles('#cupcataloguessuzuki', SRC);
 await p.waitForFunction(() => CUP.run && CUP.run.dir === 'catalogues/suzuki' && CUP.run.end, null, { timeout: 600000, polling: 1000 });
 const run = await p.evaluate(() => { const r = CUP.run; return { todo: r.todo.length, done: r.done, other: r.other, dup: r.dup, missing: r.missing, err: r.err, s: Math.round((r.end - r.t0) / 1000) }; });
-ok(run.todo === 21 && run.done === 21 && run.missing === 0 && !run.err && run.other === inFolder.length - 21,
+ok(run.todo === 26 && run.done === 26 && run.missing === 0 && !run.err && run.other === inFolder.length - 26,
   `folder of ${inFolder.length} files: the ${run.done} books the catalogue reads were sent (${run.s} s), ${run.other} other files left on the computer, error: ${run.err || 'none'}`);
 const same = DG.files.filter(([f, z]) => { try { return fs.statSync(`${FILES}/catalogues/suzuki/${f}`).size === z && md5(`${FILES}/catalogues/suzuki/${f}`) === md5(`${SRC}/${f}`); } catch (e) { return false; } });
-ok(same.length === 21, `the server's ${same.length} of 21 books are byte for byte the same as Sam's files`);
+ok(same.length === 26, `the server's ${same.length} of 26 books are byte for byte the same as Sam's files`);
 const extra = fs.readdirSync(`${FILES}/catalogues/suzuki`).filter(f => !DG.files.some(x => x[0] === f));
-ok(extra.length === 0, 'nothing else went to the server (no price list, no scanned book, no copies): ' + extra.join(', '));
+ok(extra.length === 0, 'nothing else went to the server (no price list, no copies): ' + extra.join(', '));
 await p.evaluate(() => refresh()); await p.waitForTimeout(400);
-ok(await p.evaluate(() => /Suzuki\s+21 of 21 files on the server[\s\S]*Ready/i.test(document.querySelector('#vp .screen').innerText)), 'Suzuki card: 21 of 21 files on the server, Ready');
+ok(await p.evaluate(() => /Suzuki\s+26 of 26 files on the server[\s\S]*Ready/i.test(document.querySelector('#vp .screen').innerText)), 'Suzuki card: 26 of 26 files on the server, Ready');
 
 // ---- every book draws: the first and the last diagram page of each, as PNG
 const links = [];
 for (const [f] of DG.files) { const l = DG.f.filter(u => u.split(':')[1] === 'catalogues/suzuki/' + f); if (l.length) links.push(...new Set([l[0], l[l.length - 1]])); }
-ok(links.length >= 21, 'diagram pages to draw: ' + links.length + ' from ' + DG.files.length + ' books');
+ok(links.length >= 26, 'diagram pages to draw: ' + links.length + ' from ' + DG.files.length + ' books');
 const res = [];
 for (const [i, u] of links.entries()) {
   const r = await p.evaluate(async u => { const t = Date.now(); try { const bu = await catPf(u); const buf = new Uint8Array(await (await fetch(bu)).arrayBuffer());
@@ -83,6 +83,24 @@ ok(/^ok/.test(sec), 'Find Part > Suzuki > Access 125 > 2025 > section: the book 
 await p.screenshot({ path: OUT + '/section.png' });
 const secTxt = await p.evaluate(() => document.querySelector('#vp .screen').innerText);
 ok(/₹\s?[\d,]+/.test(secTxt), 'the section lists MRP from Suzuki\'s price list');
+// the 5 scanned books (read by OCR): their models and years, and a section that shows the scanned page with its REF / QTY read
+const oy = await p.evaluate(async () => { const out = {}; for (const vm of ['GS150R', 'Swish 125', 'Gixxer SF', 'Slingshot']) { for (let k = 0; k < 80; k++) { const Y = fpYrs({ vb: 'Suzuki', vm });
+  if (Y !== 'wait') { out[vm] = (Y.ys || []).map(String).join(' '); break; } await new Promise(r => setTimeout(r, 250)); } } return out; });
+ok(/2009/.test(oy.GS150R) && /2010/.test(oy.GS150R) && /2013/.test(oy.GS150R) && /2016/.test(oy['Swish 125']) && /2017/.test(oy['Gixxer SF']) && /2013/.test(oy.Slingshot),
+  'scanned books give model years: ' + JSON.stringify(oy));
+const sc2 = await p.evaluate(async book => {
+  const wait = async (f, n) => { for (let k = 0; k < n; k++) { const x = f(); if (x) return x; await new Promise(r => setTimeout(r, 250)); } return null; };
+  const p0 = { vb: 'Suzuki', vm: 'Gixxer SF', yr: '2017' }; go('findpart', { v: 'secs', ...p0 });
+  const sc = await wait(() => { const s = catScope(m2A(p0)); return s && !s.loading && s; }, 160); if (!sc) return 'sections did not load';
+  const r = sc.rows.find(r => r.part === '09482-00627-000'); if (!r) return 'no spark plug row';
+  go('findpart', { v: 'sec', ...p0, pg: r.page }); const t = document.querySelector('#vp .screen .dg');
+  if (!t || t.dataset.dg.split(':')[1] !== 'catalogues/suzuki/' + book) return 'diagram is not the scanned book: ' + (t && t.dataset.dg);
+  if (!(await wait(() => /blob:/.test(t.style.backgroundImage), 240))) return 'diagram did not show';
+  const tx = document.querySelector('#vp .screen').innerText;
+  return ['11100-34J10-000', '09103-08531-000', '09160-08164-000', '09482-00638-000'].every(pn => tx.includes(pn)) ? 'ok' : 'parts missing: ' + tx.slice(0, 300);
+}, 'LR_PCAT_GSX150FRFAL7_P74_2.pdf');
+ok(sc2 === 'ok', 'Find Part > Suzuki > Gixxer SF > 2017 > Cylinder head: the scanned page shows with its parts (' + sc2 + ')');
+await p.screenshot({ path: OUT + '/scanned-section.png' });
 // a model with no book (only in the price list): straight to its sections, which say there is no diagram
 await p.evaluate(() => go('findpart', { v: 'year', vb: 'Suzuki', vm: 'Burgman Street 125', yr: 'Any' })); await p.waitForTimeout(800);
 const bs = await p.evaluate(() => document.querySelector('#vp .screen').innerText);
@@ -90,7 +108,7 @@ ok(!/choose model year/.test(bs) && /Engine/.test(bs) && /Burgman Street 125/.te
 const pl = await p.evaluate(async () => { const p0 = { vb: 'Suzuki', vm: 'Burgman Street 125', yr: 'Any' }; const sc = catScope(m2A(p0)); if (!sc || sc.loading || !sc.rows.length) return 'no rows';
   go('findpart', { v: 'sec', ...p0, pg: sc.rows[0].page }); await new Promise(r => setTimeout(r, 400)); return document.querySelector('#vp .screen').innerText; });
 ok(/No diagram in the app for this book/.test(pl) && /₹\s?[\d,]+/.test(pl), 'a price-list section: no diagram note, parts with MRP');
-ok(await p.evaluate(() => catNice('CAP, UZ125NE FRONT') === 'Cap, UZ125NE Front' && catNice('GSX150FRLM6 COVER') === 'GSX150FRLM6 Cover'), 'model codes stay in capitals (UZ125NE, GSX150FRLM6)');
+ok(await p.evaluate(() => catNice('CAP, UZ125NE FRONT') === 'Cap, UZ125NE Front' && catNice('GSX150FRLM6 COVER') === 'GSX150FRLM6 Cover' && catNice('TVS TRU4 OIL') === 'TVS TRU4 Oil'), 'model codes and TVS stay in capitals (UZ125NE, GSX150FRLM6, TVS TRU4)');
 
 // bikepharma.com runs the app inside the website's frame: a Suzuki page draws there too
 const w = await p.context().newPage(); w.on('pageerror', e => errs.push('site: ' + e.message));

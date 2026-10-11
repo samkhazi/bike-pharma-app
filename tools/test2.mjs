@@ -50,6 +50,19 @@ const route = await Sx.evaluate(async () => { const bad = []; let n = 0;
     for (let i = 0; i < d.d.length; i += step) { const k = catPk(d.d[i][5]); if (k.length < 5) continue; n++; if (!catRoute(k).l.includes(e)) bad.push(e.vb + ' ' + k); } }
   return { n, bad: bad.slice(0, 5), nb: bad.length }; });
 ok(route.n > 2500 && route.nb === 0, `Any brand part number search: ${route.n} sampled numbers of the 9 brands all route to their own brand ${route.nb ? JSON.stringify(route.bad) : ''}`);
+// TVS painted parts (a section per colour, its own picture in tvs_images.zip), kits (kit no. with its MRP, then the parts in it), oils
+const tv = await Sx.evaluate(async () => { const wait = async (f, n) => { for (let k = 0; k < n; k++) { const x = f(); if (x) return x; await new Promise(r => setTimeout(r, 250)); } return null; };
+  const e = CAT_ALL.find(e => e.vb === 'TVS'); catAsk(e); if (!await wait(() => e.st === 2, 160)) return 'TVS did not load';
+  const d = await wait(() => dgLoad('TVS'), 160); if (!d) return 'TVS diagram index did not load';
+  const rows = m => { const s = catScope(m2A({ vb: 'TVS', vm: m, yr: 'Any' })); return s && !s.loading ? s.rows : []; };
+  const p = rows('Raider 125').filter(r => /PAINTED PARTS/.test(r.asm)), k = rows('Star City').filter(r => /\.KIT$/.test(r.page)), o = rows('Oils & lubricants');
+  const p1 = p.filter(r => r.page === p[0].page), vi = e.d.vars.indexOf(p1[0].vv[0]);
+  return { colours: new Set(p.map(r => r.page)).size, mrp: p1.filter(r => e.d.mrp[r.part]).length + '/' + p1.length, pic: !!(d.p[vi] && /^pf:catalogues\/tvs\/tvs_images.zip:/.test(d.f[d.p[vi][p1[0].page.split('.')[1]]])),
+    kit: k.length && k[0].ref === 'K1' && !!e.d.mrp[k[0].part], oils: o.length, photos: o.filter(r => e.d.phf && e.d.phf[r.part]).length }; });
+ok(tv.colours >= 10 && tv.mrp.split('/')[0] === tv.mrp.split('/')[1] && tv.pic && tv.kit && tv.oils === 13 && tv.photos === 10,
+  'TVS painted parts, kits, oils: ' + JSON.stringify(tv));
+ok(await Sx.evaluate(() => BRANDS_V.TVS.includes('Oils & lubricants') && !custModels('TVS').includes('Oils & lubricants') && custModels('TVS').includes('Raider 125')),
+  'TVS Oils & lubricants is in Find Part but not in a customer\'s bike models');
 await Sx.evaluate(() => go('findpart')); await Sx.waitForTimeout(600);
 ok(await Sx.evaluate(() => cur().s === 'findpart' && /9 of \d+ brands in/.test(document.body.innerText) && document.body.innerText.includes('Catalogue coming soon')), 'admin: Find Part shows the 9 brands in, other brands coming soon');
 ok(await Sx.evaluate(() => !document.querySelector('a[href*="claude.ai"]')), 'admin: no claude.ai links on the screen');

@@ -183,6 +183,8 @@ sub1("/* ---------- boot ---------- */\nasync function start(){", NAVJS + "/* --
 # BikeSurgeon_Catalog_Import) as cat/<slug>.json + <slug>-dg.json (brands/tools/brands_build.py). Their diagrams and part photos are read
 # byte for byte out of the brand's own zips, which Admin uploads unchanged from Catalogue files. "jin jin brands ke MRP he o us us parts me
 # daaldo search me": the MRP of every part that has one shows on the search cards, the section table and the part page.
+# TVS's oils and lubricants are a "model" in Find Part (TVS > Oils & lubricants) but not a bike a customer can own
+sub1("const custModels=(b,cur)=>{const l=(BRANDS_V[b]||[]).filter(m=>!MODEL_BASE[m]);", "const custModels=(b,cur)=>{const l=(BRANDS_V[b]||[]).filter(m=>!MODEL_BASE[m]&&m!=='Oils & lubricants');")
 CAT_IN = [os.path.join(SP, 'ktm', 'out', f) for f in ('ktm.json', 'ktm-dg.json', 'husqvarna.json', 'husqvarna-dg.json')]
 CAT_IN += [os.path.join(SP, 'brands', 'out', s + x) for s in ('hero', 'royal-enfield', 'yamaha', 'honda', 'tvs', 'bajaj', 'suzuki') for x in ('.json', '-dg.json')]
 _bv, _cc = {}, {}
@@ -249,7 +251,7 @@ sub1("const catPf=u=>{if(CAT_PFURL[u])return CAT_PFURL[u];const m=/^p([fa]):(.+)
 # Sam's Suzuki folder has a PDF book named "oct150cc gixxer.txt": the file picker offers .txt too (the server already takes it)
 sub1('accept=".pdf,.jpg,.jpeg,.png,.zip,.json,.csv"', 'accept=".pdf,.jpg,.jpeg,.png,.zip,.json,.csv,.txt"')
 # model codes in section names and remarks stay capitals: "Front Wheel (UZ125NE)", not "(Uz125ne)"
-sub1("|Led|[A-Z]?\\d+[A-Za-z0-9.x/]*)\\b/g,w=>w.toUpperCase());", "|Led|[A-Z]?\\d+[A-Za-z0-9.x/]*|[A-Za-z]{1,6}\\d[A-Za-z0-9]*)\\b/g,w=>w.toUpperCase());")
+sub1("|Led|[A-Z]?\\d+[A-Za-z0-9.x/]*)\\b/g,w=>w.toUpperCase());", "|Led|Tvs|Mrp|[A-Z]?\\d+[A-Za-z0-9.x/]*|[A-Za-z]{1,6}\\d[A-Za-z0-9]*)\\b/g,w=>w.toUpperCase());")
 # part photos given only as zip byte ranges (phf + phz, no photo pages)
 sub1("const catPh=(d,pn)=>{const x=d.ph&&d.ph[pn];if(x==null)return null;",
      "const catPh=(d,pn)=>{const x=d.ph&&d.ph[pn];if(x==null){const f=!d.ph&&d.phf&&d.phf[pn];return f?{z:'pf:'+d.phz[f[0]]+':'+f[1]+':'+f[2],w:f[3],h:f[4]}:null;}")

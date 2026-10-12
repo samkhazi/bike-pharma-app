@@ -377,6 +377,9 @@ sub1("if(k==='vm'&&v!=='Any')f.cc=String(MODEL_CC[v]);refresh();}", "if(k==='vm'
 # Sam 2026-10-12 06:20Z-06:27Z: update 8h, the web agent for part numbers no catalogue has (tools/altno.py; server lib/altagent.mjs)
 import altno
 a, k = altno.apply(a); n_patch += k
+# 2026-10-12 update 8j: Find Part fixes from the 4-round test (tools/fpfix.py)
+import fpfix
+a, k = fpfix.apply(a); n_patch += k
 open(os.path.join(OUT, 'app.html'), 'w', encoding='utf-8').write(a)
 _ix = open(os.path.join(SP, 'site', 'com', 'index.html'), encoding='utf-8').read()
 _vp = '<meta name="viewport" content="width=device-width, initial-scale=1">'

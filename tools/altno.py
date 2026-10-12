@@ -109,6 +109,10 @@ function altAdd(){const el=document.getElementById('altpn');const v=el?el.value.
 function altKey(v){const el=document.getElementById('altkey');const k=v===''?'':(el?el.value.trim():'');if(v!==''&&!k){toast('Paste the key first');return;}toast(k?'Checking the key…':'Removing the key…');
  altPost({act:'key',key:k}).then(j=>{if(j.error){toast(j.error);return;}S.ui.altKey=false;toast(k?'Key saved: the web agent is on':'Key removed');altLoad(true);});}
 function altCfg(o){altPost({act:'cfg',...o}).then(j=>{if(j.error){toast(j.error);return;}altLoad(true);});}
+/* the website's top search bar (Universal search) looks only in the shop's records: for staff a part number with no record opens Find Part,
+   and every search offers Find Part (Sam 2026-10-12 07:57Z: 36JG0016 typed up top found nothing) */
+const usHits=q=>{q=String(q||'').trim().toLowerCase();const qd=q.replace(/\D/g,'');return q?searchIndex().filter(x=>(x[0]+' '+x[1]).toLowerCase().includes(q)||(qd.length>=4&&(x[0]+x[1]).replace(/\D/g,'').includes(qd))):[];};
+const usFp=()=>{const q=(S.ui.sq||'').trim();return q&&altStaff()?`<button class="card row us-fp" onclick="go('findpart',{v:'res',q:(S.ui.sq||'').trim(),sort:'best',n:30})">${ic('search','s20')}<span><b>Find Part</b><span class="cap">Search “${esc(q)}” in all brand catalogues</span></span></button>`:'';};
 """
 
 ALTCSS = r"""
@@ -125,6 +129,8 @@ ALTCSS = r"""
 .alt-src{overflow-wrap:anywhere}
 .alt-stat{gap:10px;align-items:center}
 .alt-stat label{display:flex;align-items:center;gap:6px}
+.us-fp{gap:10px;align-items:center;text-align:left;width:100%}
+.us-fp>span{display:flex;flex-direction:column;gap:2px;min-width:0}
 .alt-stat select{height:34px;border-radius:8px;border:1.5px solid var(--line);background:var(--card);color:inherit;font:inherit;padding:0 6px}
 """
 
@@ -162,4 +168,7 @@ def apply(a):
         "the part number.'}</div>${!p.cat&&fpIsPn(p.q)&&!(c&&(c.pend||[]).length)?altNote(p.q,'findpart'):''}${c&&(c.pend||[]).length?")
     # Add product: a number no catalogue has (its approved other number, or Search on Google)
     sub("Fill in name, brand and MRP by hand below.</p>", "Fill in name, brand and MRP by hand below.</p>${altInv(a.pn)}")
+    # the top search bar: a part number no record has opens Find Part; Universal search offers Find Part
+    sub("S.ui.sq=q;tab('usearch');};", "if(altStaff()&&fpIsPn(q)&&!usHits(q).length){go('findpart',{v:'res',q,sort:'best',n:30});return;}S.ui.sq=q;tab('usearch');};")
+    sub(""" <div class="row wrap" style="gap:6px">${['BP-MECH','INV']""", """ ${usFp()}<div class="row wrap" style="gap:6px">${['BP-MECH','INV']""")
     return a, n

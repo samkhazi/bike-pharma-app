@@ -77,6 +77,14 @@ curl http://127.0.0.1:3010/api/health
 Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 
 ## Badlav
+**Update 8j (12 Oct 2026)**
+- Website ka upar wala search bar: part number likh kar Enter dabao. Dukaan ke records (bill, customer, stock) me nahi hai to
+  seedha Find Part khulta hai aur catalogue ka part dikhata hai (jaise 36JG0016 = 36JU0138 ka naya number).
+  Universal search me bhi ab "Find Part" button hai: wahi shabd sabhi brand catalogues me dhoondta hai.
+- Find Part: "piston ring" ab KTM 200 Duke / RC 200 me bhi milta hai (KTM aur Bajaj use "Kit Ring Set" likhte hain).
+- Find Part ka 4 round test: `node tools/test_fp_all.mjs` (part number, naam, galat spelling, brand > model > year > section,
+  alternate list, Search by vehicle; computer aur phone).
+
 **Update 8i (12 Oct 2026)**
 - oemship.com ki "Spares alternate items list" (KTM, Bajaj, Triumph) server me jud gayi: 3,701 purane/naye number ke jode.
   Find Part, Add product aur Stock in me purana ya naya number likho to dusra number aur uske parts dikhte hain

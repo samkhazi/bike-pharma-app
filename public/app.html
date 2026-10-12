@@ -2257,7 +2257,7 @@ function catRefresh(){try{if(!['findpart','addproduct','grnedit','invpaste','inv
 setTimeout(catLoad,2500);
 const CAT_MODEL={'XL 100':'XL100'};
 const CAT_WORDS={'SELF START MOTOR':['STARTER GENERATOR'],'SELF MOTOR':['STARTER GENERATOR'],'STARTER MOTOR':['STARTER GENERATOR'],'HEAD LIGHT':['HEAD LAMP','HEADLAMP'],'TAIL LIGHT':['TAIL LAMP'],'INDICATOR LIGHT':['TSL','INDICATOR'],'FRONT SHOCKER':['FRONT FORK','FORK LEG','FRONT SUSPENSION'],'FRONT SHOCK':['FRONT FORK','FORK LEG','FRONT SUSPENSION'],'REAR SHOCKER':['SHOCK ABSORBER'],'NUMBER PLATE':['LICENCE PLATE','LICENSE PLATE'],'FUEL TAP':['FUEL COCK'],'PETROL TAP':['FUEL COCK'],'SIDE STAND':['PROP STAND'],'MAIN STAND':['CENTER STAND'],'AIR FILTER':['AIR FILTER','AIRCLEANER','AIR CLEANER'],'OIL SEAL':['OIL SEAL','SEAL OIL'],'CHAIN KIT':['CHAIN SPROCKET KIT','KIT SPROCKET'],'CHAIN SET':['CHAIN SPROCKET KIT','KIT SPROCKET'],
- 'PLUG CAP':['SUPPRESOR CAP','SUPPRESSOR CAP'],'PISTON RING':['^RING SET','PISTON RING'],'INDICATOR FLASHER':['FLASHER'],'BLINKER RELAY':['FLASHER'],'INDICATOR RELAY':['FLASHER'],'FLASHER RELAY':['FLASHER'],'CHAIN LOCK':['CONNECTING LINK','CHAIN LOCK'],'HANDLE PIPE':['HANDLE BAR'],'HANDLE ROD':['HANDLE BAR'],'TIMING CHAIN':['CAMCHAIN','CAM CHAIN'],'MAGNETO COIL':['MAGNETO','STATOR'],'HEAVY DUTY':['HD'],'CHAIN SOCKET':['CHAIN SPROCKET KIT','KIT SPROCKET'],'FIRST OVERSIZE':['I O S'],'SECOND OVERSIZE':['II O S'],
+ 'PLUG CAP':['SUPPRESOR CAP','SUPPRESSOR CAP'],'PISTON RING':['^RING SET','^KIT RING SET','PISTON RING'],'INDICATOR FLASHER':['FLASHER'],'BLINKER RELAY':['FLASHER'],'INDICATOR RELAY':['FLASHER'],'FLASHER RELAY':['FLASHER'],'CHAIN LOCK':['CONNECTING LINK','CHAIN LOCK'],'HANDLE PIPE':['HANDLE BAR'],'HANDLE ROD':['HANDLE BAR'],'TIMING CHAIN':['CAMCHAIN','CAM CHAIN'],'MAGNETO COIL':['MAGNETO','STATOR'],'HEAVY DUTY':['HD'],'CHAIN SOCKET':['CHAIN SPROCKET KIT','KIT SPROCKET'],'FIRST OVERSIZE':['I O S'],'SECOND OVERSIZE':['II O S'],
  SILENCER:['MUFFLER'],TANKI:['TANK'],PETROL:['FUEL'],SHOCKER:['SHOCK ABSORBER'],SHOCKUP:['SHOCK ABSORBER'],INDICATOR:['TSL','WINKER','TURN SIGNAL'],BLINKER:['TSL','WINKER','TURN SIGNAL'],METER:['SPEEDOMETER','SPEEDO'],HEADLIGHT:['HEAD LAMP','HEADLAMP'],TAILLIGHT:['TAIL LAMP'],TIRE:['TYRE'],GADDI:['SEAT'],SHEESHA:['MIRROR'],SHISHA:['MIRROR'],CARB:['CARBURETTOR'],CARBURETOR:['CARBURETTOR'],MUDGUARD:['FENDER'],WIRING:['HARNESS'],ACCELERATOR:['THROTTLE'],ACCELATOR:['THROTTLE'],ACCELARATOR:['THROTTLE'],CARBORATOR:['CARBURETTOR'],CARBURATOR:['CARBURETTOR'],NYLOCK:['NYLON LOCK'],SELF:['ES'],KICK:['KS'],REAR:['RR'],FRONT:['FR'],LEFT:['LH'],RIGHT:['RH'],CAP:['LID']};
 /* more names people use, and the way the brand catalogues write them */
 (()=>{const kick=['KICK STARTER PEDAL'],guard=['ENGINE GUARD','CRASH GUARD','CRAUSHGUARD','LEG GUARD'],self=['STARTER GENERATOR','STARTER MOTOR'],
@@ -3972,7 +3972,7 @@ function searchIndex(){const r=S.user.role;const all=[];
 SCREENS.usearch=()=>{const q=(S.ui.sq||'').trim().toLowerCase();const qd=q.replace(/\D/g,'');const res=q?searchIndex().filter(x=>(x[0]+' '+x[1]).toLowerCase().includes(q)||(qd.length>=4&&(x[0]+x[1]).replace(/\D/g,'').includes(qd))):[];const role=S.user.role;
  return `<div class="scroll"><div class="pad"><h1 class="h1">Universal search</h1>
  <label class="search" for="sq" style="border:1.5px solid var(--ink)">${ic('search','s20')}<input id="sq" placeholder="Mobile, name, staff ID, invoice, part no., vehicle" value="${esc(S.ui.sq||'')}" oninput="S.ui.sq=this.value;clearTimeout(window._sq);window._sq=setTimeout(()=>{refresh();const i=document.getElementById('sq');i.focus();i.setSelectionRange(i.value.length,i.value.length)},250)"></label>
- <div class="row wrap" style="gap:6px">${['BP-MECH','INV'].map(t=>`<button class="chip" onclick="S.ui.sq='${t}';refresh()">${t}</button>`).join('')}</div>
+ ${usFp()}<div class="row wrap" style="gap:6px">${['BP-MECH','INV'].map(t=>`<button class="chip" onclick="S.ui.sq='${t}';refresh()">${t}</button>`).join('')}</div>
  <div class="cap">Scope for ${esc(S.user.label)}: ${ {billing:'customers, mechanics, invoices, parts',sales:'customers, mechanics, orders, parts, vehicles',inventory:'parts only',manager:'everything in the branch',admin:'everything'}[role]}</div>
  ${q?(res.length?`<div class="card flush">${res.map(x=>li(esc(x[0]),esc(x[1]),'',x[2],x[3]||'')).join('')}</div>`:'<div class="empty">No matches in your scope.</div>'):'<div class="empty">Type to search across the records your role can see.</div>'}
  ${role==='admin'?'':''}</div></div>`;};
@@ -5447,6 +5447,10 @@ function altAdd(){const el=document.getElementById('altpn');const v=el?el.value.
 function altKey(v){const el=document.getElementById('altkey');const k=v===''?'':(el?el.value.trim():'');if(v!==''&&!k){toast('Paste the key first');return;}toast(k?'Checking the key…':'Removing the key…');
  altPost({act:'key',key:k}).then(j=>{if(j.error){toast(j.error);return;}S.ui.altKey=false;toast(k?'Key saved: the web agent is on':'Key removed');altLoad(true);});}
 function altCfg(o){altPost({act:'cfg',...o}).then(j=>{if(j.error){toast(j.error);return;}altLoad(true);});}
+/* the website's top search bar (Universal search) looks only in the shop's records: for staff a part number with no record opens Find Part,
+   and every search offers Find Part (Sam 2026-10-12 07:57Z: 36JG0016 typed up top found nothing) */
+const usHits=q=>{q=String(q||'').trim().toLowerCase();const qd=q.replace(/\D/g,'');return q?searchIndex().filter(x=>(x[0]+' '+x[1]).toLowerCase().includes(q)||(qd.length>=4&&(x[0]+x[1]).replace(/\D/g,'').includes(qd))):[];};
+const usFp=()=>{const q=(S.ui.sq||'').trim();return q&&altStaff()?`<button class="card row us-fp" onclick="go('findpart',{v:'res',q:(S.ui.sq||'').trim(),sort:'best',n:30})">${ic('search','s20')}<span><b>Find Part</b><span class="cap">Search “${esc(q)}” in all brand catalogues</span></span></button>`:'';};
 /* ---------- Waiting for photos ---------- */
 SCREENS.invwait=()=>{const L=DB.waitParts||[];if(S.ui.iw&&!L.some(w=>w.id===S.ui.iw))S.ui.iw=null;if(!S.ui.iw&&L.length&&isWv())S.ui.iw=L[0].id;
  const sel=L.find(w=>w.id===S.ui.iw),units=L.reduce((a,w)=>a+(+w.q||0),0),bills=new Set(L.map(w=>w.inv||w.grn)).size;
@@ -5643,6 +5647,8 @@ html:not(.wv) .screen.hasnav.in-fade>:not(.nav){animation:fade .28s ease-out}
 .alt-src{overflow-wrap:anywhere}
 .alt-stat{gap:10px;align-items:center}
 .alt-stat label{display:flex;align-items:center;gap:6px}
+.us-fp{gap:10px;align-items:center;text-align:left;width:100%}
+.us-fp>span{display:flex;flex-direction:column;gap:2px;min-width:0}
 .alt-stat select{height:34px;border-radius:8px;border:1.5px solid var(--line);background:var(--card);color:inherit;font:inherit;padding:0 6px}
 /* ---- inventory (update 8): phone stacks, website two columns ---- */
 .inv-2c{display:flex;flex-direction:column;gap:14px;min-width:0}
@@ -5911,7 +5917,7 @@ function buildTop(){const u=S.user,r=u.role,t=pageTitle();const nav=NAVS[r]||[];
  <button class="wv-ibtn" onclick="${notif?"go('notifs')":"supBellOn()"}" aria-label="Notifications">${ic('bell','s20')}${notif?'':supBellDot('wv-cnt')}</button>
  ${r==='customer'?`<button class="wv-ibtn" onclick="go('cart')" aria-label="Cart">${ic('cart','s20')}${cartCount()?`<span class="wv-cnt">${cartCount()}</span>`:''}</button>`:''}
  ${PD&&PD.getElementById('themeBtn')?`<button class="wv-ibtn" onclick="wvTheme()" aria-label="Light or dark">${ic(R.dataset.theme==='dark'?'sun':'moon','s20')}</button>`:''}`;}
-window.wvSearch=q=>{if(S.user.role==='customer'){S.stack=[{s:'shop',p:{}}];go('list',{q});return;}S.ui.sq=q;tab('usearch');};
+window.wvSearch=q=>{if(S.user.role==='customer'){S.stack=[{s:'shop',p:{}}];go('list',{q});return;}if(altStaff()&&fpIsPn(q)&&!usHits(q).length){go('findpart',{v:'res',q,sort:'best',n:30});return;}S.ui.sq=q;tab('usearch');};
 window.wvTheme=()=>{try{PD.getElementById('themeBtn').click();}catch(e){}setTimeout(()=>{try{buildTop();}catch(e){}},60);};
 /* blocks of a home screen */
 const isGrid=el=>el.matches('.grid2,.grid3,.grid4')&&el.children.length>0;

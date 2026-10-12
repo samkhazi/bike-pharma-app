@@ -77,6 +77,14 @@ curl http://127.0.0.1:3010/api/health
 Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 
 ## Badlav
+**Update 8i (12 Oct 2026)**
+- oemship.com ki "Spares alternate items list" (KTM, Bajaj, Triumph) server me jud gayi: 3,701 purane/naye number ke jode.
+  Find Part, Add product aur Stock in me purana ya naya number likho to dusra number aur uske parts dikhte hain
+  (line: "From the oemship.com alternate list"). Ye list Sam ne di hai, isliye Admin approval nahi chahiye.
+- Galat lage to Admin > More > Alternate numbers me "Not right" dabao, wo jawab band ho jaata hai.
+- Web agent ab is order me dhoondta hai: pehle Scribd, phir oemship.com, phir baaki internet.
+- Nayi list aaye to `tools/altlist_build.py` ke SOURCES me jodo, `python3 tools/altlist_build.py` chalao, phir build.
+
 **Update 8h (12 Oct 2026)**
 - Naya: Admin > More > Alternate numbers = web agent. Jo part number kisi catalogue me nahi milta (Find Part, Add product,
   Stock in ki "Not in a catalogue" line), wo is list me jaata hai. Agent har number pehle Scribd par, phir baaki internet par

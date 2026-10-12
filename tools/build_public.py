@@ -419,5 +419,14 @@ for pk, bv in by.items():
     xr[pk] = o
 open(os.path.join(OUT, 'cat', 'xref.json'), 'w', encoding='utf-8').write(json.dumps({'b': brands, 'm': models, 'x': xr}, separators=(',', ':'), ensure_ascii=False))
 print('xref:', len(xr), 'shared part numbers between', ', '.join(brands))
+# alternate number lists (update 8i, tools/altlist_build.py -> tools/altlists/lists.json): each pair gets a flag saying which of its two
+# numbers these catalogues have (1 = the old one, 2 = the new one), so the app only tries numbers Find Part can show
+_al = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'altlists', 'lists.json')
+if os.path.exists(_al):
+    _j = json.load(open(_al, encoding='utf-8'))
+    for r in _j['p']: r[5:] = [(1 if norm(r[0]) in by else 0) | (2 if norm(r[2]) in by else 0)]
+    os.makedirs(os.path.join(OUT, 'cat', 'alt'), exist_ok=True)
+    open(os.path.join(OUT, 'cat', 'alt', 'lists.json'), 'w', encoding='utf-8').write(json.dumps(_j, separators=(',', ':'), ensure_ascii=False))
+    print('alternate lists:', len(_j['p']), 'pairs,', sum(1 for r in _j['p'] if r[5] in (1, 2)), 'with only one number in these catalogues')
 n_files = sum(len(f) for _, _, f in os.walk(OUT)); size = sum(os.path.getsize(os.path.join(r, f)) for r, _, fs in os.walk(OUT) for f in fs)
 print(f'{n_patch} patches applied; public/: {n_files} files, {size/1e6:.1f} MB')

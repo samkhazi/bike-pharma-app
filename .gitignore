@@ -8,6 +8,7 @@ _to_delete/
 .check-*
 public/cat/*
 !public/cat/*.json
+!public/cat/alt/
 public/bj/
 public/ph/
 public/phh/

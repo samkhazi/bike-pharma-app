@@ -11,32 +11,56 @@ Update 8h, the app side of the web agent (the server side is lib/altagent.mjs):
   Admin can also type the other number (found on Google by hand) or say "None of these".
 - Find Part: a number Admin approved shows its other number's parts with a line saying so. A number that is not found says what the
   agent is doing and has "Search on Google" (opens Google in a new tab; nothing from Google is read or kept by the app).
+
+Update 8i (Sam 07:33Z "oemship.com isme aise hi sabhi brands ke alternate numbers honge sabhi lelo aur server pe update kardena"): the
+alternate number lists Sam gives (cat/alt/lists.json, from tools/altlist_build.py) work straight away, with no approval: Find Part
+shows the other number's parts for a number no catalogue has ("36JG0016 is the new number of 36JU0138"), a number that is in a
+catalogue gets a line with its new/old number, and Add product names the other number. Admin's "Not right" turns a list answer off.
+The web agent searches Scribd, then oemship.com, then the whole web.
 """
 
 ALTJS = r"""
 /* ---------- Alternate numbers: the web agent (update 8h, lib/altagent.mjs) ---------- */
 const ALTC={ap:{},st:{},on:false,t:0,busy:false,asked:new Set(),adm:null,err:null,sig:'',tm:null};
 const altStaff=()=>!!(S.user&&['billing','sales','manager','inventory','admin'].includes(S.user.role));
-function altLoad(force){if(typeof SRV==='undefined'||!altStaff()||ALTC.busy)return;if(!force&&ALTC.t&&Date.now()-ALTC.t<120e3)return;ALTC.busy=true;
+function altLoad(force){altListLoad();if(typeof SRV==='undefined'||!altStaff()||ALTC.busy)return;if(!force&&ALTC.t&&Date.now()-ALTC.t<120e3)return;ALTC.busy=true;
  fetch('/api/alt',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(j=>{ALTC.busy=false;ALTC.t=Date.now();
   if(!j||j.error){ALTC.err=(j&&j.error)||'Could not load the list.';return;}
   const sig=JSON.stringify([j.ap,j.st,j.on,j.admin]),ch=sig!==ALTC.sig;ALTC.sig=sig;ALTC.ap=j.ap||{};ALTC.st=j.st||{};ALTC.on=!!j.on;ALTC.adm=j.admin||null;ALTC.err=null;
   if(ch)try{const s=cur().s;if(s==='altno'||(s==='findpart'&&(cur().p||{}).v==='res'))refresh();}catch(e){}})
  .catch(()=>{ALTC.busy=false;ALTC.t=Date.now()-90e3;ALTC.err='Could not reach the server. Check the internet.';try{if(cur().s==='altno')refresh();}catch(e){}});}
 const altOf=q=>{const k=catPk(q);return k?ALTC.ap[k]||null:null;};
+/* the alternate number lists Sam gave (update 8i, cat/alt/lists.json: [old, its name, new, its name, list, which of the two our catalogues have]) */
+const ALTL={st:0,m:null,t:0};
+function altListLoad(){if(ALTL.st===3&&Date.now()-ALTL.t>300e3)ALTL.st=0;if(ALTL.st||typeof SRV==='undefined'||!altStaff())return;ALTL.st=1;
+ fetch('cat/alt/lists.json',{credentials:'same-origin'}).then(r=>r.ok?r.json():Promise.reject(new Error('HTTP '+r.status))).then(j=>{const m=new Map(),N=(j.lists||[]).map(l=>l.name||'alternate list'),add=(k,o)=>{const a=m.get(k);if(a)a.push(o);else m.set(k,[o]);};
+  (j.p||[]).forEach(([o,od,n,nd,L,f])=>{const ko=catPk(o),kn=catPk(n);if(!ko||!kn||ko===kn)return;add(ko,{pn:n,d:nd,dir:'new',cat:!!(f&2),list:N[L]});add(kn,{pn:o,d:od,dir:'old',cat:!!(f&1),list:N[L]});});
+  ALTL.m=m;ALTL.st=2;try{const s=cur().s;if(s==='altno'||(s==='findpart'&&(cur().p||{}).v==='res'))refresh();}catch(e){}})
+ .catch(()=>{ALTL.st=3;ALTL.t=Date.now();});}
+const altListOf=q=>{const k=catPk(q);return k&&ALTL.m&&ALTC.st[k]!=='no'?ALTL.m.get(k)||[]:[];};
+/* the other numbers Find Part tries for a number no catalogue has: the one Admin approved, then the lists' numbers our catalogues have */
+const altAll=q=>{const al=altOf(q),L=altListOf(q).filter(x=>x.cat).map(x=>({alt:x.pn,name:x.d,list:x.list,dir:x.dir}));return (al?[al,...L.filter(x=>catPk(x.alt)!==catPk(al.alt))]:L).slice(0,6);};
+const altLw=x=>`<b class="num">${esc(x.pn)}</b>${x.d?' ('+esc(x.d)+')':''}`;
+const altLg=Ls=>Ls.slice(0,3).map(x=>(x.dir==='new'?'its new number ':'its old number ')+altLw(x)).join(', ')+(Ls.length>3?` (+${Ls.length-3} more)`:'');
+/* a number our catalogues have: its new or old number from the lists */
+function altListLine(q){const L=altListOf(q);if(!L.length)return '';const f=(a,t)=>a.length?t+' '+a.slice(0,3).map(altLw).join(', ')+(a.length>3?` +${a.length-3} more`:''):'';
+ return `<div class="row cap fp-via alt-via">${ic('repeat','s16')}<span class="grow" style="overflow-wrap:anywhere">${[f(L.filter(x=>x.dir==='new'),'New number:'),f(L.filter(x=>x.dir==='old'),'Old number:')].filter(Boolean).join(' · ')}. <span class="muted">From the ${esc(L[0].list)}.</span></span></div>`;}
 function altPost(o){return fetch('/api/alt',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)}).then(r=>r.json()).catch(()=>({error:'Could not reach the server. Check the internet and try again.'}));}
 function altAsk(pn,from){const k=catPk(pn);if(typeof SRV==='undefined'||!altStaff()||k.length<5||(k.match(/\d/g)||[]).length<4||ALTC.asked.has(k)||ALTC.ap[k])return;ALTC.asked.add(k);
  altPost({act:'ask',pn:String(pn).trim(),from}).then(j=>{if(j&&j.st&&j.st!=='incat')ALTC.st[k]=j.st;if(j&&j.st==='part')try{if(cur().s==='findpart')refresh();}catch(e){}});}
 const altG=pn=>'https://www.google.com/search?q='+encodeURIComponent('"'+String(pn).trim()+'"');
 const altGl=(pn,t)=>`<a class="link" href="${esc(altG(pn))}" target="_blank" rel="noopener">${t||'Search on Google'}</a>`;
 function altNote(pn,from){if(typeof SRV==='undefined'||!altStaff())return '';altLoad();const k=catPk(pn);if(from)setTimeout(()=>altAsk(pn,from),0);
+ const Ls=altListOf(pn),lt=Ls.length?`The ${esc(Ls[0].list)} gives ${altLg(Ls)}, but our catalogues do not have that number either. `:'';
  const st=ALTC.st[k],where=S.user.role==='admin'?'More > Alternate numbers':'the Admin’s Alternate numbers page';
  const t=st==='part'?'This looks like part of a longer number. Type the whole part number.':st==='found'?`The web agent found this number on the internet. Find Part shows it once Admin approves it in ${where}.`:st==='none'||st==='no'?'The web agent could not find this number on the internet.'
   :ALTC.on?`The web agent will look for this number on the internet. Admin approves what it finds in ${where}.`:`Admin can add this number’s other number in ${where}.`;
- return `<div class="row cap alt-note">${ic('globe','s16')}<span class="grow">${t}</span>${altGl(pn)}</div>`;}
-function altVia(q,al){return `<div class="row cap fp-via alt-via">${ic('repeat','s16')}<span class="grow" style="overflow-wrap:anywhere"><b class="num">${esc(String(q).trim().toUpperCase())}</b> is another number for <b class="num">${esc(al.alt)}</b>${al.name?' ('+esc(al.name)+')':''}. Found by the web agent, approved by Admin.</span></div>`;}
+ return `<div class="row cap alt-note">${ic('globe','s16')}<span class="grow">${lt}${t}</span>${altGl(pn)}</div>`;}
+function altVia(q,al){const Q=`<b class="num">${esc(String(q).trim().toUpperCase())}</b>`,A=`<b class="num">${esc(al.alt)}</b>${al.name?' ('+esc(al.name)+')':''}`;
+ return `<div class="row cap fp-via alt-via">${ic('repeat','s16')}<span class="grow" style="overflow-wrap:anywhere">${al.list?(al.dir==='new'?`${Q} is an old number. Its new number is ${A}.`:`${Q} is the new number of ${A}.`)+` From the ${esc(al.list)}.`:`${Q} is another number for ${A}. Found by the web agent, approved by Admin.`}</span></div>`;}
 function altInv(pn){if(typeof SRV==='undefined'||!altStaff()||!String(pn||'').trim())return '';altLoad();const al=altOf(pn);
- if(al)return `<p class="cap alt-note">${ic('repeat','s16')} <span class="grow">Same part as <b class="num">${esc(al.alt)}</b>${al.name?' ('+esc(al.name)+')':''}: found by the web agent, approved by Admin.</span></p>`;
+ if(al)return `<p class="cap alt-note">${ic('repeat','s16')} <span class="grow">Same part as <b class="num">${esc(al.alt)}</b>${al.name?' ('+esc(al.name)+')':''}: ${al.list?'from the '+esc(al.list):'found by the web agent, approved by Admin'}.</span></p>`;
+ const Ls=altListOf(pn);if(Ls.length)return `<p class="cap alt-note">${ic('repeat','s16')} <span class="grow">The ${esc(Ls[0].list)} gives ${altLg(Ls)}.${Ls.some(x=>x.cat)?' Type that number in Part number to fill name, brand and MRP from our catalogue.':''}</span></p>`;
  return `<p class="cap">${ALTC.on?'When this part is saved, the web agent looks its number up on the internet. ':''}${altGl(pn)}</p>`;}
 /* a part number no catalogue has goes to the agent when the part is saved (Add product, not Aftermarket) or taken in (Stock in) */
 (()=>{if(typeof geSave==='function'){const f=geSave;geSave=function(){const g=S.ui.ge;const ks=((g&&g.nw)||[]).filter(n=>n&&n.hand&&n.pn).map(n=>n.pn);try{return f.apply(this,arguments);}finally{try{ks.forEach(pn=>altAsk(pn,'stockin'));}catch(e){}}};}
@@ -52,13 +76,13 @@ function altManual(it){return `<div class="row alt-man"><div class="inp grow"><i
 function altCard(it){const r=it.res,P=m2Q(it.pn);
  const head=`<div class="row wrap" style="gap:8px"><b class="num alt-pn">${esc(it.pn)}</b>${altPill(it)}<span class="grow"></span><span class="cap">${esc((it.from||[]).join(', '))}${it.at?' · '+altDay(it.at):''}</span></div>`;
  if(it.st==='found'&&r){const opts=[...(r.alts||[]).map(a=>altPick(it,a.cat?a.cat.pn:a.pn,a.cat,a.how||'web')),...(r.maybe||[]).map(m=>altPick(it,m.pn,m,'same name'))];
-  return `<div class="card alt-card">${head}<div class="cap">${r.where==='scribd'?'On Scribd':'On the web'}: <b>${esc(r.name||'—')}</b>${r.brand?' · '+esc(r.brand):''}${r.bikes?' · '+esc(r.bikes):''}</div>${r.note?`<div class="cap muted">${esc(r.note)}</div>`:''}
+  return `<div class="card alt-card">${head}<div class="cap">${r.where==='scribd'?'On Scribd':r.where==='oemship'?'On oemship.com':'On the web'}: <b>${esc(r.name||'—')}</b>${r.brand?' · '+esc(r.brand):''}${r.bikes?' · '+esc(r.bikes):''}</div>${r.note?`<div class="cap muted">${esc(r.note)}</div>`:''}
    ${opts.length?`<div class="h3">Which part is it in our catalogues?</div><div class="stack g8">${opts.join('')}</div>`:'<div class="cap">The web gave no number that our catalogues have. Type it below if you know it.</div>'}
    ${altSrc(r)}${altManual(it)}<div class="row wrap" style="gap:8px"><button class="btn line sm" onclick="altDo('no','${P}')">None of these</button>${altGl(it.pn)}</div></div>`;}
- if(it.st==='ok'){const d=it.dec||{};return `<div class="card alt-card">${head}<div class="cap">Same part as <b class="num">${esc(d.alt)}</b>${d.name?' · '+esc(d.name):''}${d.brand?' · '+esc(d.brand):''}</div><div class="cap muted">Approved by ${esc(d.by||'Admin')}${d.at?' on '+altDay(d.at):''}. Find Part shows ${esc(d.alt)} when someone searches ${esc(it.pn)}.</div><div class="row"><button class="btn line sm" onclick="altDo('undo','${P}')">Undo</button></div></div>`;}
+ if(it.st==='ok'){const d=it.dec||{};return `<div class="card alt-card">${head}<div class="cap">Same part as <b class="num">${esc(d.alt)}</b>${d.name?' · '+esc(d.name):''}${d.brand?' · '+esc(d.brand):''}</div><div class="cap muted">${d.list?'From the '+esc(d.by||'alternate list'):'Approved by '+esc(d.by||'Admin')}${d.at?' on '+altDay(d.at):''}. Find Part shows ${esc(d.alt)} when someone searches ${esc(it.pn)}.</div><div class="row"><button class="btn line sm" onclick="altDo('undo','${P}')">${d.list?'Not right':'Undo'}</button></div></div>`;}
  if(it.st==='incat')return `<div class="card alt-card">${head}<div class="cap">Now in our ${esc((it.inCat||[]).join(', '))} catalogue: Find Part shows it.</div><div class="row"><button class="btn line sm" onclick="altDo('del','${P}')">Remove from the list</button></div></div>`;
  const wait=it.st==='wait'||it.st==='run',keyOk=!!(ALTC.adm&&ALTC.adm.cfg.keySet);
- const t=it.st==='run'?'The agent is searching the web now…':it.st==='wait'?(keyOk?'Waiting for its turn.':'Waiting: the agent needs a key (above).'):it.st==='no'?'You marked: none of the web’s numbers is right.'
+ const t=it.st==='run'?'The agent is searching the web now…':it.st==='wait'?(keyOk?'Waiting for its turn.':'Waiting: the agent needs a key (above).'):it.st==='no'?(it.dec&&it.dec.list?'You marked the list’s number as not right: Find Part does not use it.':'You marked: none of the web’s numbers is right.')
   :(it.tries<3&&it.next?`Not on the web yet. The agent tries again on ${altDay(it.next)} (${it.tries} of 3 tries).`:'Not found on the web (3 tries).');
  return `<div class="card alt-card">${head}<div class="cap">${t}</div>${r&&r.name?`<div class="cap muted">Last answer: ${esc(r.name)}</div>`:''}${wait?'':altManual(it)}<div class="row wrap" style="gap:8px">${it.st==='run'?'':`<button class="btn line sm" onclick="altDo('retry','${P}')">${wait?'Search it next':'Search again'}</button>`}<button class="btn line sm" onclick="altDo('del','${P}')">Delete</button>${altGl(it.pn)}</div></div>`;}
 SCREENS.altno=()=>{const B=bar('Alternate numbers',{back:S.stack.length>1});
@@ -74,10 +98,11 @@ SCREENS.altno=()=>{const B=bar('Alternate numbers',{back:S.stack.length>1});
    <div class="row wrap alt-stat"><label class="cap">Numbers a day<select onchange="altCfg({perDay:+this.value})" aria-label="Numbers a day">${[5,10,20,50,100,c.perDay].filter((v,i,a)=>a.indexOf(v)===i).sort((x,y)=>x-y).map(v=>`<option value="${v}"${v===c.perDay?' selected':''}>${v}</option>`).join('')}</select></label>
    <span class="cap">Today ${u.today} of ${c.perDay} · This month ${u.month} number${u.month===1?'':'s'}, ${u.searches} web search${u.searches===1?'':'es'}, about ₹${u.inr} (estimate; the exact bill is on console.anthropic.com)</span></div>
    ${errH}<div class="cap muted">Key ••••${esc(c.keyTail)}${c.keySet==='env'?' (from the server’s .env file)':''} · AI ${esc(c.model)}${c.keySet==='admin'?` · <button class="link" onclick="S.ui.altKey=!S.ui.altKey;refresh()">Change key</button> · <button class="link" onclick="altKey('')">Remove key</button>`:''}</div>${S.ui.altKey?keyIn:''}</div>`;
+ const lists=(A.lists||[]).length?`<div class="card alt-agent"><div class="h3">Alternate number lists</div>${A.lists.map(l=>`<div class="cap">${esc(l.name)}: ${Number(l.n||0).toLocaleString('en-IN')} number pairs</div>`).join('')}<div class="cap muted">Find Part uses these straight away, with no approval: search either number and it shows the other one’s parts.</div></div>`:'';
  const add=`<div class="card alt-agent"><div class="h3">Look up a number</div><div class="row alt-man"><div class="inp grow">${ic('search','s18')}<input id="altpn" placeholder="Part number, e.g. 36JG0016" autocomplete="off" onkeydown="if(event.key==='Enter')altAdd()"></div><button class="btn sm" onclick="altAdd()">Add</button></div></div>`;
  const grp=[['To check','found'],['In the queue','wait run'],['Approved','ok'],['Not found','none no'],['Now in a catalogue','incat']].map(([t,st])=>{const l=L.filter(it=>st.split(' ').includes(it.st));
   return l.length?`<div class="sec"><h3 class="h2">${t}</h3><span class="cap">${l.length}</span></div><div class="stack g8">${l.map(altCard).join('')}</div>`:'';}).join('');
- return B+`<div class="scroll"><div class="pad" style="gap:16px"><p class="cap" style="margin:0">Part numbers that none of our catalogues has collect here by themselves: from Find Part searches, Add product and Stock in. The web agent looks each one up on Scribd first, then on the rest of the internet, and brings the part’s name and its other numbers, with the pages it read. Find Part shows another number only after you approve it here. The catalogue files never change.</p>${agent}${add}${grp||'<div class="card cap">No numbers yet. A part number that Find Part cannot find comes here by itself.</div>'}</div></div>`;};
+ return B+`<div class="scroll"><div class="pad" style="gap:16px"><p class="cap" style="margin:0">Part numbers that none of our catalogues has collect here by themselves: from Find Part searches, Add product and Stock in. The alternate number lists you gave answer first. The web agent looks the rest up on Scribd first, then on oemship.com, then on the rest of the internet, and brings the part’s name and its other numbers, with the pages it read. Find Part shows a web answer only after you approve it here. The catalogue files never change.</p>${agent}${lists}${add}${grp||'<div class="card cap">No numbers yet. A part number that Find Part cannot find comes here by itself.</div>'}</div></div>`;};
 function altDo(act,pn,alt){altPost({act,pn,alt}).then(j=>{if(j.error){toast(j.error);return;}if(act==='ok')toast(pn+' = '+alt+': approved');else if(act==='del')toast(pn+' removed');altLoad(true);});}
 function altMan(pn,k){const el=document.getElementById('altm-'+k);const v=el?el.value.trim():'';if(!v){toast('Type the other number');return;}altDo('ok',pn,v);}
 function altAdd(){const el=document.getElementById('altpn');const v=el?el.value.trim():'';if(!v){toast('Type a part number');return;}altPost({act:'add',pn:v}).then(j=>{if(j.error){toast(j.error);return;}toast(v+' added: the agent looks it up next');altLoad(true);});}
@@ -125,11 +150,13 @@ def apply(a):
     # Find Part: a number Admin approved shows its other number's parts
     sub("const c=catSearch({...A,lim:600});if(!c)return {list:[],none:1};if(c.loading)return {loading:c};",
         "const c=catSearch({...A,lim:600});if(!c)return {list:[],none:1};if(c.loading)return {loading:c};\n"
-        " if(!c.hits.length&&!(c.pend||[]).length&&A.q&&fpIsPn(A.q)){const al=altOf(A.q);if(al){let c2=catSearch({...A,q:al.alt,lim:600});"
+        " if(!c.hits.length&&!(c.pend||[]).length&&A.q&&fpIsPn(A.q)){for(const al of altAll(A.q)){let c2=catSearch({...A,q:al.alt,lim:600});"
         "if(c2&&!c2.loading&&!c2.hits.length&&A.vb!=='Any')c2=catSearch({...m2A({q:al.alt}),lim:600});if(c2&&c2.loading)return {loading:c2};"
         "if(c2&&c2.hits.length)return {list:c2.hits,c:c2,label:c2.label,alt:al};}}")
     sub("function m2ResView(p){xrLoad();", "function m2ResView(p){xrLoad();altLoad();")
-    sub("return `${fpVia()}${spellH}${m2Head(count,", "return `${fpVia()}${spellH}${R.alt?altVia(p.q,R.alt):''}${m2Head(count,")
+    sub("return `${fpVia()}${spellH}${m2Head(count,", "return `${fpVia()}${spellH}${R.alt?altVia(p.q,R.alt):!p.cat&&p.q&&fpIsPn(p.q)?altListLine(p.q):''}${m2Head(count,")
+    # the lists load when Find Part opens, so a typed number finds its other number at once
+    sub("SCREENS.findpart=()=>{const f=S.ui.fp||(S.ui.fp=FP0());", "SCREENS.findpart=()=>{altListLoad();const f=S.ui.fp||(S.ui.fp=FP0());")
     # ... and a number that is not found goes to the agent, with Search on Google
     sub("the part number.'}</div>${c&&(c.pend||[]).length?",
         "the part number.'}</div>${!p.cat&&fpIsPn(p.q)&&!(c&&(c.pend||[]).length)?altNote(p.q,'findpart'):''}${c&&(c.pend||[]).length?")

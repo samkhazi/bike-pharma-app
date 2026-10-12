@@ -55,6 +55,7 @@ Abhi site pe **KTM, Husqvarna, Hero, Royal Enfield, Yamaha, Honda, TVS** ka cata
 "Catalogue coming soon" dikhate hain aur aapki files aane pe ek ek karke aayenge.
 - Kaunsa folder chunna hai (aapke Mac pe All Catalogues > BikeSurgeon_Catalog_Import ke andar), kitna bada:
   Hero 2 zip 1.63 GB · Royal_Enfield 2 zip 1.05 GB · Yamaha 6 zip 5.35 GB · Honda 1 zip 8.09 GB · TVS 1 zip 0.28 GB.
+  TVS ki PDF books: folder All Catalogues > **TVS ALL** (49 PDF me se sirf 17 jaati hain, 0.13 GB).
   Zips jaise hain waise hi jati hain (unzip mat karna). Upload page server ki khali jagah (free space) bhi dikhata hai.
 - Part list (`public/cat/<brand>.json`) GitHub se update ke saath aati hai (private repo). Ye sirf staff login se khulti hai.
 - Diagrams aur part photos brand ki apni PDF / zip files se khulte hain, bilkul original quality me (koi compression nahi).
@@ -76,6 +77,15 @@ curl http://127.0.0.1:3010/api/health
 Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 
 ## Badlav
+**Update 8f (12 Oct 2026)**
+- TVS catalogue me aapke folder "All Catalogues > TVS ALL" ki 17 PDF books jud gayi: 14,401 nayi lines, 1,780 naye part number,
+  2 naye models (Scooty, Scooty Teenz) aur 30 nayi editions (Flame 125, Scooty Streak, Jive, RR 310 BSVI, Pep / Pep+, Star City /
+  Sport / Star City Plus, Apache 160 4V Ride Mode, Raider 125, Wego, Apache 200 4V, Ntorq 125, iQube, Apache colour parts).
+  Diagram = book ka apna page, original quality.
+- Baaki 32 PDF ke parts pehle se catalogue me hain (ya wo dusri book ki copy hain): wo upload nahi hoti.
+- Naye part numbers ka MRP abhi nahi hai (in books me MRP nahi chhapa). Purane numbers ka MRP waise hi dikhta hai.
+- Upload: Admin > More > Catalogue files > TVS > folder "All Catalogues > TVS ALL" chuno. Sirf 17 books (130 MB) jaati hain.
+
 **Update 8e (11 Oct 2026)**
 - Product photo ki safai (v3): kamre ki peeli/neeli roshni ka rang hat jaata hai (photo ke apne background se), part ke neeche halki
   parchhai (safed part bhi safed background pe dikhta hai), Bike Pharma logo aur halka. 12 MP photo ab ~3.5 second (pehle 6-7).

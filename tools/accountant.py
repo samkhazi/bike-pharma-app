@@ -32,10 +32,10 @@ const acPOs=()=>(DB.pos||[]).filter(o=>['Sent','Received'].includes(o.status));
 /* home */
 SCREENS.achome=()=>{const sups0=sups(),owe=r2(sups0.reduce((a,s)=>a+supOut(s),0)),c=collected('Cash').total,u=collected('UPI').total,mo=acMon(isoToday()),ex=(DB.exp||[]).filter(x=>acMon(acIso(x))===mo).reduce((a,x)=>a+(+x.a||0),0),po=acPOs().filter(o=>!(poAdv(o.id)>0)&&o.d===today());
  return `<div class="scroll"><div class="pad">${staffHead()}${supDueCard()}
- <div class="grid2">${tileBtn(owe>0?'r':'g','We owe suppliers',inr(owe),sups0.filter(s=>supOut(s)>0).length+' supplier'+(sups0.filter(s=>supOut(s)>0).length===1?'':'s'),"go('asupp')")}${tileBtn('a','Mechanic udhaar',inr(allOut()),'to collect',"go('mechdues')")}
+ <div class="grid2">${tileBtn(owe>0?'r':'g','We owe suppliers',inr(owe),sups0.filter(s=>supOut(s)>0).length+' supplier'+(sups0.filter(s=>supOut(s)>0).length===1?'':'s'),"go('asupp')")}${tileBtn('a','Mechanic credit',inr(allOut()),'to collect',"go('mechdues')")}
  ${tileBtn('g','Cash today',inr(c),'from bills & payments',"S.ui.cbd=null;go('accash')")}${tileBtn('b','UPI today',inr(u),'from bills & payments',"S.ui.cbd=null;go('accash')")}
  ${tileBtn('','Expenses',inr(ex),acMonName(mo),"go('acexp')")}${tileBtn('','Purchase orders',String(po.length),'approved today',"go('acpo')")}</div>
- <div class="card flush">${[['Supplier bills to pay','Pay and mark paid','rupee',"go('supdue')"],['Purchase orders','Pay an advance on an approved order','package',"go('acpo')"],['Receive udhaar payment','From a mechanic','wallet',"S.ui.rmech=null;S.ui.ramt=null;go('receive')"],['Day closing','Count cash, match with bills','lock',"go('dayclose')"],['Cash book','Every rupee in and out','receipt',"S.ui.cbd=null;go('accash')"],['Expenses','Rent, salary, bills','clip',"go('acexp')"],['GST report','Month summary · Excel for the CA','file',"go('acgst')"],['Suppliers','Khata of every supplier','truck',"go('asupp')"],['Udhaar reminders','WhatsApp to mechanics','chat',"go('acremind')"],['Salary & advance','Staff salary, advance cut','users',"go('acsal')"],['Refunds','Return money to give back','repeat',"go('acref')"],['Cheques','Received and given','file',"go('accheq')"],['Bank statement match','Upload the statement','upload',"go('acbank')"],['Export for CA','Tally · Zoho Books · Excel','download',"go('acexport')"],...(S.user.role==='admin'?[['Profit & loss','Month by month','chart',"go('acpl')"]]:[])].map(([t,s,i,o])=>li(t,s,'',i,o)).join('')}</div>
+ <div class="card flush">${[['Supplier bills to pay','Pay and mark paid','rupee',"go('supdue')"],['Purchase orders','Pay an advance on an approved order','package',"go('acpo')"],['Receive credit payment','From a mechanic','wallet',"S.ui.rmech=null;S.ui.ramt=null;go('receive')"],['Day closing','Count cash, match with bills','lock',"go('dayclose')"],['Cash book','Every rupee in and out','receipt',"S.ui.cbd=null;go('accash')"],['Expenses','Rent, salary, bills','clip',"go('acexp')"],['GST report','Month summary · Excel for the CA','file',"go('acgst')"],['Suppliers','Khata of every supplier','truck',"go('asupp')"],['Credit reminders','WhatsApp to mechanics','chat',"go('acremind')"],['Salary & advance','Staff salary, advance cut','users',"go('acsal')"],['Refunds','Return money to give back','repeat',"go('acref')"],['Cheques','Received and given','file',"go('accheq')"],['Bank statement match','Upload the statement','upload',"go('acbank')"],['Export for CA','Tally · Zoho Books · Excel','download',"go('acexport')"],...(S.user.role==='admin'?[['Profit & loss','Month by month','chart',"go('acpl')"]]:[])].map(([t,s,i,o])=>li(t,s,'',i,o)).join('')}</div>
 </div></div>`;};
 
 /* 1. purchase orders: advance payment on an approved order */
@@ -89,7 +89,7 @@ function acBillIn(b){if(b.cancel)return [];const net=r2((+b.amt||0)-(+b.w||0));i
  if(b.split&&typeof b.split==='object')return ['Cash','UPI','Card'].filter(k=>+b.split[k]>0).map(k=>({m:k,amt:+b.split[k]}));return [];}
 function acBook(iso){const R=[];const add=(dir,m,amt,t,s)=>{if(+amt>0)R.push({dir,m,amt:r2(+amt),t,s:s||''});};
  (DB.bills||[]).filter(b=>acIso(b)===iso).forEach(b=>acBillIn(b).forEach(x=>add('in',x.m,x.amt,'Bill '+b.id,b.pname||b.p)));
- (DB.orec||[]).filter(x=>acIso(x)===iso).forEach(x=>add('in',x.pm,x.amt,'Udhaar received',(MECHS_R().find(m=>m.code===x.code)||{}).n||x.code));
+ (DB.orec||[]).filter(x=>acIso(x)===iso).forEach(x=>add('in',x.pm,x.amt,'Credit payment received',(MECHS_R().find(m=>m.code===x.code)||{}).n||x.code));
  (DB.grns||[]).forEach(g=>(g.pays||[]).filter(p=>p.d===iso).forEach(p=>add('out',p.mode,p.amt,'Supplier bill '+(g.inv||g.id),g.supplier+(p.ref?' · '+p.ref:''))));
  (DB.supAdv||[]).filter(a=>a.d===iso).forEach(a=>add('out',a.mode,a.amt,'Advance '+a.po,a.sup+(a.ref?' · '+a.ref:'')));
  (DB.exp||[]).filter(x=>!x.nb&&acIso(x)===iso).forEach(x=>add('out',x.pm||'Cash',x.a,'Expense · '+x.c,x.n));
@@ -105,7 +105,7 @@ SCREENS.accash=()=>{const iso=S.ui.cbd||isoToday(),R=acBook(iso),sum=(dir,b)=>r2
  <div class="grid2">${box('Cash')}${box('Bank')}</div>
  <div class="grid2"><button class="btn line sm" onclick="acCbAdd()">${ic('plus','s16')} Add entry</button><button class="btn line sm" onclick="acCbCsv('${iso.slice(0,7)}')">${ic('download','s16')} Month in Excel</button></div>
  ${R.length?`<div class="card flush">${R.map(x=>`<div class="li"><div class="grow"><div class="t">${esc(x.t)}</div><div class="s">${esc(x.m)}${x.s?' · '+esc(x.s):''}</div></div><b class="num" style="color:${x.dir==='in'?'var(--g)':'var(--r)'}">${x.dir==='in'?'+':'−'} ${inr(x.amt)}</b></div>`).join('')}</div>`:'<div class="empty">Nothing came in or went out on this day.</div>'}
- <p class="cap">Credit (udhaar) bills are not cash: they show here when the mechanic pays.</p>
+ <p class="cap">Credit bills are not cash: they show here when the mechanic pays.</p>
 </div></div>`;};
 function acCbAdd(){S.ui.cbdir=null;S.ui.cbm=null;sheet(`<h3 class="h2">Add cash book entry</h3><p class="cap">For money that is not a bill, supplier payment or expense: owner's cash, bank deposit, loan, etc.</p>
  <div class="field"><label>Type</label>${acModeChips('cbdir',['In','Out','Cash to bank'])}</div>
@@ -264,7 +264,7 @@ function acTally(mo){const V=[],le=(n,amt)=>`<ALLLEDGERENTRIES.LIST><LEDGERNAME>
  (DB.grns||[]).forEach(g=>(g.pays||[]).filter(p=>acMon(p.d)===mo).forEach(p=>vch('Payment',p.d,p.id,g.supplier,[le(g.supplier,-p.amt),le(bank(p.mode),p.amt)],'Bill '+(g.inv||g.id)+(p.ref?' · '+p.ref:''))));
  (DB.supAdv||[]).filter(a=>acMon(a.d)===mo).forEach(a=>vch('Payment',a.d,a.id,a.sup,[le(a.sup,-a.amt),le(bank(a.mode),a.amt)],'Advance '+a.po));
  (DB.exp||[]).filter(x=>acMon(acIso(x))===mo).forEach((x,i)=>vch('Payment',acIso(x),'EXP-'+mo+'-'+(i+1),x.c,[le(x.c,-x.a),le(bank(x.pm||'Cash'),+x.a)],x.n||''));
- (DB.orec||[]).filter(x=>acMon(acIso(x))===mo).forEach((x,i)=>{const n=(MECHS_R().find(m=>m.code===x.code)||{}).n||x.code;vch('Receipt',acIso(x),x.ref||('REC-'+mo+'-'+(i+1)),n,[le(n,+x.amt),le(bank(x.pm),-x.amt)],'Udhaar received');});
+ (DB.orec||[]).filter(x=>acMon(acIso(x))===mo).forEach((x,i)=>{const n=(MECHS_R().find(m=>m.code===x.code)||{}).n||x.code;vch('Receipt',acIso(x),x.ref||('REC-'+mo+'-'+(i+1)),n,[le(n,+x.amt),le(bank(x.pm),-x.amt)],'Credit payment received');});
  return `<?xml version="1.0" encoding="UTF-8"?>\n<ENVELOPE><HEADER><TALLYREQUEST>Import Data</TALLYREQUEST></HEADER><BODY><IMPORTDATA><REQUESTDESC><REPORTNAME>Vouchers</REPORTNAME></REQUESTDESC><REQUESTDATA>\n${V.join('\n')}\n</REQUESTDATA></IMPORTDATA></BODY></ENVELOPE>`;}
 function acZoho(mo,k){if(k==='inv')return [['Invoice Date','Invoice Number','Customer Name','GST Treatment','GSTIN','Place of Supply','Item Name','HSN/SAC','Quantity','Item Price','Item Tax %','Is Inclusive Tax','Payment Mode'],
   ...acGstLines(mo).map(x=>[x.iso,x.b.id,acParty(x.b)==='Cash'?'Walk-in customer':acParty(x.b),x.gst?'business_gst':'consumer',x.gst,'KA',x.n,x.h,x.q,r2(x.tot/(+x.q||1)),x.rt,'true',x.b.pm])];
@@ -309,19 +309,19 @@ SCREENS.acbank=()=>{const r=DB.bankRec;return bar('Bank statement match')+`<div 
 
 /* ---------- 16. udhaar reminder on WhatsApp, one tap per mechanic ---------- */
 function acRemText(m){const inv=mechInvs(m.code).filter(v=>v.amt>v.paid),od=inv.filter(isOverdue).length;
- return `Namaste ${m.n}, Bike Pharma Automobiles me aapka ₹${Math.round(mechDue(m.code)).toLocaleString('en-IN')} baaki hai (${inv.length} bill${inv.length===1?'':'s'}${od?', '+od+' overdue':''}). Kripya jaldi payment kar dein.${/^To be added/.test(SHOP.upi||'')?'':' UPI: '+SHOP.upi} Dhanyavaad.`;}
+ return `Hello ${m.n}, ${inr(mechDue(m.code))} is due to Bike Pharma Automobiles (${inv.length} bill${inv.length===1?'':'s'}${od?', '+od+' overdue':''}). Please make the payment soon.${/^To be added/.test(SHOP.upi||'')?'':' UPI: '+SHOP.upi} Thank you.`;}
 function acRemind(c){const m=MECHS_R().find(x=>x.code===c);if(!m)return;const d=String(m.mob||telOf(PARTY(c).ph)||'').replace(/\D/g,'');if(d.length<10)return toastWarn('No WhatsApp number on file for '+m.n);
- (DB.remind=DB.remind||{})[c]={d:isoToday(),by:S.user.name};audit('Udhaar reminder sent',c,'—',inr(mechDue(c)));save();
+ (DB.remind=DB.remind||{})[c]={d:isoToday(),by:S.user.name};audit('Credit reminder sent',c,'—',inr(mechDue(c)));save();
  extOpen('https://wa.me/'+(d.length===10?'91'+d:d)+'?text='+encodeURIComponent(acRemText(m)),'Opening WhatsApp…');refresh();}
 SCREENS.acremind=()=>{const L=MECHS_R().filter(m=>mechDue(m.code)>0).sort((a,b)=>mechDue(b.code)-mechDue(a.code));
- return bar('Udhaar reminders')+`<div class="scroll"><div class="pad"><p class="cap">Tap Send: WhatsApp opens with the message ready; press send there.</p>
- ${L.length?`<div class="card flush">${L.map(m=>{const r=(DB.remind||{})[m.code],od=mechInvs(m.code).filter(v=>v.amt>v.paid&&isOverdue(v)).length;return `<div class="li"><div class="grow"><div class="t">${esc(m.n)} · ${inr(mechDue(m.code))}</div><div class="s">${od?od+' overdue · ':''}${r?'last reminder '+esc(fmtD(r.d)):'no reminder yet'}</div></div><button class="btn sm" onclick="acRemind('${esc(m.code)}')">${ic('chat','s16')} Send</button></div>`;}).join('')}</div>`:'<div class="empty">No mechanic has udhaar.</div>'}
+ return bar('Credit reminders')+`<div class="scroll"><div class="pad"><p class="cap">Tap Send: WhatsApp opens with the message ready; press send there.</p>
+ ${L.length?`<div class="card flush">${L.map(m=>{const r=(DB.remind||{})[m.code],od=mechInvs(m.code).filter(v=>v.amt>v.paid&&isOverdue(v)).length;return `<div class="li"><div class="grow"><div class="t">${esc(m.n)} · ${inr(mechDue(m.code))}</div><div class="s">${od?od+' overdue · ':''}${r?'last reminder '+esc(fmtD(r.d)):'no reminder yet'}</div></div><button class="btn sm" onclick="acRemind('${esc(m.code)}')">${ic('chat','s16')} Send</button></div>`;}).join('')}</div>`:'<div class="empty">No mechanic has credit due.</div>'}
 </div></div>`;};
 """
 
 ACCESS_JS = r"""
 LABEL.accountant='Accountant';HOME.accountant='achome';
-NAVS.accountant=[['achome','Home','home'],['supdue','Pay','rupee'],['mechdues','Udhaar','wallet'],['accash','Cash book','receipt'],['saccount','Account','user']];
+NAVS.accountant=[['achome','Home','home'],['supdue','Pay','rupee'],['mechdues','Credit','wallet'],['accash','Cash book','receipt'],['saccount','Account','user']];
 ACCESS.accountant=['achome','acpo','acexp','accash','acgst','acledger','acsal','acref','accheq','acexport','acbank','acremind','asupp','supbills','supdue','grnview','mechdues','pendpay','receive','dayclose','bills','billview','custview','usearch','saccount'];
 ACCESS.admin.push('achome','acpo','acexp','accash','acgst','acledger','acsal','acref','accheq','acexport','acbank','acremind','acpl');
 """
@@ -355,12 +355,12 @@ def apply(a):
     sub("Inventory:'inventory'}", "Inventory:'inventory',Accountant:'accountant'}")
     sub("['billing','sales','manager','inventory','admin']", "['billing','sales','manager','inventory','accountant','admin']", 2)
     sub("inventory:['package','n'],", "inventory:['package','n'],accountant:['rupee','g'],")
-    sub("inventory:'Stock in/out · GRN · Counts',", "inventory:'Stock in/out · GRN · Counts',accountant:'Supplier payments · Udhaar · Expenses · GST',")
+    sub("inventory:'Stock in/out · GRN · Counts',", "inventory:'Stock in/out · GRN · Counts',accountant:'Supplier payments · Credit · Expenses · GST',")
     sub("inventory:[parts],", "inventory:[parts],accountant:[cust,mech,inv],")
     sub("inventory:'parts only',", "inventory:'parts only',accountant:'customers, mechanics, invoices',")
     # computer sidebar
     sub(" admin:[['findpart','Find Part','pin',\"go('findpart')\"],['ainv'",
-        " accountant:[['acpo','Purchase orders','package',\"go('acpo')\"],['acremind','Udhaar reminders','chat',\"go('acremind')\"],['acsal','Salary & advance','users',\"go('acsal')\"],['acref','Refunds','repeat',\"go('acref')\"],['accheq','Cheques','file',\"go('accheq')\"],['acbank','Bank statement match','upload',\"go('acbank')\"],['acexport','Export for CA','download',\"go('acexport')\"],['acexp','Expenses','clip',\"go('acexp')\"],['acgst','GST report','file',\"go('acgst')\"],['asupp','Suppliers','truck',\"go('asupp')\"],['dayclose','Day closing','lock',\"go('dayclose')\"],['receive','Receive payment','wallet',\"S.ui.rmech=null;S.ui.ramt=null;go('receive')\"]],\n admin:[['findpart','Find Part','pin',\"go('findpart')\"],['achome','Accounts','rupee',\"go('achome')\"],['ainv'")
+        " accountant:[['acpo','Purchase orders','package',\"go('acpo')\"],['acremind','Credit reminders','chat',\"go('acremind')\"],['acsal','Salary & advance','users',\"go('acsal')\"],['acref','Refunds','repeat',\"go('acref')\"],['accheq','Cheques','file',\"go('accheq')\"],['acbank','Bank statement match','upload',\"go('acbank')\"],['acexport','Export for CA','download',\"go('acexport')\"],['acexp','Expenses','clip',\"go('acexp')\"],['acgst','GST report','file',\"go('acgst')\"],['asupp','Suppliers','truck',\"go('asupp')\"],['dayclose','Day closing','lock',\"go('dayclose')\"],['receive','Receive payment','wallet',\"S.ui.rmech=null;S.ui.ramt=null;go('receive')\"]],\n admin:[['findpart','Find Part','pin',\"go('findpart')\"],['achome','Accounts','rupee',\"go('achome')\"],['ainv'")
     # supplier page: khata (ledger)
     sub("${L.length?L.map(supBillCard).join('')", "<button class=\"btn line sm\" onclick=\"go('acledger',{n:'${qn}'})\">${ic('file','s16')} Khata / statement</button>\n ${L.length?L.map(supBillCard).join('')")
     # Day closing ends with the cash handover to the Accountant

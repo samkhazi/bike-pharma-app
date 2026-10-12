@@ -26,7 +26,7 @@ const A = await mk(390, 844); await login(A, 'asha@test.in', 'asha1234');
 ok(await A.evaluate(() => S.user && S.user.role === 'accountant' && HOME.accountant === 'achome'), 'accountant logged in');
 await A.evaluate(() => tab('achome')); await A.waitForTimeout(300);
 let t = await T(A);
-ok(/We owe suppliers/.test(t) && /Mechanic udhaar/.test(t) && /Cash today/.test(t) && /GST report/.test(t) && /Export for CA/.test(t), 'accountant home tiles and links');
+ok(/We owe suppliers/.test(t) && /Mechanic credit/.test(t) && /Cash today/.test(t) && /GST report/.test(t) && /Export for CA/.test(t), 'accountant home tiles and links');
 ok(await A.evaluate(() => !allowed('invoice') && !allowed('mgmargin') && !allowed('grnedit') && !allowed('masterprice') && !allowed('acpl') && allowed('supdue') && allowed('mechdues') && allowed('dayclose')), 'no billing, margin, stock edit, pricing or P&L; supplier bills, udhaar, day closing open');
 // a test bill (UPI) to see in the cash book, GST and Tally
 await A.evaluate(() => { const p = PRODUCTS[0]; DB.bills.unshift({ id: 'INV-T-1', kind: 'walk', p: 'Walk-in', t: '10:00 AM', iso: isoToday(), pm: 'UPI', amt: 1180, items: [{ pid: p.id, q: 1, r: 1180, mrp: 1180 }] }); });

@@ -101,6 +101,33 @@ ok(await Ad.evaluate(id => { const g = DB.grns.find(x => x.id === id); return !g
 await Ad.evaluate(() => go('mgmargin')); await Ad.waitForTimeout(200);
 ok(/Gross margin/.test(await T(Ad)), 'admin still sees gross margin');
 
+// ===== Update 8q: Dead stock (Admin at purchase rate + offer price, Manager at MRP) =====
+const ds = await Ad.evaluate(() => { const sold = new Set(); (DB.bills || []).forEach(b => (b.items || []).forEach(i => sold.add(i.pid)));
+  const x = PRODUCTS.find(p => !sold.has(p.id) && +p.mrp > 100 && +p.mp > 0 && !p.gone); if (!x) return null;
+  DB.stock[x.id] = 4; DB.grns.push({ id: 'GRN-DS1', supplier: 'Old Supplier', inv: 'OS-1', date: '01 Mar', status: 'posted', items: [{ pid: x.id, q: 4, rate: 50 }] }); save();
+  return { id: x.id, mrp: +x.mrp, price: +x.price, mp: +x.mp }; });
+ok(!!ds, 'a part with no sale for dead stock ' + JSON.stringify(ds));
+await Ad.evaluate(() => { S.ui.dsd = 180; go('deadstock'); }); await Ad.waitForTimeout(300); t = await T(Ad);
+ok(/Money stuck \(purchase rate\)/i.test(t) && /Inventory › Dead stock/.test(t) && /Old Supplier/.test(t) && /₹200/.test(t) && /Offer price/i.test(t), 'admin website dead stock: table with supplier and ₹200 stuck at rate (4 × ₹50)');
+await Ad.evaluate(id => dsSheet(id, 'offer'), ds.id); await Ad.waitForTimeout(300);
+const offer = Math.max(1, Math.round(ds.mp * 0.8));
+await Ad.fill('#dsOp', String(offer)); await Ad.evaluate(id => dsOffSave(id), ds.id); await Ad.waitForTimeout(300);
+ok(await Ad.evaluate(([id, o]) => DB.offers && DB.offers[id] && P(id).price === o && P(id).mp === o, [ds.id, offer]), 'admin offer price: customer and mechanic price become ' + offer);
+ok(await Ad.evaluate(() => DB.audit.some(x => x.a === 'Offer price set')), 'offer price is in the audit log');
+await Ad.evaluate(() => tab('ahome')); await Ad.waitForTimeout(300);
+ok(/Dead stock/.test(await T(Ad)), 'admin home: Dead stock card');
+await sync(Ad);
+await M.reload(); await M.waitForFunction(() => typeof S !== 'undefined' && S.user, null, { timeout: 15000 }); await M.waitForTimeout(800);
+ok(await M.evaluate(([id, o]) => P(id).price === o, [ds.id, offer]), 'manager app gets the offer price from the server');
+await M.evaluate(() => tab('mghome')); await M.waitForTimeout(300);
+ok(/Dead stock/.test(await T(M)), 'manager home: Dead stock card');
+await M.evaluate(() => { S.ui.dsd = 180; go('deadstock'); }); await M.waitForTimeout(300); t = await T(M);
+ok(/STOCK STUCK · AT MRP/i.test(t) && /Admin sets the offer price/.test(t) && !/Offer price/i.test(t.replace(/Admin sets the offer price/g, '')) && !/₹200\b/.test(t) && /Mechanics/i.test(t), 'manager phone dead stock: values at MRP, no rate, no Offer button');
+await M.evaluate(id => dsReturn(id), ds.id); await M.waitForTimeout(300);
+ok(await M.evaluate(id => cur().s === 'sreturn' && S.ui.sr.items[id] === 4 && S.ui.sr.sup === 'Old Supplier', ds.id), 'Return opens supplier return with 4 pcs for Old Supplier');
+await Ad.evaluate(id => dsOffEnd(id), ds.id); await Ad.waitForTimeout(200);
+ok(await Ad.evaluate(([id, p]) => !DB.offers[id] && P(id).price === p.price && P(id).mp === p.mp, [ds.id, ds]), 'ending the offer brings the old prices back');
+
 ok(!errs.length, 'no page errors ' + errs.slice(0, 3).join(' | '));
 await b.close();
 console.log(fails ? `${fails} FAILED` : 'ALL PASS'); process.exit(fails ? 1 : 0);

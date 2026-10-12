@@ -77,6 +77,13 @@ curl http://127.0.0.1:3010/api/health
 Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 
 ## Badlav
+**Update 8q (12 Oct 2026) · Dead stock**
+- **Dead stock** page (Admin + Manager, Figma "Dead stock (12 Oct)"): 60+ / 90+ / 180+ din se na bike parts, kitna paisa
+  phasa hai (Admin: purchase rate pe, Manager: MRP pe), qty, rack, kab aaya, supplier, kaunsi bike me lagta hai.
+- Har part pe: **Return** (supplier return khulta hai), **Offer price** (sirf Admin; date tak ya stock 0 hone tak shop, app aur
+  bill me wahi rate), **Task** staff ko, **Mechanics** jo ye part ya usi bike ke parts lete hain (Call button).
+- Raaste: Admin aur Manager home card, Stock alerts > Not selling, Inventory, website side menu. Website pe table + Export list.
+
 **Update 8n (12 Oct 2026) · Manager profile 2**
 - **Online orders** page (Admin + Manager): website/app ke orders New → Packed → Out for delivery → Delivered, ya Cancel
   (parts wapas stock me, wallet ka paisa wapas). Customer apne app me wahi status dekhta hai. Manager home pe "2 new orders".

@@ -405,6 +405,9 @@ a, k = manager2.apply(a); n_patch += k
 # Sam 2026-10-12 11:40Z: update 8o, the Billing profile: fixed prices, warranty claims, bill cancel / change through Manager (tools/billing.py)
 import billing
 a, k = billing.apply(a); n_patch += k
+# Sam 2026-10-12 11:52Z-11:57Z: update 8p, the Accountant profile (tools/accountant.py)
+import accountant
+a, k = accountant.apply(a); n_patch += k
 open(os.path.join(OUT, 'app.html'), 'w', encoding='utf-8').write(a)
 _ix = open(os.path.join(os.path.dirname(SRC), 'index.html'), encoding='utf-8').read()
 _vp = '<meta name="viewport" content="width=device-width, initial-scale=1">'

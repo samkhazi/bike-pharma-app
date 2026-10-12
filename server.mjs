@@ -100,7 +100,7 @@ async function api(req, res, url, user) {
   if (p === '/api/catup') return catUpload(req, res, url, user);
   if (p === '/api/photo/status') return photoStatus(req, res, url, user);
   if (p === '/api/photo/wrong') return photoWrong(req, res, url, user);
-  if (p === '/api/photo') return photoUpload(req, res, user);
+  if (p === '/api/photo') return photoUpload(req, res, user, url);
   if (p === '/api/billread') return billRead(req, res, user);
   let body = {};
   if (m === 'POST') { try { const b = await readBody(req); body = b.length ? JSON.parse(b.toString('utf8')) : {}; } catch (e) { return json(res, 400, { error: 'Bad request body' }); } }
@@ -368,7 +368,7 @@ function photoKind(b) {
   if (b.length > 12 && b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP') return 'webp';
   return '';
 }
-async function photoUpload(req, res, user) {
+async function photoUpload(req, res, user, url) {
   if (req.method !== 'POST') { drain(req); return json(res, 405, { error: 'Method not allowed' }); }
   if (roleClass(user) !== 'staff') { drain(req); return json(res, user ? 403 : 401, { error: user ? 'Only shop staff can add product photos' : 'Please log in again' }); }
   if (limited('photo:' + user.id, 600, 3600e3)) { drain(req); return json(res, 429, { error: 'Too many photos in one hour. Please wait a little.' }); }
@@ -384,7 +384,7 @@ async function photoUpload(req, res, user) {
     console.log(new Date().toISOString(), 'product photo saved', name, b.length, 'by', user.id);
   }
   const h = name.slice(0, 32);
-  PHOTO_AI.enqueue(h);
+  if (!url || url.searchParams.get('ai') !== 'off') PHOTO_AI.enqueue(h); // a bill photo (expenses) needs no cut-out
   return json(res, 200, { url: '/photos/' + h + '-c.jpg', orig: '/photos/' + name, size: b.length, ai: PHOTO_AI.status(h) });
 }
 // ---------- "Apna AI" bill reader (Sam 2026-10-11 20:10Z): a bill page in, its text out ----------

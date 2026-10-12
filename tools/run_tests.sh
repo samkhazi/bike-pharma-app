@@ -38,4 +38,6 @@ BASE3=http://127.0.0.1:3017 PH=$T3/ph node tools/test_inv8.mjs || r=1
 BASE3=http://127.0.0.1:3017 node tools/test_zoom.mjs || r=1
 # update 8m: the Manager profile (no rates or margin, purchase order limit, Admin enters the rates later)
 BASE3=http://127.0.0.1:3017 node tools/test_mgr.mjs || r=1
+# update 8p: the Accountant profile
+BASE3=http://127.0.0.1:3017 node tools/test_acc.mjs || r=1
 exit $r

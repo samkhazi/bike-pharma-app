@@ -385,11 +385,12 @@ if (AI === 'ready') { await aiDone(Dk, 'PRODUCTS.flatMap(p => p.photos || [])').
   await M.fill('#spy-a', '5000'); await M.evaluate(id => supPaySave(id), gid); await M.waitForTimeout(400); t = await T(M);
   ok(/Part paid/i.test(t) && /balance ₹3,517/.test(t), 'a part payment: Part paid, balance ₹3,517.24 ' + t.replace(/\s+/g, ' ').slice(0, 200));
   await M.evaluate(() => supDaysSheet('SHREE GANESH AUTO DISTRIBUTORS')); await M.waitForTimeout(200); await M.fill('#sdy', '0'); await M.evaluate(() => supDaysSave('SHREE GANESH AUTO DISTRIBUTORS')); await M.waitForTimeout(300);
-  ok(/Due today/i.test(await T(M)), 'payment days 0: the bill is due today');
+  const late = Math.round((Date.parse(new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10)) - Date.parse('2026-10-11')) / 86400e3); // the test bill is dated 11 Oct 2026
+  ok((late > 0 ? new RegExp(late + ' days? late', 'i') : /Due today/i).test(await T(M)), 'payment days 0: the bill of 11 Oct is ' + (late > 0 ? late + ' day(s) late' : 'due today'));
   await M.evaluate(() => tab('ahome')); await M.waitForTimeout(300); t = await T(M);
   ok(/Supplier bills to pay · ₹3,517/.test(t) && await M.evaluate(() => (document.querySelector('#vp .iconbtn .cnt') || {}).textContent === '1'), 'Admin home: "Supplier bills to pay" card and the bell shows 1');
   await M.evaluate(() => supBellOn()); await M.waitForTimeout(300); t = await T(M);
-  ok(await M.evaluate(() => cur().s === 'supdue') && /Due today/i.test(t) && /SHREE GANESH/.test(t), 'the bell opens bills to pay: due today');
+  ok(await M.evaluate(() => cur().s === 'supdue') && (late > 0 ? /Late/i : /Due today/i).test(t) && /SHREE GANESH/.test(t), 'the bell opens bills to pay: ' + (late > 0 ? 'late' : 'due today'));
   await M.evaluate(id => go('grnview', { id }), gid); await M.waitForTimeout(300); t = await T(M);
   ok(/Bill amount/.test(t) && /Paid/.test(t) && /Balance/.test(t) && /Disc 18\.1% \(calculated from MRP\)/.test(t) && /HSN 87141090/.test(t) && /GST 18%/.test(t) && /UPI|Cash/.test(t), 'View: parts with qty × rate, MRP, discount, HSN, GST; bill amount, paid, balance, payments');
   await shot(M, 'p10-billview', 1);

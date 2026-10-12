@@ -77,6 +77,18 @@ curl http://127.0.0.1:3010/api/health
 Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 
 ## Badlav
+**Update 8h (12 Oct 2026)**
+- Naya: Admin > More > Alternate numbers = web agent. Jo part number kisi catalogue me nahi milta (Find Part, Add product,
+  Stock in ki "Not in a catalogue" line), wo is list me jaata hai. Agent har number pehle Scribd par, phir baaki internet par
+  dhoondta hai (Claude web search; Google ka Gemini nahi) aur batata hai: part ka naam, brand, aur dusra number jo hamare
+  catalogue me hai, saath me wo page jahan se mila.
+- Catalogue files kabhi nahi badalti. Agent ka jawab alag list me rehta hai; Admin "This is it" dabaye tabhi Find Part
+  us number par dusre number ke parts dikhata hai (upar line: "Found by the web agent, approved by Admin").
+- Chalu karna: console.anthropic.com > API keys se key banao (thoda credit daalo), phir Admin > More > Alternate numbers me
+  paste karo (key sirf server me rehti hai, app me kabhi wapas nahi aati). Ya `.env` me `ANTHROPIC_API_KEY=` likho.
+- Default 10 number roz (Admin badal sakta hai, 0-200). Kharcha page par dikhta hai (aaj / is mahine, lagbhag ₹).
+  Jo number nahi mila, wo 7 din baad dobara (3 baar tak).
+
 **Update 8g (12 Oct 2026)**
 - Find Part > Search by vehicle: model chunte hi Engine (cc) me sirf usi model ka CC aata hai (khud chuna hua), aur Year me sirf usi
   model ke saal. Ek hi saal ho to wo khud chuna jaata hai, aur "Search parts" seedha sections kholta hai.
@@ -201,6 +213,6 @@ Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 - Computer pe login page me sirf login/register form. Catalogue ka data site se hataya (point 6).
 
 ## Files
-`server.mjs` server · `lib/` store, merge, sms · `admin.mjs` commands · `public/` website (index.html landing,
+`server.mjs` server · `lib/` store, merge, sms, altagent (web agent) · `admin.mjs` commands · `public/` website (index.html landing,
 app.html app) · `install.sh` pehli install · `update.sh` `restart.sh` `check.sh` `setup-github.sh` update ke scripts ·
 `tools/` build + tests · `data/` database (sirf server pe) · `.env` settings (sirf server pe).

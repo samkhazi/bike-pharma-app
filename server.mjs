@@ -14,6 +14,7 @@ import { otpConfig, makeOtp, deliverOtp } from './lib/sms.mjs';
 import { removeDemoData } from './lib/cleanup.mjs';
 import { photoAi, AI_VER } from './lib/photoai.mjs';
 import { billAi } from './lib/billai.mjs';
+import { makeAlt } from './lib/altagent.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 export function loadEnv(file) {
@@ -85,6 +86,9 @@ setInterval(() => { const now = Date.now(); for (const [k, l] of RATE) if (!l.so
 const ipOf = req => (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
 const loginError = { off: 'This login has been deactivated by Admin. Please contact your Admin.', pending: 'Your account is waiting for Bike Pharma verification.' };
 
+// ---------- web agent for part numbers no catalogue has (lib/altagent.mjs, update 8h) ----------
+const ALT = makeAlt({ store, PUBLIC_DIR, env, json, roleClass, limited });
+
 // ---------- API ----------
 async function api(req, res, url, user) {
   const p = url.pathname, m = req.method;
@@ -103,6 +107,7 @@ async function api(req, res, url, user) {
   const cfg = () => ({ otpHint: OTP.mode === 'fixed' ? OTP.fixed : null, otpMode: OTP.mode, version: VERSION, cat: catList() });
   const full = u => ({ user: u ? u : null, db: viewOf(store.stateAll().map(r => r.key), reader(), u, true), rev: store.rev(), cfg: cfg() });
 
+  if (p === '/api/alt') return ALT.api(m, body, user, res);
   if (p === '/api/health' && m === 'GET') return json(res, 200, { ok: true, rev: store.rev(), sqlite: HAS_SQLITE, version: VERSION, photoAi: PHOTO_AI.summary(), billAi: BILL_AI.summary() });
   if (p === '/api/boot' && m === 'GET') { if (!user && cookies(req).bp_s) setSession(req, res, '', true); return json(res, 200, full(user)); }
 
@@ -495,6 +500,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 server.listen(PORT, HOST, () => {
+  ALT.start();
   console.log(`[bikepharma] v${VERSION} on http://${HOST}:${PORT}  public=${PUBLIC_DIR}  data=${DATA_DIR}  files=${FILES_DIR}  store=${HAS_SQLITE ? 'sqlite' : 'json'}  otp=${OTP.mode}`);
 });
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { PHOTO_AI.stop(); server.close(); store.close(); process.exit(0); });

@@ -374,6 +374,9 @@ sub1("${sel('cc','Engine (cc)',`<option value=\"Any\">Any cc</option>`+ccs.map(c
 sub1("function m2Set(k,v){const f=S.ui.fp;if(k==='vb'){f.yr='Any';fpSet('vb',v);return;}\n if(k==='vm'){f.vm=v;f.vv='Any';if(v!=='Any'&&MODEL_CC[v])f.cc=String(MODEL_CC[v]);f.yr='Any';refresh();return;}\n if(k==='cc'){f.cc=v;if(v!=='Any'&&f.vm!=='Any'&&String(MODEL_CC[f.vm]||'')!==String(v))f.vm='Any';f.yr='Any';refresh();return;}",
      "function m2Set(k,v){const f=S.ui.fp;if(k==='vb'){f.yr='Any';f.ccU=0;fpSet('vb',v);return;}\n if(k==='vm'){f.vm=v;f.vv='Any';if(v!=='Any')f.cc=MODEL_CC[v]?String(MODEL_CC[v]):'Any';else if(!f.ccU)f.cc='Any';f.yr='Any';refresh();return;}\n if(k==='cc'){f.cc=v;f.ccU=v!=='Any'?1:0;if(v==='Any'&&f.vm!=='Any'&&MODEL_CC[f.vm])f.cc=String(MODEL_CC[f.vm]);if(v!=='Any'&&f.vm!=='Any'&&String(MODEL_CC[f.vm]||'')!==String(v))f.vm='Any';f.yr='Any';refresh();return;}")
 sub1("if(k==='vm'&&v!=='Any')f.cc=String(MODEL_CC[v]);refresh();}", "if(k==='vm'&&v!=='Any')f.cc=MODEL_CC[v]?String(MODEL_CC[v]):'Any';refresh();}")
+# Sam 2026-10-12 06:20Z-06:27Z: update 8h, the web agent for part numbers no catalogue has (tools/altno.py; server lib/altagent.mjs)
+import altno
+a, k = altno.apply(a); n_patch += k
 open(os.path.join(OUT, 'app.html'), 'w', encoding='utf-8').write(a)
 _ix = open(os.path.join(SP, 'site', 'com', 'index.html'), encoding='utf-8').read()
 _vp = '<meta name="viewport" content="width=device-width, initial-scale=1">'

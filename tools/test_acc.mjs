@@ -59,6 +59,8 @@ ok(await A.evaluate(() => acBook(isoToday()).filter(x => x.t === 'Expense · Sal
 await A.evaluate(() => go('acgst')); await A.waitForTimeout(200); t = await T(A);
 const gl = await A.evaluate(() => JSON.stringify(acGstLines(acMon(isoToday())).filter(x => x.b.id === 'INV-T-1').map(x => [x.tot, x.tax, x.rt])));
 ok(/GST on sales/i.test(t) && gl === '[[1180,180,18]]', 'GST report: ₹180 GST on the ₹1,180 bill at 18% ' + gl);
+const own = await A.evaluate(() => { const b = DB.bills.find(x => x.id === 'INV-T-1'), p = P(b.items[0].pid), old = p.gst; bpSetP(p, { gst: '28' }); const r = acGstLines(acMon(isoToday())).find(x => x.b.id === 'INV-T-1'); bpSetP(P(b.items[0].pid), { gst: old || '' }); return r && r.rt; });
+ok(own === 28, 'a part with its own GST % (28) uses it, not the 18% default: ' + own);
 const tx = await A.evaluate(() => acTally(acMon(isoToday())));
 ok(/<VOUCHER VCHTYPE="Sales"/.test(tx) && /Output CGST @9%/.test(tx) && /<VOUCHER VCHTYPE="Payment"/.test(tx) && /<VOUCHER VCHTYPE="Purchase"/.test(tx), 'Tally XML has sales, purchase and payment vouchers');
 ok(await A.evaluate(() => { const r = acZoho(acMon(isoToday()), 'inv'); return r.length > 1 && r[0][0] === 'Invoice Date'; }), 'Zoho Books invoices CSV');

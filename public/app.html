@@ -862,8 +862,10 @@ function acCsv(k,rows){const q=v=>{v=String(v??'');return /[",\n]/.test(v)?'"'+v
 const GST_DEF={'8714':18,'2710':18,'8512':18,'4011':18,'8708':18,'9987':18};
 const gstRate=h=>{const v=(DB.gstRate||{})[h];return isFinite(+v)&&v!==''&&v!=null?+v:(GST_DEF[h]??18);};
 function acGstLines(mo){const L=[];(DB.bills||[]).filter(b=>!b.cancel&&acMon(acIso(b))===mo&&(b.items||[]).length).forEach(b=>{const gross=b.items.reduce((a,i)=>a+(+i.r||0)*(+i.q||0),0)||1,f=(+b.amt||0)/gross,gst=mechGst(b),b2b=/^[0-9A-Z]{15}$/.test(String(gst).toUpperCase());
-  b.items.forEach(i=>{const x=P(i.pid),h=HSN(x),rt=gstRate(h),tot=r2((+i.r||0)*(+i.q||0)*f),tx=r2(tot-tot/(1+rt/100));L.push({b,iso:acIso(b),party:b.pname||b.p,gst:b2b?gst:'',h,rt,n:x?x.name:i.pid,q:i.q,tot,taxable:r2(tot-tx),tax:tx});});});return L;}
-function acGstBuy(mo){return (DB.grns||[]).filter(g=>g.status==='posted'&&acMon(g.bdate||g.iso||ddmmm2iso(g.date))===mo).map(g=>({g,amt:bpAmt(g),tax:+g.tax||0}));}
+  b.items.forEach(i=>{const x=P(i.pid),h=x&&/^\d{4,8}$/.test(String(x.hsn||''))?String(x.hsn):HSN(x),rt=x&&+x.gst>0?+x.gst:gstRate(h),tot=r2((+i.r||0)*(+i.q||0)*f),tx=r2(tot-tot/(1+rt/100));L.push({b,iso:acIso(b),party:b.pname||b.p,gst:b2b?gst:'',h,rt,n:x?x.name:i.pid,q:i.q,tot,taxable:r2(tot-tx),tax:tx});});});return L;}
+/* GST on a purchase bill: the bill's GST amount, else worked out from each item's own GST % (update 8c reads it from the bill) */
+const acBuyTax=g=>+g.tax>0?+g.tax:r2((g.items||[]).reduce((a,it)=>a+(+it.gst>0&&+it.rate>0?(+it.q||0)*(+it.rate)*(1-(+it.disc>0?+it.disc:0)/100)*(+it.gst)/100:0),0));
+function acGstBuy(mo){return (DB.grns||[]).filter(g=>g.status==='posted'&&acMon(g.bdate||g.iso||ddmmm2iso(g.date))===mo).map(g=>({g,amt:bpAmt(g),tax:acBuyTax(g)}));}
 SCREENS.acgst=()=>{const ms=acMons(),mo=S.ui.agm&&ms.includes(S.ui.agm)?S.ui.agm:ms[0],L=acGstLines(mo),B=acGstBuy(mo),t=k=>r2(L.reduce((a,x)=>a+x[k],0));
  const b2b=L.filter(x=>x.gst),b2c=L.filter(x=>!x.gst),hs={};L.forEach(x=>{const k=x.h+'|'+x.rt;hs[k]=hs[k]||{h:x.h,rt:x.rt,v:0,tx:0};hs[k].v+=x.taxable;hs[k].tx+=x.tax;});
  const out=t('tax'),itc=r2(B.reduce((a,x)=>a+x.tax,0)),noTax=B.filter(x=>!(x.tax>0)).length,bills=new Set(L.map(x=>x.b.id)).size;
@@ -875,13 +877,13 @@ SCREENS.acgst=()=>{const ms=acMons(),mo=S.ui.agm&&ms.includes(S.ui.agm)?S.ui.agm
  ${sec('By HSN')}<div class="card flush">${Object.values(hs).map(x=>li('HSN '+x.h+' · '+x.rt+'%','Taxable '+inr(r2(x.v)),`<b class="num">${inr(r2(x.tx))}</b>`,'tag','')).join('')||'<div class="empty">No bills this month.</div>'}</div>
  ${sec('Purchases (input GST)')}<div class="card"><div class="kv"><span>Supplier bills (${B.length})</span><span>${inr(r2(B.reduce((a,x)=>a+x.amt,0)))}</span></div><div class="kv"><span>GST on purchase bills</span><span>${inr(itc)}</span></div>${noTax?`<div class="cap">${noTax} bill${noTax>1?'s have':' has'} no GST amount entered.</div>`:''}<div class="hr"></div><div class="kv big"><span>GST to pay (approx.)</span><span>${inr(Math.max(0,r2(out-itc)))}</span></div></div>
  <div class="grid2"><button class="btn line sm" onclick="acGstCsv('${mo}','s')">${ic('download','s16')} Sales register</button><button class="btn line sm" onclick="acGstCsv('${mo}','p')">${ic('download','s16')} Purchase register</button></div>
- <button class="link" onclick="acGstRates()">GST rates used (change)</button>
- <p class="cap">Bill prices include GST. Check the final return with your CA.</p>
+ <button class="link" onclick="acGstRates()">GST % for parts without their own (change)</button>
+ <p class="cap">Each part uses its own GST % (from its supplier bill); 18% only when it has none. Bill prices include GST. Check the final return with your CA.</p>
 </div></div>`;};
 function acGstCsv(mo,k){if(k==='s')acCsv('gst-sales-'+mo,[['Date','Bill','Party','GSTIN','HSN','Item','Qty','Rate %','Taxable','CGST','SGST','Total'],...acGstLines(mo).map(x=>[x.iso,x.b.id,x.party,x.gst,x.h,x.n,x.q,x.rt,x.taxable,r2(x.tax/2),r2(x.tax/2),x.tot])]);
  else acCsv('gst-purchases-'+mo,[['Bill date','Supplier','GSTIN','Bill no','Bill amount','GST'],...acGstBuy(mo).map(x=>[x.g.bdate||x.g.iso||'',x.g.supplier,x.g.gstin||((sups().find(s=>s.n===x.g.supplier)||{}).gst||''),x.g.inv||x.g.id,x.amt,x.tax])]);}
 function acGstRates(){const H=[...new Set([...Object.keys(GST_DEF),...PRODUCTS.map(x=>HSN(x))])];
- sheet(`<h3 class="h2">GST rates</h3><p class="cap">Rate per HSN used in this report. Ask your CA if unsure.</p>${H.map(h=>`<div class="field"><label for="gr-${h}">HSN ${h}</label><div class="inp"><input id="gr-${h}" inputmode="decimal" value="${gstRate(h)}"><b>%</b></div></div>`).join('')}
+ sheet(`<h3 class="h2">GST rates</h3><p class="cap">Used only for a part that has no GST % of its own (a part gets its GST % from its supplier bill). Ask your CA if unsure.</p>${H.map(h=>`<div class="field"><label for="gr-${h}">HSN ${h}</label><div class="inp"><input id="gr-${h}" inputmode="decimal" value="${gstRate(h)}"><b>%</b></div></div>`).join('')}
  <button class="btn" onclick="acGstRatesSave()">Save</button>`);}
 function acGstRatesSave(){const H=[...new Set([...Object.keys(GST_DEF),...PRODUCTS.map(x=>HSN(x))])];DB.gstRate=DB.gstRate||{};
  H.forEach(h=>{const v=parseFloat(acVal('gr-'+h));if(isFinite(v)&&v>=0&&v<=40)DB.gstRate[h]=v;});audit('GST rates changed','GST report','—',H.map(h=>h+' '+gstRate(h)+'%').join(', '));save();closeSheet();toast('Rates saved');refresh();}

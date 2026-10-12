@@ -77,6 +77,19 @@ curl http://127.0.0.1:3010/api/health
 Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 
 ## Badlav
+**Update 8r (12 Oct 2026) · Find Part ka part page, Mittal jaisa**
+- Part kholo to computer pe teen hisse: left me diagram, beech me sirf usi diagram ke parts unke ref number (sn) ke kram me,
+  right me chuna hua part (part no., MRP, stock, Add to bill / Add to stock). Phone pe diagram upar, list neeche; line pe tap
+  karo to details usi line ke neeche. Purani 100+ line wali "Parts in this assembly" list hat gayi.
+- Diagram ke number clickable: number pe mouse le jao to part ka naam, number aur MRP dikhta hai; click karo to wo part chuna
+  jaata hai. List ki line pe mouse le jao to diagram pe uska number chamakta hai. Bade (full-screen) diagram me bhi number hain.
+- Number kahan hai, ye kaise pata: Bajaj aur Suzuki ki PDF me number ka text hota hai, wahin se (bilkul sahi). Baaki diagrams
+  (KTM, Husqvarna, Hero, Honda, Yamaha, RE, TVS, scanned pages) server ka apna AI pehli baar khulne pe padhta hai (10-20 second),
+  phir hamesha ke liye `data/dghot/` me rakh leta hai. Jaanch: KTM ke 12 diagrams me har chhapa number mila (lagbhag 275 me se
+  ek chhoota), Bajaj ke 29 pages me 521 me se 515.
+- Koi number chhoot jaye ya galat ho: Admin diagram ke neeche "Fix numbers" dabaye, list me part chune, diagram pe us jagah
+  tap kare. Galat box pe tap karke "Take away". Ye bhi server pe rehta hai, sab staff ko dikhta hai.
+
 **Update 8q (12 Oct 2026) · Dead stock**
 - **Dead stock** page (Admin + Manager, Figma "Dead stock (12 Oct)"): 60+ / 90+ / 180+ din se na bike parts, kitna paisa
   phasa hai (Admin: purchase rate pe, Manager: MRP pe), qty, rack, kab aaya, supplier, kaunsi bike me lagta hai.

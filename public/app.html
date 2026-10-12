@@ -2652,6 +2652,7 @@ const catPdf=u=>{if(CAT_PFURL[u])return CAT_PFURL[u];const m=/^pdf:(.+):(\d+):(\
    const cv=document.createElement('canvas');cv.width=Math.max(1,Math.round(cw*sc));cv.height=Math.max(1,Math.round(ch*sc));const cx=cv.getContext('2d');
    cx.fillStyle='#fff';cx.fillRect(0,0,cv.width,cv.height);
    const job=pg.render({canvasContext:cx,viewport:vp});try{await race(job.promise);}catch(err){try{job.cancel();}catch(x){}throw err;}
+   try{PDF_TXT[u]=await race(pdfNums(pg,vp,cv.width,cv.height));}catch(x){PDF_TXT[u]=[];}
    const b=await new Promise(r=>cv.toBlob(r,'image/png'));cv.width=cv.height=0;try{pg.cleanup();}catch(x){}if(!b)throw{code:'unavailable'};
    CAT_PFOK=true;ok(URL.createObjectURL(b));}
   catch(err){if(err&&err.code==='timeout'&&e)e.fail(err);if(CAT_PFOK!==true&&err&&['not_granted','capability_disabled','capability_removed'].includes(err.code))CAT_PFOK=false;no(err);}
@@ -3641,13 +3642,13 @@ const dgCropEl=(g,cls)=>{const b=g.box,R=(b[2]-b[0])/(b[3]-b[1]);return dgEl(g,c
 /* the whole diagram with a zoom; what to show when the viewer cannot read the project's files */
 const dgFull=(g,r,hint)=>`<div class="dg-wrap"><button class="fpc-zb" onclick="dgZoom(this)" aria-label="Open the diagram bigger">${dgEl(g,'fpc-fig')}</button><div class="micro muted" style="text-align:center;margin-top:6px">${hint||(r&&r.ref?'This part is ref '+esc(r.ref)+' on the diagram. ':'')+'Tap the diagram to zoom.'}</div><div class="dg-alt">${r&&catSee(r)||dgMiss()}</div></div>`;
 function dgZoom(btn){const el=btn.querySelector('[data-dg]');if(!el)return;const sc=document.querySelector('#vp .screen');if(!sc)return;const d=document.createElement('div');d.className='fpz';d.setAttribute('role','dialog');d.setAttribute('aria-label','Full diagram');
- d.innerHTML=`<button class="fpz-x" aria-label="Close diagram">${ic('x','s20')}</button><div class="fpz-in"><div class="fpz-fig dg" data-dg="${esc(el.dataset.dg)}"${el.dataset.view?` data-box="${el.dataset.view}"`:''} style="aspect-ratio:4/3"></div></div><div class="fpz-tip">Tap or pinch to zoom</div>`;
+ d.innerHTML=`<button class="fpz-x" aria-label="Close diagram">${ic('x','s20')}</button><div class="fpz-in"><div class="fpz-fig dg" data-dg="${esc(el.dataset.dg)}"${el.dataset.view?` data-box="${el.dataset.view}"`:''}${el.dataset.hk?` data-hk="${esc(el.dataset.hk)}"`:''} style="aspect-ratio:4/3"></div></div><div class="fpz-tip">Tap or pinch to zoom</div>`;
  fpzWire(d);
  const k=e=>{if(e.key==='Escape')close();},close=()=>{d.remove();document.removeEventListener('keydown',k);};d.querySelector('.fpz-x').onclick=close;document.addEventListener('keydown',k);sc.appendChild(d);d.querySelector('.fpz-x').focus();}
 (()=>{const IM={};const img=u=>IM[u]||(IM[u]=catPf(u).then(b=>new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok({b,w:i.naturalWidth,h:i.naturalHeight});i.onerror=no;i.src=b;})).catch(e=>{delete IM[u];throw e;}));IM.x=1;
  const show=t=>{if(t.dataset.got)return;t.dataset.got=1;img(t.dataset.dg).then(({b,w,h})=>{const bx=t.dataset.box?t.dataset.box.split(',').map(Number):null;t.style.backgroundImage='url('+b+')';t.style.backgroundRepeat='no-repeat';
    if(bx){const x=bx[0]/100*w,y=bx[1]/100*h,bw=Math.max(1,(bx[2]-bx[0])/100*w),bh=Math.max(1,(bx[3]-bx[1])/100*h);t.style.cssText+=';'+catBgPos({W:w,H:h},x,y,bw,bh)+';aspect-ratio:'+(bw/bh).toFixed(4);}
-   else{t.style.backgroundSize='100% 100%';t.style.aspectRatio=(w/h).toFixed(4);}t.classList.add('on');},
+   else{t.style.backgroundSize='100% 100%';t.style.aspectRatio=(w/h).toFixed(4);}t.classList.add('on');if(t.dataset.hk&&typeof hsWire==='function')hsWire(t);},
   ()=>{t.classList.add('dg-no');const f=t.closest('.dg-wrap');if(f)f.classList.add('dg-fail');});};
  const io='IntersectionObserver' in window?new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)show(e.target);}),{rootMargin:'400px 0px'}):null;
  const scan=()=>document.querySelectorAll('[data-dg]:not([data-io])').forEach(el=>{el.dataset.io=1;if(io)io.observe(el);else show(el);});
@@ -3911,7 +3912,7 @@ function m2ResView(p){xrLoad();altLoad();const A=m2A(p);const R=m2Res(p);if(R.sp
  const spellH=R.spell?`<div class="row cap fp-via">${ic('search','s16')}<span class="grow" style="overflow-wrap:anywhere">Understood “${esc(R.spell.fix.map(f=>f[0].toLowerCase()).join(', '))}” as <b>${esc(R.spell.fix.map(f=>f[1].toLowerCase()).join(', '))}</b></span></div>`:'';
  return `${fpVia()}${spellH}${R.alt?altVia(p.q,R.alt):!p.cat&&p.q&&fpIsPn(p.q)?altListLine(p.q):''}${m2Head(count,scope+(c&&c.hits.some(r=>r.img)?' · pictures are cut from the catalogue diagrams':''))}${list.length?sort:''}${shopH}${tbMini?tbMini(A):''}${body}`;}
 /* ----- the part's own page ----- */
-function m2PartV(p){const r=m2Row(p);if(!r)return `<div class="empty">This part is not in the loaded catalogues any more. Search it again.</div>`;
+function m2PartV0(p){const r=m2Row(p);if(!r)return `<div class="empty">This part is not in the loaded catalogues any more. Search it again.</div>`;
  const key=r.page+'-'+r.i,open=!!(S.ui.fpOpen||{})[key];const x=m2Shop(r),n=x?DB.stock[x.id]:0;const L=m2FitL(r);
  const vm=p.vm&&p.vm!=='Any'?p.vm:(L[0]||r.vm||'').replace(/ \(.*$/,'');const cc=MODEL_CC[vm];const hit=L.find(v=>v===vm||v.startsWith(vm+' ('))||'';const yr=p.yr&&p.yr!=='Any'?String(p.yr):hit.includes('(')?hit.slice(hit.indexOf('(')+1,-1):'';
  const php=catPhoto(r),ym=catYmSp(r),full=!!(r.figp||r.sp)&&!ym,g=!full&&!ym?dgFig(r):null;
@@ -6047,6 +6048,167 @@ function fpHit(q,words){q=String(q||'').trim();if(!q||!altStaff())return '';
     if(p.st==='wait')return Object.assign({},o,{st:'wait',need:p.need,pend:p.pend});
     if(p.st==='done'&&p.hits.length)return Object.assign({},o,{hits:p.hits.map(h=>{INV_RK.set(h.vb+'|'+pk,h.pk);return Object.assign({},h,{pn:P,pk,via:al});})});}
    return o;}finally{d=0;}};})();
+/* ---------- the part page like Mittal's (update 8r): the diagram | its parts by ref | the chosen part ---------- */
+IC.zoom='<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M11 8v6M8 11h6"/>';
+const M3={};let M3_R=null,M3_C=new Map(),M3_T=0;
+const m3Cmp=new Intl.Collator('en',{numeric:true}).compare,m3K=q=>String(q.ref||'')+'|'+(q.pk||'')+'|'+q.desc;
+/* by ref: 1, 2, 2A, 10, 10-1, then the lines with no ref (the book's order inside one ref) */
+const m3By=(a,b)=>(a.ref?0:1)-(b.ref?0:1)||m3Cmp(String(a.ref||''),String(b.ref||''));
+/* one diagram's lines: its page in its edition, once per ref + number + name (kept until another catalogue arrives) */
+function m3Rows(vb,pg,v){const R=catRows();if(M3_R!==R){M3_R=R;M3_C=new Map();}const k=vb+'|'+pg+'|'+(v||'');let L=M3_C.get(k);if(L)return L;const seen=new Set();
+ L=R.filter(q=>q.vb===vb&&q.page===pg&&(!v||(q.vv||[]).includes(v))&&!seen.has(m3K(q))&&seen.add(m3K(q))).sort(m3By);M3_C.set(k,L);return L;}
+/* the edition dgFig takes, while the brand's diagram list is still coming */
+const m3Vg=r=>{const f=(S.ui&&(S.ui.fpA||S.ui.fp))||{},c=cur().p||{},vm=c.vm&&c.vm!=='Any'?c.vm:f.vm,vv=r.vv||[];return vv.find(x=>x===f.vv)||vv.find(x=>CAT_VMOD[x]===vm)||vv[0];};
+/* the chosen line: by its index, else by number + ref (another catalogue came and the rows were numbered again), else the searched part */
+const m3Sel=(p,L,r)=>{if(p.si==null)return r;const x=catRows()[p.si],same=q=>q&&(q.pk||'')===(p.spk||'')&&String(q.ref||'')===String(p.sref||'');return same(x)&&L.includes(x)?x:L.find(same)||r;};
+const m3Row=(q,on,sm)=>{const y=q.pk?sm.get(q.pk):null,n=y?DB.stock[y.id]||0:0,v=q.mrp||(y&&y.mrp)||0;
+ return `<button class="m3-row${on?' on':''}" data-i="${q.i}" data-ref="${esc(q.ref||'')}" aria-current="${on}" onclick="m3Pick(${q.i})"><span class="m2-num">${esc(q.ref||'·')}</span><span class="m3-rt"><b>${esc(catNice(q.desc))}</b><span class="cap"><span class="num">${esc(q.part||'No part number')}</span>${v?' · '+inr(v):''}${q.qty>1?' · ×'+esc(q.qty):''}${q.ns?' · N.S.':''}${n>0?` · <span class="m3-in">${n} in stock</span>`:''}</span></span></button>`;};
+/* the chosen part: photo, number, MRP, our stock (Add to bill / Add to stock), facts, the bikes it fits */
+function m3Det(x,o){const sh=m2Shop(x),n=sh?DB.stock[sh.id]:0,php=catPhoto(x),L=m2FitL(x),li=v=>`<li>${esc(v)}</li>`;
+ const facts=[['Brand',x.vb],['Model',o.vm||'—'],['Model year',o.yr||'All years'],['Category',m2CatOf(x)],['Qty per bike',x.qty||'—'],['Book',x.src||'—']];
+ return `${php?`<div class="fpc-pic m3-ph">${php}</div>`:''}<div class="stack" style="gap:2px"><div class="h3">${esc(catNice(x.desc))}</div><div class="cap">${x.ref?'Ref '+esc(x.ref)+' on the diagram':'No ref number on the diagram'}</div></div>
+ ${x.pnNear?`<div class="row cap" style="background:var(--blue-soft);border-radius:10px;padding:8px 10px">${ic('search','s16')}<span class="grow">Same base number, with another colour or revision ending. Check the ending before ordering.</span></div>`:''}
+ <div class="stack" style="gap:2px"><div class="micro muted">${x.sia?'Part number of the assembly':'Part number'}</div>${x.part?`<div class="row m3-pnr"><b class="fpc-pn num grow" id="pn-${x.i}">${esc(x.part)}</b><button class="btn line sm" onclick="catCopy(${x.i})">Copy</button></div>`:`<div class="cap">No number in the catalogue (ordered by colour or as a kit)</div>`}</div>
+ <div class="m2-pr" style="font-size:20px">${m2Price(x)}</div>
+ ${x.sup?`<div class="row cap" style="background:var(--amber-soft);border-radius:10px;padding:8px 10px">${ic('alert','s16')}<span class="grow">Replaced by <b class="num">${esc(x.sup)}</b>. Order the new number.</span></div>`:''}
+ ${x.ns?`<span class="pill a" style="align-self:flex-start">${x.xl?'Not sold separately':'N.S. in catalogue (not supplied)'}</span>`:''}${x.old&&!x.sia?`<div class="cap">Old part no. <span class="num">${esc(x.old)}</span></div>`:''}${x.note?`<div class="cap">${esc(x.note)}</div>`:''}${x.rem&&!/^BS(VI|IV)$/i.test(x.rem)?`<div class="cap">Catalogue note: ${esc(x.rem)}</div>`:''}
+ ${sh?`<button class="row" style="gap:8px;background:var(--y-soft);border-radius:12px;padding:10px 12px;text-align:left;width:100%" onclick="S.ui.scanHit='${sh.id}';S.ui.scanMiss=null;go('scanfind')"><div class="grow"><div class="micro muted">${n>0?n+' '+(sh.unit||'pcs')+' in stock':'Out of stock'} · Rack</div><b style="font-size:18px">${ic('pin','s16')} ${esc(binOf(sh.id))}</b></div><div style="text-align:right"><div class="micro muted">Our MRP</div><b class="num" style="font-size:18px">${inr(sh.mrp)}</b></div></button>${n>0?`<button class="btn" onclick="S.ui.scanHit='${sh.id}';S.ui.scanMiss=null;go('scanfind')">${ic('cart','s18')} Add to bill</button>`:allowed('partorders')?`<button class="btn line" onclick="soNewSheet('${sh.id}')">Take order for customer</button>`:''}`:x.part?invFpAdd(x):''}
+ <div class="grid2 fpc-facts">${facts.map(([a,b])=>`<div${a==='Book'?' class="m3-wide"':''}><div class="micro muted">${a}</div><b>${esc(b)}</b></div>`).join('')}</div>
+ ${L.length?`<div class="fpc-fits"><div class="micro muted">Fits ${L.length===1?'this '+esc(x.vb)+' bike':'these '+L.length+' '+esc(x.vb)+' bikes'}</div><ul>${L.slice(0,6).map(li).join('')}</ul>${L.length>6?`<details class="m3-fm"><summary>${L.length-6} more</summary><ul>${L.slice(6).map(li).join('')}</ul></details>`:''}</div>`:''}`;}
+/* under the columns: the same number in other brands, and the gaskets, seals, bolts... of this diagram */
+function m3More(x,o){const seen=new Set(),need=o.rows.filter(q=>q.pk&&q.pk!==x.pk&&/\b(GASKET|SEAL|O RING|BOLT|NUT|WASHER|SPRING|BEARING|BUSH|CLIP|PACKING|SCREW)\b/.test(q.dhay)&&!seen.has(q.pk)&&seen.add(q.pk)).slice(0,4);
+ return xrSection(x)+(need.length?`<div class="sec"><h3 class="h2">Commonly needed with this</h3></div><div class="stack g8">${need.map(q=>`<button class="m2-row" onclick="m3Pick(${q.i},'need')"><span class="m2-num">${esc(q.ref||'·')}</span><div class="grow"><div class="h3" style="font-size:14px">${esc(catNice(q.desc))}</div><div class="cap">${esc(q.part||'No part number')}${q.mrp?' · '+inr(q.mrp):''}</div></div>${ic('chevR','s18')}</button>`).join('')}</div>`:'');}
+/* the page; no diagram for the part (and none coming): the old page */
+function m2PartV(p){const r=m2Row(p);if(!r)return m2PartV0(p);const s=DG_SLUG[r.vb],g=s?dgFig(r):null;if(!g&&!(r.ext&&s&&DG[s]&&DG[s].st===1))return m2PartV0(p);
+ const v=g?g.v:m3Vg(r),kr=m3K(r);let L=m3Rows(r.vb,r.page,v).map(q=>m3K(q)===kr?r:q);if(!L.includes(r))L=L.concat(r).sort(m3By);
+ const x=m3Sel(p,L,r),k='m3'+r.i,vm=p.vm&&p.vm!=='Any'?p.vm:v&&CAT_VMOD[v]||(m2FitL(r)[0]||r.vm||'').replace(/ \(.*$/,''),ys=v?catVyrs(v):[],yr=p.yr&&p.yr!=='Any'?String(p.yr):ys.length?catYrsTxt(ys):'',cc=MODEL_CC[vm];
+ if(p.si!=null){p.si=x.i;p.spk=x.pk||'';p.sref=x.ref||'';}const o=M3[k]={rows:L,sel:x.i,vb:r.vb,page:r.page,v,vm,yr},sm=new Map();PRODUCTS.forEach(y=>{const q=catPk(y.pn);if(q&&!sm.has(q))sm.set(q,y);});queueMicrotask(m3Mount);
+ const dia=g?`<div class="m3-dgw dg-wrap">${dgEl(g,'fpc-fig m3-fig').replace('<div ',`<div data-hk="${k}" onclick="if(!event.target.closest('button'))dgZoom(this.closest('.m3-dgw'))" `)}<button class="m3-zb" onclick="dgZoom(this.closest('.m3-dgw'))" aria-label="Open the diagram bigger">${ic('zoom','s18')}</button><div class="dg-alt">${dgMiss()}</div></div><div class="cap m3-tip">Tap a number on the diagram or a part in the list.</div>`
+  :`<div class="m3-dgw m3-ld"><span class="cap">Loading diagram…</span></div>`;
+ return `<div class="m3" data-k="${k}">${m2Head(esc(catNice(r.asm||r.fig))+(r.asm&&r.fig?' – '+esc(r.fig):'')+' for '+esc([r.vb,vm,cc?cc+'cc':'',yr].filter(Boolean).join(' ')),[v,r.src,L.length+' part'+(L.length===1?'':'s')].filter(Boolean).map(esc).join(' · '))}
+ <div class="m3-g"><div class="m3-c1">${dia}</div><div class="m3-c2"><div class="m3-lh"><b>Parts in this diagram</b><span class="cap">${L.length}</span></div><div class="m3-list">${L.map(q=>m3Row(q,q===x,sm)).join('')}</div></div><div class="m3-c3"><div class="card m3-det">${m3Det(x,o)}</div></div></div>
+ <div class="m3-more">${m3More(x,o)}</div></div>`;}
+/* CSS decides the columns (by the page's own width), JS follows: the right column hidden (a phone) = the details open under the chosen line */
+const m3Nw=el=>getComputedStyle(el.querySelector('.m3-c3')).display==='none';
+const m3Mid=(el,box)=>{const a=el.getBoundingClientRect(),b=box.getBoundingClientRect();if(a.top<b.top||a.bottom>b.bottom)box.scrollTop+=a.top-b.top-(b.height-a.height)/2;};
+const m3Top=(el,box,lim,sm)=>{const a=el.getBoundingClientRect(),b=box.getBoundingClientRect();if(a.top<b.top||a.bottom>b.top+b.height*lim)box.scrollTo({top:box.scrollTop+a.top-b.top-8,behavior:sm?'smooth':'auto'});};
+function m3Place(el){el=el||document.querySelector('#vp .m3');if(!el)return;const d=el.querySelector('.m3-det'),c3=el.querySelector('.m3-c3'),row=el.querySelector('.m3-row.on');if(!d||!c3)return;
+ if(m3Nw(el)){if(row&&row.nextElementSibling!==d)row.after(d);}else if(d.parentNode!==c3)c3.append(d);}
+/* once the page is drawn: the details in place, the list (a phone: the page) at the searched part the first time, where it was after that */
+function m3Mount(){const el=document.querySelector('#vp .m3:not([data-m])');if(!el)return;el.dataset.m=1;m3Place(el);const p=cur().p||{},ls=el.querySelector('.m3-list'),row=el.querySelector('.m3-row.on'),sc=el.closest('.scroll');
+ if(!p.m3o){p.m3o=1;if(row){m3Mid(row,ls);if(sc&&m3Nw(el))m3Top(row,sc,.85);}}else{if(p.m3y!=null)ls.scrollTop=p.m3y;if(sc&&p.m3t!=null)sc.scrollTop=p.m3t;}
+ ls.addEventListener('scroll',()=>{p.m3y=ls.scrollTop;},{passive:true});if(sc)sc.addEventListener('scroll',()=>{p.m3t=sc.scrollTop;},{passive:true});}
+/* another line chosen in place (from: 'dg' a number on the diagram, 'need' the list under the columns); refresh() and Back keep it */
+function m3Pick(i,from){const el=document.querySelector('#vp .m3'),o=el&&M3[el.dataset.k],x=o&&o.rows.find(q=>q.i===i);if(!x)return;const p=cur().p||{},sc=el.closest('.scroll'),d=el.querySelector('.m3-det');let row=null;
+ p.si=x.i;p.spk=x.pk||'';p.sref=x.ref||'';o.sel=x.i;
+ el.querySelectorAll('.m3-row').forEach(b=>{const on=+b.dataset.i===x.i;b.classList.toggle('on',on);b.setAttribute('aria-current',on);if(on)row=b;});
+ const nw=m3Nw(el),y0=row?row.getBoundingClientRect().top:0;d.innerHTML=m3Det(x,o);d.scrollTop=0;el.querySelector('.m3-more').innerHTML=m3More(x,o);m3Place(el);
+ if(row&&sc&&nw){if(!from)sc.scrollTop+=row.getBoundingClientRect().top-y0;m3Top(row,sc,.5,1);}
+ else if(row&&from){m3Mid(row,el.querySelector('.m3-list'));if(sc){const a=d.getBoundingClientRect(),b=sc.getBoundingClientRect();if(a.bottom<b.top+60||a.top>b.bottom-60)el.querySelector('.m3-g').scrollIntoView({block:'start',behavior:'smooth'});}}
+ if(typeof hsSel==='function')hsSel(el.dataset.k);}
+addEventListener('resize',()=>{clearTimeout(M3_T);M3_T=setTimeout(()=>m3Place(),120);});
+/* ---------- the diagram's numbers, clickable (update 8r) ---------- */
+/* Bajaj / Suzuki book pages: the numbers printed in the page's own text -> [[text, x0, y0, x1, y1]] in fractions of the drawn part */
+const PDF_TXT={},HS_RE=/^[A-Z]?\d{1,3}[A-Z]?(?:-\d{1,2})?$/;
+async function pdfNums(pg,vp,W,H){const tc=await pg.getTextContent(),U=window.pdfjsLib.Util;const it=[];
+ for(const o of tc.items){const s=String(o.str||'').trim();if(!s)continue;const t=U.transform(vp.transform,o.transform);
+  const fh=Math.hypot(t[2],t[3]),fw=Math.hypot(t[0],t[1])||1;if(Math.abs(t[1])>Math.abs(t[0])*0.3)continue;
+  const len=(o.width||0)*vp.scale*(t[0]<0?-1:1);it.push({s,x0:t[4],x1:t[4]+len,y0:t[5]-fh*0.8,y1:t[5]+fh*0.08,h:fh});}
+ const nums=[],words=[];
+ for(const o of it){const parts=o.s.split(/[\s\/]+/).filter(Boolean),L=o.s.length;let at=0,all=true;const got=[];
+  for(const p of parts){const i=o.s.indexOf(p,at);at=i+p.length;const t=p.toUpperCase();if(!HS_RE.test(t)){all=false;continue;}
+   got.push({t,x0:o.x0+(o.x1-o.x0)*i/L,x1:o.x0+(o.x1-o.x0)*(i+p.length)/L,y0:o.y0,y1:o.y1,h:o.h});}
+  if(all&&got.length)nums.push(...got);else if(/[A-Za-z]{2}|\d{4}/.test(o.s))words.push(o);}
+ /* only the drawn part, and not a table's numbers (a name or part number on the same line) */
+ const c=nums.filter(n=>n.x0>=0&&n.y0>=0&&n.x1<=W&&n.y1<=H&&!words.some(w=>Math.abs((w.y0+w.y1)/2-(n.y0+n.y1)/2)<0.5*n.h&&w.x0-n.x1<7*n.h&&n.x0-w.x1<7*n.h));
+ if(!c.length)return [];
+ /* callouts share one print size: the page number and titles do not */
+ const hc={};c.forEach(n=>{const k=Math.round(n.h);hc[k]=(hc[k]||0)+1;});const hm=+Object.keys(hc).sort((a,b)=>hc[b]-hc[a])[0];
+ return c.filter(n=>Math.abs(n.h-hm)<=0.22*hm).map(n=>[n.t,n.x0/W,n.y0/H,n.x1/W,n.y1/H].map((v,i)=>i?Math.round(v*1e4)/1e4:v));}
+/* the numbers of one diagram: the page's text, else what the server's AI read (asked once per diagram), with Admin's fixes */
+const HSC={};
+const hsApi=(u,q,o)=>fetch('/api/dghot?u='+encodeURIComponent(u)+q,Object.assign({credentials:'same-origin'},o||{})).then(r=>r.ok?r.json():r.status===404?{toks:null,ed:[],nf:1}:r.json().then(d=>Promise.reject(d),()=>Promise.reject({error:r.status})));
+function hsGet(u,refs){if(HSC[u])return HSC[u];const p=(async()=>{
+  if(u.startsWith('pdf:')){const tx=PDF_TXT[u]||[],have=new Set(tx.map(t=>t[0])),need=refs.filter(r=>/^\d/.test(r));
+   if(tx.length&&need.filter(r=>have.has(r)).length>=Math.max(1,need.length*0.5)){const e=await hsApi(u,'&ocr=0');return {toks:tx,ed:e.ed||[],src:'pdf'};}
+   let e=await hsApi(u,'&ocr=1');
+   if(e.need==='img'){const b=await (await fetch(await catPf(u))).blob();e=await hsApi(u,'&ocr=1',{method:'POST',body:b,headers:{'Content-Type':b.type||'image/png'}});}
+   return {toks:(e.toks||[]).concat(tx),lo:e.lo||[],ed:e.ed||[],src:'ai',off:e.off};}
+  const e=await hsApi(u,'&ocr=1');return {toks:e.toks||[],lo:e.lo||[],ed:e.ed||[],src:'ai',off:e.off,nf:e.nf};})();
+ HSC[u]=p;p.then(d=>{if(d.off==='busy')setTimeout(()=>{if(HSC[u]===p)delete HSC[u];},15000);},()=>{delete HSC[u];});return p;}
+const hsNorm=r=>String(r||'').toUpperCase().replace(/\s+/g,'');
+/* the AI's unsure readings: one is taken only for a number of this diagram's list that is not found yet (the surest of them) */
+function hsLo(d,refs){if(!d||!(d.lo||[]).length)return d;const R=new Set(refs);refs.forEach(r=>{const m=/^(\d+)(?:[A-Z]|-\d+)$/.exec(r);if(m)R.add(m[1]);});
+ const have=new Set((d.toks||[]).map(t=>hsNorm(t[0]))),add=[];
+ for(const t of d.lo){const r=hsNorm(t[0]);if(R.has(r)&&!have.has(r)){have.add(r);add.push(t);}}
+ return add.length?Object.assign({},d,{toks:(d.toks||[]).concat(add),lo:[]}):d;}
+/* the numbers after Admin's fixes: a placed number is added, a taken-away one is dropped */
+function hsList(d){let L=(d.toks||[]).map(t=>({t:hsNorm(t[0]),b:t.slice(1,5)}));
+ for(const e of d.ed||[]){if(e.a==='add')L.push({t:hsNorm(e.t),b:e.b,a:1});else if(e.a==='del'){const [x,y]=e.p;L=L.filter(o=>!(x>=o.b[0]-0.004&&x<=o.b[2]+0.004&&y>=o.b[1]-0.004&&y<=o.b[3]+0.004));}}
+ return L;}
+/* which rows a number on the diagram means: its ref; a ref the diagram prints without its letter or sub-number (12A, 1-1) goes with 12 / 1 */
+function hsMap(rows,L){const by=new Map(),add=(k,q)=>{if(!by.has(k))by.set(k,[]);if(!by.get(k).includes(q))by.get(k).push(q);};
+ rows.forEach(q=>{const r=hsNorm(q.ref);if(r)add(r,q);});const on=new Set(L.map(o=>o.t));
+ rows.forEach(q=>{const r=hsNorm(q.ref),m=/^(\d+)(?:[A-Z]|-\d+)$/.exec(r);if(m&&!on.has(r))add(m[1],q);});return by;}
+function hsWire(el){const k=el.dataset.hk,c=M3[k];if(!c)return;const refs=[...new Set(c.rows.map(q=>hsNorm(q.ref)).filter(Boolean))];
+ const u=el.dataset.dg;el.classList.add('hs-wait');hsBar(el,'wait');
+ hsGet(u,refs).then(d=>{el.classList.remove('hs-wait');if(!el.isConnected)return;el._hs=hsLo(d,refs);hsPaint(el);if(d.off==='busy')setTimeout(()=>{if(el.isConnected)hsWire(el);},16000);},
+  ()=>{el.classList.remove('hs-wait');hsBar(el,'fail');});}
+function hsPaint(el){const k=el.dataset.hk,c=M3[k],d=el._hs;if(!c||!d)return;el.querySelectorAll('.hs').forEach(x=>x.remove());
+ const L=hsList(d),by=hsMap(c.rows,L);const bx=el.dataset.box?el.dataset.box.split(',').map(v=>+v/100):[0,0,1,1],bw=bx[2]-bx[0],bh=bx[3]-bx[1];
+ const found=new Set();let h='';
+ L.forEach(o=>{const qs=by.get(o.t);const x0=(o.b[0]-bx[0])/bw,y0=(o.b[1]-bx[1])/bh,x1=(o.b[2]-bx[0])/bw,y1=(o.b[3]-bx[1])/bh;if(x1<0||y1<0||x0>1||y0>1)return;
+  if(qs)qs.forEach(q=>found.add(q.i));
+  h+=`<button type="button" class="hs${qs&&qs.some(q=>q.i===c.sel)?' on':''}${qs?'':' x'}${o.a?' a':''}" data-ref="${esc(o.t)}" style="left:${(x0*100).toFixed(2)}%;top:${(y0*100).toFixed(2)}%;width:${((x1-x0)*100).toFixed(2)}%;height:${((y1-y0)*100).toFixed(2)}%" onclick="hsTap(event,this)" aria-label="Ref ${esc(o.t)}${qs?': '+esc(catNice(qs[0].desc)):''}"></button>`;});
+ el.insertAdjacentHTML('beforeend',h);c.found=found;hsRows(k);hsBar(el,'done',L);}
+/* the line under the page's diagram: how many parts are on it, Admin's "Fix numbers" */
+function hsBar(el,st,L){const w=el.closest('.m3-dgw');if(!w)return;const k=el.dataset.hk,c=M3[k];let b=w.querySelector('.hs-bar');if(!b){b=document.createElement('div');b.className='hs-bar';w.appendChild(b);}
+ const adm=S.user&&S.user.role==='admin',ed=S.ui.hsEd===k,d=el._hs||{};
+ const n=c?c.rows.filter(q=>q.ref&&c.found&&c.found.has(q.i)).length:0,t=c?c.rows.filter(q=>q.ref).length:0;
+ const msg=st==='wait'?'Reading the numbers on this diagram…':st==='fail'?'Could not read the numbers right now.':d.nf?'This diagram’s file is not on the server yet.':d.off&&!(d.toks||[]).length&&!(d.ed||[]).length?(d.off==='busy'?'Reading other diagrams first, numbers in a moment…':'The numbers are not read on this server yet.'):`${n} of ${t} parts are on this diagram`;
+ b.innerHTML=`<span class="grow">${esc(msg)}${ed?'. Tap a part in the list, then tap its number on the diagram. Tap a wrong box to take it away.':''}</span>${adm&&st!=='wait'&&!d.nf?`<button class="btn line sm" onclick="hsEdit('${k}')">${ed?'Done':'Fix numbers'}</button>`:''}`;
+ const m=el.closest('.m3');if(m)m.classList.toggle('hs-edit',ed);}
+/* list rows: a part whose number is not on the diagram says so while Admin fixes numbers */
+function hsRows(k){const c=M3[k];if(!c)return;document.querySelectorAll(`.m3[data-k="${k}"] .m3-row`).forEach(r=>{const i=+r.dataset.i;r.classList.toggle('nohs',!!r.dataset.ref&&!!c.found&&!c.found.has(i));});}
+/* the chosen part's number lights up (fp3 calls this after every choice) */
+function hsSel(k){const c=M3[k];if(!c)return;const q=c.rows.find(x=>x.i===c.sel);const R=new Set();if(q){const r=hsNorm(q.ref);R.add(r);const m=/^(\d+)(?:[A-Z]|-\d+)$/.exec(r);if(m)R.add(m[1]);}
+ document.querySelectorAll(`.dg[data-hk="${k}"]`).forEach(el=>{const L=el._hs?hsList(el._hs):[],by=el._hs?hsMap(c.rows,L):new Map();
+  el.querySelectorAll('.hs').forEach(b=>{const qs=by.get(b.dataset.ref)||[];b.classList.toggle('on',qs.some(x=>x.i===c.sel));});});}
+/* tap a number: its part is chosen (a ref with two lines, colours or editions: the next one each tap); Admin fixing: take it away */
+function hsTap(e,b){e.stopPropagation();e.preventDefault();const el=b.closest('[data-hk]'),k=el.dataset.hk,c=M3[k];if(!c)return;
+ if(S.ui.hsEd===k){hsAsk(el,b);return;}
+ const qs=hsMap(c.rows,hsList(el._hs||{})).get(b.dataset.ref)||[];if(!qs.length)return;const j=qs.findIndex(q=>q.i===c.sel);const q=qs[(j+1)%qs.length];
+ m3Pick(q.i,'dg');hsTip(b,1);}
+function hsAsk(el,b){const w=el.closest('.m3-dgw')||el.parentElement,bar=w&&w.querySelector('.hs-bar');if(!bar)return;
+ const r=el.getBoundingClientRect(),o=b.getBoundingClientRect(),x=(o.left+o.width/2-r.left)/r.width,y=(o.top+o.height/2-r.top)/r.height;
+ bar.innerHTML=`<span class="grow">Take number ${esc(b.dataset.ref)} away from here?</span><button class="btn sm" onclick="hsDel('${el.dataset.hk}',${x.toFixed(4)},${y.toFixed(4)})">Take away</button><button class="btn line sm" onclick="hsRepaint('${el.dataset.hk}')">Keep</button>`;}
+function hsEdit(k){S.ui.hsEd=S.ui.hsEd===k?null:k;hsRepaint(k);}
+function hsRepaint(k){document.querySelectorAll(`.dg[data-hk="${k}"]`).forEach(el=>{if(el._hs)hsPaint(el);else hsBar(el,'wait');});}
+const hsSave=(k,body)=>{const el=document.querySelector(`.m3 .dg[data-hk="${k}"]`);if(!el)return;const u=el.dataset.dg;
+ return fetch('/api/dghot/edit',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({u},body))}).then(r=>r.json())
+  .then(d=>{if(d.error)throw d;const old=el._hs||{};const nd=Object.assign({},old,{ed:d.ed||[]});HSC[u]=Promise.resolve(nd);document.querySelectorAll(`.dg[data-hk="${k}"]`).forEach(x=>{x._hs=nd;hsPaint(x);});})
+  .catch(e=>toast((e&&e.error)||'Could not save. Check the connection.'));};
+function hsDel(k,x,y){hsSave(k,{del:[x,y]});}
+/* Admin fixing: a tap on the diagram puts the chosen part's number there (the size of the numbers already on it) */
+document.addEventListener('click',e=>{const el=e.target.closest&&e.target.closest('.m3 .dg[data-hk]');if(!el||e.target.closest('.hs'))return;const k=el.dataset.hk;if(S.ui.hsEd!==k)return;
+ e.stopPropagation();e.preventDefault();const c=M3[k],q=c&&c.rows.find(x=>x.i===c.sel);if(!q||!q.ref){toast('Pick a part with a ref number in the list first');return;}
+ const r=el.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;const L=el._hs?hsList(el._hs):[];
+ const ws=L.map(o=>o.b[2]-o.b[0]).sort((a,b)=>a-b),hs=L.map(o=>o.b[3]-o.b[1]).sort((a,b)=>a-b);const bw=(ws[ws.length>>1]||0.025)*Math.max(1,hsNorm(q.ref).length/1.5),bh=hs[hs.length>>1]||0.03;
+ hsSave(k,{add:[hsNorm(q.ref),Math.max(0,x-bw/2),Math.max(0,y-bh/2),Math.min(1,x+bw/2),Math.min(1,y+bh/2)].map((v,i)=>i?Math.round(v*1e4)/1e4:v)});},true);
+/* hover: a number shows its part; a row lights its number up */
+let HS_T=null;
+function hsTip(b,tap){const el=b.closest('[data-hk]'),c=el&&M3[el.dataset.hk];if(!c)return;const qs=hsMap(c.rows,hsList(el._hs||{})).get(b.dataset.ref)||[];
+ let t=document.getElementById('hs-tip');if(!t){t=document.createElement('div');t.id='hs-tip';t.setAttribute('role','tooltip');document.body.appendChild(t);}
+ if(!qs.length){t.hidden=true;return;}
+ t.innerHTML=qs.slice(0,3).map(q=>`<div><b>${esc(q.ref)}</b> ${esc(catNice(q.desc))}${q.qty>1?' ×'+esc(q.qty):''}<br><span class="num">${esc(q.part||'No part number')}</span>${q.mrp?' · '+inr(q.mrp):''}</div>`).join('')+(qs.length>3?`<div>+${qs.length-3} more</div>`:'');
+ t.hidden=false;const o=b.getBoundingClientRect(),tw=t.offsetWidth,th=t.offsetHeight;let x=o.left+o.width/2-tw/2,y=o.top-th-8;if(y<6)y=o.bottom+8;
+ t.style.left=Math.max(6,Math.min(innerWidth-tw-6,x))+'px';t.style.top=Math.max(6,y)+'px';clearTimeout(HS_T);if(tap)HS_T=setTimeout(()=>{t.hidden=true;},3500);}
+const hsHide=()=>{const t=document.getElementById('hs-tip');if(t)t.hidden=true;};
+document.addEventListener('mouseover',e=>{const b=e.target.closest&&e.target.closest('.hs');if(b){hsTip(b);return;}
+ const r=e.target.closest&&e.target.closest('.m3-row');if(r&&r.dataset.ref){const m=r.closest('.m3');const R=hsNorm(r.dataset.ref),mm=/^(\d+)(?:[A-Z]|-\d+)$/.exec(R);
+  document.querySelectorAll(`.dg[data-hk="${m.dataset.k}"] .hs`).forEach(h=>h.classList.toggle('hl',h.dataset.ref===R||!!mm&&h.dataset.ref===mm[1]));}});
+document.addEventListener('mouseout',e=>{const b=e.target.closest&&e.target.closest('.hs');if(b)hsHide();const r=e.target.closest&&e.target.closest('.m3-row');if(r){const m=r.closest('.m3');if(m)document.querySelectorAll(`.dg[data-hk="${m.dataset.k}"] .hs.hl`).forEach(h=>h.classList.remove('hl'));}});
+document.addEventListener('scroll',hsHide,true);
 /* ---------- Waiting for photos ---------- */
 SCREENS.invwait=()=>{const L=DB.waitParts||[];if(S.ui.iw&&!L.some(w=>w.id===S.ui.iw))S.ui.iw=null;if(!S.ui.iw&&L.length&&isWv())S.ui.iw=L[0].id;
  const sel=L.find(w=>w.id===S.ui.iw),units=L.reduce((a,w)=>a+(+w.q||0),0),bills=new Set(L.map(w=>w.inv||w.grn)).size;
@@ -6248,6 +6410,64 @@ html:not(.wv) .screen.hasnav.in-fade>:not(.nav){animation:fade .28s ease-out}
 .alt-stat select{height:34px;border-radius:8px;border:1.5px solid var(--line);background:var(--card);color:inherit;font:inherit;padding:0 6px}
 .fp-hit{gap:10px}
 .fp-hit-h{gap:8px;align-items:center}
+/* ---- the part page like Mittal's (update 8r): one column on a phone, diagram | list+details from 680 px, three columns from 860 px ---- */
+.m3{container-type:inline-size;display:flex;flex-direction:column;gap:14px;min-width:0;overflow-anchor:none}
+.m3-g{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
+.m3-c1,.m3-c2,.m3-c3{display:flex;flex-direction:column;gap:8px;min-width:0}
+.m3-c3{display:none}
+.m3-dgw{position:relative;flex:none;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:8px}
+.m3-dgw .m3-fig{border:0;cursor:zoom-in}
+.m3-zb{position:absolute;top:14px;right:14px;z-index:2;width:36px;height:36px;border-radius:50%;background:var(--k);color:var(--y);display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.m3-dgw.dg-fail .m3-zb,.m3-dgw.dg-fail+.m3-tip{display:none}
+.m3-dgw .dg-alt{padding:6px}
+.m3-ld{aspect-ratio:4/3;display:grid;place-items:center}
+.m3-tip{text-align:center}
+.m3-lh{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 4px}
+.m3-list{display:flex;flex-direction:column;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;scrollbar-width:thin}
+.m3-row{display:flex;align-items:center;gap:10px;width:100%;min-width:0;text-align:left;padding:8px 10px 8px 7px;border-left:3px solid transparent;border-top:1px solid var(--line);font-size:14px;color:var(--ink);transition:background .15s}
+.m3-row:first-child{border-top:0}
+@media (hover:hover){.m3-row:hover{background:var(--paper)}}
+.m3-row.on{background:var(--y-soft);border-left-color:var(--y)}
+.m3-row:focus-visible{outline-offset:-2px}
+.m3-row .m2-num{min-width:28px;height:28px;border-radius:8px;font-size:12px}
+.m3-rt{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0}
+.m3-rt b{font-size:14px;line-height:1.3;overflow-wrap:anywhere}
+.m3-rt .cap{overflow-wrap:anywhere}
+.m3-in{color:var(--g);font-weight:700}
+.m3-det{gap:10px;min-width:0;scrollbar-width:thin}
+.m3-det>*{flex-shrink:0}
+.m3-det .fpc-pn{font-size:18px}
+.m3-det .pill{white-space:normal}
+.m3-pnr{gap:6px 10px;flex-wrap:wrap}
+.m3-pnr .fpc-pn{flex:1 1 auto}
+.m3-pnr .btn{padding-inline:12px}
+.m3-ph{padding:10px}
+.m3-ph .fpc-photo{max-height:200px}
+.m3-wide{grid-column:1/-1}
+.m3-fm summary{cursor:pointer;color:var(--y-deep);font-size:13px;font-weight:700;margin-top:4px}
+.m3 .m3-list>.m3-det{border:0;border-top:1px solid var(--line);border-left:3px solid var(--y);border-radius:0;padding:14px 12px 16px 13px}
+.m3-more{display:flex;flex-direction:column;gap:12px;min-width:0}
+.m3-more:empty{display:none}
+@container (min-width:680px){.m3-g{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}.m3-c1{grid-row:span 2;position:sticky;top:0}.m3-c3{display:flex}.m3-list{max-height:45vh;overflow-y:auto;overflow-x:hidden}}
+@container (min-width:860px){.m3-g{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) minmax(0,.9fr);gap:16px}.m3-c1{grid-row:auto}.m3-c3{align-self:stretch}.m3-list{max-height:max(320px,calc(100vh - 260px))}.m3-det{position:sticky;top:0;max-height:calc(100vh - 230px);overflow-y:auto;padding:14px}.m3-det .fpc-pn{font-size:17px}.m3-more .stack.g8{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}}
+/* ---- diagram numbers (update 8r): a soft yellow box on each number, the chosen part's number filled ---- */
+.dg{position:relative}
+.hs{position:absolute;padding:0;margin:0;border:0;background:rgba(255,204,0,.1);border-radius:4px;box-shadow:0 0 0 1.5px rgba(214,160,0,.7);cursor:pointer;z-index:1;min-width:6px;min-height:6px}
+.hs::before{content:'';position:absolute;inset:-7px}
+.hs:hover,.hs.hl{background:rgba(255,204,0,.5);box-shadow:0 0 0 2px #d4a000}
+.hs.on{background:rgba(255,204,0,.55);box-shadow:0 0 0 2.5px #141413}
+.hs.x{display:none}
+.hs-edit .hs.x{display:block;background:rgba(120,120,120,.12);box-shadow:none;outline:1.5px dashed #777}
+.hs-edit .hs.a{box-shadow:0 0 0 2px #1a7f37}
+.dg.hs-wait::after{content:'';position:absolute;top:8px;left:8px;width:14px;height:14px;border-radius:50%;border:2px solid #d4a000;border-top-color:transparent;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hs-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--ink5);margin-top:6px}
+.hs-bar .grow{min-width:0;flex:1 1 160px}
+#hs-tip{position:fixed;z-index:300;max-width:280px;background:#141413;color:#fff;font-size:12.5px;line-height:1.35;padding:7px 9px;border-radius:8px;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.25);display:grid;gap:5px}
+#hs-tip[hidden]{display:none}
+#hs-tip b{color:#ffcc00}
+.m3-row.nohs::after{content:'Not on diagram';display:none;font-size:11px;font-weight:700;color:var(--r);white-space:nowrap}
+.hs-edit .m3-row.nohs::after{display:block}
 /* ---- inventory (update 8): phone stacks, website two columns ---- */
 .inv-2c{display:flex;flex-direction:column;gap:14px;min-width:0}
 .inv-col{display:flex;flex-direction:column;gap:14px;min-width:0}

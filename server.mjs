@@ -102,6 +102,7 @@ async function api(req, res, url, user) {
   if (p === '/api/photo/wrong') return photoWrong(req, res, url, user);
   if (p === '/api/photo') return photoUpload(req, res, user, url);
   if (p === '/api/billread') return billRead(req, res, user);
+  if (p === '/api/dghot' || p === '/api/dghot/edit') return dgHot(req, res, url, user);
   let body = {};
   if (m === 'POST') { try { const b = await readBody(req); body = b.length ? JSON.parse(b.toString('utf8')) : {}; } catch (e) { return json(res, 400, { error: 'Bad request body' }); } }
   const catList = () => { try { return fs.readdirSync(path.join(PUBLIC_DIR, 'cat')).filter(f => f.endsWith('.json')).sort(); } catch { return []; } };
@@ -400,6 +401,79 @@ async function billRead(req, res, user) {
   if (!photoKind(b)) return json(res, 400, { error: 'Send the page as a JPG, PNG or WEBP picture' });
   try { const r = await BILL_AI.read(b); return json(res, 200, { ok: true, ...r }); }
   catch (e) { return json(res, 503, { error: String(e && e.message || e).slice(0, 200) }); }
+}
+// ---------- diagram numbers (update 8m, Sam 2026-10-12 10:06Z "diagram pe jo numbers he 1,2,3,4,5,6,7, sabhi number clickable he"):
+// where each ref number sits on a catalogue diagram. The bill reader's AI reads a diagram once, the first time staff open it, and the
+// numbers are kept in data/dghot/ (one small file per diagram); Admin's own fixes (a number placed or taken away) are kept with them.
+//   GET  /api/dghot?u=<diagram>&ocr=1   -> { toks, lo, ed }   toks = [[text, x0, y0, x1, y1, sure]] in fractions of the picture (null: not read);
+//                                          lo = unsure readings, taken by the page only for a number of the diagram's list not found yet
+//        a picture in a catalogue file on this server is read here; a PDF page ('pdf:' diagrams) answers { need: 'img' } until the
+//        app sends the page as it drew it (POST); ocr=0 only gives Admin's fixes (Bajaj/Suzuki pages: the numbers are in the PDF's text)
+//   POST /api/dghot?u=<diagram>  body = the drawn page (PNG/JPG)
+//   POST /api/dghot/edit  { u, add: [text, x0, y0, x1, y1] } or { u, del: [x, y] }   Admin only
+const HOT_DIR = path.join(DATA_DIR, 'dghot'), HOT_RUN = new Map(), HOT_MAX = 12 * 1024 * 1024;
+const HOT_U = /^(?:p[fa]:catalogues\/[^\0]+?:\d+:\d+|pdf:catalogues\/[^\0]+?:\d+:\d+:\d+:[\d.]+,[\d.]+,[\d.]+,[\d.]+)$/;
+const hotFile = u => path.join(HOT_DIR, crypto.createHash('sha1').update(u).digest('hex') + '.json');
+const hotRead = u => { try { return JSON.parse(fs.readFileSync(hotFile(u), 'utf8')); } catch (e) { return null; } };
+const hotWrite = (u, o) => { fs.mkdirSync(HOT_DIR, { recursive: true }); const f = hotFile(u), tmp = f + '.' + process.pid + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(o)); fs.renameSync(tmp, f); };
+const hotOut = o => ({ toks: o.toks || null, lo: o.lo || [], ed: o.ed || [] });
+// the diagram's picture straight out of the catalogue file here, as /api/files/read sends it
+function hotImg(u) {
+  const m = /^(p[fa]):(.+):(\d+):(\d+)$/.exec(u); if (!m) return null;
+  const rel = path.posix.normalize('/' + m[2]).replace(/^\/+/, '');
+  if (rel.split('/').includes('..') || !rel.startsWith('catalogues/')) return null;
+  const len = +m[4]; if (!len || len > 32 * 1024 * 1024) return null;
+  let buf = Buffer.alloc(len); let fd;
+  try { fd = fs.openSync(path.join(FILES_DIR, rel), 'r'); if (fs.readSync(fd, buf, 0, len, +m[3]) !== len) return null; } catch (e) { return null; } finally { if (fd !== undefined) fs.closeSync(fd); }
+  if (m[1] === 'pa' && !(buf[0] === 0xFF && buf[1] === 0xD8)) buf = ascii85(buf);
+  return buf && photoKind(buf) ? buf : null;
+}
+async function hotOcr(res, u, buf, user) {
+  let job = HOT_RUN.get(u);
+  if (!job) {
+    if (limited('dghot:' + user.id, 300, 3600e3)) return json(res, 429, { error: 'Too many diagrams in one hour. Please wait a little.' });
+    job = BILL_AI.nums(buf).then(r => {
+      const o = hotRead(u) || { u, ed: [] };
+      Object.assign(o, { u, toks: r.toks, lo: r.lo || [], w: r.w, h: r.h, at: new Date().toISOString() }); hotWrite(u, o); return o;
+    }).finally(() => HOT_RUN.delete(u));
+    HOT_RUN.set(u, job);
+  }
+  try { return json(res, 200, hotOut(await job)); }
+  catch (e) { const o = hotRead(u) || {}; return json(res, 200, { ...hotOut(o), toks: null, off: String(e && e.message || e).slice(0, 200) }); }
+}
+async function dgHot(req, res, url, user) {
+  if (roleClass(user) !== 'staff') { drain(req); return json(res, user ? 403 : 401, { error: user ? 'Staff login needed' : 'Please log in again' }); }
+  if (url.pathname === '/api/dghot/edit') {
+    if (req.method !== 'POST') { drain(req); return json(res, 405, { error: 'Method not allowed' }); }
+    if (user.role !== 'admin') { drain(req); return json(res, 403, { error: 'Only Admin can fix the diagram numbers' }); }
+    let b; try { b = JSON.parse((await readBody(req, 64 * 1024)).toString('utf8')); } catch (e) { return json(res, 400, { error: 'Bad request body' }); }
+    const u = String(b && b.u || ''), f = v => typeof v === 'number' && v >= 0 && v <= 1;
+    if (u.length > 600 || !HOT_U.test(u)) return json(res, 400, { error: 'Bad diagram' });
+    const o = hotRead(u) || { u, toks: null, ed: [] }; o.ed = o.ed || [];
+    if (Array.isArray(b.add) && /^[A-Z0-9][A-Z0-9 ./-]{0,9}$/i.test(String(b.add[0] || '')) && b.add.slice(1, 5).every(f)) o.ed.push({ a: 'add', t: String(b.add[0]).toUpperCase(), b: b.add.slice(1, 5).map(v => Math.round(v * 1e4) / 1e4), by: user.id, at: new Date().toISOString() });
+    else if (Array.isArray(b.del) && b.del.slice(0, 2).every(f)) o.ed.push({ a: 'del', p: b.del.slice(0, 2).map(v => Math.round(v * 1e4) / 1e4), by: user.id, at: new Date().toISOString() });
+    else return json(res, 400, { error: 'Nothing to change' });
+    if (o.ed.length > 600) o.ed = o.ed.slice(-600);
+    hotWrite(u, o);
+    return json(res, 200, hotOut(o));
+  }
+  const u = String(url.searchParams.get('u') || '');
+  if (u.length > 600 || !HOT_U.test(u)) { drain(req); return json(res, 400, { error: 'Bad diagram' }); }
+  const o = hotRead(u) || { u, toks: null, ed: [] };
+  if (req.method === 'GET') {
+    if (o.toks || url.searchParams.get('ocr') !== '1') return json(res, 200, hotOut(o));
+    if (u.startsWith('pdf:')) return json(res, 200, { ...hotOut(o), need: 'img' });
+    const buf = hotImg(u);
+    if (!buf) return json(res, 404, { error: 'not_found' });   // this catalogue's files are not on the server yet
+    return hotOcr(res, u, buf, user);
+  }
+  if (req.method !== 'POST') { drain(req); return json(res, 405, { error: 'Method not allowed' }); }
+  if (!u.startsWith('pdf:')) { drain(req); return json(res, 400, { error: 'This diagram is read on the server' }); }
+  if (o.toks) { drain(req); return json(res, 200, hotOut(o)); }
+  if ((+req.headers['content-length'] || 0) > HOT_MAX) { drain(req); return json(res, 413, { error: 'This page is too big (12 MB max)' }); }
+  let buf; try { buf = await readBody(req, HOT_MAX); } catch (e) { return json(res, 413, { error: 'This page is too big (12 MB max)' }); }
+  if (!photoKind(buf)) return json(res, 400, { error: 'Send the page as a PNG or JPG picture' });
+  return hotOcr(res, u, buf, user);
 }
 // GET /api/photo/status?h=<hash>,<hash>: is the clean copy ready (the app shows "Cleaning…" until it is)
 function photoStatus(req, res, url, user) {

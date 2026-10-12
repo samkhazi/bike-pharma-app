@@ -110,6 +110,33 @@ if (mc && mc !== 'new') {
   ok(!!need, 'huge udhaar needs Manager: ' + need);
 } else ok(true, 'no mechanic in the test shop: udhaar limit check skipped');
 
+// ===== server checks (lib/billguard.mjs): a changed app cannot break the rules =====
+const post = (p, changes) => p.evaluate(async c => { const r = await fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ base: SRV.rev, changes: c }), credentials: 'same-origin' }); return r.json(); }, changes);
+const srv = (p, k) => p.evaluate(async k => { const r = await fetch('/api/sync?since=0', { credentials: 'same-origin' }); const j = await r.json(); return j.changed[k]; }, k);
+await fresh(B);
+let bills = await srv(B, 'bills');
+const cheap = { id: 'INV-2026-09901', kind: 'cust', pname: 'X', mob: '9876543210', items: [{ pid, q: 1, r: 1, mrp: 549 }], p: 'X', t: '1 PM', iso: '2026-10-12', pm: 'Cash', amt: 1 };
+let j = await post(B, { bills: [cheap, ...bills] });
+ok(/below the set price/.test(j.why || '') && !(await srv(B, 'bills')).some(b => b.id === cheap.id), 'server refuses a bill below the set price: ' + j.why);
+const ap = await srv(B, 'approvals'); const pend = ap.find(a => a.st === 'pending');
+if (pend) { await post(B, { approvals: ap.map(a => a.id === pend.id ? { ...a, st: 'approved' } : a) }); ok((await srv(B, 'approvals')).find(a => a.id === pend.id).st === 'pending', 'server: Billing cannot approve a request'); }
+else ok(true, 'no pending request to try');
+bills = await srv(B, 'bills'); const one = bills.find(b => b.pm !== 'Warranty' && !b.cancel);
+await post(B, { bills: bills.map(b => b.id === one.id ? { ...b, amt: 1, cancel: { why: 'x' } } : b) });
+let after = (await srv(B, 'bills')).find(b => b.id === one.id);
+ok(after.amt === one.amt && !after.cancel, 'server: Billing cannot change or cancel a made bill');
+await post(B, { bills: bills.filter(b => b.id !== one.id) });
+ok((await srv(B, 'bills')).some(b => b.id === one.id), 'server: Billing cannot delete a bill');
+const pr = await srv(B, 'prices'); await post(B, { prices: { ...(pr || {}), [pid]: { price: 1, mp: 1, mrp: 1 } } });
+ok(JSON.stringify(await srv(B, 'prices')) === JSON.stringify(pr), 'server: Billing cannot change prices');
+const ws = await srv(B, 'warranties'); const wcl = await srv(B, 'wclaims') || [];
+const exp = ws.find(w => w.start === '2020-01-01') || ws[0];
+const wsOld = ws.map(w => w.id === exp.id ? { ...w, start: '2020-01-01' } : w);
+await post(M, { warranties: wsOld }); await fresh(B);
+const fake = { id: 'WC-9999', w: exp.id, inv: exp.inv, pid: exp.pid, name: exp.name, inW: true, st: 'Replaced', by: 'x', at: 'x' };
+j = await post(B, { wclaims: [fake, ...wcl], bills: [{ id: 'WAR-9999', kind: 'cust', pname: 'X', items: [{ pid: exp.pid, q: 1, r: 0, mrp: 0 }], p: 'X', t: '1 PM', iso: '2026-10-12', pm: 'Warranty', amt: 0, war: 'WC-9999' }, ...(await srv(B, 'bills'))] });
+ok(!(await srv(B, 'bills')).some(b => b.id === 'WAR-9999'), 'server refuses a Rs 0 bill when the warranty is over: ' + j.why);
+const au = await srv(Ad, 'audit'); ok(au.some(a => a.a === 'Refused by server'), 'refusals are in the Admin audit list');
 ok(!errs.length, 'no page errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''));
 await b.close();
 process.exit(fails ? 1 : 0);

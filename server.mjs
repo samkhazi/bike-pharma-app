@@ -12,6 +12,7 @@ import { openStore, HAS_SQLITE } from './lib/store.mjs';
 import { roleClass, viewOf, scopeValue, canWrite, merge3, applyOwn, applyMine, mechLogins, moveCodes, deepEqual, cleanStrings, safeText, STAFF_ROLES, MECH_OWN } from './lib/merge.mjs';
 import { otpConfig, makeOtp, deliverOtp } from './lib/sms.mjs';
 import { removeDemoData } from './lib/cleanup.mjs';
+import { checkNewBills, guardValue, auditRows, BILL_KEYS } from './lib/billguard.mjs';
 import { photoAi, AI_VER } from './lib/photoai.mjs';
 import { billAi } from './lib/billai.mjs';
 import { makeAlt } from './lib/altagent.mjs';
@@ -171,10 +172,13 @@ async function api(req, res, url, user) {
     const base = Math.max(0, +body.base || 0); const changes = (body.changes && typeof body.changes === 'object') ? body.changes : {};
     const writes = {}, changed = {}, refused = [];
     const staff = roleClass(user) === 'staff', scoped = !staff;
+    // update 8o (Sam 2026-10-12): the Billing rules are checked here, not trusted from the app (lib/billguard.mjs)
+    const gget = reader(); const gnotes = staff ? checkNewBills(changes, user, gget) : [];
+    const gblock = gnotes.length ? new Set(BILL_KEYS) : null;
     for (const [k, cv0] of Object.entries(changes)) {
       if (!/^[A-Za-z_][\w]{0,40}$/.test(k) || cv0 === null || cv0 === undefined) continue;
       const cv = scoped ? cleanStrings(cv0) : cv0;
-      const mode = canWrite(k, user); if (!mode) { refused.push(k); continue; }
+      const mode = canWrite(k, user); if (!mode || (gblock && gblock.has(k))) { refused.push(k); continue; }
       if (mode === 'mine') { // a mechanic's own job cards / customers, stored per mechanic
         const sk = MECH_OWN[k]; const sv = stateVal(sk); const merged = applyMine(sv, cv, user);
         if (!deepEqual(merged, sv)) writes[sk] = JSON.stringify(merged);
@@ -186,6 +190,7 @@ async function api(req, res, url, user) {
       if (mode === 'own') merged = applyOwn(k, sv, cv, user);
       else if (!row || row.rev <= base) merged = cv;
       else { const bj = store.versionAt(k, base); merged = merge3(bj === undefined ? undefined : JSON.parse(bj), sv, cv); }
+      if (staff) { const [gv, gn] = guardValue(k, sv, merged, user, gget); merged = gv; gnotes.push(...gn); }
       if (!deepEqual(merged, sv)) writes[k] = JSON.stringify(merged);
       const back = scopeValue(k, merged, user);
       if (!deepEqual(back, cv0)) changed[k] = back === undefined ? null : back; // cleaned text goes back to the writer too
@@ -201,6 +206,7 @@ async function api(req, res, url, user) {
         if (mv.warranties) { writes.warranties = JSON.stringify(mv.warranties); changed.warranties = mv.warranties; }
       }
     }
+    if (gnotes.length) { const au = writes.audit ? JSON.parse(writes.audit) : stateVal('audit') || []; writes.audit = JSON.stringify([...auditRows(user, gnotes), ...(Array.isArray(au) ? au : [])]); changed.audit = JSON.parse(writes.audit); console.log(new Date().toISOString(), 'refused for', user.id, gnotes.join(' | ')); }
     const rev = Object.keys(writes).length ? store.write(writes) : store.rev();
     const get = reader();
     for (const [k, v] of Object.entries(viewOf(store.stateSince(base).map(r => r.key), get, user))) if (!(k in changes)) changed[k] = v;
@@ -208,7 +214,7 @@ async function api(req, res, url, user) {
       const now = viewOf(store.stateAll().map(r => r.key), get, user, true);
       for (const k of refused) if (k in now && !deepEqual(now[k], changes[k])) changed[k] = now[k];
     }
-    return json(res, 200, { rev, changed });
+    return json(res, 200, { rev, changed, ...(gnotes.length ? { why: gnotes[0] } : {}) });
   }
 
   if (p === '/api/users/password' && m === 'POST') {

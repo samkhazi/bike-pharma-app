@@ -194,5 +194,7 @@ def apply(a):
     # Manager's "Money today": the udhaar part of split bills counts as udhaar
     sub("cr=billsToday().filter(b=>b.pm==='Credit').reduce((a,b)=>a+(+b.amt||0),0);",
         "cr=billsToday().filter(b=>b.pm==='Credit').reduce((a,b)=>a+(+b.amt||0),0)+billsToday().reduce((a,b)=>a+(b.pm==='Split'&&b.split?+b.split.Credit||0:0),0);")
+    # the server refuses what breaks the Billing rules (lib/billguard.mjs): say why
+    sub("srvApply(j.changed,ch);if(SRV.fail>=3)", "srvApply(j.changed,ch);if(j.why){closeSheet();sheet(`<h3 class=\"h2\">Not saved</h3><p class=\"cap\">The server refused this: ${esc(j.why)}. Ask Manager if it is needed.</p><button class=\"btn\" onclick=\"closeSheet();refresh()\">OK</button>`);}if(SRV.fail>=3)")
     sub("function decide(id,st){const a=DB.approvals.find(x=>x.id===id);a.st=st;", "function decide(id,st){const a=DB.approvals.find(x=>x.id===id);a.st=st;blDecide(a,st);")
     return a, n

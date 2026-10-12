@@ -4289,7 +4289,8 @@ function invHits(pk){const out=[];for(const e of CAT_ALL){if(e.st!==2)continue;c
   const r=rs.find(x=>x.ph)||rs[0],mrp=rs.reduce((m,x)=>Math.max(m,+x.mrp||0),0),qs=rs.map(x=>parseInt(x.qty)||0).filter(Boolean);
   out.push({vb:e.vb,pk,pn:r.part,name:catNice(r.desc)||r.part,sec:catNice(r.asm||''),qty:qs.length?Math.max(...qs):0,mrp,fits:m2FitL(r),cat:invCatOf(r)});}
  return out;}
-const invRowOf=(vb,pk)=>{if(!vb||!pk||!CAT_ALL.some(e=>e.vb===vb&&e.st===2))return null;const rs=catPkRows(vb,pk);return rs.find(x=>x.ph)||rs[0]||null;};
+const INV_RK=new Map();
+const invRowOf=(vb,pk)=>{if(!vb||!pk||!CAT_ALL.some(e=>e.vb===vb&&e.st===2))return null;const rs=catPkRows(vb,INV_RK.get(vb+'|'+pk)||pk);return rs.find(x=>x.ph)||rs[0]||null;};
 const invPic=r=>r?(catPhoto(r)||m2Thumb(r)):'';
 /* look a number up: the catalogue files its shape can be in load first (catRoute), then the files it could be part of a number in,
    then (when asked) every catalogue. defer: the caller asks for the files itself (several numbers at once) */
@@ -4419,7 +4420,7 @@ function apLookCard(a){if(!a.look||a.look.length<4)return {k:'',h:''};
  if(o.hits.length>1&&!a.picked)return {k:'pick',h:`<div class="card inv-pick"><div class="row"><span class="pill a">Pick the brand</span></div><p class="cap"><b class="num">${esc(a.pn)}</b> is in the ${esc(o.hits.map(h=>h.vb).join(' and '))} catalogues. Which one is on the box?</p><div class="inv-chips">${o.hits.map(h=>`<button class="chip" onclick="apPick('${m2Q(h.vb)}')">${esc(h.vb)} · ${esc(h.name)}${h.mrp?' · MRP '+invInr(h.mrp):''}</button>`).join('')}</div></div>`};
  const h=o.hits.find(x=>x.vb===a.picked)||o.hits[0];if(!a.hit||a.hit.vb!==h.vb)apUse(a,h);
  const r=invRowOf(h.vb,h.pk),pic=invPic(r),all=!!S.ui.apAll,nf=h.fits.length;
- return {k:'found',h:`<div class="card inv-found"><div class="inv-chips"><span class="pill g">Found in ${esc(h.vb)} catalogue</span><span class="pill n">Not in your list yet</span>${o.hits.length>1?`<button class="link" onclick="S.ui.ap.picked='';S.ui.ap.hit=null;refresh()">Other brand</button>`:''}</div>
+ return {k:'found',h:`<div class="card inv-found"><div class="inv-chips"><span class="pill g">Found in ${esc(h.vb)} catalogue</span><span class="pill n">Not in your list yet</span>${o.hits.length>1?`<button class="link" onclick="S.ui.ap.picked='';S.ui.ap.hit=null;refresh()">Other brand</button>`:''}</div>${h.via?altVia(a.pn,h.via):''}
   <div class="inv-fr">${pic?`<div class="inv-cpic">${pic}<div class="micro muted">Catalogue photo · only to recognise</div></div>`:''}<div class="grow stack g6"><h3 class="h2">${esc(a.name||h.name)}</h3><div class="cap">${esc([h.vb,h.sec,h.qty?h.qty+' per bike':''].filter(Boolean).join(' · '))}</div>
    <div class="kv"><span>MRP ${h.mrp?'(from catalogue)':''}</span><span>${h.mrp?`<b>${invInr(h.mrp)}</b>`:'<b class="amb">Not in this catalogue</b>'}</span></div><div class="kv"><span>Category</span><span>${esc(a.cat)}</span></div><div class="kv"><span>Type</span><span>Genuine (OEM)</span></div></div></div>
   ${nf?`<div class="micro muted">Fits ${nf===1?'this '+esc(h.vb)+' bike':nf+' '+esc(h.vb)+' bikes'}</div><div class="inv-chips">${h.fits.slice(0,all?nf:8).map(f=>`<span class="pill n">${esc(f)}</span>`).join('')}${nf>8?`<button class="link" onclick="S.ui.apAll=!S.ui.apAll;refresh()">${all?'Show less':'+'+(nf-8)+' more'}</button>`:''}</div>`:''}
@@ -4491,7 +4492,7 @@ function geNw(k){return (S.ui.ge&&S.ui.ge.nw||[]).find(n=>n.k===k)||{photos:[]};
 const invNwReady=n=>n.photos.length>=1&&+n.mrp>0&&!!String(n.name||'').trim()&&!!String(n.brand||'').trim();
 function invNwLine(h,hand){const k='N'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
  return hand?{k,pn:String(h.pn).trim().toUpperCase(),pk:catPk(h.pn),name:'',brand:'',vb:'',cat:'OEM Parts',sec:'',qty:0,mrp:'',fits:[],photos:[],bin:'',q:1,rate:'',hand:1}
-  :{k,pn:h.pn,pk:h.pk,name:h.name,brand:h.vb,vb:h.vb,cat:h.cat,sec:h.sec,qty:h.qty,mrp:h.mrp?String(h.mrp):'',mrpCat:!!h.mrp,fits:h.fits,photos:[],bin:'',q:1,rate:''};}
+  :{k,pn:h.pn,pk:h.pk,name:h.name,brand:h.vb,vb:h.vb,cat:h.cat,sec:h.sec,qty:h.qty,mrp:h.mrp?String(h.mrp):'',mrpCat:!!h.mrp,fits:h.fits,photos:[],bin:'',q:1,rate:'',via:h.via||null};}
 function geNwAdd(h,hand){const g=S.ui.ge;g.nw=g.nw||[];const l=invNwLine(h,hand);g.nw.push(l);S.ui.gePick=null;S.ui.geOpen=l.k;if(S.ui.geErr)delete S.ui.geErr.items;refresh();}
 function geNwDel(k){const g=S.ui.ge;g.nw=(g.nw||[]).filter(n=>n.k!==k);if(S.ui.geOpen===k)S.ui.geOpen=null;refresh();}
 function geCode(c){c=String(c||'').trim();if(!c)return;const g=S.ui.ge;const foc=()=>{S.ui.after=()=>{const i=document.getElementById('ge-code');if(i)i.focus();};};
@@ -4507,7 +4508,7 @@ function geNwPanel(n){const r=n.vb&&!n.hand?invRowOf(n.vb,n.pk):null,pic=invPic(
  return `<div class="card inv-pan"><div class="row"><span class="pill a">New part</span>${n.hand?'<span class="pill r">Not in a catalogue</span>':`<span class="pill g">From ${esc(n.vb)} catalogue</span>`}<span class="grow"></span><button class="iconbtn" onclick="S.ui.geOpen=null;refresh()" aria-label="Close">${ic('x','s18')}</button></div>
   ${pic?`<div class="inv-cpic">${pic}<div class="micro muted">Catalogue photo · only to recognise</div></div>`:''}
   ${n.hand?`<div class="field"><label for="nw-name">Part name <span style="color:var(--r)">*</span></label><div class="inp"><input id="nw-name" value="${esc(n.name)}" placeholder="e.g. Clutch lever" oninput="geNw('${n.k}').name=this.value" onchange="invRefresh()"></div></div><div class="grid2"><div class="field"><label for="nw-brand">Brand <span style="color:var(--r)">*</span></label><div class="inp"><input id="nw-brand" value="${esc(n.brand)}" placeholder="e.g. Hero" oninput="geNw('${n.k}').brand=this.value" onchange="invRefresh()"></div></div><div class="field"><label for="nw-cat">Category</label><div class="inp"><select id="nw-cat" style="border:0;background:transparent;flex:1;font-weight:600" onchange="geNw('${n.k}').cat=this.value">${CATS.map(c=>`<option ${n.cat===c[0]?'selected':''}>${c[0]}</option>`).join('')}</select></div></div></div><div class="cap num">${esc(n.pn)}</div>`
-   :`<h3 class="h2">${esc(n.name)}</h3><div class="cap num">${esc(n.pn)}</div><div class="cap">${esc([n.vb,n.sec,n.qty?n.qty+' per bike':''].filter(Boolean).join(' · '))}</div>`}
+   :`<h3 class="h2">${esc(n.name)}</h3><div class="cap num">${esc(n.pn)}</div><div class="cap">${esc([n.vb,n.sec,n.qty?n.qty+' per bike':''].filter(Boolean).join(' · '))}</div>${n.via?altVia(n.pn,n.via):''}`}
   ${n.fits&&n.fits.length?`<div class="micro muted">Fits ${n.fits.length} bike${n.fits.length>1?'s':''}</div><div class="inv-chips">${n.fits.slice(0,6).map(f=>`<span class="pill n">${esc(f)}</span>`).join('')}${n.fits.length>6?`<span class="pill n">+${n.fits.length-6} more</span>`:''}</div>`:''}
   ${n.vb&&!n.hand&&!n.mrpCat?`<div class="inv-note a">${ic('alert','s18')}<span>The ${esc(n.vb)} catalogue has no MRP. Type the MRP printed on the pack.</span></div>`:''}
   <div class="field"><label for="nw-mrp">MRP <span style="color:var(--r)">*</span>${n.mrpCat?' <span class="cap">from the '+esc(n.vb)+' catalogue</span>':''}</label><div class="inp"><b>₹</b><input id="nw-mrp" inputmode="decimal" value="${esc(n.mrp||'')}" placeholder="MRP from the pack" oninput="geNw('${n.k}').mrp=this.value" onchange="invRefresh()"></div></div>
@@ -4564,7 +4565,7 @@ SCREENS.invpaste=()=>{const st=S.ui.ip||(S.ui.ip={txt:'',pick:{}});const P0=invP
   if(r.kind==='look')return `<div class="inv-cl">${b('…','n')}<div class="grow"><b class="num">${esc(l.pn)}</b><div class="cap">Checking the ${esc((r.o.pend||[]).join(', ')||'')} catalogues…</div></div></div>`;
   if(r.kind==='none')return `<div class="inv-cl no">${b('Not found','r')}<div class="grow"><b class="num">${esc(l.pn)}</b><div class="cap">Not in any catalogue we looked in. Fill name, brand and MRP by hand, then take its photo. ${qr(l)}${wt}</div></div></div>`;
   const h=r.hits.find(x=>x.vb===st.pick[l.pk])||r.hits[0];
-  return `<div class="inv-cl nw">${b('New','a')}<div class="grow"><b>${esc(h.name)}${r.kind==='new'?' · '+esc(h.vb)+' catalogue':''}</b><div class="cap"><span class="num">${esc(l.pn)}</span> · ${qr(l)} · ${r.kind==='pick'?'this number is in the '+esc(r.hits.map(x=>x.vb).join(' and '))+' catalogues. Pick the brand:':'needs '+(h.mrp?'':'MRP + ')+'a photo'}${wt}</div>
+  return `<div class="inv-cl nw">${b('New','a')}<div class="grow"><b>${esc(h.name)}${r.kind==='new'?' · '+esc(h.vb)+' catalogue':''}${h.via?' · same part as '+esc(h.via.alt):''}</b><div class="cap"><span class="num">${esc(l.pn)}</span> · ${qr(l)} · ${r.kind==='pick'?'this number is in the '+esc(r.hits.map(x=>x.vb).join(' and '))+' catalogues. Pick the brand:':'needs '+(h.mrp?'':'MRP + ')+'a photo'}${wt}</div>
    ${r.kind==='pick'?`<div class="inv-chips">${r.hits.map(x=>`<button class="chip ${st.pick[l.pk]===x.vb?'on':''}" onclick="S.ui.ip.pick['${l.pk}']='${m2Q(x.vb)}';refresh()">${esc(x.vb)}${x.mrp?' · MRP '+invInr(x.mrp):''}</button>`).join('')}</div>`:''}</div></div>`;};
  return bar('Paste supplier bill')+`<div class="scroll"><div class="pad">
  <p class="cap">Take a photo of the printed bill, or copy the lines from the supplier’s Excel sheet or WhatsApp message and paste them here. Each line is checked against your list and all catalogues.</p>
@@ -5181,7 +5182,7 @@ SCREENS.invpaste=()=>{const st=bpInit(S.ui.ip||(S.ui.ip={txt:'',pick:{}}));BP_BG
   if(r.kind==='look')return `<div class="inv-cl">${b('…','n')}<div class="grow"><b class="num">${esc(l.pn)}</b><div class="cap">Checking the ${esc((r.o.pend||[]).join(', ')||'')} catalogues…</div></div></div>`;
   if(r.kind==='none')return `<div class="inv-cl no">${b('Not found','r')}<div class="grow"><b class="num">${esc(l.pn)}</b>${nm(l)}<div class="cap">Not in any catalogue we looked in. Misread? Type the right part no. If it is right, fill name, brand and MRP by hand, then take its photo. ${qr(l)}${wt}</div>${note}${fx(l,'Type the right part no.')}</div></div>`;
   const h=r.hits.find(x=>x.vb===st.pick[l.pk])||r.hits[0];
-  return `<div class="inv-cl nw">${b('New','a')}<div class="grow"><b>${esc(h.name)}${r.kind==='new'?' · '+esc(h.vb)+' catalogue':''}</b><div class="cap"><span class="num">${esc(l.pn)}</span> · ${qr(l)} · ${r.kind==='pick'?'this number is in the '+esc(r.hits.map(x=>x.vb).join(' and '))+' catalogues. Pick the brand:':'needs '+(h.mrp||l.mrp?'':'MRP + ')+'a photo'}${wt}</div>
+  return `<div class="inv-cl nw">${b('New','a')}<div class="grow"><b>${esc(h.name)}${r.kind==='new'?' · '+esc(h.vb)+' catalogue':''}${h.via?' · same part as '+esc(h.via.alt):''}</b><div class="cap"><span class="num">${esc(l.pn)}</span> · ${qr(l)} · ${r.kind==='pick'?'this number is in the '+esc(r.hits.map(x=>x.vb).join(' and '))+' catalogues. Pick the brand:':'needs '+(h.mrp||l.mrp?'':'MRP + ')+'a photo'}${wt}</div>
    ${r.kind==='pick'?`<div class="inv-chips">${r.hits.map(x=>`<button class="chip ${st.pick[l.pk]===x.vb?'on':''}" onclick="S.ui.ip.pick['${l.pk}']='${m2Q(x.vb)}';refresh()">${esc(x.vb)}${x.mrp?' · MRP '+invInr(x.mrp):''}</button>`).join('')}</div>`:''}${note}${fx(l,'Change part no.')}</div></div>`;};
  const np=(o,i)=>`<div class="inv-cl bp-np">${b('No part no.','a')}<div class="grow"><b>${esc(o.name||'Item')}</b><div class="cap">${bpQ(o.q)} × ${invInr(o.r)}${o.mrp>0?' · MRP '+invInr(o.mrp):''}</div>
    <form class="bp-fix" onsubmit="event.preventDefault();bpNpSave(${i},this.elements[0].value)"><input placeholder="Type its part no." autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Part no. for ${esc(o.name||'this item')}"><button class="btn sm" type="submit">Add</button></form>
@@ -5374,7 +5375,7 @@ const ALTL={st:0,m:null,t:0};
 function altListLoad(){if(ALTL.st===3&&Date.now()-ALTL.t>300e3)ALTL.st=0;if(ALTL.st||typeof SRV==='undefined'||!altStaff())return;ALTL.st=1;
  fetch('cat/alt/lists.json',{credentials:'same-origin'}).then(r=>r.ok?r.json():Promise.reject(new Error('HTTP '+r.status))).then(j=>{const m=new Map(),N=(j.lists||[]).map(l=>l.name||'alternate list'),add=(k,o)=>{const a=m.get(k);if(a)a.push(o);else m.set(k,[o]);};
   (j.p||[]).forEach(([o,od,n,nd,L,f])=>{const ko=catPk(o),kn=catPk(n);if(!ko||!kn||ko===kn)return;add(ko,{pn:n,d:nd,dir:'new',cat:!!(f&2),list:N[L]});add(kn,{pn:o,d:od,dir:'old',cat:!!(f&1),list:N[L]});});
-  ALTL.m=m;ALTL.st=2;try{const s=cur().s;if(s==='altno'||(s==='findpart'&&(cur().p||{}).v==='res'))refresh();}catch(e){}})
+  ALTL.m=m;ALTL.st=2;try{const s=cur().s;if(s==='altno'||(s==='findpart'&&(cur().p||{}).v==='res'))refresh();else if(['addproduct','grnedit','invpaste'].includes(s))invRefresh();}catch(e){}})
  .catch(()=>{ALTL.st=3;ALTL.t=Date.now();});}
 const altListOf=q=>{const k=catPk(q);return k&&ALTL.m&&ALTC.st[k]!=='no'?ALTL.m.get(k)||[]:[];};
 /* the other numbers Find Part tries for a number no catalogue has: the one Admin approved, then the lists' numbers our catalogues have */
@@ -5462,6 +5463,15 @@ function fpHit(q,words){q=String(q||'').trim();if(!q||!altStaff())return '';
  if(R.loading)return `<div class="card fp-hit" data-wait="1">${head}<div class="cap">Looking for “${esc(q)}” in the brand catalogues…</div></div>`;
  if(!L.length)return `<div class="card fp-hit">${head}<div class="cap">${altListLine(q)||`“${esc(q)}” is not in our brand catalogues either.`}</div></div>`;
  return `<div class="card fp-hit">${head}${R.alt?altVia(q,R.alt):''}<div class="stack g8">${L.slice(0,3).map(catCard).join('')}</div>${L.length>3?`<div class="cap">${L.length} parts: Open in Find Part shows them all.</div>`:''}</div>`;}
+/* ---------- a number no catalogue has fills from its other number (update 8l, staff only; the part keeps the typed number) ---------- */
+(()=>{if(typeof invLook!=='function')return;const f=invLook;let d=0;
+ invLook=function(pn,defer){const o=f(pn,defer);if(d||o.st!=='done'||o.hits.length||typeof SRV==='undefined'||!altStaff())return o;
+  altListLoad();altLoad();if(ALTL.st===1)return Object.assign({},o,{st:'wait',need:[],pend:['alternate number']});
+  d=1;try{const pk=catPk(pn),P=String(pn).trim().toUpperCase();
+   for(const al of altAll(pn)){const p=f(al.alt,defer);
+    if(p.st==='wait')return Object.assign({},o,{st:'wait',need:p.need,pend:p.pend});
+    if(p.st==='done'&&p.hits.length)return Object.assign({},o,{hits:p.hits.map(h=>{INV_RK.set(h.vb+'|'+pk,h.pk);return Object.assign({},h,{pn:P,pk,via:al});})});}
+   return o;}finally{d=0;}};})();
 /* ---------- Waiting for photos ---------- */
 SCREENS.invwait=()=>{const L=DB.waitParts||[];if(S.ui.iw&&!L.some(w=>w.id===S.ui.iw))S.ui.iw=null;if(!S.ui.iw&&L.length&&isWv())S.ui.iw=L[0].id;
  const sel=L.find(w=>w.id===S.ui.iw),units=L.reduce((a,w)=>a+(+w.q||0),0),bills=new Set(L.map(w=>w.inv||w.grn)).size;

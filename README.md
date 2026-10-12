@@ -77,6 +77,11 @@ curl http://127.0.0.1:3010/api/health
 Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 
 ## Badlav
+**Update 8l (12 Oct 2026)**
+- Add product, Stock in aur Paste supplier bill me naya number (jaise 36JG0016) daalo, jo catalogue me nahi hai par alternate
+  list me uska purana number hai (36JU0138): naam, brand, MRP aur bikes purane number se khud bhar jaate hain. Part naye number
+  (box wala) se hi save hota hai, aur card pe likha aata hai "36JG0016 is the new number of 36JU0138".
+
 **Update 8k (12 Oct 2026)**
 - Staff ke har search bar me part number likho: Universal search, Stock & racks, Warranty check, Scan to find aur bill ka
   item box. Neeche "Brand catalogues" card aata hai: part ka naam, brand, model, MRP, diagram, aur "Open in Find Part".

@@ -3,44 +3,44 @@
 11:36Z "discount ... eh nhi chahiye q ki jo discount me set kiya hua rehta hun ohi final he usme kuch bargain nhi rahega q ki eh
 automobile ka business he", 11:37Z "warrenty claim ke liye request bhejne ka ek option dedo jo manager ya admin attend karenge ya phir
 under warrenty rha toh o khud usko claim karke degi", 11:40Z "haan sabhi implement kardo" (the list: bill cancel / change only through
-Manager, hold, split cash + UPI + udhaar, mechanic credit limit check, estimate to bill, WhatsApp bill).
+Manager, hold, split cash + UPI + credit, mechanic credit limit check, estimate to bill, WhatsApp bill).
 
 - No bargaining: the bill has no extra discount box and no discount request; the price Admin set (customer price, mechanic price) is final.
 - Warranty claim (Billing, Manager, Admin): find the bill by mobile, bill or part number. In warranty: Billing gives the replacement
   itself (a Rs 0 "Warranty" bill, the old part waits to go to the company). Warranty over or not sure: a request with a note and photos
   goes to Manager and Admin; once approved Billing gives the replacement.
-- Bill cancel / change: Billing asks with a reason, Manager or Admin approves; then stock comes back, udhaar and wallet are undone,
+- Bill cancel / change: Billing asks with a reason, Manager or Admin approves; then stock comes back, credit and wallet are undone,
   warranties are removed, and for a change Billing makes the corrected bill from the old one.
-- Split: cash, UPI and (mechanic) udhaar amounts that must add up to the bill; the cash and UPI parts count in Cash / UPI collected.
-- Udhaar above the mechanic's credit limit, or with an overdue bill, needs Manager's OK for that amount.
+- Split: cash, UPI and (mechanic) credit amounts that must add up to the bill; the cash and UPI parts count in Cash / UPI collected.
+- Credit above the mechanic's credit limit, or with an overdue bill, needs Manager's OK for that amount.
 - Estimate keeps its parts; "Make bill" turns it into the invoice. The bill-made sheet has a WhatsApp button.
 """
 
 BLJS = r"""
-/* ---------- Billing profile (update 8o): fixed prices, warranty claims, bill cancel / change requests, split, udhaar limit ---------- */
+/* ---------- Billing profile (update 8o): fixed prices, warranty claims, bill cancel / change requests, split, credit limit ---------- */
 const blMgr=()=>!!S.user&&['manager','admin'].includes(S.user.role);
 const blNum=v=>Math.max(0,Math.round(+String(v??'').replace(/[^\d.]/g,'')||0));
-/* split: cash + UPI + udhaar (mechanic only), must add up to the amount to pay */
+/* split: cash + UPI + credit (mechanic only), must add up to the amount to pay */
 const blSplit=inv=>{const s=inv.sp||{};return {Cash:blNum(s.cash),UPI:blNum(s.upi),Credit:inv.party==='mech'?blNum(s.cr):0};};
 function blCredAmt(inv,tot){const due=tot-invWallet(inv,tot).use;if(inv.pm==='Credit')return due;
  if(inv.pm==='Split'){const s=blSplit(inv);if(s.Cash+s.UPI+s.Credit!==due){toast('Split amounts must add up to '+inr(due));return null;}return s.Credit;}return 0;}
-/* udhaar above the credit limit or with an overdue bill: Manager allows that amount first */
+/* credit above the credit limit or with an overdue bill: Manager allows that amount first */
 function blCredNeed(code,amt){if(!code||code==='new'||!(amt>0))return '';const od=overdueOf(code).length;if(od)return od+' overdue bill'+(od>1?'s':'')+' not cleared';
  const v=vInfo(code);if(v&&mechDue(code)+amt>v.limit)return 'Outstanding '+inr(mechDue(code))+' + this '+inr(amt)+' is above the '+inr(v.limit)+' limit';return '';}
 const blCredOk=(inv,code,amt)=>{if(!blCredNeed(code,amt))return true;const q=(DB.crReq||{})[inv.crReq];return !!q&&q.st==='approved'&&q.mc===code&&amt<=q.amt;};
 function blCredAsk(amt){const inv=S.ui.inv;const code=inv.mc||MC0();const m=MECHS_R().find(x=>x.code===code)||{n:code};DB.crReq=DB.crReq||{};const id='CR-'+(101+Object.keys(DB.crReq).length);
  DB.crReq[id]={mc:code,amt,st:'pending',by:S.user.name};inv.crReq=id;
- DB.approvals.unshift({id:Date.now(),t:'Udhaar above limit · '+esc(m.n),d:esc(S.user.name)+' · '+code+' · '+inr(amt)+' udhaar · '+blCredNeed(code,amt),ic:'alert',st:'pending',cr:id,by:S.user.name});
+ DB.approvals.unshift({id:Date.now(),t:'Credit above limit · '+esc(m.n),d:esc(S.user.name)+' · '+code+' · '+inr(amt)+' credit · '+blCredNeed(code,amt),ic:'alert',st:'pending',cr:id,by:S.user.name});
  save();toast('Sent to Manager for approval');refresh();}
 function blPayCards(inv,tot,mech){const due=tot-invWallet(inv,tot).use;let h='';
  if(inv.pm==='Split'){const s=blSplit(inv),left=due-s.Cash-s.UPI-s.Credit;const f=(k,l,id)=>`<div class="field"><label for="${id}">${l}</label><div class="inp"><b>₹</b><input id="${id}" inputmode="numeric" value="${(inv.sp||{})[k]||''}" placeholder="0" onchange="(S.ui.inv.sp=S.ui.inv.sp||{}).${k}=this.value;refresh()"></div></div>`;
-  h+=`<div class="card" style="gap:8px"><div class="sec"><span class="h3">Split payment</span><span class="cap">To pay ${inr(due)}</span></div><div class="grid${mech?3:2}">${f('cash','Cash','sp-c')}${f('upi','UPI','sp-u')}${mech?f('cr','Udhaar','sp-r'):''}</div>
+  h+=`<div class="card" style="gap:8px"><div class="sec"><span class="h3">Split payment</span><span class="cap">To pay ${inr(due)}</span></div><div class="grid${mech?3:2}">${f('cash','Cash','sp-c')}${f('upi','UPI','sp-u')}${mech?f('cr','Credit','sp-r'):''}</div>
   <div class="cap" style="color:${left?'var(--r)':'var(--g)'}">${left>0?inr(left)+' still to split':left<0?inr(-left)+' more than the bill':'Adds up ✓'}</div></div>`;}
  const cr=mech&&(inv.pm==='Credit'?due:inv.pm==='Split'?blSplit(inv).Credit:0);const code=inv.mc||MC0();const why=cr?blCredNeed(code,cr):'';
  if(why){const q=(DB.crReq||{})[inv.crReq];const okq=q&&q.mc===code&&cr<=q.amt;
-  h+=`<div class="card" style="border:1.5px solid var(--amber);gap:8px"><div class="row cap" style="color:var(--amber)">${ic('alert','s16')}<span class="grow">${why}. Manager has to allow this udhaar.</span></div>
+  h+=`<div class="card" style="border:1.5px solid var(--amber);gap:8px"><div class="row cap" style="color:var(--amber)">${ic('alert','s16')}<span class="grow">${why}. Manager has to allow this credit.</span></div>
   ${okq?`<div class="row" style="border-radius:12px;padding:10px 12px;background:${q.st==='approved'?'var(--g-soft)':q.st==='rejected'?'var(--r-soft)':'var(--amber-soft)'}"><span class="cap grow"><b>${inv.crReq} · ${q.st==='approved'?'Allowed · you can make the bill':q.st==='rejected'?'Not allowed · take Cash / UPI':'Waiting for Manager'}</b></span></div>`
-   :`<button class="btn line sm" style="width:100%" onclick="blCredAsk(${cr})">${ic('lock','s16')}Ask Manager to allow ${inr(cr)} udhaar</button>`}</div>`;}
+   :`<button class="btn line sm" style="width:100%" onclick="blCredAsk(${cr})">${ic('lock','s16')}Ask Manager to allow ${inr(cr)} credit</button>`}</div>`;}
  return h;}
 /* estimate -> bill */
 function estCard(){const L=(DB.ests||[]).filter(e=>e.inv&&!e.used).slice(0,5);if(!L.length)return '';
@@ -54,7 +54,7 @@ function brSheet(bid){const b=DB.bills.find(x=>x.id===bid);if(!b)return;S.ui.br=
 function brDraw(b){const r=S.ui.br;sheet(`<h3 class="h2">Cancel or change ${esc(b.id)}</h3><p class="cap">${esc(b.pname||b.p)} · ${inr(b.amt)} · ${b.pm}</p>
  <div class="grid2">${[['Cancel','Cancel the bill'],['Change','Change the bill']].map(([k,l])=>`<button class="opt ${r.type===k?'on':''}" onclick="S.ui.br.type='${k}';brDraw(DB.bills.find(x=>x.id==='${esc(b.id)}'))"><span class="radio"></span>${l}</button>`).join('')}</div>
  <div class="field"><label for="br-why">Reason</label><div class="inp"><input id="br-why" value="${esc(r.why)}" placeholder="${r.type==='Change'?'e.g. wrong part, wrong quantity':'e.g. customer returned everything'}" oninput="S.ui.br.why=this.value"></div></div>
- <p class="cap">${r.type==='Change'?'Once approved, the old bill is cancelled and you make the corrected bill from it.':'Once approved, the stock comes back and the udhaar / wallet of this bill is undone.'}${blMgr()?'':' Manager or Admin approves it.'}</p>
+ <p class="cap">${r.type==='Change'?'Once approved, the old bill is cancelled and you make the corrected bill from it.':'Once approved, the stock comes back and the credit / wallet of this bill is undone.'}${blMgr()?'':' Manager or Admin approves it.'}</p>
  <button class="btn" onclick="brSend('${esc(b.id)}')">${blMgr()?(r.type==='Change'?'Cancel and change now':'Cancel the bill now'):'Send to Manager'}</button>`);}
 function brSend(bid){const b=DB.bills.find(x=>x.id===bid);const r=S.ui.br;const why=String((document.getElementById('br-why')||{}).value||r.why||'').trim().slice(0,200);if(!why){toast('Write the reason');return;}
  DB.billReq=DB.billReq||{};const rid='BR-'+(101+Object.keys(DB.billReq).length);const q={bill:bid,type:r.type,why,by:S.user.name,st:'pending',at:today()};DB.billReq[rid]=q;b.req=rid;
@@ -77,7 +77,7 @@ function blBillExtra(b){let h='';const r=b.req&&(DB.billReq||{})[b.req];
  else if(r&&r.st!=='approved')h+=`<div class="row" style="border-radius:12px;padding:10px 12px;background:${r.st==='rejected'?'var(--r-soft)':'var(--amber-soft)'}"><span class="cap grow"><b>${r.type==='Change'?'Change':'Cancel'} asked · ${r.st==='rejected'?'not approved':'waiting for Manager'}</b> · ${esc(r.why)}</span></div>`;
  if(b.rebillOf)h+=`<button class="link" onclick="go('billview',{id:'${esc(b.rebillOf)}'})">Corrects bill ${esc(b.rebillOf)}</button>`;
  if(b.war)h+=`<div class="cap" style="color:var(--g)">Warranty replacement · claim ${esc(b.war)}</div>`;
- if(b.split)h+=`<div class="card">${Object.entries(b.split).filter(([,v])=>v>0).map(([k,v])=>`<div class="kv"><span>${k==='Credit'?'Udhaar':k}</span><span>${inr(v)}</span></div>`).join('')}</div>`;
+ if(b.split)h+=`<div class="card">${Object.entries(b.split).filter(([,v])=>v>0).map(([k,v])=>`<div class="kv"><span>${k==='Credit'?'Credit':k}</span><span>${inr(v)}</span></div>`).join('')}</div>`;
  if(!b.cancel&&b.pm!=='Warranty'&&!(r&&r.st==='pending'))h+=`<button class="btn line sm" style="width:100%" onclick="brSheet('${esc(b.id)}')">${ic('x','s16')}Cancel or change this bill</button>`;
  return h;}
 /* warranty claims */
@@ -123,7 +123,7 @@ function wcGive(cid){const c=(DB.wclaims||[]).find(x=>x.id===cid);if(!c||c.st!==
  c.st='Replaced';c.rep={bill:id,by:S.user.name,at:today()};c.old='At shop';audit('Warranty replacement',c.id,c.inv,id);save();closeSheet();S.ui.wcq='';
  sheet(`${okBadge(72)}<h3 class="h2">Replacement given</h3><p class="cap">${esc(c.name)} · ${id} (₹0). Keep the old part: it goes back to the company.</p><div class="grid2"><button class="btn line" onclick="closeSheet();go('billview',{id:'${id}'})">View bill</button><button class="btn" onclick="closeSheet();refresh()">Done</button></div>`);refresh();}
 function wcSent(cid){const c=(DB.wclaims||[]).find(x=>x.id===cid);if(!c)return;c.old='Sent to company';audit('Warranty part sent to company',c.id,'At shop','Sent');save();toast('Marked as sent');refresh();}
-/* what Billing asked for: cancel / change, warranty, udhaar */
+/* what Billing asked for: cancel / change, warranty, credit */
 function myReqCard(){const L=DB.approvals.filter(a=>(a.br||a.wcl||a.cr)&&a.by===S.user.name).slice(0,5);if(!L.length)return '';
  return `${sec('My requests')}<div class="card flush">${L.map(a=>li(a.t,a.st==='pending'?'Waiting for Manager':(a.st==='approved'?'Approved':'Rejected')+(a.dec?' by '+esc(a.dec):''),`<span class="pill ${a.st==='pending'?'a':a.st==='approved'?'g':'r'}">${a.st==='pending'?'Waiting':a.st}</span>`,a.ic,a.br?`go('billview',{id:'${esc(((DB.billReq||{})[a.br]||{}).bill||'')}'})`:a.wcl?`S.ui.wcf='All';go('wclaim')`:`tab('invoice')`,a.st==='pending'?'a':a.st==='approved'?'g':'r')).join('')}</div>`;}
 function blDecide(a,st){a.dec=S.user.name;const ok=(st==='approved'?'Approved by ':'Rejected by ')+S.user.name+' · '+today();
@@ -152,10 +152,10 @@ def apply(a):
     sub("${tot0?discCard(inv,tot0):''}", "${tot?blPayCards(inv,tot,mech):''}")
     sub("Billing role: no access to salary, admin settings, master pricing or role management.",
         "Billing role: prices are fixed (no extra discount). No access to salary, admin settings, master pricing or role management.")
-    # udhaar: not locked, Manager allows it when it is above the limit or overdue is pending
+    # credit: not locked, Manager allows it when it is above the limit or overdue is pending
     sub("const lock=m==='Credit'&&creditBlocked(inv.mc||MC0());", "const lock=false;")
     sub(" if(mech&&inv.pm==='Credit'&&creditBlocked(mc)){toast('Credit blocked for '+mmo.n+' · overdue not cleared');return;}",
-        " const _cr=blCredAmt(inv,tot);if(_cr===null)return;if(mech&&_cr>0&&!blCredOk(inv,mc,_cr)){toast('Udhaar above the limit or overdue pending: ask Manager first');return;}")
+        " const _cr=blCredAmt(inv,tot);if(_cr===null)return;if(mech&&_cr>0&&!blCredOk(inv,mc,_cr)){toast('Credit above the limit or overdue pending: ask Manager first');return;}")
     sub(" Object.entries(inv.items).forEach(([k,q])=>{if(q>0){DB.stock[k]=Math.max(0,DB.stock[k]-q);logMove('out',k,q,id,'Billed · '+pname);}});",
         " if(inv.pm==='Split')DB.bills[0].split=blSplit(inv);if(inv.crReq)DB.bills[0].crReq=inv.crReq;"
         "if(inv.est){const e=(DB.ests||[]).find(x=>x.id===inv.est);if(e)e.used=id;}"
@@ -188,10 +188,10 @@ def apply(a):
     # Warranty Check (staff): Claim opens the claim
     sub("${staff?'':`<button class=\"link\" onclick=\"warClaim('${esc(w.id||'')}','${esc(w.inv)}')\"",
         "${staff?(allowed('wclaim')?`<button class=\"link\" onclick=\"wcStart('${esc(w.id||'')}','${esc(w.inv)}')\">Claim</button>`:''):`<button class=\"link\" onclick=\"warClaim('${esc(w.id||'')}','${esc(w.inv)}')\"")
-    # approvals: claim photos, and the decision reaches the claim / bill / udhaar request
+    # approvals: claim photos, and the decision reaches the claim / bill / credit request
     sub("<div class=\"grow\"><div class=\"h3\">${a.t}</div><div class=\"cap\">${a.d}</div></div>",
         "<div class=\"grow\"><div class=\"h3\">${a.t}</div><div class=\"cap\">${a.d}</div>${(a.ph||[]).length?`<div class=\"row\" style=\"gap:6px;margin-top:6px\">${a.ph.map(u=>`<img src=\"${esc(u)}\" alt=\"Claim photo\" style=\"width:56px;height:56px;object-fit:cover;border-radius:8px\" onclick=\"window.open('${esc(u)}')\">`).join('')}</div>`:''}</div>")
-    # Manager's "Money today": the udhaar part of split bills counts as udhaar
+    # Manager's "Money today": the credit part of split bills counts as credit
     sub("cr=billsToday().filter(b=>b.pm==='Credit').reduce((a,b)=>a+(+b.amt||0),0);",
         "cr=billsToday().filter(b=>b.pm==='Credit').reduce((a,b)=>a+(+b.amt||0),0)+billsToday().reduce((a,b)=>a+(b.pm==='Split'&&b.split?+b.split.Credit||0:0),0);")
     # the server refuses what breaks the Billing rules (lib/billguard.mjs): say why

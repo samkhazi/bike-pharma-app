@@ -77,6 +77,12 @@ curl http://127.0.0.1:3010/api/health
 Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 
 ## Badlav
+**Update 8g (12 Oct 2026)**
+- Find Part > Search by vehicle: model chunte hi Engine (cc) me sirf usi model ka CC aata hai (khud chuna hua), aur Year me sirf usi
+  model ke saal. Ek hi saal ho to wo khud chuna jaata hai, aur "Search parts" seedha sections kholta hai.
+- Jis model ka CC catalogue me nahi hai (jaise Scooty, iQube), wahan "Not listed" dikhta hai.
+- CC pehle chuno to Model list me sirf usi CC ke models aate hain ("Any cc" se hata sakte ho). Model chunne ke baad list chhoti nahi hoti.
+
 **Update 8f (12 Oct 2026)**
 - TVS catalogue me aapke folder "All Catalogues > TVS ALL" ki 17 PDF books jud gayi: 14,401 nayi lines, 1,780 naye part number,
   2 naye models (Scooty, Scooty Teenz) aur 30 nayi editions (Flame 125, Scooty Streak, Jive, RR 310 BSVI, Pep / Pep+, Star City /

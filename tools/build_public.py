@@ -362,6 +362,18 @@ print('M2_CNT:', CNT)
 assert "123456" not in re.sub(r"KA0200123456|CAT_PNA='0123456789|\nconst CAT_PNR=[^\n]*", "", a), "demo OTP text still present"
 assert 'bp-db' not in a
 os.makedirs(OUT, exist_ok=True)
+# Find Part form (Sam 2026-10-12 05:14Z "Engine (CC) me automatic aana he selected models ke kounse kounse CC ke vahicels hein", 05:15Z "year bhi
+# same aise hi"): once a model is picked, Engine (cc) lists only that model's cc (picked for you) and Year only that model's years (picked for you
+# when there is just one). A cc picked BEFORE the model still narrows the model list; picking a model no longer shrinks it.
+sub1("const all=BRANDS_V[f.vb]||[];const ms=all.filter(m=>f.cc==='Any'||String(MODEL_CC[m]||'')===String(f.cc));\n const ccs=[...new Set(all.map(m=>MODEL_CC[m]).filter(Boolean))].sort((a,b)=>a-b);",
+     "const all=BRANDS_V[f.vb]||[];const ms=all.filter(m=>f.cc==='Any'||(f.vm!=='Any'&&!f.ccU)||String(MODEL_CC[m]||'')===String(f.cc));\n const mcc=f.vm!=='Any'?MODEL_CC[f.vm]||0:0,ccs=f.vm!=='Any'?(mcc?[mcc]:[]):[...new Set(all.map(m=>MODEL_CC[m]).filter(Boolean))].sort((a,b)=>a-b);")
+sub1("let yo=`<option value=\"Any\">Any year</option>`;if(f.vb!=='Any'&&f.vm!=='Any'){const Y=fpYrs(f);yo=Y==='wait'?`<option value=\"Any\">Loading years…</option>`:`<option value=\"Any\">${Y.ys.length?'Any year':'All books'}</option>`+Y.ys.map(y=>`<option value=\"${y}\"${String(f.yr)===String(y)?' selected':''}>${y}</option>`).join('');}",
+     "let yo=`<option value=\"Any\">Any year</option>`;if(f.vb!=='Any'&&f.vm!=='Any'){const Y=fpYrs(f);if(Y==='wait')yo=`<option value=\"Any\">Loading years…</option>`;else{const one=Y.ys.length===1&&!Y.none;if(one&&f.yr==='Any')f.yr=String(Y.ys[0]);yo=(one?'':`<option value=\"Any\">${Y.ys.length?'Any year':'All books'}</option>`)+Y.ys.map(y=>`<option value=\"${y}\"${String(f.yr)===String(y)?' selected':''}>${y}</option>`).join('');}}")
+sub1("${sel('cc','Engine (cc)',`<option value=\"Any\">Any cc</option>`+ccs.map(c=>`<option value=\"${c}\"${String(f.cc)===String(c)?' selected':''}>${c} cc</option>`).join(''),f.vb==='Any')}",
+     "${sel('cc','Engine (cc)',(f.vm!=='Any'&&!mcc?`<option value=\"Any\">Not listed</option>`:f.vm==='Any'||f.ccU?`<option value=\"Any\">Any cc</option>`:'')+ccs.map(c=>`<option value=\"${c}\"${String(f.cc)===String(c)?' selected':''}>${c} cc</option>`).join(''),f.vb==='Any'||(f.vm!=='Any'&&!mcc))}")
+sub1("function m2Set(k,v){const f=S.ui.fp;if(k==='vb'){f.yr='Any';fpSet('vb',v);return;}\n if(k==='vm'){f.vm=v;f.vv='Any';if(v!=='Any'&&MODEL_CC[v])f.cc=String(MODEL_CC[v]);f.yr='Any';refresh();return;}\n if(k==='cc'){f.cc=v;if(v!=='Any'&&f.vm!=='Any'&&String(MODEL_CC[f.vm]||'')!==String(v))f.vm='Any';f.yr='Any';refresh();return;}",
+     "function m2Set(k,v){const f=S.ui.fp;if(k==='vb'){f.yr='Any';f.ccU=0;fpSet('vb',v);return;}\n if(k==='vm'){f.vm=v;f.vv='Any';if(v!=='Any')f.cc=MODEL_CC[v]?String(MODEL_CC[v]):'Any';else if(!f.ccU)f.cc='Any';f.yr='Any';refresh();return;}\n if(k==='cc'){f.cc=v;f.ccU=v!=='Any'?1:0;if(v==='Any'&&f.vm!=='Any'&&MODEL_CC[f.vm])f.cc=String(MODEL_CC[f.vm]);if(v!=='Any'&&f.vm!=='Any'&&String(MODEL_CC[f.vm]||'')!==String(v))f.vm='Any';f.yr='Any';refresh();return;}")
+sub1("if(k==='vm'&&v!=='Any')f.cc=String(MODEL_CC[v]);refresh();}", "if(k==='vm'&&v!=='Any')f.cc=MODEL_CC[v]?String(MODEL_CC[v]):'Any';refresh();}")
 open(os.path.join(OUT, 'app.html'), 'w', encoding='utf-8').write(a)
 _ix = open(os.path.join(SP, 'site', 'com', 'index.html'), encoding='utf-8').read()
 _vp = '<meta name="viewport" content="width=device-width, initial-scale=1">'

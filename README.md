@@ -77,6 +77,13 @@ curl http://127.0.0.1:3010/api/health
 Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 
 ## Badlav
+**Update 8n (12 Oct 2026) · Manager profile 2**
+- **Online orders** page (Admin + Manager): website/app ke orders New → Packed → Out for delivery → Delivered, ya Cancel
+  (parts wapas stock me, wallet ka paisa wapas). Customer apne app me wahi status dekhta hai. Manager home pe "2 new orders".
+- **Money today** (Manager home): aaj ka Cash, UPI aur Udhaar alag; tap karo to Day closing.
+- **Return approval**: ₹5,000 tak ka return Manager khud karta hai; Billing staff ka return Manager ke paas jaata hai;
+  ₹5,000 se bada Admin ke paas. Admin home ke "Purchases today" card me "Change" se dono limit badlo.
+
 **Update 8m (12 Oct 2026) · Manager profile**
 - Purchase rate, bill amount, gross margin aur profit sirf Admin dekhta hai. Manager aur Inventory staff stock in me sirf part,
   quantity aur photo daalte hain (Paste supplier bill bhi unke paas nahi). Aisa stock turant stock me aa jaata hai; uske rate

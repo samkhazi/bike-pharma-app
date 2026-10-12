@@ -12,7 +12,7 @@ async function login(p, id, pw) {
   await p.goto(BASE + '/app.html', { waitUntil: 'load' }); await p.waitForFunction(() => typeof S !== 'undefined' && S.stack && S.stack.length && cur().s !== 'boot', null, { timeout: 15000 }); await p.waitForTimeout(400);
   await p.fill('#loginId', id); await p.evaluate(() => sendOtp()); await p.waitForTimeout(500); await p.fill('#pw1', pw); await p.evaluate(() => pwGo()); await p.waitForTimeout(900);
 }
-const T = p => p.evaluate(() => document.querySelector('#vp .screen:last-child').innerText);
+const T = p => p.evaluate(() => { const e = document.querySelector('#vp .screen:last-child'); return e ? e.innerText : ''; });
 const SC = '#vp .screen:last-child';
 const sync = p => p.waitForTimeout(2500);
 
@@ -25,7 +25,7 @@ ok(await Ad.evaluate(() => DB.accounts['mona@test.in'] && DB.accounts['mona@test
 const pid = await Ad.evaluate(() => { const p = PRODUCTS.find(x => +x.mp > 0) || PRODUCTS[0]; return p && p.id; });
 ok(!!pid, 'the shop has a part to order ' + pid);
 await Ad.evaluate(() => tab('ahome')); await Ad.waitForTimeout(300); let t = await T(Ad);
-ok(/Purchases today/.test(t) && /limit ₹1,00,000 per order/.test(t), 'admin home: Purchases today with the ₹1,00,000 limit');
+ok(/Purchases today/.test(t) && /limits: order ₹1,00,000, return ₹5,000/.test(t), 'admin home: Purchases today with the ₹1,00,000 order and ₹5,000 return limits');
 await sync(Ad);
 
 // ===== Manager on a phone =====
@@ -61,6 +61,25 @@ const pos = await M.evaluate(() => DB.pos.slice(0, 2).map(o => [o.status, o.est 
 ok(JSON.stringify(pos) === JSON.stringify([['Waiting for Admin', true], ['Sent', false]]), 'big order waits for Admin, small one sent ' + JSON.stringify(pos));
 await M.evaluate(() => { closeSheet(); tab('approvals'); }); await M.waitForTimeout(300); t = await T(M);
 ok(/Above the purchase order limit · Admin decides/.test(t), 'manager cannot approve the big order');
+
+// update 8n: money today, online orders, return approval
+await M.evaluate(pid => { const pr = P(pid).price; DB.orders.unshift({ id: 'BP-ORD-T2', mob: '9000000002', d: today(), items: 1, amt: pr, pm: 'UPI', st: 'Confirmed', list: [[pid, 1, pr]], fee: 0, w: 0 });
+  DB.orders.unshift({ id: 'BP-ORD-T1', mob: '9000000001', d: today(), items: 2, amt: pr * 2, pm: 'Cash on delivery', st: 'Confirmed', list: [[pid, 2, pr]], fee: 20, w: 0, cbDue: 5 });
+  DB.bills.unshift({ id: 'T-RET1', items: [{ pid, q: 100, r: 100 }], amt: 10000, pm: 'Cash', kind: 'walk', iso: isoToday(), t: '10:00' }); save(); tab('mghome'); }, pid); await M.waitForTimeout(300); t = await T(M);
+ok(/Money today/.test(t) && /Udhaar/i.test(t) && /Online orders/.test(t) && /2 new orders/i.test(t), 'manager home: Money today (Cash, UPI, Udhaar) and Online orders with 2 new');
+await M.evaluate(() => { S.ui.oof = 'New'; go('oorders'); }); await M.waitForTimeout(300); t = await T(M);
+ok(/BP-ORD-T1/.test(t) && /BP-ORD-T2/.test(t) && /Collect on delivery/.test(t) && /Mark packed/i.test(t), 'online orders page lists the new orders with Mark packed');
+await M.evaluate(() => { ooStep('BP-ORD-T1'); ooStep('BP-ORD-T1'); ooStep('BP-ORD-T1'); }); await M.waitForTimeout(200);
+ok(await M.evaluate(() => { const o = DB.orders.find(x => x.id === 'BP-ORD-T1'); return o.st === 'Delivered' && o.hist.length === 3 && !o.cbDue; }), 'order T1: Packed, Out for delivery, Delivered (COD cashback settled)');
+const st0 = await M.evaluate(pid => +DB.stock[pid], pid);
+await M.evaluate(() => ooCancelGo('BP-ORD-T2')); await M.waitForTimeout(200);
+ok(await M.evaluate(([pid, st0]) => DB.orders.find(x => x.id === 'BP-ORD-T2').st === 'Cancelled' && +DB.stock[pid] === st0 + 1, [pid, st0]), 'order T2 cancelled: 1 pc back in stock');
+const r0 = await M.evaluate(() => (DB.returns || []).length);
+await M.evaluate(pid => { S.ui.crSel = { [pid]: 10 }; S.ui.crMode = 'Cash'; crSave('T-RET1', 1000); closeSheet(); }, pid);
+await M.evaluate(pid => { S.ui.crSel = { [pid]: 60 }; S.ui.crMode = 'Cash'; crSave('T-RET1', 6000); closeSheet(); }, pid); await M.waitForTimeout(200);
+ok(await M.evaluate(r0 => DB.returns.length === r0 + 1 && DB.approvals.some(a => a.ret && a.ret.amt === 6000 && a.ret.need === 'admin' && a.st === 'pending'), r0), 'manager return ₹1,000 done at once; ₹6,000 waits for Admin');
+await M.waitForTimeout(600); await M.evaluate(() => tab('approvals')); await M.waitForTimeout(800); t = await T(M);
+ok(/Above the ₹5,000 return limit · Admin decides/.test(t), 'manager cannot approve the ₹6,000 return');
 await sync(M);
 
 // ===== Admin approves and enters the rates =====
@@ -69,6 +88,11 @@ await Ad.evaluate(() => tab('ahome')); await Ad.waitForTimeout(300); t = await T
 ok(/1 order above the limit/i.test(t) && /1 stock in without rates/i.test(t), 'admin home: 1 order to approve, 1 stock in without rates');
 await Ad.evaluate(() => { const a = DB.approvals.find(x => x.po && x.st === 'pending'); decide(a.id, 'approved'); }); await Ad.waitForTimeout(200);
 ok(await Ad.evaluate(() => DB.pos[0].status === 'Sent' && /Approved by/.test(DB.pos[0].ok)), 'admin approved: the order is sent');
+const r1 = await Ad.evaluate(() => DB.returns.length);
+await Ad.evaluate(() => { const a = DB.approvals.find(x => x.ret && x.st === 'pending'); decide(a.id, 'approved'); }); await Ad.waitForTimeout(200);
+ok(await Ad.evaluate(r1 => DB.returns.length === r1 + 1 && DB.returns[0].amt === 6000, r1), 'admin approved the ₹6,000 return: it is done');
+await Ad.evaluate(() => go('oorders')); await Ad.waitForTimeout(300);
+ok(/Online orders/.test(await T(Ad)), 'admin opens Online orders');
 await Ad.evaluate(id => go('grnview', { id }), g.id); await Ad.waitForTimeout(300); t = await T(Ad);
 ok(/Rates are not entered yet/.test(t), 'admin sees "Rates are not entered yet" on the bill');
 await Ad.evaluate(id => grnRates(id), g.id); await Ad.waitForTimeout(200);

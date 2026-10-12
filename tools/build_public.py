@@ -399,6 +399,9 @@ a, k = altfill.apply(a); n_patch += k
 # Sam 2026-10-12 11:13Z: update 8m, the Manager profile: purchase rates and margin Admin only, purchase order limit (tools/manager.py)
 import manager
 a, k = manager.apply(a); n_patch += k
+# Sam 2026-10-12 11:47Z: update 8n, online orders page (Admin + Manager), money today, return approval with a limit (tools/manager2.py)
+import manager2
+a, k = manager2.apply(a); n_patch += k
 open(os.path.join(OUT, 'app.html'), 'w', encoding='utf-8').write(a)
 _ix = open(os.path.join(os.path.dirname(SRC), 'index.html'), encoding='utf-8').read()
 _vp = '<meta name="viewport" content="width=device-width, initial-scale=1">'

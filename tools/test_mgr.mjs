@@ -66,7 +66,7 @@ ok(/Above the purchase order limit · Admin decides/.test(t), 'manager cannot ap
 await M.evaluate(pid => { const pr = P(pid).price; DB.orders.unshift({ id: 'BP-ORD-T2', mob: '9000000002', d: today(), items: 1, amt: pr, pm: 'UPI', st: 'Confirmed', list: [[pid, 1, pr]], fee: 0, w: 0 });
   DB.orders.unshift({ id: 'BP-ORD-T1', mob: '9000000001', d: today(), items: 2, amt: pr * 2, pm: 'Cash on delivery', st: 'Confirmed', list: [[pid, 2, pr]], fee: 20, w: 0, cbDue: 5 });
   DB.bills.unshift({ id: 'T-RET1', items: [{ pid, q: 100, r: 100 }], amt: 10000, pm: 'Cash', kind: 'walk', iso: isoToday(), t: '10:00' }); save(); tab('mghome'); }, pid); await M.waitForTimeout(300); t = await T(M);
-ok(/Money today/.test(t) && /Udhaar/i.test(t) && /Online orders/.test(t) && /2 new orders/i.test(t), 'manager home: Money today (Cash, UPI, Udhaar) and Online orders with 2 new');
+ok(/Money today/.test(t) && /Credit/i.test(t) && /Online orders/.test(t) && /2 new orders/i.test(t), 'manager home: Money today (Cash, UPI, Credit) and Online orders with 2 new');
 await M.evaluate(() => { S.ui.oof = 'New'; go('oorders'); }); await M.waitForTimeout(300); t = await T(M);
 ok(/BP-ORD-T1/.test(t) && /BP-ORD-T2/.test(t) && /Collect on delivery/.test(t) && /Mark packed/i.test(t), 'online orders page lists the new orders with Mark packed');
 await M.evaluate(() => { ooStep('BP-ORD-T1'); ooStep('BP-ORD-T1'); ooStep('BP-ORD-T1'); }); await M.waitForTimeout(200);

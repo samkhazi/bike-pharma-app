@@ -679,7 +679,7 @@ function crSave(bid,amt){const sel={...(S.ui.crSel||{})},mode=S.ui.crMode||'Wall
  sheet(`${okBadge(72)}<h3 class="h2">Sent for approval</h3><p class="cap">The return of ${inr(amt)} on bill ${esc(bid)} goes to ${need==='admin'?'Admin (above the '+inr(retLim())+' limit)':'the Manager'}. Give the money back once it is approved.</p><button class="btn" onclick="closeSheet();refresh()">OK</button>`);}
 function moneyToday(){const c=collected('Cash').total,u=collected('UPI').total,k=collected('Card').total,cr=billsToday().filter(b=>b.pm==='Credit').reduce((a,b)=>a+(+b.amt||0),0)+billsToday().reduce((a,b)=>a+(b.pm==='Split'&&b.split?+b.split.Credit||0:0),0);
  return `<button class="card" style="text-align:left;width:100%;gap:10px" onclick="go('dayclose')"><div class="row"><div class="tile g">${ic('rupee','s20')}</div><div class="grow"><div class="h3">Money today</div><div class="cap">Tap for day closing</div></div><span class="chev">${ic('chevR','s18')}</span></div>
- <div class="grid3" style="gap:8px">${[['Cash',c],['UPI'+(k?' + card':''),u+k],['Udhaar',cr]].map(([l,v])=>`<div><div class="micro muted">${l}</div><b class="num">${inr(v)}</b></div>`).join('')}</div></button>`;}
+ <div class="grid3" style="gap:8px">${[['Cash',c],['UPI'+(k?' + card':''),u+k],['Credit',cr]].map(([l,v])=>`<div><div class="micro muted">${l}</div><b class="num">${inr(v)}</b></div>`).join('')}</div></button>`;}
 /* online orders from the website / app */
 const OO_STEPS=['New','Packed','Out for delivery','Delivered'];
 const ooSt=o=>/^(Confirmed|Processing|New)$/.test(o.st||'')?'New':o.st;

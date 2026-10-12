@@ -11,6 +11,8 @@ PHOTO_AI=off DATA_DIR=$T/data FILES_DIR=$T/pf PORT=3015 node --no-warnings serve
 sleep 1.2
 node tools/test.mjs; r=$?
 node tools/test_back.mjs || r=1
+# update 8o: the Billing profile (no bill discount, warranty claims, cancel / change through Manager, split, estimate to bill)
+node tools/test_bill.mjs || r=1
 # a brand-new shop (only the admin login): Admin's Inventory page, Add product, Stock in with a new supplier
 T2=/tmp/claude-0/bptest2
 for pid in $(pgrep -x node); do if tr "\0" "\n" < /proc/$pid/environ 2>/dev/null | grep -qx "PORT=3016"; then kill $pid; fi; done

@@ -77,6 +77,15 @@ curl http://127.0.0.1:3010/api/health
 Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 
 ## Badlav
+**Update 8m (12 Oct 2026) · Manager profile**
+- Purchase rate, bill amount, gross margin aur profit sirf Admin dekhta hai. Manager aur Inventory staff stock in me sirf part,
+  quantity aur photo daalte hain (Paste supplier bill bhi unke paas nahi). Aisa stock turant stock me aa jaata hai; uske rate
+  Admin bill kholke "Enter rates from the bill" se bharta hai (Admin home pe "stock in without rates" dikhta hai).
+- Manager ko: Purchase orders, Stock in, Add product, Waiting for photos, sales target. Gross margin, Expenses & profit aur
+  margin target hata diye.
+- Purchase order ki limit ₹1,00,000 per order: isse chhota order seedha supplier ko, bada order Admin ke Approve / Reject pe.
+  Admin home pe "Purchases today" card: aaj ke orders, approval wale, limit badalne ka "Change".
+
 **Update 8l (12 Oct 2026)**
 - Add product, Stock in aur Paste supplier bill me naya number (jaise 36JG0016) daalo, jo catalogue me nahi hai par alternate
   list me uska purana number hai (36JU0138): naam, brand, MRP aur bikes purane number se khud bhar jaate hain. Part naye number

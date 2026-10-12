@@ -238,7 +238,7 @@ await Dk.waitForTimeout(2500);
 const I = await mk(390, 844); await login(I, 'ravi@test.in', 'ravi1234');
 ok(await I.evaluate(() => S.user && S.user.role === 'inventory'), 'inventory staff logged in on a phone');
 await I.evaluate(() => tab('ihome')); await I.waitForTimeout(300); t = await T(I);
-ok(/Paste supplier bill/.test(t) && /Waiting for photos/.test(t), 'inventory home: Paste supplier bill and Waiting for photos');
+ok(!/Paste supplier bill/.test(t) && /Waiting for photos/.test(t), 'inventory home: Waiting for photos, no Paste supplier bill (update 8m: rates are Admin only)');
 await I.evaluate(() => go('invwait')); await I.waitForTimeout(300); t = await T(I);
 ok(/Waiting · 1 part/i.test(t) && new RegExp(D).test(t) && /Not in any catalogue/i.test(t) && /1 pcs from 1 bill/i.test(t), 'Waiting for photos lists the part from the bill');
 await I.click(SC + ' .inv-row'); await I.waitForTimeout(300);

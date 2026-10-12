@@ -6,6 +6,15 @@ import json, os, re, shutil, sys
 SP = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SRC = os.path.join(SP, 'site', 'com', 'app.html')
 OUT = os.path.join(SP, 'srv', 'public')
+# a fresh clone of branch `website` (a new project, 2026-10-12 handoff): the sources are in the repo itself (src/app.html, src/index.html),
+# the brand files are the ones already in public/cat (copied aside first, the build remakes public/cat) and public/vendor is kept
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FRESH = not os.path.exists(SRC)
+if FRESH:
+    SRC, OUT = os.path.join(REPO, 'src', 'app.html'), os.path.join(REPO, 'public')
+    _keep = os.path.join(REPO, '.build', 'cat-in'); shutil.rmtree(_keep, ignore_errors=True); os.makedirs(_keep)
+    for _f in os.listdir(os.path.join(OUT, 'cat')):
+        if _f.endswith('.json') and _f != 'xref.json': shutil.copyfile(os.path.join(OUT, 'cat', _f), os.path.join(_keep, _f))
 a = open(SRC, encoding='utf-8').read()
 n_patch = 0
 def sub1(old, new, count=1, regex=False):
@@ -187,6 +196,7 @@ sub1("/* ---------- boot ---------- */\nasync function start(){", NAVJS + "/* --
 sub1("const custModels=(b,cur)=>{const l=(BRANDS_V[b]||[]).filter(m=>!MODEL_BASE[m]);", "const custModels=(b,cur)=>{const l=(BRANDS_V[b]||[]).filter(m=>!MODEL_BASE[m]&&m!=='Oils & lubricants');")
 CAT_IN = [os.path.join(SP, 'ktm', 'out', f) for f in ('ktm.json', 'ktm-dg.json', 'husqvarna.json', 'husqvarna-dg.json')]
 CAT_IN += [os.path.join(SP, 'brands', 'out', s + x) for s in ('hero', 'royal-enfield', 'yamaha', 'honda', 'tvs', 'bajaj', 'suzuki') for x in ('.json', '-dg.json')]
+if FRESH: CAT_IN = [os.path.join(REPO, '.build', 'cat-in', os.path.basename(f)) for f in CAT_IN]
 _bv, _cc = {}, {}
 for f in CAT_IN:
     if f.endswith('-dg.json'): continue
@@ -380,8 +390,11 @@ a, k = altno.apply(a); n_patch += k
 # 2026-10-12 update 8j: Find Part fixes from the 4-round test (tools/fpfix.py)
 import fpfix
 a, k = fpfix.apply(a); n_patch += k
+# 2026-10-12 update 8k: a part number in any staff search bar shows what the brand catalogues have (tools/fphit.py)
+import fphit
+a, k = fphit.apply(a); n_patch += k
 open(os.path.join(OUT, 'app.html'), 'w', encoding='utf-8').write(a)
-_ix = open(os.path.join(SP, 'site', 'com', 'index.html'), encoding='utf-8').read()
+_ix = open(os.path.join(os.path.dirname(SRC), 'index.html'), encoding='utf-8').read()
 _vp = '<meta name="viewport" content="width=device-width, initial-scale=1">'
 assert _ix.count(_vp) == 1, 'index.html viewport'
 _ix = _ix.replace(_vp, '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">\n'
@@ -391,7 +404,7 @@ CAT_DIRS = ['cat', 'bj', 'ph', 'phh', 'figs']
 if '--no-cat' in sys.argv:  # Sam 2026-10-10: no catalogue data on the site, brands come one by one later
     for d in CAT_DIRS:
         if os.path.isdir(os.path.join(OUT, d)): shutil.rmtree(os.path.join(OUT, d))
-for d in (['vendor'] if '--no-cat' in sys.argv else CAT_DIRS + ['vendor']):
+for d in ([] if FRESH else ['vendor'] if '--no-cat' in sys.argv else CAT_DIRS + ['vendor']):
     dst = os.path.join(OUT, d); src = os.path.join(SP, 'proto', d)
     if os.path.isdir(dst) and len(os.listdir(dst)) == len(os.listdir(src)) and '--assets' not in sys.argv: continue
     if os.path.isdir(dst): shutil.rmtree(dst)

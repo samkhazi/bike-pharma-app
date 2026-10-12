@@ -1766,7 +1766,7 @@ SCREENS.invoice=()=>{const inv=S.ui.inv||(S.ui.inv={party:'cust',mob:'',items:{}
  <div class="card" style="gap:10px">
   <button class="scanbox" style="height:110px;width:100%" onclick="invScanSim()" aria-label="Scan barcode"><div class="frame" style="width:220px;height:70px"><span class="line" style="animation-duration:1.4s"></span></div></button>
   <div class="cap" style="text-align:center">Tap to scan with camera / barcode gun</div>
-  <div class="field"><label for="inv-bc">Or type barcode number</label><div class="row" style="gap:8px"><div class="inp grow ${inv.bcErr?'err':''}">${ic('scan','s18')}<input id="inv-bc" inputmode="numeric" placeholder="13-digit barcode" value="${esc(inv.bc||'')}" oninput="S.ui.inv.bc=this.value" onkeydown="if(event.key==='Enter')invAddCode(this.value)"></div><button class="btn sm" onclick="invAddCode(document.getElementById('inv-bc').value)">Add</button></div>${inv.bcErr?`<div class="errmsg">${inv.bcErr}</div>`:''}</div>
+  <div class="field"><label for="inv-bc">Or type barcode or part number</label><div class="row" style="gap:8px"><div class="inp grow ${inv.bcErr?'err':''}">${ic('scan','s18')}<input id="inv-bc" autocomplete="off" autocapitalize="characters" placeholder="Barcode or part number" value="${esc(inv.bc||'')}" oninput="S.ui.inv.bc=this.value" onkeydown="if(event.key==='Enter')invAddCode(this.value)"></div><button class="btn sm" onclick="invAddCode(document.getElementById('inv-bc').value)">Add</button></div>${inv.bcErr?`<div class="errmsg">${inv.bcErr}</div>`:''}${inv.bcMiss?fpHit(inv.bcMiss):''}</div>
   
  </div>
  <div class="card flush">${lines.map(([id,q])=>{const x=P(id);const r=mech?x.mp:x.price;return `<div class="li"><div class="grow"><div class="t">${x.name}</div><div class="s">${barcodeOf(x)} · ${mech?'Mechanic':'Retail'} ${inr(r)} · Rack ${binOf(id)}</div><div class="s" style="color:${x.warDays?'var(--g)':'var(--ink5)'}">${x.warDays?'Warranty '+x.warDays+' days · auto from bill date':'No warranty'}</div></div><span class="qty"><button onclick="S.ui.inv.items['${id}']=${q-1};refresh()" aria-label="Less">${ic('minus','s16')}</button><span class="num">${q}</span><button onclick="${q+1>DB.stock[id]?`toast('Only ${DB.stock[id]} pcs in stock')`:`S.ui.inv.items['${id}']=${q+1};refresh()`}" aria-label="More">${ic('plus','s16')}</button></span><b class="num" style="min-width:64px;text-align:right">${inr(r*q)}</b></div>`;}).join('')||'<div class="empty">No items yet</div>'}</div>
@@ -1782,7 +1782,7 @@ function invAdd(x){const inv=S.ui.inv;const have=inv.items[x.id]||0;
  if(have+1>DB.stock[x.id]){inv.bcErr=`Only ${DB.stock[x.id]} pcs of ${esc(x.name)} in stock.`;return refresh();}
  inv.items[x.id]=have+1;inv.bc='';inv.bcErr='';toast((have?'+1 · ':'Added · ')+x.name);refresh();setTimeout(()=>{const i=document.getElementById('inv-bc');if(i)i.focus();},50);}
 function invAddCode(c){c=String(c||'').replace(/\s/g,'');const inv=S.ui.inv;inv.bc=c;if(!c){inv.bcErr='Scan or type the barcode number.';return refresh();}
- const x=PRODUCTS.find(p=>barcodeOf(p)===c);if(!x){inv.bcErr='No product with barcode '+esc(c)+'. Check the number on the pack.';return refresh();}invAdd(x);}
+ const x=PRODUCTS.find(p=>barcodeOf(p)===c)||PRODUCTS.find(p=>p.pn&&catPk(p.pn)===catPk(c));inv.bcMiss=x?'':c;if(!x){inv.bcErr='No product in our stock with barcode or part number '+esc(c)+'. Check the number on the pack.';return refresh();}invAdd(x);}
 function invScanSim(){const pool=PRODUCTS.filter(x=>barcodeOf(x)!=='—'&&DB.stock[x.id]>(S.ui.inv.items[x.id]||0));if(!pool.length){toast('Nothing left in stock to scan');return;}invAdd(pool[Math.floor(Math.random()*pool.length)]);}
 const KIND_L={cust:'Customer',cxm:'CX with Mech',mech:'Mechanic',walk:'Walk-in'};
 const billLi=b=>li(b.id+' · '+esc(b.p),(b.iso&&b.iso!==isoToday()?fmtD(b.iso)+' · ':'')+b.t+' · '+b.pm+(b.kind?' · '+KIND_L[b.kind]:''),`<b class="num">${inr(b.amt)}</b>`,'file',`go('billview',{id:'${b.id}'})`,b.pm==='Credit'?'r':'');
@@ -1941,7 +1941,7 @@ SCREENS.warreg=()=>{const f=S.ui.wf||'All';const q=(S.ui.wq||'').trim().toLowerC
  <div class="grid3">${statTile('g','Active',cnt('Active'),'')}${statTile('y','Expiring',cnt('Expiring'),'≤ 30 days')}${statTile('','Expired',cnt('Expired'),'')}</div>
  <label class="search" for="wq">${ic('search','s20')}<input id="wq" placeholder="Mobile, invoice, part no. or name" value="${esc(S.ui.wq||'')}" oninput="S.ui.wq=this.value;clearTimeout(window._wq);window._wq=setTimeout(()=>{refresh();const i=document.getElementById('wq');i.focus();i.setSelectionRange(i.value.length,i.value.length)},250)"></label>
  <div class="chips">${['All','Active','Expiring','Expired'].map(c=>`<button class="chip ${c===f?'on':''}" onclick="S.ui.wf='${c}';refresh()">${c}</button>`).join('')}</div>
- ${list.length?list.map(w=>warCard(w,1)).join(''):'<div class="empty">No warranties match.</div>'}</div></div>`;};
+ ${list.length?list.map(w=>warCard(w,1)).join(''):'<div class="empty">No warranties match.</div>'}${fpHit(S.ui.wq)}</div></div>`;};
 
 
 /* ---------- scan to find ---------- */
@@ -1957,7 +1957,7 @@ SCREENS.scanfind=()=>{const x=S.ui.scanHit?P(S.ui.scanHit):null;const edit=canEd
  <button class="scanbox" style="height:170px;width:100%" onclick="simScan()" aria-label="Scan a barcode"><div class="frame" style="width:250px;height:110px"><span class="line" style="animation-duration:1.4s"></span></div></button>
  <p class="cap" style="text-align:center">Scan with a barcode gun, or type the barcode or part number below.</p>${allowed('findpart')?`<button class="btn line" onclick="scOpen()">${ic('camera','s18')} Scan a box sticker photo</button>`:''}
  <form class="row" style="gap:8px" onsubmit="event.preventDefault();doScan(document.getElementById('sc-code').value)"><label class="search grow" for="sc-code">${ic('scan','s20')}<input id="sc-code" inputmode="text" placeholder="Barcode or part number" value="${esc(S.ui.scanMiss||'')}"></label><button class="btn sm" type="submit">Find</button></form>
- ${S.ui.scanMiss?`<div class="card" style="border:1.5px solid var(--r)"><div class="row">${ic('alert','s20')}<div class="grow"><div class="h3">No part found for “${esc(S.ui.scanMiss)}”</div><div class="cap">Check the code, or add it as a new product.</div></div></div>${edit?`<button class="btn sm" style="width:100%" onclick="S.ui.ap=null;S.ui.apErr=null;go('addproduct');setTimeout(()=>{if(S.ui.ap){S.ui.ap.barcode='${esc(S.ui.scanMiss)}';refresh();}},0)">+ Add as new product</button>`:''}</div>`:''}
+ ${S.ui.scanMiss?`<div class="card" style="border:1.5px solid var(--r)"><div class="row">${ic('alert','s20')}<div class="grow"><div class="h3">No part found for “${esc(S.ui.scanMiss)}”</div><div class="cap">Check the code, or add it as a new product.</div></div></div>${edit?`<button class="btn sm" style="width:100%" onclick="S.ui.ap=null;S.ui.apErr=null;go('addproduct');setTimeout(()=>{if(S.ui.ap){S.ui.ap.barcode='${esc(S.ui.scanMiss)}';refresh();}},0)">+ Add as new product</button>`:''}</div>`:''}${S.ui.scanMiss?fpHit(S.ui.scanMiss):''}
  ${x?`<div class="card" style="border:1.5px solid var(--y)">
   <div class="row top"><div class="tile n inv-tile" style="width:56px;height:56px">${x.photos&&x.photos[0]?`<img src="${esc(phSrc(x.photos[0]))}" alt="" loading="lazy">`:ic(x.ic,'s28')}</div><div class="grow"><div class="micro muted">${esc(x.pack?x.pack+' · Aftermarket':x.brand+(x.type?' · '+x.type:''))}</div><div class="h3">${esc(x.name)}</div><div class="cap">${x.pn} · ${barcodeOf(x)}</div></div></div>
   <div class="grid2">
@@ -2007,6 +2007,7 @@ function stockView(asTab){const q=(S.ui.rq||'').trim().toLowerCase();const edit=
  <label class="search" for="rq">${ic('search','s20')}<input id="rq" placeholder="Name, part no., barcode or rack" value="${esc(S.ui.rq||'')}" oninput="S.ui.rq=this.value;clearTimeout(window._rq);window._rq=setTimeout(()=>{refresh();const i=document.getElementById('rq');i.focus();i.setSelectionRange(i.value.length,i.value.length)},250)"></label>
  <div class="cap">${items.length} part${items.length===1?'':'s'} · <span style="color:var(--amber)">${items.filter(x=>DB.stock[x.id]>0&&DB.stock[x.id]<reorderOf(x)).length} low</span> · <span style="color:var(--r)">${items.filter(x=>!DB.stock[x.id]).length} out</span></div>
  ${keys.length?keys.map(k=>`<div class="stack g8"><div class="sec"><span class="h3">${k}</span><span class="cap">${groups[k].length} part${groups[k].length>1?'s':''}</span></div><div class="card flush">${groups[k].map(x=>`<button class="li" onclick="${edit?`rackEdit('${x.id}')`:`S.ui.scanHit='${x.id}';S.ui.scanMiss=null;go('scanfind')`}">${invTile(x)}<div class="grow"><div class="t">${esc(x.name)}</div><div class="s">${x.pn} · ${stk(x)}${x.pending?' · <b class="amb">Pending pricing</b>':''}</div></div>${rackPill(x.id)}</button>`).join('')}</div></div>`).join(''):PRODUCTS.length?'<div class="empty">No part matches. Try the part number or a rack like A-3.</div>':'<div class="empty">No products yet.'+(edit?' Tap <b>Add product</b> to add your first part with its opening stock.':'')+'</div>'}
+ ${fpHit(S.ui.rq,1)}
 </div></div>`;}
 SCREENS.racks=()=>bar('Stock & racks')+stockView(false);
 /* ---------- master pricing ---------- */
@@ -2253,7 +2254,7 @@ function catRoute(pq){const T=catPnT(),l=[],p=[],h=pq.slice(0,6),hx=catPnX(catPn
 const catPend=()=>CAT_EXT.filter(e=>e.st<2).map(e=>e.vb),catFailed=()=>CAT_EXT.filter(e=>e.st===3).map(e=>e.vb);
 function catRetry(){CAT_EXT.forEach(e=>{if(e.st===3)e.st=0;});catLoad();refresh();}
 /* redraw Find Part when a catalogue arrives, keeping the typing cursor where it was */
-function catRefresh(){try{if(!['findpart','addproduct','grnedit','invpaste','invwait'].includes(cur().s))return;}catch(x){return;}const a=document.activeElement,id=a&&a.id,pos=a&&a.selectionStart;refresh();if(id){const e=document.getElementById(id);if(e&&e!==document.activeElement){e.focus();try{e.setSelectionRange(pos,pos);}catch(x){}}}}
+function catRefresh(){try{if(!['findpart','addproduct','grnedit','invpaste','invwait'].includes(cur().s)&&!document.querySelector('.fp-hit[data-wait]'))return;}catch(x){return;}const a=document.activeElement,id=a&&a.id,pos=a&&a.selectionStart;refresh();if(id){const e=document.getElementById(id);if(e&&e!==document.activeElement){e.focus();try{e.setSelectionRange(pos,pos);}catch(x){}}}}
 setTimeout(catLoad,2500);
 const CAT_MODEL={'XL 100':'XL100'};
 const CAT_WORDS={'SELF START MOTOR':['STARTER GENERATOR'],'SELF MOTOR':['STARTER GENERATOR'],'STARTER MOTOR':['STARTER GENERATOR'],'HEAD LIGHT':['HEAD LAMP','HEADLAMP'],'TAIL LIGHT':['TAIL LAMP'],'INDICATOR LIGHT':['TSL','INDICATOR'],'FRONT SHOCKER':['FRONT FORK','FORK LEG','FRONT SUSPENSION'],'FRONT SHOCK':['FRONT FORK','FORK LEG','FRONT SUSPENSION'],'REAR SHOCKER':['SHOCK ABSORBER'],'NUMBER PLATE':['LICENCE PLATE','LICENSE PLATE'],'FUEL TAP':['FUEL COCK'],'PETROL TAP':['FUEL COCK'],'SIDE STAND':['PROP STAND'],'MAIN STAND':['CENTER STAND'],'AIR FILTER':['AIR FILTER','AIRCLEANER','AIR CLEANER'],'OIL SEAL':['OIL SEAL','SEAL OIL'],'CHAIN KIT':['CHAIN SPROCKET KIT','KIT SPROCKET'],'CHAIN SET':['CHAIN SPROCKET KIT','KIT SPROCKET'],
@@ -3975,7 +3976,7 @@ SCREENS.usearch=()=>{const q=(S.ui.sq||'').trim().toLowerCase();const qd=q.repla
  ${usFp()}<div class="row wrap" style="gap:6px">${['BP-MECH','INV'].map(t=>`<button class="chip" onclick="S.ui.sq='${t}';refresh()">${t}</button>`).join('')}</div>
  <div class="cap">Scope for ${esc(S.user.label)}: ${ {billing:'customers, mechanics, invoices, parts',sales:'customers, mechanics, orders, parts, vehicles',inventory:'parts only',manager:'everything in the branch',admin:'everything'}[role]}</div>
  ${q?(res.length?`<div class="card flush">${res.map(x=>li(esc(x[0]),esc(x[1]),'',x[2],x[3]||'')).join('')}</div>`:'<div class="empty">No matches in your scope.</div>'):'<div class="empty">Type to search across the records your role can see.</div>'}
- ${role==='admin'?'':''}</div></div>`;};
+ ${fpHit(S.ui.sq)}${role==='admin'?'':''}</div></div>`;};
 
 /* ---------- ADMIN ---------- */
 /* ADMIN: branches, clickable overview, business settings */
@@ -5450,7 +5451,17 @@ function altCfg(o){altPost({act:'cfg',...o}).then(j=>{if(j.error){toast(j.error)
 /* the website's top search bar (Universal search) looks only in the shop's records: for staff a part number with no record opens Find Part,
    and every search offers Find Part (Sam 2026-10-12 07:57Z: 36JG0016 typed up top found nothing) */
 const usHits=q=>{q=String(q||'').trim().toLowerCase();const qd=q.replace(/\D/g,'');return q?searchIndex().filter(x=>(x[0]+' '+x[1]).toLowerCase().includes(q)||(qd.length>=4&&(x[0]+x[1]).replace(/\D/g,'').includes(qd))):[];};
-const usFp=()=>{const q=(S.ui.sq||'').trim();return q&&altStaff()?`<button class="card row us-fp" onclick="go('findpart',{v:'res',q:(S.ui.sq||'').trim(),sort:'best',n:30})">${ic('search','s20')}<span><b>Find Part</b><span class="cap">Search “${esc(q)}” in all brand catalogues</span></span></button>`:'';};
+const usFp=()=>{const q=(S.ui.sq||'').trim();return q&&altStaff()&&!fpIsPn(q)?`<button class="card row us-fp" onclick="go('findpart',{v:'res',q:(S.ui.sq||'').trim(),sort:'best',n:30})">${ic('search','s20')}<span><b>Find Part</b><span class="cap">Search “${esc(q)}” in all brand catalogues</span></span></button>`:'';};
+/* a part number in a staff search bar: what the brand catalogues have (update 8k; never for customers or mechanics, they see our stock only) */
+function fpHit(q,words){q=String(q||'').trim();if(!q||!altStaff())return '';
+ /* a part name (Stock & racks): one tap searches every brand catalogue for it (Sam 08:18Z "mere staff ko poore cataogues show hone hein") */
+ if(!fpIsPn(q))return words&&/[a-z]{3}/i.test(q)?`<button class="card row us-fp" data-q="${esc(q)}" onclick="go('findpart',{v:'res',q:this.dataset.q,sort:'best',n:30})">${ic('search','s20')}<span><b>Find Part</b><span class="cap">Search “${esc(q)}” in all brand catalogues</span></span></button>`:'';
+ altListLoad();
+ const R=m2Res({v:'res',q,vb:'Any',vm:'Any',yr:'Any',bs:'Any',sort:'best',n:30}),L=R.list||[];
+ const head=`<div class="row fp-hit-h">${ic('search','s18')}<b class="grow">Brand catalogues</b><button class="btn line sm" data-q="${esc(q)}" onclick="go('findpart',{v:'res',q:this.dataset.q,sort:'best',n:30})">Open in Find Part</button></div>`;
+ if(R.loading)return `<div class="card fp-hit" data-wait="1">${head}<div class="cap">Looking for “${esc(q)}” in the brand catalogues…</div></div>`;
+ if(!L.length)return `<div class="card fp-hit">${head}<div class="cap">${altListLine(q)||`“${esc(q)}” is not in our brand catalogues either.`}</div></div>`;
+ return `<div class="card fp-hit">${head}${R.alt?altVia(q,R.alt):''}<div class="stack g8">${L.slice(0,3).map(catCard).join('')}</div>${L.length>3?`<div class="cap">${L.length} parts: Open in Find Part shows them all.</div>`:''}</div>`;}
 /* ---------- Waiting for photos ---------- */
 SCREENS.invwait=()=>{const L=DB.waitParts||[];if(S.ui.iw&&!L.some(w=>w.id===S.ui.iw))S.ui.iw=null;if(!S.ui.iw&&L.length&&isWv())S.ui.iw=L[0].id;
  const sel=L.find(w=>w.id===S.ui.iw),units=L.reduce((a,w)=>a+(+w.q||0),0),bills=new Set(L.map(w=>w.inv||w.grn)).size;
@@ -5650,6 +5661,8 @@ html:not(.wv) .screen.hasnav.in-fade>:not(.nav){animation:fade .28s ease-out}
 .us-fp{gap:10px;align-items:center;text-align:left;width:100%}
 .us-fp>span{display:flex;flex-direction:column;gap:2px;min-width:0}
 .alt-stat select{height:34px;border-radius:8px;border:1.5px solid var(--line);background:var(--card);color:inherit;font:inherit;padding:0 6px}
+.fp-hit{gap:10px}
+.fp-hit-h{gap:8px;align-items:center}
 /* ---- inventory (update 8): phone stacks, website two columns ---- */
 .inv-2c{display:flex;flex-direction:column;gap:14px;min-width:0}
 .inv-col{display:flex;flex-direction:column;gap:14px;min-width:0}

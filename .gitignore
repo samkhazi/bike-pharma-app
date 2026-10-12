@@ -13,3 +13,5 @@ public/bj/
 public/ph/
 public/phh/
 public/figs/
+.build/
+__pycache__/

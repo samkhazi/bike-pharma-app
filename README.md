@@ -77,6 +77,16 @@ curl http://127.0.0.1:3010/api/health
 Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 
 ## Badlav
+**Update 8k (12 Oct 2026)**
+- Staff ke har search bar me part number likho: Universal search, Stock & racks, Warranty check, Scan to find aur bill ka
+  item box. Neeche "Brand catalogues" card aata hai: part ka naam, brand, model, MRP, diagram, aur "Open in Find Part".
+  Stock & racks me part ka naam likho to "Search in all brand catalogues" button aata hai.
+- Bill ke item box me ab barcode ke saath part number bhi chalta hai (chhote akshar bhi): stock wala part bill me jud jaata hai,
+  stock me nahi hai to catalogue card dikhta hai.
+- Customer aur mechanic ko catalogue nahi dikhta: unhe sirf hamara stock (inventory) dikhta hai.
+- Naya project / naya computer: `src/app.html` + `src/index.html` (app ka source) aur `tools/brands`, `tools/ktm` (catalogue
+  builders) ab GitHub me hain; `python3 tools/build_public.py --no-cat` seedha repo se build karta hai.
+
 **Update 8j (12 Oct 2026)**
 - Website ka upar wala search bar: part number likh kar Enter dabao. Dukaan ke records (bill, customer, stock) me nahi hai to
   seedha Find Part khulta hai aur catalogue ka part dikhata hai (jaise 36JG0016 = 36JU0138 ka naya number).

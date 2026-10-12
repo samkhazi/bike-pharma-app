@@ -104,7 +104,7 @@ ok(/Gross margin/.test(await T(Ad)), 'admin still sees gross margin');
 // ===== Update 8q: Dead stock (Admin at purchase rate + offer price, Manager at MRP) =====
 const ds = await Ad.evaluate(() => { const sold = new Set(); (DB.bills || []).forEach(b => (b.items || []).forEach(i => sold.add(i.pid)));
   const x = PRODUCTS.find(p => !sold.has(p.id) && +p.mrp > 100 && +p.mp > 0 && !p.gone); if (!x) return null;
-  DB.stock[x.id] = 4; DB.grns.push({ id: 'GRN-DS1', supplier: 'Old Supplier', inv: 'OS-1', date: '01 Mar', status: 'posted', items: [{ pid: x.id, q: 4, rate: 50 }] }); save();
+  DB.stock[x.id] = 4; DB.prices = DB.prices || {}; DB.prices[x.id] = { mrp: x.mrp, price: x.price, mp: x.mp }; DB.grns.push({ id: 'GRN-DS1', supplier: 'Old Supplier', inv: 'OS-1', date: '01 Mar', status: 'posted', items: [{ pid: x.id, q: 4, rate: 50 }] }); save();
   return { id: x.id, mrp: +x.mrp, price: +x.price, mp: +x.mp }; });
 ok(!!ds, 'a part with no sale for dead stock ' + JSON.stringify(ds));
 await Ad.evaluate(() => { S.ui.dsd = 180; go('deadstock'); }); await Ad.waitForTimeout(300); t = await T(Ad);
@@ -125,6 +125,18 @@ await M.evaluate(() => { S.ui.dsd = 180; go('deadstock'); }); await M.waitForTim
 ok(/STOCK STUCK · AT MRP/i.test(t) && /Admin sets the offer price/.test(t) && !/Offer price/i.test(t.replace(/Admin sets the offer price/g, '')) && !/₹200\b/.test(t) && /Mechanics/i.test(t), 'manager phone dead stock: values at MRP, no rate, no Offer button');
 await M.evaluate(id => dsReturn(id), ds.id); await M.waitForTimeout(300);
 ok(await M.evaluate(id => cur().s === 'sreturn' && S.ui.sr.items[id] === 4 && S.ui.sr.sup === 'Old Supplier', ds.id), 'Return opens supplier return with 4 pcs for Old Supplier');
+// the server takes a bill at the offer price from staff, refuses one below it, and staff cannot change offers
+const post = (p, changes) => p.evaluate(async c => { const r = await fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ base: SRV.rev, changes: c }), credentials: 'same-origin' }); return r.json(); }, changes);
+const srv = (p, k) => p.evaluate(async k => { const r = await fetch('/api/sync?since=0', { credentials: 'same-origin' }); const j = await r.json(); return j.changed[k]; }, k);
+const obill = (id, r) => ({ id, kind: 'cust', pname: 'X', mob: '9876543210', items: [{ pid: ds.id, q: 1, r, mrp: ds.mrp }], p: 'X', t: '1 PM', iso: '2026-10-12', pm: 'Cash', amt: r });
+let sb = await srv(M, 'bills') || [];
+let jr = await post(M, { bills: [obill('INV-2026-09951', offer - 10), ...sb] });
+ok(/below the set price/.test(jr.why || '') && !(await srv(M, 'bills')).some(x => x.id === 'INV-2026-09951'), 'server refuses a staff bill below the offer price: ' + jr.why);
+sb = await srv(M, 'bills') || [];
+jr = await post(M, { bills: [obill('INV-2026-09952', offer), ...sb] });
+ok(!jr.why && (await srv(M, 'bills')).some(x => x.id === 'INV-2026-09952'), 'server saves a staff bill at the offer price ' + (jr.why || ''));
+const so = await srv(M, 'offers'); await post(M, { offers: { ...(so || {}), [ds.id]: { price: 1, till: '2099-01-01' } } });
+ok(JSON.stringify(await srv(M, 'offers')) === JSON.stringify(so), 'server: Manager cannot change offer prices');
 await Ad.evaluate(id => dsOffEnd(id), ds.id); await Ad.waitForTimeout(200);
 ok(await Ad.evaluate(([id, p]) => !DB.offers[id] && P(id).price === p.price && P(id).mp === p.mp, [ds.id, ds]), 'ending the offer brings the old prices back');
 

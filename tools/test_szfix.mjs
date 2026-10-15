@@ -18,12 +18,12 @@ for (const [W, H, tag] of [[1280, 900, 'computer'], [390, 844, 'phone']]) {
   await p.selectOption(S_('Model'), 'Intruder 150');
   await p.waitForFunction(s => !/Loading years/.test(document.querySelector(s).innerText), S_('Year'), { timeout: 30000 }).catch(() => {});
   const yr = await opts('Year'), cc = await opts('Engine (cc)');
-  ok(yr.o.length === 1 && yr.v === '2018–2021 · price list parts', `${tag}: Intruder 150 Year: ${yr.o.join(' | ')}, picked`);
+  ok(yr.o.length === 1 && yr.v === '2019 · GL150GLA/RLAL9', `${tag}: Intruder 150 Year: its book (Sam's GL150GLAL9 book, 15 Oct) ${yr.o.join(' | ')}, picked`);
   ok(cc.v === '155', `${tag}: Engine 155 cc (Suzuki's 154.9 cc)`);
-  await p.evaluate(() => go('findpart', { v: 'res', q: 'bearing', vb: 'Suzuki', vm: 'Intruder 150', yr: 'Any', ed: '2018–2021 · price list parts', bs: 'Any', sort: 'best', n: 30 }));
+  await p.evaluate(() => go('findpart', { v: 'res', q: 'bearing', vb: 'Suzuki', vm: 'Intruder 150', yr: 'Any', ed: '2019 · GL150GLA/RLAL9', bs: 'Any', sort: 'best', n: 30 }));
   await p.waitForTimeout(1500);
   const t = await p.evaluate(() => document.querySelector('.m2').innerText);
-  ok(/09262-12039/.test(t), `${tag}: bearing search in Intruder 150 2018–2021 finds 09262-12039 BEARING (12X28X8)`);
+  ok(/09262-12039/.test(t), `${tag}: bearing search in Intruder 150 2019 finds 09262-12039 BEARING (12X28X8)`);
   ok(/bearing in Suzuki Gixxer/i.test(t), `${tag}: results offer "bearing in Suzuki Gixxer" (same engine)`);
   await p.evaluate(() => [...document.querySelectorAll('.m2 button.chip')].find(x => /in Suzuki Gixxer$/.test(x.innerText)).click());
   await p.waitForTimeout(1500);

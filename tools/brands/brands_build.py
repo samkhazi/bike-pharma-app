@@ -1117,6 +1117,7 @@ SZ_BOOKS = {
     'PARTS_CATALOGUE_GSX250FRL-RLZM2_P74.pdf': ('Gixxer SF 250', 'GSX250FRL/FRLZM2', '2020+'),
     'PARTS_CATALOGUE_GSX250RL-RLZM2_P74.pdf': ('Gixxer 250', 'GSX250RL/RLZM2', '2020+'),
     'DS250RLM3_P74_6.pdf': ('V-Strom SX', 'DS250RLM3', '2022+'),
+    'GL150GLAL9_P74_14.pdf': ('Intruder 150', 'GL150GLA/RLAL9', '2019-2021'),  # 1st edition Feb 2019; price list has GL150 codes up to M1 (2021)
     'GE110DDAL8_P74.pdf': ('Hayate EP', 'GE110DDAL8', '2017-2020'),          # also as GE110DDAL8_EP-HAYATE.pdf
     'hayate2014.pdf': ('Hayate', 'GE110L5/DL5', '2014-2016'),
     'LR_PCAT_GT125K6K7_2nd_P74(9900B-20089-010).pdf': ('Zeus', 'GT125K6/K7', '2006-2009'),

@@ -30,6 +30,12 @@ for (const [W, H, tag] of [[1280, 900, 'computer'], [390, 844, 'phone']]) {
   await p.waitForTimeout(1500);
   const n = await p.evaluate(() => (cur().p || {}).vm + ' ' + (document.querySelector('.m2').innerText.match(/bearing/gi) || []).length);
   ok(/^Gixxer [1-9]/.test(n), `${tag}: tapping it opens the Gixxer bearings (${n})`);
+  // Any brand: every brand's catalogue, every match (Sam 11:12Z "jitne bhi bearing hote hein sabhi show hona he", all brands)
+  await p.evaluate(() => go('findpart', { v: 'res', q: 'bearing', vb: 'Any', vm: 'Any', yr: 'Any', bs: 'Any', sort: 'best', n: 30 }));
+  await p.waitForFunction(() => !catPend().length && CAT_EXT.length >= 9, null, { timeout: 120000 }).catch(() => {});
+  await p.waitForTimeout(800);
+  const any = await p.evaluate(() => { const R = m2Res(cur().p); return { n: R.list.length, b: [...new Set(R.list.map(r => r.vb))].sort().join(' ') }; });
+  ok(any.n > 1000 && ['Bajaj', 'Hero', 'Honda', 'KTM', 'Royal Enfield', 'Suzuki', 'TVS', 'Yamaha'].every(x => any.b.includes(x)), `${tag}: Any brand "bearing": ${any.n} parts from ${any.b}`);
   if (tag === 'phone') await p.screenshot({ path: '/tmp/claude-0/szfix-phone.png', fullPage: false });
   ok(errs.length === 0, `${tag}: no page errors ${errs.slice(0, 2).join(' | ')}`);
   await p.context().close();

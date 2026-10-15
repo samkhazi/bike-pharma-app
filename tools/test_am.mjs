@@ -35,6 +35,17 @@ for (const [W, H, tag] of [[1280, 900, 'computer'], [390, 844, 'phone']]) {
   const a = await p.evaluate(() => ({ ...S.ui.ap, photos: S.ui.ap.photos.length }));
   ok(/Found in Endurance aftermarket catalogue/i.test(t) && a.type === 'Aftermarket' && a.pack === 'Endurance' && +a.mrp > 0 && a.fits.length > 0, `${tag}: Add product 520AM02069: Endurance, MRP ${a.mrp}, fits ${a.fits.join(', ')}`);
   ok(/photo/i.test(t), `${tag}: Add product asks for the photo`);
+  // 8y: close number, front/rear, Admin's Right / Not right
+  await p.evaluate(() => amGo('32100-ABS-200')); await p.waitForTimeout(3000); t = await txt();
+  ok(/WH-HE05A/.test(t) && /almost the same/i.test(t), `${tag}: Hero 32100-ABS-200 finds MotherSon WH-HE05A (printed 32100-ABS-2000), marked check the last digit`);
+  const fr = await p.evaluate(() => { const r = catRows().find(r => r.vb === 'Bajaj' && r.kind === 'd' && r.pk && /CABLE/.test(String(r.desc).toUpperCase()) && /\bREAR\b|\bRR\b/.test(String(r.desc).toUpperCase()) && /BRAKE/.test(String(r.desc).toUpperCase()) && amBike(r).length); if (!r) return null; const L = amBike(r); return { pn: r.part, n: L.length, front: L.filter(q => { const t = amTags(q.nm + ' ' + q.g + ' ' + q.fit); return t.has('front') && !t.has('rear'); }).length }; });
+  ok(fr && fr.front === 0, `${tag}: a rear brake cable (${fr && fr.pn}) lists ${fr && fr.n} aftermarket cables, no front-only one`);
+  await p.evaluate(pn => { m2Part(catRows().find(r => r.vb === 'Bajaj' && r.part === pn).i); }, pc);
+  await p.waitForTimeout(1200);
+  const k1 = await p.evaluate(pn => { const r = catRows().find(r => r.vb === 'Bajaj' && r.part === pn); const q = amBike(r); amAct(r.pk, amKey(q[0]), 'ok'); amAct(r.pk, amKey(q[1]), 'no'); return [amKey(q[0]), amKey(q[1])]; }, pc);
+  await p.waitForTimeout(800); t = await txt();
+  ok(/confirmed by Admin/i.test(t) && !t.includes(k1[1].split('|')[1]), `${tag}: Admin Right moves ${k1[0]} to Confirmed, Not right hides ${k1[1]}`);
+  await p.evaluate(pn => { const r = catRows().find(r => r.vb === 'Bajaj' && r.part === pn); delete DB.amPick[r.pk]; save(); }, pc);
   if (tag === 'phone') await p.screenshot({ path: '/tmp/claude-0/am-phone.png' });
   ok(errs.length === 0, `${tag}: no page errors ${errs.slice(0, 2).join(' | ')}`);
   await p.context().close();

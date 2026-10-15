@@ -3944,31 +3944,56 @@ function m2ResView(p){xrLoad();altLoad();amLoad();const A=m2A(p);m2AllLoad(A,p);
  const spellH=R.spell?`<div class="row cap fp-via">${ic('search','s16')}<span class="grow" style="overflow-wrap:anywhere">Understood “${esc(R.spell.fix.map(f=>f[0].toLowerCase()).join(', '))}” as <b>${esc(R.spell.fix.map(f=>f[1].toLowerCase()).join(', '))}</b></span></div>`:'';
  return `${fpVia()}${spellH}${m2SisLine(A,p)}${A.vb==='Any'&&list.length&&catPend().length?`<div class="cap">${catPendTxt(catPend())}</div>`:''}${R.alt?altVia(p.q,R.alt):!p.cat&&p.q&&fpIsPn(p.q)?altListLine(p.q):''}${p.cat?'':amRes(p.q)}${m2Head(count,scope+(c&&c.hits.some(r=>r.img)?' · pictures are cut from the catalogue diagrams':''))}${list.length?sort:''}${shopH}${tbMini?tbMini(A):''}${body}`;}
 /* ----- aftermarket catalogues (cat/am.json, update 8x): exact = the original number is printed in the aftermarket catalogue ----- */
-let AM=null,AM_ST=0,AM_PK=null,AM_OE=null,AM_TY=null;
+let AM=null,AM_ST=0,AM_PK=null,AM_OE=null,AM_TY=null,AM_NR=null;
 function amLoad(){if(AM_ST===0){AM_ST=1;fetch('cat/am.json').then(r=>r.ok?r.json():Promise.reject(r.status)).then(d=>{AM=d;AM_PK=new Map();AM_OE=new Map();
-  d.p.forEach((p,i)=>{const k=catPk(p[1]);(AM_PK.get(k)||AM_PK.set(k,[]).get(k)).push(i);p[6].forEach(o=>{const q=catPk(o);if(q)(AM_OE.get(q)||AM_OE.set(q,[]).get(q)).push(i);});});
+  AM_NR=new Map();d.p.forEach((p,i)=>{(p[10]||[]).forEach(o=>{const q=catPk(o);(AM_NR.get(q)||AM_NR.set(q,[]).get(q)).push(i);});const k=catPk(p[1]);(AM_PK.get(k)||AM_PK.set(k,[]).get(k)).push(i);p[6].forEach(o=>{const q=catPk(o);if(q)(AM_OE.get(q)||AM_OE.set(q,[]).get(q)).push(i);});});
   AM_TY=d.ty.map(([n,x])=>[n,new RegExp(x)]);AM_ST=2;refresh();},()=>{AM_ST=3;});}return AM;}
-const amP=i=>{const p=AM.p[i];return {i,b:AM.b[p[0]],pn:p[1],nm:p[2],g:p[3],mrp:p[4],fit:p[5],oem:p[6],same:p[7],ty:p[8],fm:p[9].map(([b,m])=>[AM.ob[b],m])};};
+const amP=i=>{const p=AM.p[i];return {i,b:AM.b[p[0]],pn:p[1],nm:p[2],g:p[3],mrp:p[4],fit:p[5],oem:p[6],same:p[7],ty:p[8],fm:p[9].map(([b,m])=>[AM.ob[b],m]),near:p[10]||[]};};
 function amType(...ss){if(!AM_TY)return '';for(const s of ss){const u=String(s||'').toUpperCase();for(const [n,x] of AM_TY)if(x.test(u))return n;}return '';}
 const amByPn=pk=>AM_PK&&pk?(AM_PK.get(pk)||[]).map(amP):[];
 const amByOem=pk=>AM_OE&&pk?(AM_OE.get(pk)||[]).map(amP):[];
 /* same bike + same kind of part (no number printed): only a suggestion */
+const AM_TG=[['front',/\b(FRONT|FR|FRT)\b/],['rear',/\b(REAR|RR)\b/],['lh',/\b(LH|LEFT)\b/],['rh',/\b(RH|RIGHT)\b/],['disc',/\bDISC\b/],['drum',/\bDRUM\b/],['bs6',/\bBS ?-?(VI|6)\b/],['bs4',/\bBS ?-?(IV|4)\b/]];
+function amTags(s){const u=String(s||'').toUpperCase().replace(/F ?& ?R\b|FRONT ?& ?REAR/g,' FRONT REAR '),t=new Set();AM_TG.forEach(([k,x])=>{if(x.test(u))t.add(k);});return t;}
+/* two tag sets contradict: one says front only, the other rear only (same for LH/RH, disc/drum, BS VI/BS IV) */
+const amClash=(a,b)=>[['front','rear'],['lh','rh'],['disc','drum'],['bs6','bs4']].some(([x,y])=>(a.has(x)&&!a.has(y)&&b.has(y)&&!b.has(x))||(a.has(y)&&!a.has(x)&&b.has(x)&&!b.has(y)));
 function amBike(r){if(!AM||!r)return [];const ty=amType(r.desc)||amType(r.asm);if(!ty)return [];const ms=new Set(m2FitL(r).map(m=>m.replace(/ \(.*$/,'')).concat(r.vms||[]));
- const ex=new Set(amByOem(r.pk).map(p=>p.i)),out=[];AM.p.forEach((p,i)=>{if(p[8]!==ty||ex.has(i))return;if(p[9].some(([b,m])=>AM.ob[b]===r.vb&&ms.has(m)))out.push(amP(i));});return out;}
+ const ot=amTags(r.desc+' '+(r.asm||'')),nn=r.kind==='d'&&r.pk?catPkNorms(r.vb,r.pk):null;if(nn&&!nn.none&&nn.n.size===1){const z=[...nn.n][0];if(/6|VI/.test(z))ot.add('bs6');else if(/4|IV/.test(z))ot.add('bs4');}
+ const ex=new Set(amByOem(r.pk).concat(amNear(r.pk)).map(p=>p.i)),out=[];
+ AM.p.forEach((p,i)=>{if(p[8]!==ty||ex.has(i))return;if(!p[9].some(([b,m])=>AM.ob[b]===r.vb&&ms.has(m)))return;const t=amTags(p[2]+' '+p[3]+' '+p[5]);if(amClash(ot,t))return;
+  let sc=0;t.forEach(x=>{if(ot.has(x))sc++;});out.push(Object.assign(amP(i),{sc}));});return out.sort((x,y)=>y.sc-x.sc);}
+const amNear=pk=>AM_NR&&pk?(AM_NR.get(pk)||[]).map(amP):[];
+/* the Admin's word on a match: DB.amPick[original pk] = {ok:[brand|pk], no:[...]} */
+const amKey=p=>p.b+'|'+catPk(p.pn);
+const amPickOf=opk=>((DB.amPick||{})[opk])||{ok:[],no:[]};
+function amAct(opk,key,v){if(!S.user||S.user.role!=='admin')return;DB.amPick=DB.amPick||{};const o=DB.amPick[opk]||(DB.amPick[opk]={ok:[],no:[]});
+ o.ok=o.ok.filter(k=>k!==key);o.no=o.no.filter(k=>k!==key);if(v==='ok')o.ok.push(key);else if(v==='no')o.no.push(key);if(!o.ok.length&&!o.no.length)delete DB.amPick[opk];save();refresh();toast(v==='ok'?'Saved: this is the right aftermarket part':v==='no'?'Hidden: not the right part':'Undone');}
+/* original numbers the Admin confirmed for an aftermarket part */
+function amOkOrig(p){const k=amKey(p),out=[];Object.entries(DB.amPick||{}).forEach(([o,v])=>{if((v.ok||[]).includes(k))out.push(o);});return out;}
 const amFits=p=>p.fm.length?p.fm.map(([b,m])=>b+' '+m).join(', '):p.fit;
+function amRowA(p,opk,st){const ad=S.user&&S.user.role==='admin',k=m2Q(amKey(p));return `<div class="stack" style="gap:4px">${amRow(p,st==='ok')}${ad?`<div class="row" style="gap:6px;justify-content:flex-end">${st==='ok'?`<span class="cap">Confirmed by you</span><button class="link" onclick="amAct('${opk}','${k}','')">Undo</button>`:`<button class="btn line sm" onclick="amAct('${opk}','${k}','ok')">${ic('check','s16')} Right</button><button class="btn line sm" onclick="amAct('${opk}','${k}','no')">Not right</button>`}</div>`:''}</div>`;}
 function amRow(p,ok){return `<button class="m2-row" onclick="amGo('${m2Q(p.pn)}')"><div class="tile sm ${ok?'y':'n'}">${ic(ok?'check':'package','s18')}</div><div class="grow"><div class="h3">${esc(p.b)} · <span class="num">${esc(p.pn)}</span></div><div class="cap">${esc(catNice(p.nm))}${p.mrp?' · MRP '+inr(p.mrp):''}</div><div class="micro muted">${esc(amFits(p).slice(0,90))}</div></div>${ic('chevR','s18')}</button>`;}
 function amSection(r){const X=amLoad();if(!X)return AM_ST===1?`<div class="cap">Looking up aftermarket parts…</div>`:'';
- const ex=amByOem(r.pk),bk=amBike(r),all=!!S.ui.amAll;if(!ex.length&&!bk.length)return '';
- const a=ex.length?`<div class="sec"><h3 class="h2">Aftermarket part for this number</h3><span class="cap">${ex.length}</span></div><div class="stack g8">${ex.map(p=>amRow(p,1)).join('')}</div><div class="cap"><span class="pill g">Exact match</span> The aftermarket catalogue prints this original number (${esc(r.part)}) for its part.</div>`:'';
- const b=bk.length?`<div class="sec"><h3 class="h2">Aftermarket for the same bike (check)</h3><span class="cap">${bk.length}</span></div><div class="stack g8">${bk.slice(0,all?bk.length:6).map(p=>amRow(p,0)).join('')}</div>${bk.length>6?`<button class="link" onclick="S.ui.amAll=!S.ui.amAll;refresh()">${all?'Show less':'Show all '+bk.length}</button>`:''}<div class="cap">Same kind of part for the same bike in the aftermarket catalogue. It prints no original number, so check it before fitting.</div>`:'';
+ const pc=amPickOf(r.pk),no=new Set(pc.no),okk=new Set(pc.ok),opk=m2Q(r.pk);
+ const ex0=amByOem(r.pk).filter(p=>!no.has(amKey(p))),nr0=amNear(r.pk).filter(p=>!no.has(amKey(p))),bk0=amBike(r).filter(p=>!no.has(amKey(p))),seen=new Set(ex0.map(amKey));
+ const conf=nr0.concat(bk0).filter(p=>okk.has(amKey(p))&&!seen.has(amKey(p))&&seen.add(amKey(p))),nr=nr0.filter(p=>!seen.has(amKey(p))&&seen.add(amKey(p))),bk=bk0.filter(p=>!seen.has(amKey(p))),all=!!S.ui.amAll;
+ if(!ex0.length&&!conf.length&&!nr.length&&!bk.length)return '';const ex=ex0;
+ const c=conf.length?`<div class="sec"><h3 class="h2">Aftermarket part confirmed by Admin</h3><span class="cap">${conf.length}</span></div><div class="stack g8">${conf.map(p=>amRowA(p,opk,'ok')).join('')}</div>`:'';
+ const n=nr.length?`<div class="sec"><h3 class="h2">Number almost the same (check the last digit)</h3><span class="cap">${nr.length}</span></div><div class="stack g8">${nr.map(p=>amRowA(p,opk,'')).join('')}</div><div class="cap">The aftermarket catalogue prints ${esc(nr[0].oem.join(', '))}: the same number as ${esc(r.part)} with a different ending. Check the last digit before ordering.</div>`:'';
+ const a=c+n+(ex.length?`<div class="sec"><h3 class="h2">Aftermarket part for this number</h3><span class="cap">${ex.length}</span></div><div class="stack g8">${ex.map(p=>amRow(p,1)).join('')}</div><div class="cap"><span class="pill g">Exact match</span> The aftermarket catalogue prints this original number (${esc(r.part)}) for its part.</div>`:'');
+ const b=bk.length?`<div class="sec"><h3 class="h2">Aftermarket for the same bike (check)</h3><span class="cap">${bk.length}</span></div><div class="stack g8">${bk.slice(0,all?bk.length:6).map(p=>amRowA(p,opk,'')).join('')}</div>${bk.length>6?`<button class="link" onclick="S.ui.amAll=!S.ui.amAll;refresh()">${all?'Show less':'Show all '+bk.length}</button>`:''}<div class="cap">Same kind of part for the same bike in the aftermarket catalogue. It prints no original number, so check it before fitting.${S.user&&S.user.role==='admin'?' Tap Right on the correct one: it then shows as confirmed for everyone.':''}</div>`:'';
  return a+b;}
 function amGo(pn){const f=S.ui.fp||(S.ui.fp=FP0());f.vb='Any';f.vm='Any';f.yr='Any';f.cc='Any';go('findpart',{v:'res',q:pn,vb:'Any',vm:'Any',yr:'Any',bs:'Any',sort:'best',n:30});}
 /* a number searched: its aftermarket part (and the original numbers it replaces), or the aftermarket parts of an original number */
-function amRes(q){if(!q||catPk(q).length<4)return '';const X=amLoad();if(!X)return '';const k=catPk(q),own=amByPn(k),ex=amByOem(k);if(!own.length&&!ex.length)return '';
+function amRes(q){if(!q||catPk(q).length<4)return '';const X=amLoad();if(!X)return '';const k=catPk(q),own=amByPn(k),pc=amPickOf(k),no=new Set(pc.no),ok=new Set(pc.ok);
+ const ex=amByOem(k).filter(p=>!no.has(amKey(p))).concat(AM.p.map((_,i)=>i).filter(i=>ok.has(AM.b[AM.p[i][0]]+'|'+catPk(AM.p[i][1]))).map(amP)).concat(amNear(k).filter(p=>!no.has(amKey(p))&&!ok.has(amKey(p))));
+ if(!own.length&&!ex.length)return '';
  const A=own.map(p=>`<div class="card" style="gap:8px"><div class="row wrap" style="gap:6px"><span class="pill n">Aftermarket</span><span class="pill g">${esc(p.b)} catalogue</span></div><div class="h3">${esc(catNice(p.nm))}</div><div class="cap"><span class="num">${esc(p.pn)}</span>${p.mrp?' · MRP <b>'+inr(p.mrp)+'</b>':''}${p.ty?' · '+esc(p.ty):''}</div><div class="cap">Fits ${esc(amFits(p))}</div>
    ${p.oem.length?`<div class="micro muted">Original part number${p.oem.length>1?'s':''} (printed in the ${esc(p.b)} catalogue)</div><div class="row wrap" style="gap:6px">${p.oem.map(o=>`<button class="chip" onclick="amGo('${m2Q(o)}')">${esc(o)}</button>`).join('')}</div>`:`<div class="cap muted">The ${esc(p.b)} catalogue prints no original number for it.</div>`}
+   ${p.near.length?`<div class="micro muted">In our books with a different ending (check the last digit)</div><div class="row wrap" style="gap:6px">${p.near.map(o=>`<button class="chip" onclick="amGo('${m2Q(o)}')">${esc(o)}</button>`).join('')}</div>`:''}
+   ${amOkOrig(p).length?`<div class="micro muted">Confirmed by Admin for</div><div class="row wrap" style="gap:6px">${amOkOrig(p).map(o=>`<button class="chip" onclick="amGo('${m2Q(o)}')">${esc(o)}</button>`).join('')}</div>`:''}
    ${p.same.length?`<div class="cap">Same as ${p.same.map(([b,n])=>esc(b)+' '+esc(n)).join(' · ')}</div>`:''}${allowed('addproduct')?`<button class="btn line sm" style="align-self:flex-start" onclick="amAdd('${m2Q(p.pn)}')">${ic('plus','s16')} Add to stock</button>`:''}</div>`).join('');
- const B=ex.length?`<div class="sec"><h3 class="h2">Aftermarket part for ${esc(q)}</h3><span class="cap">${ex.length}</span></div><div class="stack g8">${ex.map(p=>amRow(p,1)).join('')}</div><div class="cap"><span class="pill g">Exact match</span> The aftermarket catalogue prints this original number for its part.</div>`:'';
+ const B=ex.length?`<div class="sec"><h3 class="h2">Aftermarket part for ${esc(q)}</h3><span class="cap">${ex.length}</span></div><div class="stack g8">${ex.map(p=>{const nr=!p.oem.some(o=>catPk(o)===k)&&!ok.has(amKey(p));return amRow(p,!nr)+(nr?`<div class="cap">Number almost the same: ${esc(p.oem.join(', '))} (check the last digit)</div>`:'');}).join('')}</div><div class="cap"><span class="pill g">Exact match</span> The aftermarket catalogue prints this original number for its part, or the Admin confirmed it.</div>`:'';
  return A+B;}
 function amAdd(pn){const a=S.ui.ap=invApNew();a.pn=pn;a.look=catPk(pn);S.ui.apErr=null;S.ui.apAll=false;go('addproduct');}
 /* Add product, Stock in, Paste bill: an aftermarket number is a hit like a brand catalogue's */

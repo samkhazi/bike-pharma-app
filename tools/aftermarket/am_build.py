@@ -98,10 +98,12 @@ def ty_of(*ss):
 
 # ---- the bikes it fits, as model names of our own catalogues (only when every word of the model is in the text)
 CAT = os.path.join(os.path.dirname(OUT))
-MODELS = {}
+MODELS, ORIG = {}, {}
 for f in glob.glob(os.path.join(CAT, '*.json')):
     if f.endswith('-dg.json') or os.path.basename(f) in ('xref.json', 'am.json'): continue
     d = json.load(open(f)); MODELS[d['brand']] = d['models']
+    for r in d['d']:
+        if isinstance(r[5], str) and r[5]: ORIG.setdefault(pk(r[5]), r[5])
 BRAND_RE = {'Bajaj': r'\bBAJAJ|\bBJ\b|\bBAJ\b', 'Hero': r'\bHERO|\bHR\b|\bHM\b', 'Honda': r'\bHONDA|\bHMSI\b|\bHD\b', 'TVS': r'\bTVS|\bTV\b',
             'Yamaha': r'\bYAMAHA|\bYAMA|\bYM\b|\bYMH', 'Suzuki': r'\bSUZUKI|\bSUZ|\bSZ\b', 'Royal Enfield': r'ROYAL ENFIELD|\bRE\b|\bENFIELD',
             'KTM': r'\bKTM\b', 'Husqvarna': r'HUSQVARNA'}
@@ -129,12 +131,26 @@ def fits_of(fit, nm):
     return out
 
 B = sorted({p['b'] for p in L})
+# an OEM number printed with one more / one less ending than our book's number (Hero 32100-ABS-2000 = book 32100-ABS-200,
+# TVS N9221150BR = book N9221150 + colour): a close match, shown as "check the last digit"
+BY7 = {}
+for k in ORIG:
+    if len(k) >= 7: BY7.setdefault(k[:7], []).append(k)
+def near_of(oems):
+    out = []
+    for o in oems:
+        q = pk(o)
+        if q in ORIG or len(q) < 7: continue
+        for k in BY7.get(q[:7], []):
+            if k != q and abs(len(k) - len(q)) <= 2 and (k.startswith(q) or q.startswith(k)) and ORIG[k] not in out: out.append(ORIG[k])
+    return out
 OB = sorted(MODELS)
 out = {'src': "Sam's aftermarket catalogues (All Catalogues > After Market Brands), MRP as printed, Oct 2026",
        'b': B, 'ob': OB, 'ty': TY,
        'p': [[B.index(p['b']), p['pn'], p['nm'], p['g'], p['mrp'], p['fit'], p['oem'], p['same'], ty_of(p['g'], p['nm']),
-              [[OB.index(b), m] for b, m in fits_of(p['fit'], p['nm'] if p['b'] in ('Varroc', 'Endurance') else '')]] for p in L]}
+              [[OB.index(b), m] for b, m in fits_of(p['fit'], p['nm'] if p['b'] in ('Varroc', 'Endurance') else '')], near_of(p['oem'])] for p in L]}
 json.dump(out, open(OUT, 'w'), ensure_ascii=False, separators=(',', ':'))
 from collections import Counter
+print('exact (OEM no. in our books)', sum(1 for p in out['p'] if any(pk(o) in ORIG for o in p[6])), 'close', sum(1 for p in out['p'] if p[10]))
 print('typed', sum(1 for p in out['p'] if p[8]), 'with our bikes', sum(1 for p in out['p'] if p[9]))
 print(len(L), 'parts', dict(Counter(p['b'] for p in L)), 'with OEM no.:', sum(1 for p in L if p['oem']), 'same-as:', sum(1 for p in L if p['same']))

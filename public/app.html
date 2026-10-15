@@ -2752,7 +2752,7 @@ const catBin=u=>{if(CAT_BURL[u])return CAT_BURL[u];const [,f,o,l]=u.split(':'),a
 const catMk=(e,d)=>new Promise((ok,no)=>{const vb=e.vb,rows=[],n=d.d.length;let j=0;
  const sp=d.figs.map(f=>({u:d.sheets[f[0]][0],W:d.sheets[f[0]][1],H:d.sheets[f[0]][2],x:f[1],y:f[2],w:f[3],h:f[4]}));
  const step=()=>{try{const t=Date.now(),all=document.hidden;while(j<n&&(all||Date.now()-t<20)){const r=d.d[j++],vv=r[11].map(k=>d.vars[k]),b=d.bk[r[0]];
-   rows.push(catRow({kind:'d',ext:1,vb,vms:[...new Set(vv.map(v=>d.vmod[v]))],vv,src:d.src[b[0]],page:vb[0]+r[0]+'.'+r[2],fig:(d.fw||'Plate')+' '+r[2],note:b[2]||'',asm:d.asm[r[3]],ref:r[4],part:r[5],desc:d.desc[r[6]],qty:r[7],rem:r[8],ns:!!r[9],img:r[10]||null,norms:b[1],sp:r[1]>=0?sp[r[1]]:null,nofig:r[1]===-2,figp:'',txt:e.txt?1:0,ph:catPh(d,r[5]),mrp:catMrpFix(r[5],d.mrp&&d.mrp[r[5]]||0),ymi:r[12]||null}));}}
+   rows.push(catRow({kind:'d',ext:1,vb,vms:[...new Set(vv.map(v=>d.vmod[v]))],vv,src:d.src[b[0]],page:vb[0]+r[0]+'.'+r[2],fig:(d.fw||'Plate')+' '+r[2],note:b[2]||'',asm:d.asm[r[3]],ref:r[4],part:r[5],desc:d.desc[r[6]],qty:r[7],rem:r[8],ns:!!r[9],img:r[10]||null,norms:b[1],sp:r[1]>=0?sp[r[1]]:null,nofig:r[1]===-2,figp:'',txt:e.txt?1:0,ph:catPh(d,r[5]),mrp:catMrpFix(r[5],catMrpOf(d,r[5])),ymi:r[12]||null}));}}
   catch(x){no(x);return;}if(j<n)catYield(step);else ok(rows);};step();});
 function catGet(e){e.st=1;e.paused=0;(e.pfz?catZipJson(e):e.pf?catPfJson(e.pf,e).catch(()=>catFetch(e.url,e)):catFetch(e.url,e)).then(d=>catMk(e,d).then(rows=>{e.pre=rows;e.d=d;e.st=2;Object.assign(CAT_VMOD,d.vmod);CAT_VARS=CAT_VARS.concat(d.vars.map(v=>[e.vb,v]));CAT_VOCAB=null;CAT_PKV=null;}))
  .then(()=>{catRefresh();catLoad();},()=>{e.st=e.paused?0:3;e.paused=0;catRefresh();catLoad();});}
@@ -3089,7 +3089,7 @@ function catSearch(A){const sc=catScope(A);if(!sc)return null;const q=A.q.trim()
  /* a part number: this bike first, then the whole brand, then every catalogue. Old and replacement numbers count too.
     One word with dashes is a number too: Hero and Honda write 06455-KVE-861 */
  const pq=catPk(q),qw=catNorm(q).split(' ');
- if((qw.length<=2||!/\s/.test(q))&&(pq.match(/\d/g)||[]).length>=4&&!qw.some(w=>CAT_PNX.test(w))){
+ if((qw.length<=2||!/\s/.test(q)||qw.every(w=>/\d/.test(w)))&&(pq.match(/\d/g)||[]).length>=4&&!qw.some(w=>CAT_PNX.test(w))){
   const qb=catQb(q),inc=r=>r.pk.includes(pq)||r.opk.includes(pq)||r.spk.includes(pq),ak=r=>!!r.alt&&r.alt.some(k=>k.includes(pq)),
    bm=r=>!!r.pk&&(!!qb&&(r.pk===qb||r.pb===qb)||!!r.pb&&pq.length>r.pb.length&&pq.startsWith(r.pb)),m=r=>inc(r)||ak(r)||bm(r),
    m2=r=>!!r.pk&&r.pk.length>=8&&pq.length>r.pk.length&&pq.length-r.pk.length<=5&&pq.startsWith(r.pk),
@@ -3567,7 +3567,7 @@ const tbEntry=()=>!tbOn()?'':`<button class="row card" style="flex-direction:row
    name, part no., category) and cards (name, assembly, part no., MRP incl. GST or Price on request, qty per bike, which bike).
    Mechanics' trade names (brake liner, cone set, T bracket, bend pipe...) come from syn_mech.json, merged into CAT_WORDS. */
 const FP0=()=>({q:'',vb:'Any',vm:'Any',bs:'Any',col:'Any',cc:'Any',vv:'Any',yr:'Any',ed:'Any'});
-const fpIsPn=q=>{q=String(q||'').trim();if(!q)return false;const pq=catPk(q),qw=catNorm(q).split(' ');return (qw.length<=2||!/\s/.test(q))&&(pq.match(/\d/g)||[]).length>=4&&!qw.some(w=>CAT_PNX.test(w));};
+const fpIsPn=q=>{q=String(q||'').trim();if(!q)return false;const pq=catPk(q),qw=catNorm(q).split(' ');return (qw.length<=2||!/\s/.test(q)||qw.every(w=>/\d/.test(w)))&&(pq.match(/\d/g)||[]).length>=4&&!qw.some(w=>CAT_PNX.test(w));};
 /* the years a book variant is for: "2019", "2013-17", "2023-24", "2021+" (up to this year), "(Oct, 2025)", "· 2022 ·" */
 const FP_NOW=2026,CAT_VY=new Map();
 const catVyrs=v=>{let a=CAT_VY.get(v);if(a)return a;a=[];let t=String(v);
@@ -3584,7 +3584,7 @@ const catYrsTxt=ys=>{const o=[];ys.forEach(y=>{const l=o[o.length-1];if(l&&y===l
 function catFitsL(vv,vb){const by=new Map();vv.forEach(v=>{const m=catVmod(v)||v;by.set(m,(by.get(m)||[]).concat(v));});
  return [...by.entries()].map(([m,vs])=>{if(vs.length>=catVariants(vb,m).length)return m;const ys=vs.map(catVyrs);
   if(ys.every(a=>a.length))return m+' ('+catYrsTxt([...new Set(ys.flat())].sort((a,b)=>a-b))+')';
-  return m+' ('+vs.map(v=>v.replace(m+' ','').replace(/ ?\(([^()]*)\)/g,' $1').trim()).join(', ')+')';});}
+  return m+' ('+vs.map(v=>(v.startsWith(m)?v.slice(m.length):v).replace(/^[\s·]+/,'').replace(/ ?\(([^()]*)\)/g,' $1').trim()).join(', ')+')';});}
 /* the years and the emission norms the catalogue has for the bike so far ('wait': its catalogue is still coming) */
 
 /* ---------- the Year list as the model's catalogue versions, like Mittal's "2023 · BS VI" (update 8u) ---------- */
@@ -3595,7 +3595,7 @@ const fpShort=(vm,v)=>{let s=String(v);const lo=s.toLowerCase(),m=String(vm).toL
  if(lo.startsWith(m))s=s.slice(m.length);
  s=s.replace(/\((?:[A-Za-z]{3,5}\.?,?\s*)?(?:19|20)\d\d(?:\s*[-–+]\s*(?:(?:19|20)?\d\d)?)?\)/g,' ').replace(/\b(?:19|20)\d\d\s*[-–]\s*(?:19|20)?\d\d\b|\b(?:19|20)\d\d\+/g,' ')
   .replace(/\(MY\d\d\)/gi,' ').replace(/\(\d\d?[.\s\/-]\d\d?[.\s\/-](?:19|20)?\d\d\)/g,' ').replace(/\b(?:rev\.?\s*\d+\s*)$/i,' ').replace(/(^|[\s·])(?:19|20)\d\d(?=[\s·]|$)/g,' ').replace(/\bBS\s*-?\s*(?:VII|VI|IV|III|7|6|4|3)(?![A-Z0-9])/gi,' ')
-  .replace(/^[\s·\-–:,]+|[\s·\-–:,]+$/g,'').replace(/\s*[\-–]\s*$/,'').replace(/\s{2,}/g,' ').trim();return s;};
+  .replace(/·(?:\s*·)+/g,'·').replace(/^[\s·\-–:,]+|[\s·\-–:,]+$/g,'').replace(/\s*[\-–]\s*$/,'').replace(/\s{2,}/g,' ').trim();return s;};
 let FP_VER={rows:null,m:new Map()};
 function fpVers(vb,vm){const e=CAT_ALL.find(e=>e.vb===vb);if(e&&e.st<2){catLoad(vb);return 'wait';}const rows=catRows();if(FP_VER.rows!==rows)FP_VER={rows,m:new Map()};
  const k=vb+'|'+vm;if(FP_VER.m.has(k))return FP_VER.m.get(k);
@@ -3646,7 +3646,7 @@ function m2Stat(vb,vm){const rows=catRows();if(M2_STR!==rows){M2_STR=rows;M2_ST=
 /* the numbered sections of a bike: one per diagram page of its books, in book order */
 function m2Secs(rows){const m=new Map();rows.forEach(r=>{let s=m.get(r.page);if(!s)m.set(r.page,s={pg:r.page,asm:r.asm||'',fig:r.fig||'',src:r.src||'',rows:[],pk:new Set()});s.rows.push(r);if(r.pk)s.pk.add(r.pk);});return [...m.values()];}
 /* one line per part number (a number drawn on two pages shows once) */
-const m2Uniq=list=>{const seen=new Set();return list.filter(r=>{if(!r.pk)return true;if(seen.has(r.vb+'|'+r.pk))return false;seen.add(r.vb+'|'+r.pk);return true;});};
+const m2Uniq=list=>{const seen=new Set();return list.filter(r=>{const k=r.vb+'|'+(r.pk||'~'+catNorm(r.desc||''));if(seen.has(k))return false;seen.add(k);return true;});};
 const m2Sort=(list,s)=>s==='name'?list.slice().sort((a,b)=>String(a.desc).localeCompare(String(b.desc))):s==='pn'?list.slice().sort((a,b)=>String(a.part||'~').localeCompare(String(b.part||'~'))):s==='cat'?list.slice().sort((a,b)=>String(a.asm||'').localeCompare(String(b.asm||''))||String(a.desc).localeCompare(String(b.desc))):list;
 const m2Loaded=()=>{const a=CAT_ALL.filter(e=>e.st===2).map(e=>e.vb);if(XLC&&!a.includes('TVS'))a.push('TVS XL100');return a;};
 /* the part's picture for a card: its photo, else the crop of its diagram, else a box */
@@ -3796,7 +3796,7 @@ function m2Thumb(r){if(r.ph&&r.ph.u)return `<div class="m2-th" data-bg="${r.ph.u
 const m2FitL=r=>{const fv=r.xl?[]:r.kind==='d'&&r.pk&&!r.xl?catPkVv(r.vb,r.pk):(r.vv||[]);return fv.length?catFitsL(fv,r.vb):(r.vms||[]).slice(0,3);};
 /* BAJAJ PULSAR 150 · 150cc · 2019–2021 (+2 more bikes) */
 function m2FitTxt(r,p){const L=m2FitL(r);const pick=p&&p.vm&&p.vm!=='Any'?p.vm:((L[0]||r.vm||'').replace(/ \(.*$/,''));const cc=MODEL_CC[pick];
- const hit=L.find(x=>x===pick||x.startsWith(pick+' ('))||'';const yr=p&&p.yr&&p.yr!=='Any'?String(p.yr):hit.includes('(')?hit.slice(hit.indexOf('(')+1,-1):'';
+ const hit=L.find(x=>x===pick||x.startsWith(pick+' ('))||'';const yr=p&&p.yr&&p.yr!=='Any'?String(p.yr):hit.includes('(')&&/^\d/.test(hit.slice(hit.indexOf('(')+1))?hit.slice(hit.indexOf('(')+1,-1):'';
  return [r.vb+' '+pick,cc?cc+'cc':'',yr].filter(Boolean).join(' · ')+(L.length>1?' · +'+(L.length-1)+' more':'');}
 const m2Shop=r=>r.pk?PRODUCTS.find(p=>catPk(p.pn)===r.pk):null;
 const m2Price=r=>{const x=m2Shop(r);const v=r.mrp||(x&&x.mrp)||0;return v?`<span class="micro muted">MRP</span> <b class="num">${inr(v)}</b> <span class="micro muted">incl. GST</span>`:`<span class="cap">Price on request</span>`;};
@@ -3892,7 +3892,7 @@ function m2SecV(p){const A=m2A(p);const sc=catScope(A);if(!sc)return `<div class
  const dia=dr?((dr.sp||dr.figp)?`<button class="fpc-zb" onclick="catZoom(${dr.i})" aria-label="Open the diagram bigger">${catFigEl(dr,'fpc-fig')}</button>`:catPic(dr))+`<div class="micro muted" style="text-align:center;margin-top:6px">The numbers on the diagram are the refs in the table. Tap to zoom.</div>`
   :g?dgFull(g,gr,'The numbers on the diagram are the refs in the table. Tap to zoom.')+(x=>x?`<div class="dg-see">${catSee(x)}</div>`:'')(rows.find(r=>r.txt&&catSee(r)))
   :(x=>x?catSee(x):'')(rows.find(r=>r.txt))||(r0.ext&&!r0.txt&&CAT_SITE[r0.vb]?`<a class="link" href="${esc(catSiteUrl(r0))}" target="_blank" rel="noopener">See this diagram in the full ${esc(r0.vb)} catalogue</a>`:`<div class="cap">No diagram in the app for this book.</div>`);
- const seen=new Set();const tr=rows.filter(r=>{const k=String(r.ref||'')+'|'+(r.pk||'')+'|'+r.desc;if(seen.has(k))return false;seen.add(k);return true;});
+ const seen=new Set();const tr=rows.filter(r=>{const k=String(r.ref||'')+'|'+(r.pk||r.desc);if(seen.has(k))return false;seen.add(k);return true;}).sort(m3By);
  return `${m2Head(esc(ttl)+' for '+esc(bike),esc(r0.src||'')+' · '+tr.length+' line'+(tr.length===1?'':'s'))}<div class="card" style="gap:6px">${dia}</div>
  <div class="m2-tw"><table class="m2-t"><thead><tr><th>Ref</th><th>Part</th><th>Part no.</th><th style="text-align:right">MRP</th></tr></thead><tbody>${tr.map(r=>`<tr onclick="m2Part(${r.i})" tabindex="0" onkeydown="if(event.key==='Enter')m2Part(${r.i})"><td class="num">${esc(r.ref||'—')}</td><td>${esc(catNice(r.desc))}${r.qty>1?` <span class="cap">×${esc(r.qty)}</span>`:''}${r.ns?' <span class="pill a">N.S.</span>':''}</td><td class="num">${esc(r.part||'—')}</td><td class="num" style="text-align:right">${r.mrp?inr(r.mrp):'<span class="cap">On request</span>'}</td></tr>`).join('')}</tbody></table></div>
  <div class="cap">Tap a line to open the part with its picture, fitment and stock.</div>`;}
@@ -3907,11 +3907,15 @@ function catSpDict(vb){const rows=catRows();const k=vb+'|'+rows.length;if(CAT_SP
  Object.keys(CAT_WORDS).forEach(k=>k.split(' ').forEach(w=>add(w,200)));Object.values(FP_SYN).forEach(v=>add(v.toUpperCase(),200));
  const by=new Map();f.forEach((n,w)=>{const L=w.length;if(!by.has(L))by.set(L,[]);by.get(L).push(w);});CAT_SPK=k;return CAT_SPD={f,by};}
 const catSpMax=w=>w.length<4?0:w.length<6?1:w.length<9?2:3;
-function catSpWord(w,D){const max=catSpMax(w);if(!max||D.f.has(w)||CAT_STOP.has(w)||/\d/.test(w)||FP_SYN[w.toLowerCase()])return [];const c=[];
- for(let L=w.length-max;L<=w.length+max;L++)(D.by.get(L)||[]).forEach(v=>{const d=dlev(w,v,max);if(d<=max)c.push([d,-(D.f.get(v)+(v[0]===w[0]?1e6:0)),v]);});
+/* a word the catalogue has only a few times while a close word is 30x more common: the catalogue's own typo (Yamaha "CLUCTH DOG") */
+function catSpLow(w,D){const n=D.f.get(w);if(!n||n>3)return false;const max=catSpMax(w);if(!max)return false;
+ for(let L=w.length-max;L<=w.length+max;L++)for(const v of (D.by.get(L)||[]))if(v!==w&&D.f.get(v)>=30*n&&dlev(w,v,max)<=max)return true;return false;}
+function catSpWord(w,D){const max=catSpMax(w),low=D.f.has(w)&&catSpLow(w,D);if(!max||D.f.has(w)&&!low||CAT_STOP.has(w)||/\d/.test(w)||FP_SYN[w.toLowerCase()])return [];const c=[];
+ for(let L=w.length-max;L<=w.length+max;L++)(D.by.get(L)||[]).forEach(v=>{if(low&&(v===w||D.f.get(v)<30*D.f.get(w)))return;const d=dlev(w,v,max);if(d<=max)c.push([d,-(D.f.get(v)+(v[0]===w[0]?1e6:0)),v]);});
  return c.sort((x,y)=>x[0]-y[0]||x[1]-y[1]).slice(0,4).map(x=>x[2]);}
 /* every word spelt as the catalogue spells it; a word that makes a mechanics' phrase with its neighbour wins ("t braket" is the T bracket, not a brake),
    and the next-best readings of each word follow, tried only when the first finds nothing ("spoket": spoke, then sprocket) */
+function catSpTypo(q,vb){const D=catSpDict(vb);return String(q||'').trim().split(/\s+/).some(t=>{const n=catNorm(t);return n&&!n.includes(' ')&&!/\d/.test(n)&&catSpLow(n,D);});}
 function catSpell(q,vb){const D=catSpDict(vb);const T=String(q||'').trim().split(/\s+/),N=T.map(t=>{const n=catNorm(t);return n&&!n.includes(' ')?n:'';}),C=N.map(n=>n?catSpWord(n,D):[]);
  const fix=[],best=N.map((n,i)=>{if(!C[i].length)return '';const nb=[N[i-1],N[i+1]];const k=C[i].find(v=>nb[0]&&CAT_WORDS[nb[0]+' '+v]||nb[1]&&CAT_WORDS[v+' '+nb[1]]);const v=k||C[i][0];fix.push([n,v]);return v;});
  const mk=alt=>T.map((t,i)=>alt[i]?alt[i].toLowerCase():t).join(' ');const alts=[mk(best)];
@@ -3922,7 +3926,7 @@ function m2Res(p){const A=m2A(p);if(p.cat){const sc=catScope(A);if(!sc)return {l
  const c=catSearch({...A,lim:1e6});if(!c)return {list:[],none:1};if(c.loading)return {loading:c};
  if(!c.hits.length&&!(c.pend||[]).length&&A.q&&fpIsPn(A.q)){for(const al of altAll(A.q)){let c2=catSearch({...A,q:al.alt,lim:1e6});if(c2&&!c2.loading&&!c2.hits.length&&A.vb!=='Any')c2=catSearch({...m2A({q:al.alt}),lim:600});if(c2&&c2.loading)return {loading:c2};if(c2&&c2.hits.length)return {list:c2.hits,c:c2,label:c2.label,alt:al};}}
  /* nothing, or only a guess: the words spelt as the catalogue spells them ("clucth cabel" = clutch cable) */
- if((!c.hits.length||c.fuzzy)&&A.q){const sp=catSpell(A.q,A.vb);if(sp.fix.length){let fb=null;for(const q2 of sp.alts){const c2=catSearch({...A,q:q2,lim:1e6});if(!c2||c2.loading||!c2.hits.length)continue;const fx=sp.fix.map(([a])=>a);const w2=q2.split(' ');const fix=String(A.q).trim().split(/\s+/).map((t,i)=>[catNorm(t),w2[i].toUpperCase()]).filter(([a,b])=>a!==b&&fx.includes(a));const R={list:c2.hits,c:c2,label:c2.label,spell:{q:q2,fix}};if(!c2.fuzzy)return R;if(!fb&&!c.hits.length)fb=R;}if(fb)return fb;}}
+ if(A.q&&(!c.hits.length||c.fuzzy||catSpTypo(A.q,A.vb))){const sp=catSpell(A.q,A.vb);if(sp.fix.length){let fb=null;for(const q2 of sp.alts){const c2=catSearch({...A,q:q2,lim:1e6});if(!c2||c2.loading||!c2.hits.length)continue;const fx=sp.fix.map(([a])=>a);const w2=q2.split(' ');const fix=String(A.q).trim().split(/\s+/).map((t,i)=>[catNorm(t),w2[i].toUpperCase()]).filter(([a,b])=>a!==b&&fx.includes(a));const R={list:c.hits.length&&!c.fuzzy?c2.hits.concat(c.hits.filter(r=>!c2.hits.includes(r))):c2.hits,c:c2,label:c2.label,spell:{q:q2,fix}};if(!c2.fuzzy)return R;if(!fb&&!c.hits.length)fb=R;}if(fb)return fb;}}
  return {list:c.hits,c,label:c.label};}
 function m2SisLine(A,p){if(p.cat||!p.q||A.vm==='Any')return '';const o=xrSis({vb:A.vb,vms:[A.vm]})[0];if(!o||!o.ms.length)return '';
  return `<div class="card" style="gap:6px"><div class="cap">${esc(A.vm)}: ${esc(o.why)}</div><div class="row wrap" style="gap:6px">${o.ms.slice(0,3).map(m=>`<button class="chip" onclick="xrGoSis('${m2Q(o.sb)}','${m2Q(m)}','${m2Q(p.q)}')">${esc(p.q)} in ${esc(o.sb)} ${esc(m)}</button>`).join('')}</div></div>`;}
@@ -3937,13 +3941,14 @@ function m2ResView(p){xrLoad();altLoad();amLoad();const A=m2A(p);m2AllLoad(A,p);
  const sq=(A.q||'').replace(/(^|\s)[A-Za-z0-9](?=\s|$)/g,' ').trim();const m2ShopOk=x=>{const toks=(x.name+' '+x.pn+' '+x.cat+' '+x.brand).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);const has=w=>toks.some(t=>t.startsWith(w)||(t.length>=4&&w.startsWith(t)));return sq.toLowerCase().split(/[^a-z0-9]+/).filter(w=>w.length>=4).every(w=>has(w)||(CAT_WORDS[w.toUpperCase()]||[]).some(al=>al.toLowerCase().split(' ').filter(x=>/^[a-z0-9]+$/.test(x)).every(has)));};const shop=!p.cat&&sq?PRODUCTS.filter(m2ShopOk).map(x=>[x,fpMatch(x,{...A,q:sq})]).filter(([,m])=>m).slice(0,6):[];
  const shopH=shop.length?`<div class="sec"><h3 class="h2">In our stock list</h3><span class="cap">${shop.length}</span></div><div class="stack g8">${shop.map(([x,m])=>{const k=DB.stock[x.id]||0;return `<button class="m2-row" onclick="S.ui.scanHit='${x.id}';S.ui.scanMiss=null;go('scanfind')"><div class="tile sm n">${ic(x.ic||'package','s18')}</div><div class="grow"><div class="h3">${esc(x.name)}</div><div class="cap">${esc(x.pn)} · Fits ${esc(m)}</div></div><div style="text-align:right"><b class="num">${inr(x.mrp)}</b><div class="cap" style="color:${k>0?'var(--g)':'var(--r)'}">${k>0?k+' in stock':'Out of stock'}</div></div></button>`;}).join('')}</div>`:'';
  const chips=A.vb==='Any'?`<div class="cap">Searched ${esc(m2Loaded().join(', '))}. Pick a brand to search its catalogue:</div><div class="row wrap" style="gap:6px">${Object.keys(BRANDS_V).map(b=>`<button class="chip" onclick="m2In('${m2Q(b)}')">${esc(b)}</button>`).join('')}</div>`:'';
- let body;
- if(!list.length){const tip=c&&c.drum?' '+catDrumTxt(c,A):c&&c.other?` The ${esc(c.label)} catalogue has it for ${esc(c.other)} only.`:'';
+ let body;const amH=p.cat?'':amRes(p.q),amOwn=!!amH&&AM_PK&&AM_PK.has(catPk(p.q));
+ if(amOwn&&(!list.length||c&&c.fuzzy))body=`<div class="cap">No original catalogue line has this number. The aftermarket part is above.</div>`;
+ else if(!list.length){const tip=c&&c.drum?' '+catDrumTxt(c,A):c&&c.other?` The ${esc(c.label)} catalogue has it for ${esc(c.other)} only.`:'';
   body=`<div class="empty">No ${p.cat?esc(p.cat)+' parts':'“'+esc(p.q)+'”'} found ${scope}.${tip}<br>${!p.cat&&CAT_TIP[A.vb]?esc(CAT_TIP[A.vb])+' ':''}${p.cat?'':'Try another name (brake liner, clutch plate), the mechanic’s name, or the part number.'}</div>${!p.cat&&fpIsPn(p.q)&&!(c&&(c.pend||[]).length)?altNote(p.q,'findpart'):''}${c&&(c.pend||[]).length?`<div class="cap">${catPendTxt(c.pend)}</div>`:''}${chips}`;}
  else body=`${c&&c.fuzzy?`<div class="row cap" style="background:var(--blue-soft);border-radius:10px;padding:10px">${ic('search','s16')}<span class="grow" style="overflow-wrap:anywhere">${c.kit?'No chain sprocket kit in this catalogue: it lists the chain and the sprockets as separate parts. Showing those.':c.partial?`Not every word of “${esc(c.q)}” matched. Showing the closest parts.`:`No exact match for “${esc(c.q)}”. Showing close matches.`}</span></div>`:''}${c&&c.wide?`<div class="row cap" style="background:var(--amber-soft);border-radius:10px;padding:10px">${ic('alert','s16')}<span class="grow">${esc(c.q)} is not listed for ${esc(c.label)}. Showing where the catalogue lists it.</span></div>`:''}${c&&(c.pend||[]).length?`<div class="cap">${catPendTxt(c.pend)}</div>`:''}
   <div class="m2-list">${list.slice(0,n).map(r=>m2Card(r,p)).join('')}</div>${n<list.length?`<button class="btn line" onclick="m2More()">Show more (${m2N(list.length-n)} left)</button>`:''}${A.vb==='Any'&&!p.cat?chips:''}`;
  const spellH=R.spell?`<div class="row cap fp-via">${ic('search','s16')}<span class="grow" style="overflow-wrap:anywhere">Understood “${esc(R.spell.fix.map(f=>f[0].toLowerCase()).join(', '))}” as <b>${esc(R.spell.fix.map(f=>f[1].toLowerCase()).join(', '))}</b></span></div>`:'';
- return `${fpVia()}${spellH}${m2SisLine(A,p)}${A.vb==='Any'&&list.length&&catPend().length?`<div class="cap">${catPendTxt(catPend())}</div>`:''}${R.alt?altVia(p.q,R.alt):!p.cat&&p.q&&fpIsPn(p.q)?altListLine(p.q):''}${p.cat?'':amRes(p.q)}${m2Head(count,scope+(c&&c.hits.some(r=>r.img)?' · pictures are cut from the catalogue diagrams':''))}${list.length?sort:''}${shopH}${tbMini?tbMini(A):''}${body}`;}
+ return `${fpVia()}${spellH}${m2SisLine(A,p)}${A.vb==='Any'&&list.length&&catPend().length?`<div class="cap">${catPendTxt(catPend())}</div>`:''}${R.alt?altVia(p.q,R.alt):!p.cat&&p.q&&fpIsPn(p.q)?altListLine(p.q):''}${amH}${amOwn&&(!list.length||c&&c.fuzzy)?'':m2Head(count,scope+(c&&c.hits.some(r=>r.img)?' · pictures are cut from the catalogue diagrams':''))}${list.length&&!(amOwn&&c&&c.fuzzy)?sort:''}${shopH}${tbMini?tbMini(A):''}${body}`;}
 /* ----- aftermarket catalogues (cat/am.json, update 8x): exact = the original number is printed in the aftermarket catalogue ----- */
 let AM=null,AM_ST=0,AM_PK=null,AM_OE=null,AM_TY=null,AM_NR=null;
 function amLoad(){if(AM_ST===0){AM_ST=1;fetch('cat/am.json').then(r=>r.ok?r.json():Promise.reject(r.status)).then(d=>{AM=d;AM_PK=new Map();AM_OE=new Map();
@@ -3992,7 +3997,7 @@ function amSection(r){const X=amLoad();if(!X)return AM_ST===1?`<div class="cap">
 function amGo(pn){const f=S.ui.fp||(S.ui.fp=FP0());f.vb='Any';f.vm='Any';f.yr='Any';f.cc='Any';go('findpart',{v:'res',q:pn,vb:'Any',vm:'Any',yr:'Any',bs:'Any',sort:'best',n:30});}
 /* a number searched: its aftermarket part (and the original numbers it replaces), or the aftermarket parts of an original number */
 function amRes(q){if(!q||catPk(q).length<4)return '';const X=amLoad();if(!X)return '';const k=catPk(q),own=amByPn(k),pc=amPickOf(k),no=new Set(pc.no),ok=new Set(pc.ok);
- const ex=amByOem(k).filter(p=>!no.has(amKey(p))).concat(AM.p.map((_,i)=>i).filter(i=>ok.has(AM.b[AM.p[i][0]]+'|'+catPk(AM.p[i][1]))).map(amP)).concat(amNear(k).filter(p=>!no.has(amKey(p))&&!ok.has(amKey(p))));
+ const ex=amByOem(k).filter(p=>!no.has(amKey(p))).concat(AM.p.map((_,i)=>i).filter(i=>ok.has(AM.b[AM.p[i][0]]+'|'+catPk(AM.p[i][1]))).map(amP)).concat(amNear(k).filter(p=>!no.has(amKey(p))&&!ok.has(amKey(p)))).filter((p,i,L)=>L.findIndex(q=>amKey(q)===amKey(p))===i);
  if(!own.length&&!ex.length)return '';
  const A=own.map(p=>`<div class="card" style="gap:8px"><div class="row wrap" style="gap:6px"><span class="pill n">Aftermarket</span><span class="pill g">${esc(p.b)} catalogue</span></div>${amPic(p,'fpc-pic m3-ph')}<div class="h3">${esc(catNice(p.nm))}</div><div class="cap"><span class="num">${esc(p.pn)}</span>${p.mrp?' · MRP <b>'+inr(p.mrp)+'</b>':''}${p.ty?' · '+esc(p.ty):''}</div><div class="cap">Fits ${esc(amFits(p))}</div>
    ${p.oem.length?`<div class="micro muted">Original part number${p.oem.length>1?'s':''} (printed in the ${esc(p.b)} catalogue)</div><div class="row wrap" style="gap:6px">${p.oem.map(o=>`<button class="chip" onclick="amGo('${m2Q(o)}')">${esc(o)}</button>`).join('')}</div>`:`<div class="cap muted">The ${esc(p.b)} catalogue prints no original number for it.</div>`}
@@ -4007,7 +4012,7 @@ const amHits=pk=>amByPn(pk).map(p=>({vb:p.b,pk,pn:p.pn,name:catNice(p.nm)||p.pn,
 /* ----- the part's own page ----- */
 function m2PartV0(p){const r=m2Row(p);if(!r)return `<div class="empty">This part is not in the loaded catalogues any more. Search it again.</div>`;
  const key=r.page+'-'+r.i,open=!!(S.ui.fpOpen||{})[key];const x=m2Shop(r),n=x?DB.stock[x.id]:0;const L=m2FitL(r);
- const vm=p.vm&&p.vm!=='Any'?p.vm:(L[0]||r.vm||'').replace(/ \(.*$/,'');const cc=MODEL_CC[vm];const hit=L.find(v=>v===vm||v.startsWith(vm+' ('))||'';const yr=p.yr&&p.yr!=='Any'?String(p.yr):hit.includes('(')?hit.slice(hit.indexOf('(')+1,-1):'';
+ const vm=p.vm&&p.vm!=='Any'?p.vm:(L[0]||r.vm||'').replace(/ \(.*$/,'');const cc=MODEL_CC[vm];const hit=L.find(v=>v===vm||v.startsWith(vm+' ('))||'';const yr=p.yr&&p.yr!=='Any'?String(p.yr):hit.includes('(')&&/^\d/.test(hit.slice(hit.indexOf('(')+1))?hit.slice(hit.indexOf('(')+1,-1):'';
  const php=catPhoto(r),ym=catYmSp(r),full=!!(r.figp||r.sp)&&!ym,g=!full&&!ym?dgFig(r):null;
  const pic=php||(ym||r.img?catPic(r):full?`<div class="fpc-ym"><button class="fpc-zb" onclick="catZoom(${r.i})" aria-label="Open the diagram bigger">${catFigEl(r,'fpc-fig')}</button><div class="micro muted" style="text-align:center;margin-top:6px">${r.ref?'This part is ref '+esc(r.ref)+' on the diagram. ':''}Tap the diagram to zoom.</div></div>`:g&&g.box?`<div class="dg-wrap">${dgCropEl(g,'fpc-crop')}<div class="dg-alt"></div></div>`:g?`<div class="fpc-ym">${dgFull(g,r)}</div>`:'');
  const dgb=(php||r.img||g&&g.box)&&(full||g)?`<button class="btn line sm fpc-dg" onclick="catFull('${key}')" aria-expanded="${open}">${ic('eye','s16')} ${open?'Hide diagram':'View diagram'}</button>${open?`<div class="fpc-full">${full?`<button class="fpc-zb" onclick="catZoom(${r.i})" aria-label="Open the diagram bigger">${catFigEl(r,'fpc-fig')}</button><div class="micro muted" style="margin-top:4px">${r.ref?'Find ref '+esc(r.ref)+'. ':''}Tap the diagram to open it bigger</div>`:dgFull(g,r,(r.ref?'Find ref '+esc(r.ref)+'. ':'')+'Tap the diagram to open it bigger')}</div>`:''}`:'';
@@ -5930,6 +5935,7 @@ function bpApplyItem(it,g){const p=P(it.pid);if(!p)return;const ch={},m=r2(+it.b
 function bpPostFx(g){(g.items||[]).forEach(it=>bpApplyItem(it,g));
  const s=sups().find(x=>x.n===g.supplier);if(s&&g.gstin&&!/^[0-9A-Z]{15}$/.test(s.gst||''))s.gst=g.gstin;
  if(!g.bdate)g.bdate=ddmmm2iso(g.date);g.iso=isoToday();g.pays=g.pays||[];}
+function catMrpOf(d,pn){if(!d.mrp||!pn)return 0;const v=d.mrp[pn];if(v)return v;if(!d._mk){d._mk=new Map();for(const k in d.mrp)if(d.mrp[k]&&!d._mk.has(catPk(k)))d._mk.set(catPk(k),d.mrp[k]);}return d._mk.get(catPk(pn))||0;}
 function catMrpFix(pn,m){const F=typeof DB!=='undefined'&&DB&&DB.mrpFix;if(!F)return m;const f=F[catPk(pn)];return f&&+f.m>0?+f.m:m;}
 function catMrpLive(pk,m){try{CAT_ALL.forEach(e=>{if(e.st===2)catPkRows(e.vb,pk).forEach(r=>{r.mrp=m;});});INV_LK.delete(pk);}catch(e){}}
 /* -- supplier bills to pay (Sam 20:16Z-20:22Z): each posted bill is in its supplier's list, paid in parts or at once; Admin is told
@@ -6145,7 +6151,7 @@ function fpHit(q,words){q=String(q||'').trim();if(!q||!altStaff())return '';
 /* ---------- the part page like Mittal's (update 8r): the diagram | its parts by ref | the chosen part ---------- */
 IC.zoom='<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M11 8v6M8 11h6"/>';
 const M3={};let M3_R=null,M3_C=new Map(),M3_T=0;
-const m3Cmp=new Intl.Collator('en',{numeric:true}).compare,m3K=q=>String(q.ref||'')+'|'+(q.pk||'')+'|'+q.desc;
+const m3Cmp=new Intl.Collator('en',{numeric:true}).compare,m3K=q=>String(q.ref||'')+'|'+(q.pk||q.desc);
 /* by ref: 1, 2, 2A, 10, 10-1, then the lines with no ref (the book's order inside one ref) */
 const m3By=(a,b)=>(a.ref?0:1)-(b.ref?0:1)||m3Cmp(String(a.ref||''),String(b.ref||''));
 /* one diagram's lines: its page in its edition, once per ref + number + name (kept until another catalogue arrives) */

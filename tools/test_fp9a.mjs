@@ -1,0 +1,35 @@
+// 2026-10-15 update 9a: Find Part review fixes (tools/fpfix2.py + tools/brands/catfix.py).  BASE4=http://127.0.0.1:3018 node tools/test_fp9a.mjs
+import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+const BASE = process.env.BASE4 || 'http://127.0.0.1:3018';
+let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const p = await (await b.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
+const errs = []; p.on('pageerror', e => errs.push(e.message));
+await p.goto(BASE + '/app.html', { waitUntil: 'load' });
+await p.waitForFunction(() => typeof S !== 'undefined' && S.stack && S.stack.length && cur().s !== 'boot', null, { timeout: 15000 });
+await p.fill('#loginId', 'sam@bikepharma.com'); await p.evaluate(() => sendOtp()); await p.waitForTimeout(500);
+await p.fill('#pw1', 'Test@1234'); await p.evaluate(() => pwGo()); await p.waitForTimeout(900);
+await p.evaluate(async () => { ['Yamaha', 'TVS', 'Honda', 'Bajaj', 'Hero', 'Royal Enfield'].forEach(v => catLoad(v)); for (let i = 0; i < 400 && CAT_ALL.some(e => ['Yamaha', 'TVS', 'Honda', 'Bajaj', 'Hero', 'Royal Enfield'].includes(e.vb) && e.st !== 2); i++) await new Promise(r => setTimeout(r, 500)); });
+const P = o => ({ v: 'res', vm: 'Any', yr: 'Any', bs: 'Any', sort: 'best', n: 30, ...o });
+const r1 = await p.evaluate(P => { const R = m2Res(P); return { sp: R.spell && R.spell.q, n: R.list.filter(r => /CLUTCH/.test(String(r.desc).toUpperCase())).length }; }, P({ q: 'clucth', vb: 'Yamaha' }));
+ok(r1.sp === 'clutch' && r1.n > 50, `Yamaha "clucth" is read as clutch (${r1.n} clutch lines), though the book has "CLUCTH DOG"`);
+const r2 = await p.evaluate(() => { const R = catRows(); return { ph: R.filter(r => r.vb === 'TVS' && r.part && !/[A-Za-z0-9]{3}/.test(r.part) || r.vb === 'TVS' && /^#/.test(r.part || '')).length, empty: R.filter(r => r.vb === 'TVS' && r.kind === 'd' && !r.part && !String(r.desc || '').trim()).length,
+  amp: R.filter(r => r.vb === 'Hero' && /&amp;/i.test(r.asm + r.desc)).length, ls: R.filter(r => r.vb === 'Yamaha' && /^(?:\S ){3,}\S$/.test(String(r.desc))).length }; });
+ok(!r2.ph && !r2.empty && !r2.amp && !r2.ls, `no TVS '#1'/'-.-' numbers (${r2.ph}), no empty TVS lines (${r2.empty}), no Hero '&amp;' (${r2.amp}), no Yamaha 'W A S H E R' names (${r2.ls})`);
+const r3 = await p.evaluate(P => m2Res(P).list.length, P({ q: '91005 K0L D00', vb: 'Honda' }));
+ok(r3 > 0, `Honda "91005 K0L D00" typed with spaces finds ${r3} lines`);
+const r4 = await p.evaluate(() => { const r = catRows().find(r => r.vb === 'Bajaj' && r.part === 'DJ191054'); const rows = catRows().filter(q => q.vb === 'Bajaj' && q.page === r.page);
+  go('findpart', { v: 'sec', vb: 'Bajaj', vm: r.vm || 'Any', pg: r.page }); const t = document.querySelector('#vp .screen:last-child').innerText; return { n: (t.match(/DJ191054/g) || []).length }; });
+ok(r4.n === 1, `Bajaj section with DJ191054 lists it once (${r4.n})`);
+const r5 = await p.evaluate(() => { const R = catRows(); const bad = R.filter(r => r.vb === 'TVS' && r.vv && r.vv.length).slice(0, 4000).map(r => m2FitL(r).join('; ')).filter(t => /\(\s*·/.test(t)); return bad.length; });
+ok(r5 === 0, `TVS fits text has no "(· " (${r5})`);
+const r6 = await p.evaluate(() => { let n = 0; CAT_ALL.filter(e => e.st === 2).forEach(e => { const d = e.d || e.data; }); for (const [vb, L] of Object.entries(BRANDS_V)) for (const m of L) for (const v of (catVariants(vb, m) || [])) if (/·\s*·/.test(fpShort(m, v))) n++; return n; });
+ok(r6 === 0, `Year list has no "· ·" (${r6})`);
+const r7 = await p.evaluate(() => { const R = catRows(); const f = pn => (R.find(r => r.part === pn) || {}).mrp || 0; return { h: f('22100K0NDU2') || f('22100-K0N-DU2'), re: (R.find(r => r.vb === 'Royal Enfield' && catPk(r.part) === 'ST31526B') || {}).mrp || 0 }; });
+ok(r7.h > 0 && r7.re > 0, `MRP found when written another way: Honda 22100-K0N-DU2 ${r7.h}, RE ST31526 /B ${r7.re}`);
+await p.evaluate(() => { amLoad(); }); await p.waitForFunction(() => AM_ST === 2, null, { timeout: 20000 });
+await p.evaluate(() => go('findpart', { v: 'res', q: '520AM02069', vb: 'Any', vm: 'Any', yr: 'Any', bs: 'Any', sort: 'best', n: 30 })); await p.waitForTimeout(1500);
+const t8 = await p.evaluate(() => document.querySelector('#vp .screen:last-child').innerText);
+ok(/Endurance catalogue/i.test(t8) && !/No .* found|Search on Google/i.test(t8), `aftermarket number 520AM02069 shows its part without "not found"`);
+ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
+await b.close(); console.log(fails ? `\n${fails} FAILED` : '\nALL OK'); process.exit(fails ? 1 : 0);

@@ -545,7 +545,8 @@ function serveStatic(req, res, url, user) {
   if (st.isDirectory()) return json(res, 404, { error: 'Not found' });
   const ext = path.extname(file).toLowerCase(); const type = MIME[ext] || 'application/octet-stream';
   const etag = `W/"${st.size.toString(16)}-${Math.floor(st.mtimeMs).toString(16)}"`;
-  const h = { 'Content-Type': type, 'ETag': etag, 'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff', 'Accept-Ranges': 'bytes', 'Vary': 'Accept-Encoding', ...(ext === '.html' ? { 'X-Frame-Options': 'SAMEORIGIN', 'Referrer-Policy': 'strict-origin-when-cross-origin' } : {}) };
+  // catalogue data (cat/) is asked again each time (304 when unchanged), so a pushed catalogue shows at once, not after an hour
+  const h = { 'Content-Type': type, 'ETag': etag, 'Cache-Control': ext === '.html' || top === 'cat' ? 'no-cache' : 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff', 'Accept-Ranges': 'bytes', 'Vary': 'Accept-Encoding', ...(ext === '.html' ? { 'X-Frame-Options': 'SAMEORIGIN', 'Referrer-Policy': 'strict-origin-when-cross-origin' } : {}) };
   if (req.headers['if-none-match'] === etag) { res.writeHead(304, h); return res.end(); }
   const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
   if (range && st.size) {

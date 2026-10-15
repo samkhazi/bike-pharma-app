@@ -9,7 +9,8 @@ import zlib from 'node:zlib';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { openStore, HAS_SQLITE } from './lib/store.mjs';
-import { roleClass, viewOf, scopeValue, canWrite, merge3, applyOwn, applyMine, mechLogins, moveCodes, deepEqual, cleanStrings, safeText, STAFF_ROLES, MECH_OWN } from './lib/merge.mjs';
+import { roleClass, viewOf, scopeValue, canWrite, merge3, applyOwn, applyMine, mechLogins, moveCodes, deepEqual, cleanStrings, safeText, STAFF_ROLES, MECH_OWN, CUST_OWN } from './lib/merge.mjs';
+import { guardScoped } from './lib/custguard.mjs';
 import { otpConfig, makeOtp, deliverOtp } from './lib/sms.mjs';
 import { removeDemoData } from './lib/cleanup.mjs';
 import { checkNewBills, guardValue, auditRows, BILL_KEYS } from './lib/billguard.mjs';
@@ -160,6 +161,8 @@ async function api(req, res, url, user) {
 
   if (p === '/api/logout' && m === 'POST') {
     const t = cookies(req).bp_s; if (t) store.kvDel('sess', t);
+    if (user && body && body.all) for (const [t2, s] of store.kvAll('sess')) if (s.uid === user.id) store.kvDel('sess', t2); // "Log out from all devices"
+
     setSession(req, res, '', true);
     return json(res, 200, full(null));
   }
@@ -176,12 +179,14 @@ async function api(req, res, url, user) {
     // update 8o (Sam 2026-10-12): the Billing rules are checked here, not trusted from the app (lib/billguard.mjs)
     const gget = reader(); const gnotes = staff ? checkNewBills(changes, user, gget) : [];
     const gblock = gnotes.length ? new Set(BILL_KEYS) : null;
-    for (const [k, cv0] of Object.entries(changes)) {
+    // orders first: the wallet and warranty checks of a customer look at the orders of this same sync
+    const ctx = { stock: null };
+    for (const [k, cv0] of Object.entries(changes).sort(([a], [b]) => (b === 'orders') - (a === 'orders'))) {
       if (!/^[A-Za-z_][\w]{0,40}$/.test(k) || cv0 === null || cv0 === undefined) continue;
       const cv = scoped ? cleanStrings(cv0) : cv0;
       const mode = canWrite(k, user); if (!mode || (gblock && gblock.has(k))) { refused.push(k); continue; }
       if (mode === 'mine') { // a mechanic's own job cards / customers, stored per mechanic
-        const sk = MECH_OWN[k]; const sv = stateVal(sk); const merged = applyMine(sv, cv, user);
+        const sk = MECH_OWN[k] || CUST_OWN[k]; const sv = stateVal(sk); const merged = applyMine(sv, cv, user, !MECH_OWN[k]);
         if (!deepEqual(merged, sv)) writes[sk] = JSON.stringify(merged);
         if (!deepEqual(merged[user.id], cv0)) changed[k] = merged[user.id];
         continue;
@@ -192,10 +197,13 @@ async function api(req, res, url, user) {
       else if (!row || row.rev <= base) merged = cv;
       else { const bj = store.versionAt(k, base); merged = merge3(bj === undefined ? undefined : JSON.parse(bj), sv, cv); }
       if (staff) { const [gv, gn] = guardValue(k, sv, merged, user, gget); merged = gv; gnotes.push(...gn); }
+      else { const [gv, gn] = guardScoped(k, sv, merged, user, gget, ctx); merged = gv; if (gn.length) console.log(new Date().toISOString(), 'refused for', user.id, gn.join(' | ')); }
       if (!deepEqual(merged, sv)) writes[k] = JSON.stringify(merged);
       const back = scopeValue(k, merged, user);
       if (!deepEqual(back, cv0)) changed[k] = back === undefined ? null : back; // cleaned text goes back to the writer too
     }
+    // a customer's new online order takes its parts out of the shop's stock here (the app may not write stock)
+    if (ctx.stock) { writes.stock = JSON.stringify(ctx.stock); changed.stock = scopeValue('stock', ctx.stock, user); }
     // the shop's bills: a new mechanic's first bill makes their login (and fixes the code on their later bills)
     if (staff && writes.bills) {
       const ml = mechLogins(JSON.parse(writes.bills), writes.accounts ? JSON.parse(writes.accounts) : accounts(), today());

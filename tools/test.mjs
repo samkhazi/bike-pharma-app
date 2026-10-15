@@ -154,7 +154,7 @@ ok(await B.evaluate(() => DB.stock.p2 === 77 && DB.tasks.some(t => t.id === 'T-9
 ok(await C.evaluate(() => DB.stock.p1 === 99 && DB.tasks.some(t => t.id === 'T-9001')), 'merge: staff page received the admin change');
 
 // ---- customer order appears for staff
-await A.evaluate(() => { DB.orders.unshift({ id: 'BP-ORD-TEST-1', mob: S.uid, d: '10 Oct 2026', items: 1, amt: 100, pm: 'UPI', st: 'Confirmed' }); save(); }); await A.waitForTimeout(1200);
+await A.evaluate(() => { DB.orders.unshift({ id: 'BP-ORD-TEST-1', mob: S.uid, d: '10 Oct 2026', items: 1, amt: 449, pm: 'UPI', st: 'Confirmed', list: [['p1', 1, 449]] }); save(); }); await A.waitForTimeout(1200);
 const st2 = await C.request.get(BASE + '/api/sync?since=0').then(r => r.json());
 ok(st2.changed.orders.some(o => o.id === 'BP-ORD-TEST-1' && o.mob === '9876543210') && st2.changed.orders.length > 1, 'customer order visible to staff, other orders untouched');
 const custView = await A.request.get(BASE + '/api/sync?since=0').then(r => r.json());

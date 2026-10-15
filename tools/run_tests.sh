@@ -10,6 +10,8 @@ DATA_DIR=$T/data node --no-warnings tools/test_shop.mjs >/dev/null
 PHOTO_AI=off DATA_DIR=$T/data FILES_DIR=$T/pf PORT=3015 node --no-warnings server.mjs > $T/server.log 2>&1 &
 sleep 1.2
 node tools/test.mjs; r=$?
+# update 9c: server checks for customers, prices, audit, limits and rates
+node tools/test_9c.mjs || r=1
 node tools/test_back.mjs || r=1
 # update 8o: the Billing profile (no bill discount, warranty claims, cancel / change through Manager, split, estimate to bill)
 node tools/test_bill.mjs || r=1

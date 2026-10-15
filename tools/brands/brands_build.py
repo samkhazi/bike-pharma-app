@@ -1403,17 +1403,20 @@ def suzuki():
             ns = bool(re.search(r'\bNOT? ?SERVICEABLE\b|\bNON[ -]?SERVICEABLE\b', r))
             if ns:
                 r = re.sub(r'\s*\bNOT? ?SERVICEABLE\b|\s*\bNON[ -]?SERVICEABLE\b', '', r).strip()
-            in_books.add(pn)
+            in_books.add((m, pn))
             rows.append(dict(m=m, v=v, y=y, nb=0, g=fig, asm=asm.upper() if asm else 'FIG. ' + fig, ref=clean(ref), pn=pn, desc=d.upper(),
                              qty=clean(qty), rem=r, ns=ns, dg='%s|%d' % (f, first[fig])))
-    # price-list parts that no book has: one more edition per model, in sections by what the part is
+    # price-list parts that no book of THEIR model has: one more edition per model, in sections by what the part is. The price list names one
+    # model per part, so a part the Gixxer book also lists but the price list files under GL150 still goes to Intruder 150 (Sam 2026-10-15:
+    # Intruder 150 bearing missing). A model with no book gets years from the price list's model codes (L8 = 2018, M1 = 2021: Suzuki's
+    # model-year letters K 2000s, L 2010s, M 2020s) so Find Part's Year list is not empty.
     sec_of = {p: i for i, (_, ps) in enumerate(SZ_PL) for p in ps.split()}
     fam_of = lambda s: next((f for rx, f in SZ_FAMILY if re.match(rx, s)), None)
     many, fams = [], set()
     for pn, (name, model, mrp) in price.items():
-        if pn in in_books:
-            continue
         s = re.sub(r'\s+', '', model.upper())
+        if (fam_of(s) or 'Other models', pn) in in_books:
+            continue
         if s in SZ_MANY:
             many.append((pn, name, model, SZ_MANY[s]))
             continue
@@ -1430,6 +1433,21 @@ def suzuki():
                                  pn=pn, desc=sz_text(name).upper(), qty='', rem=clean(model), ns=False, dg=None))
         stats['price-list part for many models'] += 1
     names = [n for n, _ in SZ_PL] + ['Other parts']
+    booked = {x['m'] for x in rows if x['nb'] == 0}
+    yrs = collections.defaultdict(set)
+    for pn, (name, model, mrp) in price.items():
+        s = re.sub(r'\s+', '', model.upper())
+        f = fam_of(s)
+        for c, d in re.findall(r'(?<=[A-Z0-9])([KLM])(\d)(?!\d)', s):
+            if f and f not in booked:
+                yrs[f].add({'K': 2000, 'L': 2010, 'M': 2020}[c] + int(d))
+    for f, ys in yrs.items():
+        lo, hi = min(ys), max(ys)
+        lab = ' (%d)' % lo if lo == hi else ' (%d-%d)' % (lo, hi)
+        stats['price-list years ' + f + lab] += 1
+        for x in rows:
+            if x['m'] == f and x['nb'] == 1:
+                x['v'] = f + ' · price list parts' + lab
     for x in rows:
         if x['nb'] == 1:
             x['asm'] = names[int(x['g'][2:]) - 1].upper() + ' (PRICE LIST, NO DIAGRAM)'

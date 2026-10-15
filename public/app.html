@@ -2936,11 +2936,12 @@ const CAT_OWNL={TVS:'TVS XL100'};
 function catScopeRaw(A){const vv=A.vv&&A.vv!=='Any'&&CAT_VMOD[A.vv]===A.vm?A.vv:'Any',yv=catYv(A);
  const ext=CAT_ALL.find(e=>e.vb===A.vb),wait=!!ext&&ext.st!==2,own=wait&&catHasOwn(A);
  if(wait&&!own)return {label:A.vm!=='Any'?catLbl(A.vb,A.vm):A.vb,rows:[],norms:[],loading:ext.st===3?'err':'wait'};
+ const es=fpEdSet(A);
  const pend=A.vb==='Any'?catPend():own&&ext.st!==3?[ext.vb]:[],extErr=own&&ext.st===3?ext.vb:'',fail=A.vb==='Any'?catFailed():[];
  const ms=catModels().filter(([vb,vm])=>(A.vb==='Any'||A.vb===vb)&&(A.vm==='Any'||A.vm===vm)&&(A.cc==='Any'||MODEL_CC[vm]==A.cc));
  if(!ms.length)return null;
  const label=A.vm!=='Any'?catLbl(ms[0][0],A.vm)+(vv!=='Any'?' · '+catVvName(A.vm,vv):'')+(yv?' · '+A.yr:''):[...new Set(ms.map(m=>m[0]))].map(b=>CAT_OWNL[b]&&(e=>!e||e.st!==2)(CAT_ALL.find(e=>e.vb===b))?CAT_OWNL[b]:b).join(' + ');
- const inBike=r=>(A.vb==='Any'||r.vb===A.vb)&&(A.vm!=='Any'?r.vms.includes(A.vm):A.cc==='Any'||r.vms.some(m=>MODEL_CC[m]==A.cc))&&(vv==='Any'||!r.vv.length||r.vv.includes(vv))&&(!yv||!r.vv.length||r.vv.some(v=>yv.has(v)));
+ const inBike=r=>(A.vb==='Any'||r.vb===A.vb)&&(A.vm!=='Any'?r.vms.includes(A.vm):A.cc==='Any'||r.vms.some(m=>MODEL_CC[m]==A.cc))&&(vv==='Any'||!r.vv.length||r.vv.includes(vv))&&(!yv||!r.vv.length||r.vv.some(v=>yv.has(v)))&&(!es||!r.vv.length||r.vv.some(v=>es.has(v)));
  const all=(A.vm!=='Any'?catRowsOf(A.vm):catRows()).filter(inBike);const norms=['BS7','BS6','BS4','BS3'].filter(n=>all.some(r=>r.norms&&r.norms.includes(n)));
  const ok=r=>A.bs==='Any'||!r.norms||r.norms.includes(A.bs);
  if(A.bs!=='Any'&&!all.some(ok))return {label,rows:[],bsOff:1,norms,pend,extErr,fail};
@@ -2951,7 +2952,7 @@ let CAT_BYM={rows:null,m:null};const catRowsOf=vm=>{const rows=catRows();if(CAT_
  return CAT_BYM.m.get(vm)||[];};
 function catScope(A){catLoad(A.vb);const ext=CAT_ALL.find(e=>e.vb===A.vb);if(ext&&ext.st!==2)return catScopeRaw(A);
  const rows=catRows(),k=CAT_EXT.map(e=>e.vb+e.st).join('');if(CAT_SCC.rows!==rows||CAT_SCC.k!==k)CAT_SCC={rows,k,m:new Map()};
- const ck=[A.vb,A.vm,A.vv||'Any',A.cc,A.bs,A.yr||'Any'].join('|');if(!CAT_SCC.m.has(ck))CAT_SCC.m.set(ck,catScopeRaw(A));return CAT_SCC.m.get(ck);}
+ const ck=[A.vb,A.vm,A.vv||'Any',A.cc,A.bs,A.yr||'Any',A.ed||'Any'].join('|');if(!CAT_SCC.m.has(ck))CAT_SCC.m.set(ck,catScopeRaw(A));return CAT_SCC.m.get(ck);}
 let CAT_VOCAB=null;const catVocab=()=>CAT_VOCAB||(CAT_VOCAB=new Set(catRows().flatMap(r=>r.dw)));
 let CAT_BV={rows:null,m:new Map()};const catVocabOf=vb=>{if(!vb||vb==='Any')return catVocab();const rows=catRows();if(CAT_BV.rows!==rows)CAT_BV={rows,m:new Map()};
  if(!CAT_BV.m.has(vb))CAT_BV.m.set(vb,new Set(rows.filter(r=>r.vb===vb).flatMap(r=>r.dw)));return CAT_BV.m.get(vb);};
@@ -3565,7 +3566,7 @@ const tbEntry=()=>!tbOn()?'':`<button class="row card" style="flex-direction:row
    sections > one section's diagram with its parts table > the part's own page. A search gives a count line, a sort (best match,
    name, part no., category) and cards (name, assembly, part no., MRP incl. GST or Price on request, qty per bike, which bike).
    Mechanics' trade names (brake liner, cone set, T bracket, bend pipe...) come from syn_mech.json, merged into CAT_WORDS. */
-const FP0=()=>({q:'',vb:'Any',vm:'Any',bs:'Any',col:'Any',cc:'Any',vv:'Any',yr:'Any'});
+const FP0=()=>({q:'',vb:'Any',vm:'Any',bs:'Any',col:'Any',cc:'Any',vv:'Any',yr:'Any',ed:'Any'});
 const fpIsPn=q=>{q=String(q||'').trim();if(!q)return false;const pq=catPk(q),qw=catNorm(q).split(' ');return (qw.length<=2||!/\s/.test(q))&&(pq.match(/\d/g)||[]).length>=4&&!qw.some(w=>CAT_PNX.test(w));};
 /* the years a book variant is for: "2019", "2013-17", "2023-24", "2021+" (up to this year), "(Oct, 2025)", "· 2022 ·" */
 const FP_NOW=2026,CAT_VY=new Map();
@@ -3585,6 +3586,32 @@ function catFitsL(vv,vb){const by=new Map();vv.forEach(v=>{const m=catVmod(v)||v
   if(ys.every(a=>a.length))return m+' ('+catYrsTxt([...new Set(ys.flat())].sort((a,b)=>a-b))+')';
   return m+' ('+vs.map(v=>v.replace(m+' ','').replace(/ ?\(([^()]*)\)/g,' $1').trim()).join(', ')+')';});}
 /* the years and the emission norms the catalogue has for the bike so far ('wait': its catalogue is still coming) */
+
+/* ---------- the Year list as the model's catalogue versions, like Mittal's "2023 · BS VI" (update 8u) ---------- */
+const FP_HELP=/·\s*(kits|painted parts\b.*|colour parts\b.*|more parts \(price list\)|price list parts\b.*)$/i;
+const FP_RN={BS3:'BS III',BS4:'BS IV',BS6:'BS VI',BS7:'BS VII'};
+const fpNormOf=s=>{const m=String(s||'').toUpperCase().match(/\bBS\s*-?\s*(VII|VI|IV|III|7|6|4|3)(?![A-Z0-9])/);if(!m)return '';return 'BS'+({VII:7,VI:6,IV:4,III:3}[m[1]]||m[1]);};
+const fpShort=(vm,v)=>{let s=String(v);const lo=s.toLowerCase(),m=String(vm).toLowerCase().replace(/\s*\(old\)$/,'');
+ if(lo.startsWith(m))s=s.slice(m.length);
+ s=s.replace(/\((?:[A-Za-z]{3,5}\.?,?\s*)?(?:19|20)\d\d(?:\s*[-–+]\s*(?:(?:19|20)?\d\d)?)?\)/g,' ').replace(/\b(?:19|20)\d\d\s*[-–]\s*(?:19|20)?\d\d\b|\b(?:19|20)\d\d\+/g,' ')
+  .replace(/\(MY\d\d\)/gi,' ').replace(/\(\d\d?[.\s\/-]\d\d?[.\s\/-](?:19|20)?\d\d\)/g,' ').replace(/\b(?:rev\.?\s*\d+\s*)$/i,' ').replace(/(^|[\s·])(?:19|20)\d\d(?=[\s·]|$)/g,' ').replace(/\bBS\s*-?\s*(?:VII|VI|IV|III|7|6|4|3)(?![A-Z0-9])/gi,' ')
+  .replace(/^[\s·\-–:,]+|[\s·\-–:,]+$/g,'').replace(/\s*[\-–]\s*$/,'').replace(/\s{2,}/g,' ').trim();return s;};
+let FP_VER={rows:null,m:new Map()};
+function fpVers(vb,vm){const e=CAT_ALL.find(e=>e.vb===vb);if(e&&e.st<2){catLoad(vb);return 'wait';}const rows=catRows();if(FP_VER.rows!==rows)FP_VER={rows,m:new Map()};
+ const k=vb+'|'+vm;if(FP_VER.m.has(k))return FP_VER.m.get(k);
+ const vs=catVariants(vb,vm),help=vs.filter(v=>FP_HELP.test(v)),main=vs.filter(v=>!FP_HELP.test(v));const base=main.length?main:vs;
+ const rn=new Map();catRowsOf(vm).forEach(r=>{if(r.vb!==vb||!r.norms||!r.norms.length)return;r.vv.forEach(v=>{let s=rn.get(v);if(!s)rn.set(v,s=new Set());r.norms.forEach(n=>s.add(n));});});
+ let it=base.map(v=>{const ys=catVyrs(v),s=rn.get(v),n=s&&s.size===1?[...s][0]:fpNormOf(v),sh=fpShort(vm,v);
+  const nt=n?FP_RN[n]||n:'',tag=nt||sh,nm=String(vm).replace(/\s*\(old\)$/,'');
+  return {v,y:ys.length?ys[0]:0,nt,sh,lab:ys.length?(/price list/i.test(sh)&&ys.length>1?ys[0]+'–'+ys[ys.length-1]:ys[0])+(tag?' · '+tag:''):(sh?(nt&&!sh.toLowerCase().startsWith(nm.split(' ')[0].toLowerCase())?nm+' '+sh:sh):nm)+(nt?' · '+nt:'')};});
+ // two versions on the same line: name each by its own words when they differ, else they are one line
+ const by=new Map();it.forEach(x=>{const a=by.get(x.lab);if(a)a.push(x);else by.set(x.lab,[x]);});
+ by.forEach((xs,lab)=>{if(xs.length<2)return;const sh=new Set(xs.map(x=>x.sh));if(sh.size<2)return;xs.forEach(x=>{if(x.y&&x.sh&&x.sh!==x.nt&&!lab.includes(x.sh))x.lab=lab+' · '+x.sh;});});
+ const o=new Map();it.forEach(x=>{let g=o.get(x.lab);if(!g)o.set(x.lab,g={lab:x.lab,y:x.y,vs:[]});g.vs.push(x.v);g.y=Math.max(g.y,x.y);});
+ const out=[...o.values()].sort((a,b)=>(b.y-a.y)||(a.lab<b.lab?-1:a.lab>b.lab?1:0)).map(g=>({...g,vs:g.vs.concat(help)}));
+ FP_VER.m.set(k,out);return out;}
+/* the chosen line -> its versions (null: no line chosen) */
+const fpEdSet=A=>{if(!A.ed||A.ed==='Any'||!A.vm||A.vm==='Any')return null;const V=fpVers(A.vb,A.vm);if(V==='wait')return null;const g=V.find(g=>g.lab===A.ed);return g?new Set(g.vs):null;};
 const fpYrs=f=>{const e=CAT_ALL.find(e=>e.vb===f.vb);if(!e)return {ys:[]};if(e.st<2){catLoad(f.vb);return 'wait';}if(e.st===3)return {ys:[]};
  const ys=new Set();let none=0;catVariants(f.vb,f.vm).forEach(v=>{const a=catVyrs(v);if(!a.length)none++;a.forEach(y=>ys.add(y));});return {ys:[...ys].sort((a,b)=>b-a),none};};
 const fpNorms=f=>{const sc=catScope({...f,q:'',bs:'Any'});if(!sc)return [];if(sc.loading)return sc.loading==='err'?[]:'wait';return sc.norms||[];};
@@ -3606,7 +3633,7 @@ const m2CatOf=r=>{if(r.m2c)return r.m2c;const a=catNorm(r.asm||'');let c='';for(
 /* "Pulsar 150 Twin Disc" is the Pulsar family, size "150 Twin Disc"; "Splendor Plus" is its own family */
 const m2Fam=m=>{const w=String(m).split(' ');const i=w.findIndex(x=>/\d/.test(x));return i>0?w.slice(0,i).join(' '):m;};
 const m2Size=(F,m)=>m===F?m:m.startsWith(F+' ')?m.slice(F.length+1):m;
-const m2A=p=>({q:p.q||'',vb:p.vb||'Any',vm:p.vm||'Any',bs:p.bs||'Any',col:'Any',cc:p.cc||'Any',vv:'Any',yr:p.yr||'Any'});
+const m2A=p=>({q:p.q||'',vb:p.vb||'Any',vm:p.vm||'Any',bs:p.bs||'Any',col:'Any',cc:p.cc||'Any',vv:'Any',yr:p.ed&&p.ed!=='Any'?'Any':p.yr||'Any',ed:p.ed||'Any'});
 const m2Ld=vb=>{const e=CAT_ALL.find(e=>e.vb===vb);return !e||e.st===2?'ok':e.st===3?'err':'wait';};
 const m2N=n=>Number(n||0).toLocaleString('en-IN');
 const m2Q=s=>String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
@@ -3777,34 +3804,34 @@ function m2Card(r,p){const x=m2Shop(r),n=x?DB.stock[x.id]:0;
 /* the same part found again after another catalogue arrived and re-numbered the rows */
 function m2Row(p){const rows=catRows();const same=r=>r&&r.vb===p.vb&&r.page===p.pg&&(r.pk||'')===(p.pk||'')&&String(r.ref||'')===String(p.ref||'');let r=rows[p.i];if(same(r))return r;return rows.find(same)||r||null;}
 function m2Part(i){const r=catRows()[i];if(!r)return;const c=cur().p||{};go('findpart',{v:'part',i,vb:r.vb,pg:r.page,pk:r.pk||'',ref:r.ref||'',vm:c.vm&&c.vm!=='Any'&&r.vms.includes(c.vm)?c.vm:'Any',yr:c.vm&&c.vm!=='Any'&&r.vms.includes(c.vm)?c.yr||'Any':'Any'});}
-function m2Sec(pg){const c=cur().p||{};go('findpart',{v:'sec',vb:c.vb,vm:c.vm,yr:c.yr||'Any',pg});}
-function m2Cat(c){const f=S.ui.fp;go('findpart',{v:'res',q:'',vb:f.vb,vm:f.vm,cc:f.cc,bs:'Any',yr:f.yr,cat:c,sort:'name',n:30});}
+function m2Sec(pg){const c=cur().p||{};go('findpart',{v:'sec',vb:c.vb,vm:c.vm,yr:c.yr||'Any',ed:c.ed||'Any',pg});}
+function m2Cat(c){const f=S.ui.fp;go('findpart',{v:'res',q:'',vb:f.vb,vm:f.vm,cc:f.cc,bs:'Any',yr:f.yr,ed:f.vm!=='Any'?f.ed||'Any':'Any',cat:c,sort:'name',n:30});}
 function m2Pick(vb,F){const a=(BRANDS_V[vb]||[]).filter(m=>m2Fam(m)===F);if(a.length===1){go('findpart',{v:'year',vb,vm:a[0],yr:'Any'});return;}go('findpart',{v:'fam',vb,fam:F});}
 function m2More(){const p=cur().p;p.n=(p.n||30)+30;refresh();}
 function m2SortSet(v){const p=cur().p;p.sort=v;p.n=30;refresh();}
 function m2In(b){const f=S.ui.fp;f.vb=b;f.vm='Any';f.cc='Any';f.yr='Any';catLoad(b);const p=cur().p;p.vb=b;p.vm='Any';p.cc='Any';p.yr='Any';p.n=30;refresh();}
 function m2Mf(v){const n=String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');document.querySelectorAll('.m2-row[data-n]').forEach(b=>{b.hidden=!!n&&!b.dataset.n.includes(n);});}
 /* the vehicle form on the first screen */
-function m2Set(k,v){const f=S.ui.fp;if(k==='vb'){f.yr='Any';f.ccU=0;fpSet('vb',v);return;}
- if(k==='vm'){f.vm=v;f.vv='Any';if(v!=='Any')f.cc=MODEL_CC[v]?String(MODEL_CC[v]):'Any';else if(!f.ccU)f.cc='Any';f.yr='Any';refresh();return;}
- if(k==='cc'){f.cc=v;f.ccU=v!=='Any'?1:0;if(v==='Any'&&f.vm!=='Any'&&MODEL_CC[f.vm])f.cc=String(MODEL_CC[f.vm]);if(v!=='Any'&&f.vm!=='Any'&&String(MODEL_CC[f.vm]||'')!==String(v))f.vm='Any';f.yr='Any';refresh();return;}
+function m2Set(k,v){const f=S.ui.fp;if(k==='ed'){f.ed=v;f.yr='Any';refresh();return;}if(k==='vb'){f.yr='Any';f.ed='Any';f.ccU=0;fpSet('vb',v);return;}
+ if(k==='vm'){f.vm=v;f.vv='Any';f.ed='Any';if(v!=='Any')f.cc=MODEL_CC[v]?String(MODEL_CC[v]):'Any';else if(!f.ccU)f.cc='Any';f.yr='Any';refresh();return;}
+ if(k==='cc'){f.cc=v;f.ccU=v!=='Any'?1:0;if(v==='Any'&&f.vm!=='Any'&&MODEL_CC[f.vm])f.cc=String(MODEL_CC[f.vm]);if(v!=='Any'&&f.vm!=='Any'&&String(MODEL_CC[f.vm]||'')!==String(v))f.vm='Any';f.yr='Any';f.ed='Any';refresh();return;}
  f[k]=v;refresh();}
 function m2Go(){const f=S.ui.fp;if(f.vb==='Any'){toast('Pick a brand first');return;}if(f.vm==='Any'){go('findpart',{v:'brand',vb:f.vb});return;}
- go('findpart',{v:f.yr!=='Any'?'secs':'year',vb:f.vb,vm:f.vm,yr:f.yr});}
+ const ed=f.ed||'Any';go('findpart',{v:f.yr!=='Any'||ed!=='Any'?'secs':'year',vb:f.vb,vm:f.vm,yr:ed!=='Any'?'Any':f.yr,ed});}
 /* the keyword box: a part number, a model, or a part name (a bike named in it is understood: "pulsar 150 brake liner") */
 function fpSearchRaw(){const f=S.ui.fp;const i=document.getElementById('fp-q');if(i)f.q=i.value;const q=String(f.q||'').trim();
  if(!q){toast('Type a part number, model or part name');if(i)i.focus();return;}
- S.ui.fpT=null;S.ui.fpOpen=null;const c=cur().p||{};const A={q,vb:f.vb,vm:f.vm,cc:f.cc,bs:f.bs,yr:f.yr};
- if((c.v==='secs'||c.v==='sec')&&f.vb===c.vb){A.vm=c.vm;A.yr=c.yr||'Any';A.cc=MODEL_CC[c.vm]?String(MODEL_CC[c.vm]):'Any';}
+ S.ui.fpT=null;S.ui.fpOpen=null;const c=cur().p||{};const A={q,vb:f.vb,vm:f.vm,cc:f.cc,bs:f.bs,yr:f.yr,ed:f.vm!=='Any'?f.ed||'Any':'Any'};
+ if((c.v==='secs'||c.v==='sec')&&f.vb===c.vb){A.vm=c.vm;A.yr=c.yr||'Any';A.ed=c.ed||'Any';A.cc=MODEL_CC[c.vm]?String(MODEL_CC[c.vm]):'Any';}
  go('findpart',{v:'res',...A,sort:'best',n:30});}
 function fpNext(){const f=S.ui.fp||(S.ui.fp=FP0());const i=document.getElementById('fp-q');const t=(i?i.value:S.ui.fpT!=null?S.ui.fpT:f.q).trim();
  if(!t){toast('Type a part number, model or part name, like brake liner');if(i)i.focus();return;}
- const c=cur().p||{};if(c.v==='secs'||c.v==='sec'){f.vb=c.vb;f.vm=c.vm;f.yr=c.yr||'Any';f.cc=MODEL_CC[c.vm]?String(MODEL_CC[c.vm]):'Any';}
+ const c=cur().p||{};if(c.v==='secs'||c.v==='sec'){f.vb=c.vb;f.vm=c.vm;f.yr=c.yr||'Any';f.ed=c.ed||'Any';f.cc=MODEL_CC[c.vm]?String(MODEL_CC[c.vm]):'Any';}
  const p=vqParse(t,f);
  if(p.changed&&!Object.keys(p.set).length&&!VQ_SCRIPT.test(t)&&f.vb!=='Any'){const r=catSearch({...f,q:t});if(r&&r.hits.length&&!r.fuzzy)p.changed=false;}
  if(p.changed){if(!p.q&&!Object.keys(p.set).length){toast('Could not understand “'+t+'”. Try the English part name.');return;}
   if((p.set.vb&&p.set.vb!==f.vb)||(p.set.vm&&p.set.vm!==f.vm))f.vv='Any';Object.assign(f,p.set);if(p.set.vb&&p.set.vb!=='Any')catLoad(p.set.vb);
-  if(p.set.vm&&p.set.vm!=='Any')f.cc=MODEL_CC[p.set.vm]?String(MODEL_CC[p.set.vm]):'Any';if(p.set.vb||p.set.vm)f.yr='Any';
+  if(p.set.vm&&p.set.vm!=='Any')f.cc=MODEL_CC[p.set.vm]?String(MODEL_CC[p.set.vm]):'Any';if(p.set.vb||p.set.vm){f.yr='Any';f.ed='Any';}
   f.q=p.q;if(i)i.value=p.q;S.ui.fpVia={kind:'type',heard:t,q:p.q,set:p.set,drop:p.drop};
   if(!p.q){S.ui.fpT=null;if(p.set.vm&&p.set.vm!=='Any')go('findpart',{v:'year',vb:f.vb,vm:f.vm,yr:'Any'});else if(p.set.vb)go('findpart',{v:'brand',vb:f.vb});else refresh();return;}
   fpSearchRaw();return;}
@@ -3818,13 +3845,13 @@ const m2Bar=(ph,val)=>`<div class="fp-sb">${ic('search','s20')}<input id="fp-q" 
 const m2Wait=vb=>`<div class="card" style="background:var(--y-soft);border:0;gap:6px"><div class="row cap" style="gap:8px">${ic('clock','s16')}<span>Opening the ${esc(vb)} parts catalogue…</span></div></div>`;
 const m2Err=vb=>`<div class="row cap" style="background:var(--amber-soft);border-radius:10px;padding:10px;gap:8px">${ic('alert','s16')}<span class="grow">Couldn't load the ${esc(vb)} parts catalogue. Check the internet and try again.</span><button class="btn line sm" onclick="catRetry()">Try again</button></div>`;
 const m2Head=(h,cap)=>`<div class="m2-head"><h2 class="h2" style="text-wrap:balance">${h}</h2>${cap?`<div class="cap">${cap}</div>`:''}</div>`;
-const m2Bike=p=>`${p.vb} ${p.vm}${MODEL_CC[p.vm]?' '+MODEL_CC[p.vm]+'cc':''}${p.yr&&p.yr!=='Any'?' '+p.yr:''}`;
+const m2Bike=p=>`${p.vb} ${p.vm}${MODEL_CC[p.vm]?' '+MODEL_CC[p.vm]+'cc':''}${p.ed&&p.ed!=='Any'?' '+p.ed:p.yr&&p.yr!=='Any'?' '+p.yr:''}`;
 /* ----- the first screen ----- */
 function m2Form(f){const brands=Object.keys(BRANDS_V).filter(b=>CAT_ALL.some(e=>e.vb===b));const all=BRANDS_V[f.vb]||[];const ms=all.filter(m=>f.cc==='Any'||(f.vm!=='Any'&&!f.ccU)||String(MODEL_CC[m]||'')===String(f.cc));
  const mcc=f.vm!=='Any'?MODEL_CC[f.vm]||0:0,ccs=f.vm!=='Any'?(mcc?[mcc]:[]):[...new Set(all.map(m=>MODEL_CC[m]).filter(Boolean))].sort((a,b)=>a-b);
- let yo=`<option value="Any">Any year</option>`;if(f.vb!=='Any'&&f.vm!=='Any'){const Y=fpYrs(f);if(Y==='wait')yo=`<option value="Any">Loading years…</option>`;else{const one=Y.ys.length===1&&!Y.none;if(one&&f.yr==='Any')f.yr=String(Y.ys[0]);yo=(one?'':`<option value="Any">${Y.ys.length?'Any year':'All books'}</option>`)+Y.ys.map(y=>`<option value="${y}"${String(f.yr)===String(y)?' selected':''}>${y}</option>`).join('');}}
+ let yo=`<option value="Any">Select year</option>`;if(f.vb!=='Any'&&f.vm!=='Any'){const V=fpVers(f.vb,f.vm);if(V==='wait')yo=`<option value="Any">Loading years…</option>`;else{const one=V.length===1;if(one&&(f.ed||'Any')==='Any'){f.ed=V[0].lab;f.yr='Any';}yo=(one?'':`<option value="Any">All years</option>`)+V.map(g=>`<option value="${esc(g.lab)}"${f.ed===g.lab?' selected':''}>${esc(g.lab)}</option>`).join('');}}
  const sel=(k,lab,opts,dis)=>`<label class="m2-sel"><span class="micro muted">${lab}</span><select onchange="m2Set('${k}',this.value)"${dis?' disabled':''} aria-label="${lab}">${opts}</select></label>`;
- return `<div class="card m2-veh"><div class="row" style="gap:8px"><div class="tile sm">${ic('bike','s18')}</div><div class="grow"><div class="h3">Search by vehicle</div><div class="cap">Brand, model, engine size and year, then every part of that bike by section.</div></div></div><div class="m2-grid">${sel('vb','Brand',`<option value="Any">Select brand</option>`+brands.map(b=>`<option value="${esc(b)}"${f.vb===b?' selected':''}>${esc(b)}</option>`).join(''))}${sel('vm','Model',`<option value="Any">${f.vb==='Any'?'Select brand first':'Select model'}</option>`+ms.map(m=>`<option value="${esc(m)}"${f.vm===m?' selected':''}>${esc(m)}</option>`).join(''),f.vb==='Any')}${sel('cc','Engine (cc)',(f.vm!=='Any'&&!mcc?`<option value="Any">Not listed</option>`:f.vm==='Any'||f.ccU?`<option value="Any">Any cc</option>`:'')+ccs.map(c=>`<option value="${c}"${String(f.cc)===String(c)?' selected':''}>${c} cc</option>`).join(''),f.vb==='Any'||(f.vm!=='Any'&&!mcc))}${sel('yr','Year',yo,f.vm==='Any')}</div><button class="btn" onclick="m2Go()">${ic('search','s18')} Search parts</button></div>`;}
+ return `<div class="card m2-veh"><div class="row" style="gap:8px"><div class="tile sm">${ic('bike','s18')}</div><div class="grow"><div class="h3">Search by vehicle</div><div class="cap">Brand, model, engine size and year, then every part of that bike by section.</div></div></div><div class="m2-grid">${sel('vb','Brand',`<option value="Any">Select brand</option>`+brands.map(b=>`<option value="${esc(b)}"${f.vb===b?' selected':''}>${esc(b)}</option>`).join(''))}${sel('vm','Model',`<option value="Any">${f.vb==='Any'?'Select brand first':'Select model'}</option>`+ms.map(m=>`<option value="${esc(m)}"${f.vm===m?' selected':''}>${esc(m)}</option>`).join(''),f.vb==='Any')}${sel('cc','Engine (cc)',(f.vm!=='Any'&&!mcc?`<option value="Any">Not listed</option>`:f.vm==='Any'||f.ccU?`<option value="Any">Any cc</option>`:'')+ccs.map(c=>`<option value="${c}"${String(f.cc)===String(c)?' selected':''}>${c} cc</option>`).join(''),f.vb==='Any'||(f.vm!=='Any'&&!mcc))}${sel('ed','Year',yo,f.vm==='Any')}</div><button class="btn" onclick="m2Go()">${ic('search','s18')} Search parts</button></div>`;}
 function m2Home(f){const cats=M2_HOME.map(c=>`<button class="chip" onclick="m2Cat('${c}')">${esc(c)}</button>`).join('')+`<button class="chip on" onclick="m2Cat('All')">View all</button>`;
  const isIn=b=>CAT_ALL.some(e=>e.vb===b),BL=Object.keys(BRANDS_V).sort((x,y)=>isIn(y)-isIn(x)),nIn=BL.filter(isIn).length;
  const brands=BL.map(b=>{const c=M2_CNT[b]||{};const m=(BRANDS_V[b]||[]).length;return isIn(b)?`<button class="m2-br" onclick="go('findpart',{v:'brand',vb:'${m2Q(b)}'})"><b>${esc(b)}</b><span class="cap">${m} model${m===1?'':'s'}${c.pn?' · '+m2N(c.pn)+' parts':''}</span></button>`:`<div class="m2-br off"><b>${esc(b)}</b><span class="cap">Catalogue coming soon</span></div>`;}).join('');
@@ -3843,13 +3870,13 @@ function m2FamV(p){const {vb,fam}=p;catLoad(vb);const ld=m2Ld(vb);const a=(BRAND
  return `${m2Head(esc(fam)+' — choose engine size',a.length+' '+esc(vb)+' '+esc(fam)+' models in the catalogue.')}${ld==='wait'?m2Wait(vb):ld==='err'?m2Err(vb):''}<div class="stack g8">${a.map(row).join('')}</div>`;}
 function m2Year(p){const {vb,vm}=p;catLoad(vb);const ld=m2Ld(vb);const head=m2Head(esc(vb)+' '+esc(vm)+' Spare Parts — choose model year','');
  if(ld==='wait')return head+m2Wait(vb);if(ld==='err')return head+m2Err(vb);
- const Y=fpYrs({vb,vm});const ys=Y==='wait'?[]:Y.ys||[];if(!ys.length)return m2SecsV({...p,v:'secs',yr:'Any'});
- const row=y=>{const sc=catScope(m2A({vb,vm,yr:y}));const rows=sc&&!sc.loading?sc.rows:[];const pn=new Set();rows.forEach(r=>{if(r.pk)pn.add(r.pk);});const n=m2Secs(rows).length;
-  return `<button class="m2-row" onclick="go('findpart',{v:'secs',vb:'${m2Q(vb)}',vm:'${m2Q(vm)}',yr:'${m2Q(y)}'})"><div class="grow"><div class="h3">${esc(y)}</div><div class="cap">${n} section${n===1?'':'s'}, ${m2N(pn.size)} parts</div></div>${ic('chevR','s18')}</button>`;};
+ const V=fpVers(vb,vm);const ys=V==='wait'?[]:V.map(g=>g.lab);if(ys.length<2)return m2SecsV({...p,v:'secs',yr:'Any',ed:ys[0]||'Any'});
+ const row=y=>{const sc=catScope(m2A({vb,vm,ed:y}));const rows=sc&&!sc.loading?sc.rows:[];const pn=new Set();rows.forEach(r=>{if(r.pk)pn.add(r.pk);});const n=m2Secs(rows).length;
+  return `<button class="m2-row" onclick="go('findpart',{v:'secs',vb:'${m2Q(vb)}',vm:'${m2Q(vm)}',yr:'Any',ed:'${m2Q(y)}'})"><div class="grow"><div class="h3">${esc(y)}</div><div class="cap">${n} section${n===1?'':'s'}, ${m2N(pn.size)} parts</div></div>${ic('chevR','s18')}</button>`;};
  const st=m2Stat(vb,vm);
- return `${m2Head(esc(vb)+' '+esc(vm)+' Spare Parts — choose model year',ys.length+' model years from the parts books. Year not listed? Pick the nearest older one.')}<div class="stack g8">${ys.map(row).join('')}<button class="m2-row" onclick="go('findpart',{v:'secs',vb:'${m2Q(vb)}',vm:'${m2Q(vm)}',yr:'Any'})"><div class="grow"><div class="h3">All years</div><div class="cap">Every ${esc(vm)} book · ${st.secs} sections, ${m2N(st.pn)} parts</div></div>${ic('chevR','s18')}</button></div>`;}
+ return `${m2Head(esc(vb)+' '+esc(vm)+' Spare Parts — choose model year',ys.length+' versions from the parts books, newest first. Year not listed? Pick the nearest older one.')}<div class="stack g8">${ys.map(row).join('')}<button class="m2-row" onclick="go('findpart',{v:'secs',vb:'${m2Q(vb)}',vm:'${m2Q(vm)}',yr:'Any'})"><div class="grow"><div class="h3">All years</div><div class="cap">Every ${esc(vm)} book · ${st.secs} sections, ${m2N(st.pn)} parts</div></div>${ic('chevR','s18')}</button></div>`;}
 /* ----- the bike's numbered sections, with a lookup bar ----- */
-function m2SecsV(p){const {vb,vm}=p,yr=p.yr||'Any';const A=m2A({...p,yr});const sc=catScope(A);const ttl=m2Bike({vb,vm,yr});
+function m2SecsV(p){const {vb,vm}=p,yr=p.yr||'Any';const A=m2A({...p,yr});const sc=catScope(A);const ttl=m2Bike({vb,vm,yr,ed:p.ed});
  if(!sc)return m2Head(esc(ttl)+' Spare Parts','')+`<div class="empty">No parts catalogue for ${esc(ttl)} in the app yet.</div>`;if(sc.loading)return m2Head(esc(ttl)+' Spare Parts','')+catSection(sc,A);
  const secs=m2Secs(sc.rows);const pn=new Set();sc.rows.forEach(r=>{if(r.pk)pn.add(r.pk);});const books=[...new Set(sc.rows.map(r=>r.src).filter(Boolean))];
  return `${m2Head(esc(ttl)+' Spare Parts',secs.length+' sections · '+m2N(pn.size)+' parts · '+esc(books.length>2?books.slice(0,2).join(', ')+' and '+(books.length-2)+' more books':books.join(', ')))}

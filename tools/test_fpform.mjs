@@ -32,13 +32,13 @@ for (const [W, H, tag] of [[1280, 900, 'computer'], [390, 844, 'phone']]) {
   await pick('Model', 'Scooty'); await waitYears(); await p.waitForTimeout(300);
   cc = await opts('Engine (cc)'); yr = await opts('Year');
   ok(cc.dis && cc.o.join() === 'Any', `${tag}: TVS Scooty (no cc in the book): Engine (cc) says Not listed, locked`);
-  ok(yr.v === '2010' && yr.o.join() === '2010', `${tag}: TVS Scooty: Year is its only year, 2010, picked (${yr.o.join(' ')})`);
+  ok(yr.o.length === 1 && yr.v === yr.o[0] && /^2010/.test(yr.v), `${tag}: TVS Scooty: Year is its only version, 2010, picked (${yr.o.join(' ')})`);
   await p.evaluate(() => m2Go()); await p.waitForTimeout(800);
-  ok(await p.evaluate(() => cur().p && cur().p.v === 'secs' && cur().p.yr === '2010'), `${tag}: Search parts opens Scooty 2010 sections straight away`);
+  ok(await p.evaluate(() => cur().p && cur().p.v === 'secs' && /^2010/.test(cur().p.ed)), `${tag}: Search parts opens Scooty 2010 sections straight away`);
   await p.evaluate(() => go('findpart')); await p.waitForTimeout(500);
   // a model with books with and without years keeps Any year (All books) first, nothing hidden
   await pick('Model', 'Star City Plus'); await waitYears(); yr = await opts('Year');
-  ok(yr.v === 'Any' && yr.o.includes('2017'), `${tag}: TVS Star City Plus (e-catalogue + 2017 book): Year stays Any year, 2017 in the list`);
+  ok(yr.v === 'Any' && yr.o.some(o => /^2017/.test(o)), `${tag}: TVS Star City Plus (e-catalogue + 2017 book): Year stays All years, 2017 in the list (${yr.o.join(' | ')})`);
   // cc first: narrows the models; after a model the cc list keeps Any cc to undo it
   await pick('Brand', 'Bajaj'); await p.waitForTimeout(1200);
   await pick('Engine (cc)', '150'); md = await opts('Model');

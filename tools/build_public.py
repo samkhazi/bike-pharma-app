@@ -436,15 +436,19 @@ for d in ([] if FRESH else ['vendor'] if '--no-cat' in sys.argv else CAT_DIRS + 
 # Sam 2026-10-11: catalogues come back brand by brand from his own files; their data (no pictures) ships here, the PDFs go up from Admin
 os.makedirs(os.path.join(OUT, 'cat'), exist_ok=True)
 for f in CAT_IN: shutil.copyfile(f, os.path.join(OUT, 'cat', os.path.basename(f)))
+# data clean-ups found in the 15 Oct 2026 review (update 8z): placeholder part numbers, names, MRP 0
+import subprocess
+subprocess.run([sys.executable, os.path.join(REPO, 'tools', 'brands', 'catfix.py'), os.path.join(OUT, 'cat')], check=True)
 # cat/am.json: the aftermarket catalogues (tools/aftermarket/am_build.py, update 8x)
-_am = os.path.join(REPO, '.build', 'cat-in', 'am.json') if FRESH else os.path.join(SP, 'aftermarket', 'am.json')
-if os.path.exists(_am): shutil.copyfile(_am, os.path.join(OUT, 'cat', 'am.json'))
+for _n in ('am.json', 'am-files.json'):   # + the aftermarket folders for Catalogue files (update 8z)
+    _am = os.path.join(REPO, '.build', 'cat-in', _n) if FRESH else os.path.join(SP, 'aftermarket', _n)
+    if os.path.exists(_am): shutil.copyfile(_am, os.path.join(OUT, 'cat', _n))
 # cat/xref.json: part numbers that two of these brands' books share (same number = interchangeable), as proto/xref_build.py makes it
 import collections
 norm = lambda x: re.sub(r'[^A-Z0-9]', '', str(x or '').upper())
 by = collections.defaultdict(lambda: collections.defaultdict(set))
 for f in sorted(os.listdir(os.path.join(OUT, 'cat'))):
-    if not f.endswith('.json') or f.endswith('-dg.json') or f in ('xref.json', 'am.json'): continue
+    if not f.endswith('.json') or f.endswith('-dg.json') or f in ('xref.json', 'am.json', 'am-files.json'): continue
     d = json.load(open(os.path.join(OUT, 'cat', f), encoding='utf-8')); vb = d.get('brand') or f[:-5].title()
     for r in d['d']:
         pk = norm(r[5])

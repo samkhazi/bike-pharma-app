@@ -43,6 +43,8 @@ for f in sorted(glob.glob(os.path.join(SRC, '*', '*_Master_Catalogue.pdf'))):
                     sb, sn = x.split(':', 1); sn = sn.strip().strip('|').strip()
                     if sn: same.append([sb.strip(), sn])
         g = nm
+        if b == 'Gabriel' and fit:
+            nm = fit.split(':', 1)[-1].strip() or nm
         add(b, pn, nm, g, mrp, fit, oem, same)
 
 def sheet(f, name):
@@ -51,7 +53,7 @@ def sheet(f, name):
     for r in it: yield dict(zip(h, r))
 
 for r in sheet(os.path.join(SRC, 'Endurance', 'Endurance_Catalog.xlsx'), 'Parts'):
-    add('Endurance', r['Part No'], r['Part Name'], r['Product group'], r['MRP (Rs)'],
+    add('Endurance', r['Part No'], r['Part Name'] if 'friction Clutchd' not in str(r['Part Name']) else r['Description (as printed)'], r['Product group'], r['MRP (Rs)'],
         ((r['Brand'] or '') + ': ' + (r['Compatible models'] or '')).strip(': '),
         img=r['Image file'] if str(r.get('Image file') or '').startswith('images/') else '')
 for r in sheet(os.path.join(SRC, 'Suprajit', 'Suprajit_Compatibility.xlsx'), 'Parts'):
@@ -62,6 +64,18 @@ for r in sheet(os.path.join(SRC, 'Lumax', 'Lumax_Master_Catalogue.xlsx'), 'Parts
     add('Lumax', r['Part Number'], r['Part Name'], r['Part Name'], r['MRP (Rs.)'], r['Compatibility'],
         img=r['Photo'] if str(r.get('Photo') or '').startswith('images/') else '')
 
+# MRPs the master files missed, read by hand from the brand's own price list (15 Oct 2026 review)
+MRP_FIX = {('Gabriel', 'AM-50210071'): 493, ('Gabriel', 'AM-R365011'): 142, ('Gabriel', 'AM-R365012'): 142,   # Product Price List 2 & 3 Wheeler.pdf
+           ('Endurance', '520AM02981'): 299, ('Endurance', '520AM02983'): 219,                               # ETL Price List - 16.06.2026.pdf
+           ('Spark Minda', 'SOL-2044'): 1200, ('Spark Minda', 'SM-354015'): 1248, ('Spark Minda', 'SM-354008'): 1430,
+           ('Spark Minda', 'SM-354003'): 1386, ('Spark Minda', 'SM-354004'): 1306, ('Spark Minda', 'SM-354010'): 1248,
+           ('Spark Minda', 'SM-354016'): 1268, ('Spark Minda', 'SM-354005'): 1262, ('Spark Minda', 'SMA1001G'): 5128,  # starter motor price list final.pdf
+           ('Suprajit', 'SDP0123'): 181, ('Suprajit', 'SCP0232'): 274}                                         # 2w Cable & BC Price list July-26.pdf
+PN_FIX = {('Suprajit', 'SM46'): 'SM46 SLVR LS'}
+for p in parts:
+    p['pn'] = PN_FIX.get((p['b'], p['pn']), p['pn'])
+    if not p['mrp']: p['mrp'] = MRP_FIX.get((p['b'], p['pn']), 0)
+    if p['b'] == 'Suprajit' and p['pn'] == 'SCP0232': p['nm'] = 'Clutch plate · CENTRA'
 # one part per brand + number (a number printed twice keeps the longest fitment text, all OEM numbers)
 seen = {}
 for p in parts:
@@ -79,6 +93,7 @@ TY = [['Clutch cable', r'CLUTCH.*CABLE|CABLE.*CLUTCH'], ['Throttle cable', r'(TH
       ['Choke cable', r'CHOKE.*CABLE|CABLE.*CHOKE'], ['Gear cable', r'GEAR.*CABLE|CABLE.*GEAR'], ['Seat lock cable', r'SEAT.*CABLE|CABLE.*SEAT'],
       ['Speedo cable', r'(SPEEDO|METER|TACHO)\w*.*CABLE|CABLE.*(SPEEDO|METER|TACHO)'], ['Brake cable', r'BRAKE.*CABLE|CABLE.*BRAKE|\bHBS\b'],
       ['Brake shoe', r'\bSHOE'], ['Brake pad', r'\bPAD'], ['Clutch plate', r'CLUTCH.*PLATE|PLATE.*CLUTCH|FRICTION'],
+      ['Fork inner tube', r'INNER TUBE'], ['Weight roller', r'WEIGHT ROLLER|\bROLLER\b'], ['Steering cone set', r'STRG CLM|STEERING|CONE SET'],
       ['Shock absorber', r'SHOCK|ABSORBER|CUSHION|\bS/A\b'], ['Front fork', r'\bFORK'], ['Head lamp', r'HEAD ?LAMP|HEADLIGHT|\bH/L\b'],
       ['Tail lamp', r'TAIL ?LAMP|TAIL ?LIGHT|\bT/L\b'], ['Indicator', r'WINKER|BLINKER|INDICATOR|TURN SIGNAL'], ['Mirror', r'MIRROR'],
       ['Air filter', r'AIR ?FILTER|AIR CLEANER|ELEMENT.*AIR|AIR.*ELEMENT'], ['Oil filter', r'OIL ?FILTER|FILTER.*OIL'],
@@ -100,7 +115,7 @@ def ty_of(*ss):
 CAT = os.path.join(os.path.dirname(OUT))
 MODELS, ORIG = {}, {}
 for f in glob.glob(os.path.join(CAT, '*.json')):
-    if f.endswith('-dg.json') or os.path.basename(f) in ('xref.json', 'am.json'): continue
+    if f.endswith('-dg.json') or os.path.basename(f) in ('xref.json', 'am.json', 'am-files.json'): continue
     d = json.load(open(f)); MODELS[d['brand']] = d['models']
     for r in d['d']:
         if isinstance(r[5], str) and r[5]: ORIG.setdefault(pk(r[5]), r[5])
@@ -147,8 +162,8 @@ def near_of(oems):
 OB = sorted(MODELS)
 out = {'src': "Sam's aftermarket catalogues (All Catalogues > After Market Brands), MRP as printed, Oct 2026",
        'b': B, 'ob': OB, 'ty': TY,
-       'p': [[B.index(p['b']), p['pn'], p['nm'], p['g'], p['mrp'], p['fit'], p['oem'], p['same'], ty_of(p['g'], p['nm']),
-              [[OB.index(b), m] for b, m in fits_of(p['fit'], p['nm'] if p['b'] in ('Varroc', 'Endurance') else '')], near_of(p['oem'])] for p in L]}
+       'p': [[B.index(p['b']), p['pn'], p['nm'], p['g'], p['mrp'], p['fit'], p['oem'], p['same'], ty_of(p['nm'], p['g']),
+              [[OB.index(b), m] for b, m in fits_of(p['fit'], p['nm'] if p['b'] in ('Varroc', 'Endurance') else '')], near_of(p['oem']), p['img']] for p in L]}
 json.dump(out, open(OUT, 'w'), ensure_ascii=False, separators=(',', ':'))
 from collections import Counter
 print('exact (OEM no. in our books)', sum(1 for p in out['p'] if any(pk(o) in ORIG for o in p[6])), 'close', sum(1 for p in out['p'] if p[10]))

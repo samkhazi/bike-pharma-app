@@ -46,6 +46,12 @@ for (const [W, H, tag] of [[1280, 900, 'computer'], [390, 844, 'phone']]) {
   await p.waitForTimeout(800); t = await txt();
   ok(/confirmed by Admin/i.test(t) && !t.includes(k1[1].split('|')[1]), `${tag}: Admin Right moves ${k1[0]} to Confirmed, Not right hides ${k1[1]}`);
   await p.evaluate(pn => { const r = catRows().find(r => r.vb === 'Bajaj' && r.part === pn); delete DB.amPick[r.pk]; save(); }, pc);
+  // 8z: Catalogue files lists the aftermarket folders; review fixes in the brand data
+  await p.evaluate(() => go('catup')); await p.waitForFunction(() => CUP.st === 2, null, { timeout: 30000 }).catch(() => {}); await p.waitForTimeout(500); t = await txt();
+  ok(/Endurance \(aftermarket\)/i.test(t) && /Lumax \(aftermarket\)/i.test(t), `${tag}: Catalogue files shows the aftermarket folders (Endurance, Lumax...)`);
+  const fx = await p.evaluate(async () => { catLoad('TVS'); catLoad('Yamaha'); for (let i = 0; i < 240 && !(CAT_ALL.find(e => e.vb === 'TVS').st === 2 && CAT_ALL.find(e => e.vb === 'Yamaha').st === 2); i++) await new Promise(r => setTimeout(r, 500));
+    const R = catRows(); return { ph: R.filter(r => r.vb === 'TVS' && /^[-"]+$/.test(r.part || '')).length, nb: R.some(r => r.vb === 'TVS' && r.part === 'NB020050'), ym: R.filter(r => r.vb === 'Yamaha' && r.part === '4LS-E3329-00-00').map(r => r.desc)[0] }; });
+  ok(fx.ph === 0 && fx.nb && /^GASKET,? PUMP COVER$/i.test(fx.ym || ''), `${tag}: TVS shows no '---' / '"' part numbers, NB020050 (yellow) is findable; Yamaha CRUX gasket is 4LS-E3329-00-00 "${fx.ym}"`);
   if (tag === 'phone') await p.screenshot({ path: '/tmp/claude-0/am-phone.png' });
   ok(errs.length === 0, `${tag}: no page errors ${errs.slice(0, 2).join(' | ')}`);
   await p.context().close();

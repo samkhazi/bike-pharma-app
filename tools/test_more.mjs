@@ -1,0 +1,28 @@
+// 2026-10-15 update 9b: model books that were missing (tools/brands/more_books.py).  BASE4=http://127.0.0.1:3018 node tools/test_more.mjs
+import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+const BASE = process.env.BASE4 || 'http://127.0.0.1:3018';
+let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const p = await (await b.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
+const errs = []; p.on('pageerror', e => errs.push(e.message));
+await p.goto(BASE + '/app.html', { waitUntil: 'load' });
+await p.waitForFunction(() => typeof S !== 'undefined' && S.stack && S.stack.length && cur().s !== 'boot', null, { timeout: 15000 });
+await p.fill('#loginId', 'sam@bikepharma.com'); await p.evaluate(() => sendOtp()); await p.waitForTimeout(500);
+await p.fill('#pw1', 'Test@1234'); await p.evaluate(() => pwGo()); await p.waitForTimeout(900);
+ok(await p.evaluate(() => BRANDS_V.TVS.includes('Ntorq 125 XT') && BRANDS_V.TVS.includes('Ntorq 125 Race XP') && BRANDS_V.Yamaha.includes('RX135')), 'model lists have NTorq 125 XT, NTorq 125 Race XP, RX135');
+await p.evaluate(async () => { catLoad('TVS'); catLoad('Yamaha'); for (let i = 0; i < 400 && CAT_ALL.some(e => ['TVS', 'Yamaha'].includes(e.vb) && e.st !== 2); i++) await new Promise(r => setTimeout(r, 500)); });
+await p.evaluate(async () => { dgLoad('TVS'); dgLoad('Yamaha'); for (let i = 0; i < 100 && !(dgLoad('TVS') && dgLoad('Yamaha')); i++) await new Promise(r => setTimeout(r, 300)); });
+const P = o => ({ v: 'res', yr: 'Any', bs: 'Any', sort: 'best', n: 30, ...o });
+const t1 = await p.evaluate(P => { const R = m2Res(P); return { n: R.list.length, pn: R.list.map(r => r.part).slice(0, 3) }; }, P({ q: 'oxygen sensor', vb: 'TVS', vm: 'Ntorq 125 Race XP' }));
+ok(t1.n > 0, `TVS NTorq 125 Race XP "oxygen sensor": ${t1.n} (${t1.pn.join(', ')})`);
+const t2 = await p.evaluate(P => { go('findpart', P); const R = m2Res(P); const r = R.list[0]; return { n: R.list.length, dg: !!(r && (r.sp || dgFig(r))) }; }, P({ q: 'cylinder head', vb: 'TVS', vm: 'Ntorq 125 XT' }));
+ok(t2.n > 0 && t2.dg, `TVS NTorq 125 XT "cylinder head": ${t2.n}, has its diagram`);
+const t3 = await p.evaluate(P => { go('findpart', P); const R = m2Res(P); const r = R.list.find(r => r.part === '36L-E5651-00-00') || R.list[0]; return { n: R.list.length, d: r && r.desc, f: r && dgFig(r) }; }, P({ q: 'gear', vb: 'Yamaha', vm: 'RX135' }));
+ok(t3.n > 5 && /pdf:catalogues\/more-books\/YAMAHA_RX135_/.test(JSON.stringify(t3.f)), `Yamaha RX135 "gear": ${t3.n}, diagram from the RX135 book (${t3.d})`);
+const t4 = await p.evaluate(P => m2Res(P).list.length, P({ q: '4TLE31002000', vb: 'Yamaha', vm: 'Any' }));
+ok(t4 > 0, `RX135 number typed without dashes 4TLE31002000 is found (${t4})`);
+await p.evaluate(() => go('catup')); await p.waitForFunction(() => CUP.st === 2, null, { timeout: 30000 }).catch(() => {}); await p.waitForTimeout(500);
+const t5 = await p.evaluate(() => document.querySelector('#vp .screen:last-child').innerText);
+ok(/Yamaha RX135/.test(t5), 'Catalogue files shows the Yamaha RX135 card');
+ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
+await b.close(); console.log(fails ? `\n${fails} FAILED` : '\nALL OK'); process.exit(fails ? 1 : 0);

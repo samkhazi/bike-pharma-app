@@ -12,7 +12,7 @@
 - Customer: unique order / part-order / warranty numbers; cart and checkout keep to the shop's stock.
 - Mechanic: one-part order shows the bulk price total; job card labour cannot be minus and the mobile must be 10 digits.
 - After logging in, the shop's prices replace what the public page had.
-- "Log out from all devices" really logs out every device; the language choice is kept after reload.
+- "Log out from all devices" really logs out every device.
 usage: python3 qafix2.py public/app.html"""
 import sys
 P = sys.argv[1]
@@ -92,7 +92,7 @@ sub("x.pn+' · your price '+inr(x.mp)+' · stock '+DB.stock[x.id]", "x.pn+' · y
 sub("function logout(all){srvLogout();", "function logout(all){srvLogout(all);")
 sub("function srvLogout(){clearTimeout(SRV.t);const ch=srvDiff();const done=()=>api('POST','/api/logout')",
     "function srvLogout(all){clearTimeout(SRV.t);const ch=srvDiff();const done=()=>api('POST','/api/logout',all?{all:true}:undefined)")
-sub("let THEME=PREF.get('theme','light'),LANG='en';", "let THEME=PREF.get('theme','light'),LANG=['en','kn','hi'].includes(PREF.get('lang','en'))?PREF.get('lang','en'):'en';")
+# (the language is NOT kept after reload: Sam's rule, English on every open)
 # a login after the public page: the staff / mechanic prices replace the public ones (the public view has no mechanic price)
 sub("function srvSetDb(db,rev){window.BOOT_DB=db;load();", "function srvSetDb(db,rev){window.BOOT_DB=db;load();try{invSyncP();offApply();}catch(e){}")
 open(P, 'w', encoding='utf-8').write(a)

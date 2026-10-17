@@ -48,3 +48,13 @@ tvs() ends with tvs_books(o, dg), which adds TVS_BOOKS (17 books: model, edition
 TVS_SPARE = the 32 books whose parts are already in the e-catalogue (or copies of another book); the upload card leaves them on the computer.
 Diagram links: 'pdf:catalogues/tvs/<book>:0:<size>:<page>:0,0,1,1'. MRP only from the existing MRP table (new numbers have none).
 Check: tools/test_tvs.mjs (uploads the folder through Admin > Catalogue files with only tvs_images.zip on the server, draws 2 pages per book).
+
+## Royal Enfield diagram books (update 9h)
+Sam's folder Downloads > Royal-Enfield-Catalogue > Models (16 Oct 2026, made from spares.royalenfield.com): one '<edition> - Diagrams[ - Part n of m].pdf'
+per edition (151 books, 142 editions, 1.6 GB), vector diagrams with each item's part no., MRP, UOM, MOQ and note. On the Mac:
+`pdftotext -layout` of each book into '<folder>@<file>.txt' + _sizes.tsv, then `python3 -I re_parse.py <txt dir> re-pages.json`
+(a table going on into the next Part file belongs to the last diagram before it; 'n of N variants' from each book's index pages).
+`brands_build.py <out> re` replaces the RE package's data: models by hr_pkg_build's RE_RULES (+ FF.C6 = Flying Flea C6), the edition's year
+from the package's edition of the same name, MRP from the books, then RE_MRP_PriceList_2026-10.xlsx; price-list parts no book has go to
+model 'Other parts (price list)' (a section per first letter, no diagram). Part photos stay in RE_Upload_Package_IMAGES_part2.zip.
+Diagram links: 'pdf:catalogues/royal-enfield/<book>:0:<size>:<page>:0,0,1,1'. Check: tools/test_re.mjs.

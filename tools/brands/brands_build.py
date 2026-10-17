@@ -210,7 +210,8 @@ def hero():
 
 
 # ---------------------------------------------------------------- Royal Enfield
-def royal_enfield():
+def royal_enfield_pkg():
+    """the RE package (EPC data, 3 Oct 2026): replaced by royal_enfield() below in update 9h"""
     rows, mrp, ph = [], [], {}
     for r in rows_zip('re'):
         nb = HR['NB'][r['emission_norm'] or 'BS4']   # only the Bullet Trials books (2019) name no norm: they are BS4
@@ -1462,6 +1463,96 @@ def suzuki():
                  zp, mrp=mrp, pick='All Catalogues > Suzuki', by_group=True)
     o['src'].append("Suzuki price list (MRP) 03-Oct-2026, Sam's Suzuki folder")
     jdump(os.path.join(OUT, 'suzuki.json'), o)
+    return o, dg
+
+
+# ---------------------------------------------------------------- Royal Enfield (update 9h): RE's diagram books, Sam's folder
+# Downloads > Royal-Enfield-Catalogue > Models (16 Oct 2026, from spares.royalenfield.com): one book per edition (colour / version), every
+# variant's diagrams, vector, with each item's part no. and MRP. re-pages.json = re_parse.py. Replaces the RE package (EPC data) in Find Part;
+# the package's part photos stay (same part numbers, its zips are already on Sam's server).
+RE_DIR = 'catalogues/royal-enfield'
+RE_NEW = [('FF.C6', 'Flying Flea C6')]
+RE_PL, RE_PL_V = 'Other parts (price list)', 'Royal Enfield MRP price list (Oct 2026)'
+RE_NORM = {'BSIII': 'BS3', 'BSIV': 'BS4', 'BS IV': 'BS4', 'BSVI': 'BS6'}
+
+
+class RePages(SzPages):
+    """a page of one of RE's diagram books -> 'pdf:' link; the package's photo zips stay in the file list"""
+    def __init__(self, dirn, books, keep):
+        super().__init__(dirn, books)
+        self.keep = keep
+
+    def files(self):
+        return super().files() + self.keep
+
+
+def royal_enfield():
+    B = json.load(open(os.path.join(HERE, 're-pages.json')))
+    old = json.load(open(os.path.join(HERE, '..', '..', 'public', 'cat', 'royal-enfield.json')))
+    key = lambda t: re.sub(r'[^a-z0-9]', '', t.lower())
+    old_year = {}
+    for v in old['vars']:
+        y = re.search(r' \((\d{4})\)$', v)
+        if y:
+            old_year[key(v[:y.start()])] = int(y.group(1))
+    order = HR['RE_ORDER'][:HR['RE_CUR']] + [m for _, m in RE_NEW] + HR['RE_ORDER'][HR['RE_CUR']:] + [RE_PL]
+    base = lambda e: next((m for k, m in RE_NEW if e.startswith(k)), None) or HR['re_base'](e)
+    rows, mrp, st = [], [], collections.Counter()
+    for f, b in sorted(B.items(), key=lambda kv: (kv[1]['edition'], kv[1]['part'])):
+        e = b['edition']
+        m = base(e)
+        n = re.search(r'\b(BSIII|BSIV|BS IV|BSVI)\b', e)
+        norms = {x for d in b['dgs'] for x in d['norms']}
+        nb = HR['NB'][RE_NORM[n.group(1)] if n else 'BS6' if 'BS6' in norms or not m.startswith('Bullet Trials') else 'BS4']
+        lab0 = HR['re_label'](e, 0, nb)
+        y = old_year.get(key(lab0), 0)
+        v = HR['re_label'](e, y, nb)
+        st['editions with the old year'] += bool(y)
+        for d in b['dgs']:
+            asm = d['asm'] if d['dgm'] in ('', d['asm']) else '%s – %s' % (d['asm'], d['dgm'])
+            if d['nv']:
+                asm += ' (%d of %d variants%s)' % (d['nv'], b['nvar'], ': ' + ', '.join(d['vars'][:3]) + (' +%d' % (d['nv'] - 3) if d['nv'] > 3 else '')
+                                                 if d['vars'] else '')
+            for item, pn, desc, p, uom, moq, note in d['rows']:
+                mrp.append((pn, p or 0))
+                rows.append(dict(m=m, v=v, y=y, nb=nb, g=str(d['n']), asm=asm, ref=item, pn=pn, desc=clean(desc), qty='', rem=note, ns=False,
+                                 dg='%s|%d' % (f, d['page'])))
+    # MRP: the books' (16 Oct 2026); a part with none there from Sam's RE MRP price list (Oct 2026)
+    mrp, two = merge_mrp(mrp)
+    import openpyxl
+    pl = os.path.join(os.path.dirname(IMP), '..', 'Downloads', 'Royal-Enfield-Catalogue', '_compare', 'RE_MRP_PriceList_2026-10.xlsx')
+    pl_mrp, _ = merge_mrp([(clean(str(r[0])), r[2]) for r in itertools.islice(openpyxl.load_workbook(pl, read_only=True).active.iter_rows(values_only=True), 1, None)
+                           if r[0] is not None])
+    pns = {x['pn'] for x in rows}
+    add = {pn: p for pn, p in pl_mrp.items() if pn in pns and pn not in mrp}
+    # price-list parts that no book has (special tools, older numbers): model 'Other parts (price list)', a section per first letter, no diagram
+    names = {clean(str(r[0])): clean(str(r[1] or '')).upper() for r in itertools.islice(openpyxl.load_workbook(pl, read_only=True).active.iter_rows(values_only=True), 1, None)
+             if r[0] is not None}
+    flat = {re.sub(r'[^A-Z0-9]', '', p) for p in pns}
+    for pn, p in pl_mrp.items():
+        if pn not in pns and re.sub(r'[^A-Z0-9]', '', pn) not in flat:
+            k = (names.get(pn) or '#')[0]
+            k = k if k.isalpha() else '#'
+            rows.append(dict(m=RE_PL, v=RE_PL_V, y=0, nb=len(HR['NORMS']), g='PL' + k, asm='PRICE LIST PARTS: ' + k + ' (NO DIAGRAM)', ref='', pn=pn,
+                             desc=names.get(pn, ''), qty='', rem='', ns=False, dg=None))
+            add[pn] = p
+            st['price-list part (no book)'] += 1
+    pns = {x['pn'] for x in rows}
+    print('Royal Enfield: %s | MRP from the books %d (%d with two prices left out), from the price list %d' % (dict(st), len(mrp), len(two), len(add)))
+    mrp.update(add)
+    cc = {m: int(re.search(r'\d{3}', m).group(0)) for m in order if re.search(r'\d{3}', m)}
+    keep = [[z, s] for z, s in json.load(open(os.path.join(HERE, '..', '..', 'public', 'cat', 'royal-enfield-dg.json')))['files']
+            if RE_DIR + '/' + z in old['phz']]                              # only the zip the photos are in (the diagrams in part 1 are not used now)
+    zp = RePages(RE_DIR, B, keep)
+    bk = [[0, n[1], n[2]] for n in HR['NORMS']] + [[1, [], 'Parts from Royal Enfield’s MRP price list that no diagram book has: no diagram']]
+    o, dg = pack('Royal Enfield', 'royal-enfield', "Royal Enfield diagram books (spares.royalenfield.com, MRP as listed 16 Oct 2026), Sam's folder Royal-Enfield-Catalogue",
+                 order, set(order[:HR['RE_CUR'] + len(RE_NEW)]), rows, 'Diagram', bk, cc, zp, mrp=mrp, pick='Downloads > Royal-Enfield-Catalogue > Models', by_group=True)
+    o['src'].append("Royal Enfield MRP price list (Oct 2026), Sam's folder Royal-Enfield-Catalogue")
+    have = {r[5] for r in o['d']}
+    o['phf'] = {pn: x for pn, x in old['phf'].items() if pn in have}
+    o['phz'] = old['phz']
+    jdump(os.path.join(OUT, 'royal-enfield.json'), o)
+    print('   photos from the RE package: %d of %d part no.' % (len(o['phf']), len(have)))
     return o, dg
 
 

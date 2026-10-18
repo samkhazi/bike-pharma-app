@@ -15,6 +15,8 @@ node tools/test_9c.mjs || r=1
 node tools/test_back.mjs || r=1
 # update 8o: the Billing profile (no bill discount, warranty claims, cancel / change through Manager, split, estimate to bill)
 node tools/test_bill.mjs || r=1
+# update 9i: MRP lots (two MRPs of one part: add product, bill split, change lot, stock in, labels, server price)
+BASE=http://127.0.0.1:3015 node tools/test_lots.mjs || r=1
 # a brand-new shop (only the admin login): Admin's Inventory page, Add product, Stock in with a new supplier
 T2=/tmp/claude-0/bptest2
 for pid in $(pgrep -x node); do if tr "\0" "\n" < /proc/$pid/environ 2>/dev/null | grep -qx "PORT=3016"; then kill $pid; fi; done

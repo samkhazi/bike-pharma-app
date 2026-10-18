@@ -596,13 +596,26 @@ function back(){if(S.stack.length>1){if(NAVH&&NAVH.on&&NAVH.i>0&&history.state&&
 function tab(s){S.stack=[{s,p:{}}];navSave(true);render('fade');}
 function reset(s,p={}){const was=cur();S.stack=[{s,p}];navSave(!!(S.user&&was&&!NAV_PRE.includes(was.s)&&!NAV_PRE.includes(s)));render('fade');}
 function refresh(){const ev=window.event;if(ev&&ev.type==='change'&&ev.isTrusted){clearTimeout(refresh._t);refresh._t=setTimeout(refresh,250);return;}clearTimeout(refresh._t);const vp=document.getElementById('vp');const sc=vp.querySelector('.scroll');const top=sc?sc.scrollTop:0;render('');const sc2=vp.querySelector('.scroll');if(sc2)sc2.scrollTop=top;}
+function vpMorph(a,b){if(a.nodeType!==b.nodeType||a.nodeName!==b.nodeName){a.replaceWith(b);return;}
+ if(a.nodeType===3||a.nodeType===8){if(a.nodeValue!==b.nodeValue)a.nodeValue=b.nodeValue;return;}if(a.nodeType!==1)return;
+ for(const at of [...a.attributes])if(!b.hasAttribute(at.name))a.removeAttribute(at.name);
+ for(const at of [...b.attributes])if(a.getAttribute(at.name)!==at.value)a.setAttribute(at.name,at.value);
+ const act=a===document.activeElement;
+ if(a.nodeName==='INPUT'||a.nodeName==='TEXTAREA'){if(!act){if(a.value!==b.value)a.value=b.value;if(a.type==='checkbox'||a.type==='radio')a.checked=b.checked;}return;}
+ const ac=[...a.childNodes],bc=[...b.childNodes];
+ for(let i=0;i<bc.length;i++){if(i<ac.length)vpMorph(ac[i],bc[i]);else a.appendChild(bc[i]);}
+ for(let i=bc.length;i<ac.length;i++)ac[i].remove();
+ if(a.nodeName==='SELECT'&&!act)a.value=b.value;}
 function render(anim){
  const {s,p}=cur();const fn=SCREENS[s];const vp=document.getElementById('vp');
  let html;
  if(S.user && fn && !allowed(s)) html=deniedScreen(s); else html=fn?scrSafe(fn,p,s):'<div class="empty">Screen not found</div>';
  const navs=S.user?NAVS[S.user.role]:null;const idx=navs?navIdx(navs,s,html):-1;
  const showNav=navs&&idx>-1,from=NAV_LAST;NAV_LAST=showNav?idx:-1;
- vp.innerHTML=`<div class="screen ${anim?'in-'+anim:''}${showNav?' hasnav':''}">${offBar()}${html}${showNav?navHTML(navs,idx,from):''}</div>`;translateVp();if(showNav)navMove();
+ const h2=`<div class="screen ${anim?'in-'+anim:''}${showNav?' hasnav':''}">${offBar()}${html}${showNav?navHTML(navs,idx,from):''}</div>`;
+ // update 9j (Sam 2026-10-18, keyboard glitches on the phone): while a box has the cursor, the screen is patched in place, so that box stays
+ // the same element and the phone keyboard stays open (a new box focused from a timer gets no keyboard on an iPhone)
+ const ae=document.activeElement;if(!anim&&ae&&ae.id&&vp.contains(ae)&&ae.matches('input,textarea,select')&&vp.children.length===1){const t=document.createElement('div');t.innerHTML=h2;if(t.children.length===1&&t.querySelector('#'+CSS.escape(ae.id)))vpMorph(vp.firstElementChild,t.firstElementChild);else vp.innerHTML=h2;}else vp.innerHTML=h2;translateVp();if(showNav)navMove();
  document.getElementById('status').classList.toggle('dark',!!(vp.querySelector('.screen .hero, .screen.darkscr')));
  if(S.ui.after){const f=S.ui.after;S.ui.after=null;f();}
  navSave(false);

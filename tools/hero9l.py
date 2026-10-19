@@ -9,6 +9,8 @@ app, cat = sys.argv[1], sys.argv[2]
 a = open(app, encoding='utf-8').read()
 def sub1(old, new):
     global a
+    if new in a:   # already done (run again after a data rebuild, update 9m)
+        return
     assert a.count(old) == 1, old[:80]
     a = a.replace(old, new)
 PN_AL = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'

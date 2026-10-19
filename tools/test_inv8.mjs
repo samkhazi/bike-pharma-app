@@ -27,7 +27,8 @@ const wide = p => p.evaluate(() => { const vw = innerWidth, s = document.querySe
 async function shot(p, name, tall) { if (!SHOTS) return; const vs = p.viewportSize();
   if (tall) { const h = await p.evaluate(() => { const s = document.querySelector('#vp .screen:last-child .scroll'); return s ? s.scrollHeight + 160 : 0; }); if (h > vs.height) { await p.setViewportSize({ width: vs.width, height: Math.min(h, 7000) }); await p.waitForTimeout(400); } }
   await p.screenshot({ path: path.join(SHOTS, name + '.png') }); if (tall) { await p.setViewportSize(vs); await p.waitForTimeout(200); } }
-async function photos(p, files, scope = SC) { await p.locator(scope + ' label.inv-slot input[type=file]').first().setInputFiles(files.map(f => path.join(PH, f))); }
+// 9q: on a phone a box opens the camera (one photo); several photos go through the Gallery button
+async function photos(p, files, scope = SC) { const g = p.locator(scope + ' label.inv-gal input[type=file]'); await ((files.length > 1 && await g.count()) ? g.first() : p.locator(scope + ' label.inv-slot input[type=file]').first()).setInputFiles(files.map(f => path.join(PH, f))); }
 // type a part number in Add product and wait for its card (found / pick the brand / not found / already in the list)
 async function lookFor(p, pn) { const k = await p.evaluate(pn => catPk(pn), pn); await p.fill('#ap-pn', pn);
   await p.waitForFunction(k => S.ui.ap && S.ui.ap.look === k && document.querySelector('#vp .screen:last-child :is(.inv-found,.inv-pick,.inv-none,.inv-dup)'), k, { timeout: 90000 }); await p.waitForTimeout(150); }

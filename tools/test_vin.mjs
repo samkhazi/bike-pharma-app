@@ -14,7 +14,9 @@ const T = p => p.evaluate(() => document.querySelector('#vp .screen:last-child')
 const SC = '#vp .screen:last-child';
 const AL = 'ABCDEFGHJKLMNPRSTUVWXYZ'; const VDS = Array.from({ length: 5 }, () => AL[Math.floor(Math.random() * AL.length)]).join(''); const K = 'MBL' + VDS;
 const A = await mk(390, 844); await login(A, 'sam@bikepharma.com', 'Test@1234');
-await A.evaluate(() => { S.ui.fp = null; go('findpart'); }); await A.waitForTimeout(400);
+let t0 = (await A.evaluate(() => { S.ui.fp = null; go('findpart'); return document.querySelector('#vp .screen:last-child').innerText; }));
+ok(!/Check parts with chassis number/.test(t0), 'chassis button hidden while VIN_ON is off (Sam 2026-10-19)');
+await A.evaluate(() => { VIN_ON = true; S.ui.fp = null; go('findpart'); }); await A.waitForTimeout(400);
 let t = await T(A); ok(/Check parts with chassis number/.test(t) && /Shop by brand/i.test(t), 'Find Part home: chassis button and the old brand / model search both there');
 await A.click(SC + ' button:has-text("Check parts with chassis number")'); await A.waitForTimeout(300);
 ok(await A.evaluate(() => cur().p.v === 'vin') && /17-letter/.test(await T(A)), 'chassis screen opens');

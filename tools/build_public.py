@@ -347,7 +347,7 @@ for f in CAT_IN:
     PNR_OF.append('%s %s' % (os.path.basename(f), hashlib.sha1(raw).hexdigest()[:10]))
     cnt, firsts, bits = collections.Counter(), collections.defaultdict(set), bytearray(162)
     for r in d['d']:
-        alts = [pn_pk(m.group(1)) for m in re.finditer(r'(?:Alternate|Probiking\)) no\. ([A-Z0-9][A-Z0-9-]{4,})', str(r[8] or ''))]
+        alts = [pn_pk(m.group(1)) for m in re.finditer(r'(?:Alternate|Old|Probiking\)) no\. ([A-Z0-9][A-Z0-9-]{4,})', str(r[8] or ''))]
         for j, k in enumerate([pn_pk(r[5]), pn_pb(vb, r[5], r[8])] + alts):
             if not k: continue
             if j != 1: cnt[pn_shape(k)] += 1; firsts[pn_shape(k)].add(k[:2])

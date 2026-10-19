@@ -21,6 +21,9 @@ BASE=http://127.0.0.1:3015 node tools/test_lots.mjs || r=1
 BASE=http://127.0.0.1:3015 node tools/test_kb.mjs || r=1
 # update 9k: Find Part > Check parts with chassis number
 BASE=http://127.0.0.1:3015 node tools/test_vin.mjs || r=1
+# update 9l: Hero update (2 new editions with SVG diagrams, MRP list, price-list parts, kits, old numbers); needs Sam's update zip staged here
+HZ="${HERO_UPDATE_ZIP:-/mnt/user-data/uploads/Downloads/Updated Hero Catalogue/Hero_Update_19Oct.zip}"
+if [ -f "$HZ" ]; then mkdir -p $T/pf/catalogues/hero; ln -sf "$HZ" $T/pf/catalogues/hero/; BASE4=http://127.0.0.1:3015 node tools/test_hero9l.mjs || r=1; else echo "SKIP test_hero9l (no Hero_Update_19Oct.zip)"; fi
 # a brand-new shop (only the admin login): Admin's Inventory page, Add product, Stock in with a new supplier
 T2=/tmp/claude-0/bptest2
 for pid in $(pgrep -x node); do if tr "\0" "\n" < /proc/$pid/environ 2>/dev/null | grep -qx "PORT=3016"; then kill $pid; fi; done

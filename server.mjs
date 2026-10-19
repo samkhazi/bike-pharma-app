@@ -436,6 +436,15 @@ function hotImg(u) {
   if (m[1] === 'pa' && !(buf[0] === 0xFF && buf[1] === 0xD8)) buf = ascii85(buf);
   return buf && photoKind(buf) ? buf : null;
 }
+// an SVG diagram (Hero's newest editions, update 9l): the page draws it and sends the PNG, as for a PDF page
+function hotSvg(u) {
+  const m = /^pf:(.+):(\d+):(\d+)$/.exec(u); if (!m) return false;
+  const rel = path.posix.normalize('/' + m[1]).replace(/^\/+/, '');
+  if (rel.split('/').includes('..') || !rel.startsWith('catalogues/')) return false;
+  const buf = Buffer.alloc(Math.min(400, +m[3])); let fd;
+  try { fd = fs.openSync(path.join(FILES_DIR, rel), 'r'); fs.readSync(fd, buf, 0, buf.length, +m[2]); } catch (e) { return false; } finally { if (fd !== undefined) fs.closeSync(fd); }
+  return buf[0] === 0x3C && /<svg[\s>]/.test(buf.toString('latin1'));
+}
 async function hotOcr(res, u, buf, user) {
   let job = HOT_RUN.get(u);
   if (!job) {
@@ -470,13 +479,13 @@ async function dgHot(req, res, url, user) {
   const o = hotRead(u) || { u, toks: null, ed: [] };
   if (req.method === 'GET') {
     if (o.toks || url.searchParams.get('ocr') !== '1') return json(res, 200, hotOut(o));
-    if (u.startsWith('pdf:')) return json(res, 200, { ...hotOut(o), need: 'img' });
+    if (u.startsWith('pdf:') || hotSvg(u)) return json(res, 200, { ...hotOut(o), need: 'img' });
     const buf = hotImg(u);
     if (!buf) return json(res, 404, { error: 'not_found' });   // this catalogue's files are not on the server yet
     return hotOcr(res, u, buf, user);
   }
   if (req.method !== 'POST') { drain(req); return json(res, 405, { error: 'Method not allowed' }); }
-  if (!u.startsWith('pdf:')) { drain(req); return json(res, 400, { error: 'This diagram is read on the server' }); }
+  if (!u.startsWith('pdf:') && !hotSvg(u)) { drain(req); return json(res, 400, { error: 'This diagram is read on the server' }); }
   if (o.toks) { drain(req); return json(res, 200, hotOut(o)); }
   if ((+req.headers['content-length'] || 0) > HOT_MAX) { drain(req); return json(res, 413, { error: 'This page is too big (12 MB max)' }); }
   let buf; try { buf = await readBody(req, HOT_MAX); } catch (e) { return json(res, 413, { error: 'This page is too big (12 MB max)' }); }

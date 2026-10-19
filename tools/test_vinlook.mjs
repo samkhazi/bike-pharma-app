@@ -1,6 +1,7 @@
 // Update 9o (Sam 2026-10-19): Royal Enfield and Honda chassis numbers -> model from the maker's site, through our server (/api/vinlook).
 // The makers' sites are stood in by a mock on MOCK_PORT; the server under test must run with
-// VIN_RE_URL=http://127.0.0.1:3029/graphql VIN_HONDA_URL=http://127.0.0.1:3029/honda (tools/run_tests.sh does).
+// VIN_RE_URL=http://127.0.0.1:3029/graphql VIN_HONDA_URL=http://127.0.0.1:3029/honda YPEC_URL=http://127.0.0.1:3029 YPEC_DEALER_CODE=D1
+// YPEC_USER_ID=testuser YPEC_PASSWORD=x (tools/run_tests.sh does).
 import http from 'node:http';
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { _honda } from '../lib/vinlook.mjs';
@@ -14,8 +15,16 @@ const RE = { ME3K5A6FGT1002169: { VIN: 'ME3K5A6FGT1002169', CategoryName: 'BS6 -
 const HONDA = { ME4KC311AK8485736: { VEHICLE: 'CB Unicorn', MODEL: 'CBF150MH', CHASSISNO: 'ME4KC311AK8485736', SBOMCODE: 'CBF150MH', STARTDATE: '/Date(1548873000000)/' } };
 const asked = [];
 const mock = http.createServer((q, r) => { let b = ''; q.on('data', d => b += d); q.on('end', () => {
-  const j = JSON.parse(b || '{}'); r.setHeader('Content-Type', 'application/json');
+  const j = q.url.startsWith('/ypec/') ? {} : JSON.parse(b || '{}'); r.setHeader('Content-Type', 'application/json');
   if (q.url === '/graphql') { asked.push('re'); const v = RE[j.variables && j.variables.v]; return r.end(JSON.stringify({ data: { searchQueryVindetails: { vin_detail: v || { VIN: null, CategoryName: null, CategoryUrl: null } } } })); }
+  // update 9r: dealer YPEC (login, terms page once, menu pages, search)
+  if (q.url.startsWith('/ypec/')) { r.setHeader('Content-Type', 'text/html');
+    const f = Object.fromEntries(new URLSearchParams(b));
+    if (q.url === '/ypec/control/LoginDealer') { asked.push('ylogin:' + f.ypec_user_id); r.setHeader('Set-Cookie', 'JSESSIONID=y1; Path=/'); return r.end(`<html>TERMS OF USE <form action="/ypec/control/Accept" method="post"><input type="hidden" name="agree" value="1"><input type="submit" value="I ACCEPT"></form></html>`); }
+    if (q.url === '/ypec/control/Accept') { asked.push('yaccept:' + f.agree); return r.end('<html>ok</html>'); }
+    if (q.url === '/ypec/control/specification/ListModelSelection') { asked.push('ysearch:' + (q.headers.cookie || '') + ':' + f.frameNo);
+      return r.end(f.frameNo === 'ME11CK01BB2008284' ? `<a href="JavaScript:onPdf( '','1CK1','2011','010','B','YZF-R15\\nR15 V2','BLACK METALLIC X','Y1CK100-2011B0000')">x</a>` : `<td class='MESSAGE'>Corresponding data doesn't exist.</td>`); }
+    return r.end('<html>menu</html>'); }
   if (q.url === '/honda') { asked.push('honda'); const v = _honda.hDec(j.strVIN); return r.end(JSON.stringify({ d: _honda.hEnc(JSON.stringify({ tbl_chassismaster: HONDA[v] ? [HONDA[v]] : [] })) })); }
   r.statusCode = 404; r.end('{}'); }); });
 await new Promise(ok2 => mock.listen(3029, '127.0.0.1', ok2));
@@ -51,6 +60,12 @@ ok(/Royal Enfield’s site has no record of this chassis number/.test(t) && /Whi
 // Honda
 await vin('ME4KC311AK8485736'); st = await p.evaluate(() => cur().p); t = await T();
 ok(st.vb === 'Honda' && st.vm === 'CB Unicorn' && /Honda site: CB Unicorn \(CBF150MH\)/.test(t), 'Honda chassis opens CB Unicorn by itself ' + st.vm);
+// Yamaha (update 9r): dealer YPEC login from .env, its terms page sent once, model opens by itself
+await vin('ME11CK01BB2008284'); st = await p.evaluate(() => cur().p); t = await T();
+ok(st.vb === 'Yamaha' && st.vm === 'R15 V2' && /Yamaha site: R15 V2 \(YZF-R15, 2011, BLACK METALLIC X\)/.test(t), 'Yamaha chassis opens R15 V2 by itself ' + st.vm);
+ok(asked.includes('ylogin:testuser') && asked.includes('yaccept:1') && asked.some(x => /^ysearch:JSESSIONID=y1:ME11CK01BB2008284$/.test(x)), 'YPEC: logged in with the .env values, terms page sent, search kept the login cookie ' + asked.filter(x => x[0] === 'y').join(' '));
+await vin('ME11CK01BB2009999'); t = await T();
+ok(/Yamaha’s site has no record of this chassis number/.test(t) && asked.filter(x => x.startsWith('ylogin')).length === 1, 'Yamaha: not found, staff pick; the login is reused');
 // other makers: no site asked, the old way
 const n0 = asked.length; const AL = 'ABCDEFGHJKLMNPRSTUVWXYZ'; await vin('MBL' + Array.from({ length: 6 }, () => AL[Math.floor(Math.random() * AL.length)]).join('') + 'KC000011');
 ok(asked.length === n0 && /Which Hero model/.test(await T()), 'Hero: no site asked, asks the model as before');

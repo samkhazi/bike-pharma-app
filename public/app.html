@@ -3966,7 +3966,7 @@ const vinMgr=()=>['manager','admin'].includes(S.user.role);
 /* update 9o (Sam 2026-10-19 "chassis number daalunga toh automatic vehicle details fetch hona he"): Royal Enfield and Honda chassis numbers
    are asked to the maker's own site through our server (/api/vinlook); the model comes only from that reply (Sam's rule), never from the
    saved code list. Not found or site down: staff pick the model, and that pick is not saved for the code. */
-const VIN_SITE={ME3:'Royal Enfield',ME4:'Honda'};
+const VIN_SITE={ME3:'Royal Enfield',ME4:'Honda',ME1:'Yamaha'};   /* ME1 Yamaha: update 9r, dealer YPEC */
 const vinNorm=x=>String(x||'').toLowerCase().replace(/\(old\)/g,'').replace(/[^a-z0-9]/g,'');
 function vinMatch(vb,name){const ms=BRANDS_V[vb]||[],n=vinNorm(name);if(!n)return [];
  const ex=ms.filter(m=>vinNorm(m)===n);if(ex.length)return ex;

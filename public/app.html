@@ -3972,10 +3972,18 @@ function vinMatch(vb,name){const ms=BRANDS_V[vb]||[],n=vinNorm(name);if(!n)retur
  const ex=ms.filter(m=>vinNorm(m)===n);if(ex.length)return ex;
  const inn=ms.filter(m=>vinNorm(m).length>2&&n.includes(vinNorm(m)));if(inn.length){const L=Math.max(...inn.map(m=>vinNorm(m).length));return inn.filter(m=>vinNorm(m).length===L);}
  return ms.filter(m=>vinNorm(m).includes(n));}
+/* update 9p (Sam 2026-10-19 "eh bhi sort out hona he"): RE's site names both the new and the old bike "CLASSIC 350", and we have two books
+   (Classic 350, Classic 350 (old)). The site's own text decides first: the old books' variants carry the site's name ("Classic 350 ABS - BSVI"),
+   a new bike's reply carries its BS code only in brackets ("HIMALAYAN 450 (BS6 - ...)"). Else the chassis year: before the new model came = old book. */
+const VIN_NEW_FROM={'Classic 350':2021,'Bullet 350':2023};   /* new bikes came Sep 2021 and Sep 2023: in that year either book fits, staff check the RC */
+function vinPick(vb,r,ms,y){const old=ms.find(m=>/\(old\)/.test(m)),nw=ms.find(m=>!/\(old\)/.test(m));if(ms.length!==2||!old||!nw)return '';
+ const n=vinNorm(r.model),vs=CAT_VARS.filter(v=>v[0]===vb&&vinNorm(v[1])===n).map(v=>CAT_VMOD[v[1]]);if(vs.length&&new Set(vs).size===1&&ms.includes(vs[0]))return vs[0];
+ if(/ - BS ?(III|IV|VI|3|4|6)\b/i.test(r.model))return old;
+ const f=VIN_NEW_FROM[nw];if(!f||!y)return '';return y<f?old:y>f?nw:'';}
 async function vinAsk(c){const s=S.ui.vin;const vb=VIN_SITE[c.slice(0,3)];s.look={busy:1,vb};refresh();let r;
  try{const x=await fetch('/api/vinlook?c='+encodeURIComponent(c),{credentials:'same-origin'});r=await x.json();if(!x.ok&&!r.error)r={error:'Search failed ('+x.status+')'};}catch(e){r={error:'No internet connection'};}
  if(S.ui.vin!==s||s.c!==c)return;s.look={...r,vb};
- if(r.found){const ms=vinMatch(vb,r.model);s.look.ms=ms;if(ms.length===1)return vinOpen(c,vb,ms[0],r.name);}
+ if(r.found){const ms=vinMatch(vb,r.model);s.look.ms=ms;if(ms.length===1)return vinOpen(c,vb,ms[0],r.name);const pk=vinPick(vb,r,ms,vinYear(c));if(pk)return vinOpen(c,vb,pk,r.name);}
  s.pick=true;s.vb=vb;s.mf='';refresh();}
 function vinFind(){const s=S.ui.vin||(S.ui.vin={q:''});const i=document.getElementById('vin-q');if(i)s.q=i.value;const c=vinClean(s.q);s.err='';s.pick=false;s.vb='';
  if(!/^[A-HJ-NPR-Z0-9]{17}$/.test(c)){s.err=c.length===17?'This is not a chassis number: check the letters (no I, O or Q in a chassis number).':'A chassis number has 17 letters and numbers. You typed '+c.length+'.';return refresh();}
@@ -3991,7 +3999,7 @@ const vinChips=(c,extra)=>{const bs=vinBrands(c),y=vinYear(c);return `<div class
 function vinV(){const s=S.ui.vin||(S.ui.vin={q:''});const c=s.c,mg=vinMgr();
  const pick=s.look&&s.look.busy?`<div class="card" style="border:2px solid var(--y)">${vinChips(c)}<div class="h3">Asking ${esc(s.look.vb)}’s site for this chassis…</div></div>`:s.pick&&c?(()=>{const site=VIN_SITE[c.slice(0,3)],lk=s.look||{};const known=site?null:(DB.vinMap||{})[vinKey(c)];const bs=vinBrands(c);const all=Object.keys(BRANDS_V).filter(b=>CAT_ALL.some(e=>e.vb===b));const opts=bs.length>1?bs:bs.length?[]:all;
   const vb=s.vb;const mf=String(s.mf||'').trim().toLowerCase();const ms=vb?(site&&!mf&&lk.ms&&lk.ms.length>1?lk.ms:(BRANDS_V[vb]||[]).filter(m=>!mf||m.toLowerCase().includes(mf))):[];
-  return `<div class="card" style="border:2px solid var(--y)">${vinChips(c,site?'':known?`<span class="pill">Model code ${esc(c.slice(3,8))} = ${esc(known.vm)}</span>`:`<span class="pill a">Model code ${esc(c.slice(3,8))}: new</span>`)}${site&&s.look?`<div class="cap" style="font-weight:600">${lk.found?`${esc(site)} site: ${esc(lk.name)}.${lk.ms&&lk.ms.length>1?' Pick which one:':' Our catalogue has no model by that name: pick the nearest.'}`:lk.error?`${esc(lk.error)}. Pick the model.`:`${esc(site)}’s site has no record of this chassis number. Pick the model from the RC.`}</div>`:''}
+  return `<div class="card" style="border:2px solid var(--y)">${vinChips(c,site?'':known?`<span class="pill">Model code ${esc(c.slice(3,8))} = ${esc(known.vm)}</span>`:`<span class="pill a">Model code ${esc(c.slice(3,8))}: new</span>`)}${site&&s.look?`<div class="cap" style="font-weight:600">${lk.found?`${esc(site)} site: ${esc(lk.name)}.${lk.ms&&lk.ms.length>1?(()=>{const nw=lk.ms.find(m=>VIN_NEW_FROM[m]);return nw?` The new ${esc(nw)} came in Sep ${VIN_NEW_FROM[nw]}: check the manufacturing month on the RC card. Before Sep = ${esc(nw)} (old).`:' Pick which one:';})():' Our catalogue has no model by that name: pick the nearest.'}`:lk.error?`${esc(lk.error)}. Pick the model.`:`${esc(site)}’s site has no record of this chassis number. Pick the model from the RC.`}</div>`:''}
   ${known&&!mg?`<div class="cap">This code is saved as ${esc(known.vb+' '+known.vm)}. Only Manager or Admin can change it.</div><button class="btn" onclick="vinOpen('${c}','${m2Q(known.vb)}','${m2Q(known.vm)}')">Open ${esc(known.vm)}</button>`:`
   ${opts.length?`<div class="h3">Which brand is this?</div><div class="row wrap" style="gap:6px">${opts.map(b=>`<button class="chip ${vb===b?'on':''}" onclick="S.ui.vin.vb='${m2Q(b)}';S.ui.vin.mf='';refresh()">${esc(b)}</button>`).join('')}</div>`:''}
   ${vb?`<div class="h3">Which ${esc(vb)} model is this?</div><div class="inp" style="height:44px">${ic('search','s16')}<input id="vin-mf" placeholder="Type the model, e.g. ${esc((BRANDS_V[vb]||[''])[0])}" aria-label="Filter models" autocomplete="off" value="${esc(s.mf||'')}" oninput="S.ui.vin.mf=this.value;refresh()"></div>

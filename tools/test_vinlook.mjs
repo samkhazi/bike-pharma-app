@@ -7,7 +7,10 @@ import { _honda } from '../lib/vinlook.mjs';
 const BASE = process.env.BASE || 'http://127.0.0.1:3015';
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 const RE = { ME3K5A6FGT1002169: { VIN: 'ME3K5A6FGT1002169', CategoryName: 'BS6 - VQJG60AB', CategoryUrl: 'himalayan-450-6153/bs6-vqjg60ab-10339.html?vin=ME3K5A6FGT1002169&searchResultName=HIMALAYAN 450 (BS6 - VQJG60AB)' },
-  ME3U3S5C1KC000011: { VIN: 'ME3U3S5C1KC000011', CategoryName: 'BS4', CategoryUrl: 'classic-350/bs4.html?searchResultName=CLASSIC 350 (BS4)' } };
+  ME3U3S5C1KC000011: { VIN: 'ME3U3S5C1KC000011', CategoryName: 'BS4', CategoryUrl: 'classic-350/bs4.html?searchResultName=CLASSIC 350 (BS4)' },
+  ME3U3S5F2LK959792: { VIN: 'ME3U3S5F2LK959792', CategoryName: 'VBQN60GM', CategoryUrl: 'classic-350/x.html?searchResultName=CLASSIC 350 ABS - BSVI (VBQN60GM)' },
+  ME3J3S5C1MC000011: { VIN: 'ME3J3S5C1MC000011', CategoryName: 'BS6', CategoryUrl: 'classic-350/y.html?searchResultName=CLASSIC 350 (BS6)' },
+  ME3J3S5C1PC000011: { VIN: 'ME3J3S5C1PC000011', CategoryName: 'BS6', CategoryUrl: 'classic-350/z.html?searchResultName=CLASSIC 350 (BS6)' } };
 const HONDA = { ME4KC311AK8485736: { VEHICLE: 'CB Unicorn', MODEL: 'CBF150MH', CHASSISNO: 'ME4KC311AK8485736', SBOMCODE: 'CBF150MH', STARTDATE: '/Date(1548873000000)/' } };
 const asked = [];
 const mock = http.createServer((q, r) => { let b = ''; q.on('data', d => b += d); q.on('end', () => {
@@ -29,12 +32,19 @@ let st = await p.evaluate(() => cur().p); let t = await T();
 ok(st.v === 'year' && st.vb === 'Royal Enfield' && st.vm === 'Himalayan 450', 'RE chassis opens Himalayan 450 by itself ' + JSON.stringify({ v: st.v, vm: st.vm }));
 await p.waitForFunction(() => cur().p.v === 'secs', null, { timeout: 60000 }).catch(() => {}); await p.waitForTimeout(500);
 ok(/Royal Enfield site: HIMALAYAN 450 \(BS6 - VQJG60AB\)/.test(await T()), 'the bike card shows what RE’s site said');
-// RE: two models of that name (Classic 350 and Classic 350 (old)): staff pick one of the two, nothing saved for the code
-await vin('ME3U3S5C1KC000011'); t = await T();
+// update 9p: two books of that name (Classic 350 and Classic 350 (old)): the site's text or the chassis year picks the book by itself
+await vin('ME3U3S5F2LK959792'); st = await p.evaluate(() => cur().p);
+ok(['year', 'secs'].includes(st.v) && st.vm === 'Classic 350 (old)', 'Sam’s chassis: site says CLASSIC 350 ABS - BSVI, opens Classic 350 (old) by itself ' + st.vm);
+await vin('ME3U3S5C1KC000011'); st = await p.evaluate(() => cur().p);
+ok(st.vm === 'Classic 350 (old)' && !(await p.evaluate(() => (DB.vinMap || {})['ME3U3S5C'])), '2019 Classic 350 opens the old book, nothing saved for the code ' + st.vm);
+await vin('ME3J3S5C1PC000011'); st = await p.evaluate(() => cur().p);
+ok(st.vm === 'Classic 350', '2023 Classic 350 opens the new book ' + st.vm);
+// 2021: either book fits, staff pick one of the two with the RC hint
+await vin('ME3J3S5C1MC000011'); t = await T();
 const chips = await p.evaluate(() => [...document.querySelectorAll('#vp .screen:last-child button.chip')].map(x => x.innerText.trim()));
-ok(/Royal Enfield site: CLASSIC 350 \(BS4\)/.test(t) && chips.includes('Classic 350') && chips.includes('Classic 350 (old)') && !chips.includes('Hunter 350'), 'RE: two Classic 350 books, only those two to pick: ' + chips.join(', '));
+ok(/Royal Enfield site: CLASSIC 350 \(BS6\)/.test(t) && /manufacturing month on the RC card/.test(t) && chips.includes('Classic 350') && chips.includes('Classic 350 (old)') && !chips.includes('Hunter 350'), '2021: only the two Classic 350 books to pick, with the RC hint: ' + chips.join(', '));
 await p.click('#vp .screen:last-child button.chip:has-text("Classic 350 (old)")'); await p.waitForTimeout(500);
-ok(await p.evaluate(() => cur().p.vm === 'Classic 350 (old)' && !(DB.vinMap || {})['ME3U3S5C']), 'the pick opens that model and is not saved for the code');
+ok(await p.evaluate(() => cur().p.vm === 'Classic 350 (old)' && !(DB.vinMap || {})['ME3J3S5C']), 'the pick opens that model and is not saved for the code');
 // RE: not on the site (Sam's test number)
 await vin('ME343S5C1KC927703'); t = await T();
 ok(/Royal Enfield’s site has no record of this chassis number/.test(t) && /Which Royal Enfield model/.test(t), 'RE: not on RE’s site, staff pick the model');

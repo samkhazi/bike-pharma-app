@@ -25,6 +25,11 @@ const mock = http.createServer((q, r) => { let b = ''; q.on('data', d => b += d)
     if (q.url === '/ypec/control/specification/ListModelSelection') { asked.push('ysearch:' + (q.headers.cookie || '') + ':' + f.frameNo);
       return r.end(f.frameNo === 'ME11CK01BB2008284' ? `<a href="JavaScript:onPdf( '','1CK1','2011','010','B','YZF-R15\\nR15 V2','BLACK METALLIC X','Y1CK100-2011B0000')">x</a>` : `<td class='MESSAGE'>Corresponding data doesn't exist.</td>`); }
     return r.end('<html>menu</html>'); }
+  // update 9s: Hero e-catalogue (guest login, then the search with its token)
+  if (q.url === '/hero/getGeneralUserDetails') { asked.push('hlogin'); return r.end(JSON.stringify({ authToken: 'T1', userId: 'General' })); }
+  if (q.url === '/hero/fetchBikeSearchDetails') { asked.push('hsearch:' + q.headers['x-auth-token'] + ':' + j.vin);
+    return r.end(JSON.stringify(j.vin === 'MBLHAW264RHK01290' ? { vin: j.vin, category: 'BIKE', model: 'PASSION_i3S_AACY', modelDesc: 'Passion-HZ(May,2023)', colour: '2008', colours: [{ id: '2008', name: 'BLACK (NH-1) TYPE 4' }] }
+      : { msg: 'Entered VIN is incorrect, kindly check and retry with correct VIN.' })); }
   if (q.url === '/honda') { asked.push('honda'); const v = _honda.hDec(j.strVIN); return r.end(JSON.stringify({ d: _honda.hEnc(JSON.stringify({ tbl_chassismaster: HONDA[v] ? [HONDA[v]] : [] })) })); }
   r.statusCode = 404; r.end('{}'); }); });
 await new Promise(ok2 => mock.listen(3029, '127.0.0.1', ok2));
@@ -66,9 +71,17 @@ ok(st.vb === 'Yamaha' && st.vm === 'R15 V2' && /Yamaha site: R15 V2 \(YZF-R15, 2
 ok(asked.includes('ylogin:testuser') && asked.includes('yaccept:1') && asked.some(x => /^ysearch:JSESSIONID=y1:ME11CK01BB2008284$/.test(x)), 'YPEC: logged in with the .env values, terms page sent, search kept the login cookie ' + asked.filter(x => x[0] === 'y').join(' '));
 await vin('ME11CK01BB2009999'); t = await T();
 ok(/Yamaha’s site has no record of this chassis number/.test(t) && asked.filter(x => x.startsWith('ylogin')).length === 1, 'Yamaha: not found, staff pick; the login is reused');
-// other makers: no site asked, the old way
+// Hero (update 9s): the e-catalogue's guest login, model opens by itself
+await vin('MBLHAW264RHK01290'); st = await p.evaluate(() => cur().p);
+await p.waitForFunction(() => cur().p.v === 'secs', null, { timeout: 60000 }).catch(() => {}); await p.waitForTimeout(500); t = await T();
+ok(st.vb === 'Hero' && st.vm === 'Passion HZ' && /Hero site: Passion-HZ\(May,2023\) \(BLACK \(NH-1\) TYPE 4\)/.test(t) && asked.includes('hlogin') && asked.includes('hsearch:T1:MBLHAW264RHK01290'), 'Hero chassis opens Passion HZ by itself ' + st.vm);
+await vin('MBLHAW264RHK09999'); t = await T();
+ok(/Hero’s site has no record of this chassis number/.test(t), 'Hero: not on Hero’s site, staff pick');
+// server with Hero off (server outside India): Hero goes the old way, nothing else asked
+await p.route('**/api/vinlook*', rt => rt.fulfill({ contentType: 'application/json', body: '{"none":true}' }));
 const n0 = asked.length; const AL = 'ABCDEFGHJKLMNPRSTUVWXYZ'; await vin('MBL' + Array.from({ length: 6 }, () => AL[Math.floor(Math.random() * AL.length)]).join('') + 'KC000011');
-ok(asked.length === n0 && /Which Hero model/.test(await T()), 'Hero: no site asked, asks the model as before');
+ok(asked.length === n0 && /Which Hero model/.test(await T()) && /model code/i.test(await T()), 'Hero off on the server: asks the model once per code, as before');
+await p.unroute('**/api/vinlook*');
 // the API is staff only
 const anon = await (await fetch(BASE + '/api/vinlook?c=ME3K5A6FGT1002169')).status;
 ok(anon === 401, 'not logged in: no chassis lookup (' + anon + ')');

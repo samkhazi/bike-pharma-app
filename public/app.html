@@ -3963,30 +3963,44 @@ function vinYear(c){const ch=c[9];const i=VIN_YR.indexOf(ch);if(i>-1){let y=2010
 const vinKey=c=>c.slice(0,8);
 const vinBrands=c=>(VIN_WMI[c.slice(0,3)]||[]).filter(b=>BRANDS_V[b]);
 const vinMgr=()=>['manager','admin'].includes(S.user.role);
+/* update 9o (Sam 2026-10-19 "chassis number daalunga toh automatic vehicle details fetch hona he"): Royal Enfield and Honda chassis numbers
+   are asked to the maker's own site through our server (/api/vinlook); the model comes only from that reply (Sam's rule), never from the
+   saved code list. Not found or site down: staff pick the model, and that pick is not saved for the code. */
+const VIN_SITE={ME3:'Royal Enfield',ME4:'Honda'};
+const vinNorm=x=>String(x||'').toLowerCase().replace(/\(old\)/g,'').replace(/[^a-z0-9]/g,'');
+function vinMatch(vb,name){const ms=BRANDS_V[vb]||[],n=vinNorm(name);if(!n)return [];
+ const ex=ms.filter(m=>vinNorm(m)===n);if(ex.length)return ex;
+ const inn=ms.filter(m=>vinNorm(m).length>2&&n.includes(vinNorm(m)));if(inn.length){const L=Math.max(...inn.map(m=>vinNorm(m).length));return inn.filter(m=>vinNorm(m).length===L);}
+ return ms.filter(m=>vinNorm(m).includes(n));}
+async function vinAsk(c){const s=S.ui.vin;const vb=VIN_SITE[c.slice(0,3)];s.look={busy:1,vb};refresh();let r;
+ try{const x=await fetch('/api/vinlook?c='+encodeURIComponent(c),{credentials:'same-origin'});r=await x.json();if(!x.ok&&!r.error)r={error:'Search failed ('+x.status+')'};}catch(e){r={error:'No internet connection'};}
+ if(S.ui.vin!==s||s.c!==c)return;s.look={...r,vb};
+ if(r.found){const ms=vinMatch(vb,r.model);s.look.ms=ms;if(ms.length===1)return vinOpen(c,vb,ms[0],r.name);}
+ s.pick=true;s.vb=vb;s.mf='';refresh();}
 function vinFind(){const s=S.ui.vin||(S.ui.vin={q:''});const i=document.getElementById('vin-q');if(i)s.q=i.value;const c=vinClean(s.q);s.err='';s.pick=false;s.vb='';
  if(!/^[A-HJ-NPR-Z0-9]{17}$/.test(c)){s.err=c.length===17?'This is not a chassis number: check the letters (no I, O or Q in a chassis number).':'A chassis number has 17 letters and numbers. You typed '+c.length+'.';return refresh();}
- s.q=c;s.c=c;const m=(DB.vinMap||{})[vinKey(c)];if(m&&BRANDS_V[m.vb])return vinOpen(c,m.vb,m.vm);
+ s.q=c;s.c=c;s.look=null;if(VIN_SITE[c.slice(0,3)])return vinAsk(c);const m=(DB.vinMap||{})[vinKey(c)];if(m&&BRANDS_V[m.vb])return vinOpen(c,m.vb,m.vm);
  const bs=vinBrands(c);s.pick=true;s.vb=bs.length===1?bs[0]:'';s.mf='';refresh();}
-function vinOpen(c,vb,vm){catLoad(vb);go('findpart',{v:'year',vb,vm,yr:'Any',vin:c,vy:vinYear(c)});}
-function vinSet(vb,vm){const s=S.ui.vin;const c=s&&s.c;if(!c)return;const k=vinKey(c);DB.vinMap=DB.vinMap||{};const old=DB.vinMap[k];
+function vinOpen(c,vb,vm,src){catLoad(vb);go('findpart',{v:'year',vb,vm,yr:'Any',vin:c,vy:vinYear(c),...(src?{vsrc:vb+' site: '+src}:{})});}
+function vinSet(vb,vm){const s=S.ui.vin;const c=s&&s.c;if(!c)return;if(VIN_SITE[c.slice(0,3)]){const l=s.look||{};return vinOpen(c,vb,vm,l.found?l.name:'');}const k=vinKey(c);DB.vinMap=DB.vinMap||{};const old=DB.vinMap[k];
  if(old&&(old.vb!==vb||old.vm!==vm)){if(!vinMgr()){toast('Only Manager or Admin can change a chassis code’s model');return;}audit('Chassis code model changed',k,old.vb+' '+old.vm,vb+' '+vm);}
  else if(!old)audit('Chassis code learned',k,'—',vb+' '+vm);
  DB.vinMap[k]={vb,vm,by:S.user.name,at:isoToday()};save();vinOpen(c,vb,vm);}
 function vinChange(c){S.ui.vin={q:c,c,pick:true,vb:((DB.vinMap||{})[vinKey(c)]||{}).vb||vinBrands(c)[0]||'',mf:''};go('findpart',{v:'vin'});}
 const vinChips=(c,extra)=>{const bs=vinBrands(c),y=vinYear(c);return `<div class="row wrap" style="gap:6px">${bs.length?`<span class="pill y">${esc(c.slice(0,3))} = ${esc(bs.join(' / '))}</span>`:`<span class="pill a">${esc(c.slice(0,3))}: maker not known</span>`}${y?`<span class="pill y">10th letter ${esc(c[9])} = ${y}</span>`:''}${extra||''}</div>`;};
 function vinV(){const s=S.ui.vin||(S.ui.vin={q:''});const c=s.c,mg=vinMgr();
- const pick=s.pick&&c?(()=>{const known=(DB.vinMap||{})[vinKey(c)];const bs=vinBrands(c);const all=Object.keys(BRANDS_V).filter(b=>CAT_ALL.some(e=>e.vb===b));const opts=bs.length>1?bs:bs.length?[]:all;
-  const vb=s.vb;const mf=String(s.mf||'').trim().toLowerCase();const ms=vb?(BRANDS_V[vb]||[]).filter(m=>!mf||m.toLowerCase().includes(mf)):[];
-  return `<div class="card" style="border:2px solid var(--y)">${vinChips(c,known?`<span class="pill">Model code ${esc(c.slice(3,8))} = ${esc(known.vm)}</span>`:`<span class="pill a">Model code ${esc(c.slice(3,8))}: new</span>`)}
+ const pick=s.look&&s.look.busy?`<div class="card" style="border:2px solid var(--y)">${vinChips(c)}<div class="h3">Asking ${esc(s.look.vb)}’s site for this chassis…</div></div>`:s.pick&&c?(()=>{const site=VIN_SITE[c.slice(0,3)],lk=s.look||{};const known=site?null:(DB.vinMap||{})[vinKey(c)];const bs=vinBrands(c);const all=Object.keys(BRANDS_V).filter(b=>CAT_ALL.some(e=>e.vb===b));const opts=bs.length>1?bs:bs.length?[]:all;
+  const vb=s.vb;const mf=String(s.mf||'').trim().toLowerCase();const ms=vb?(site&&!mf&&lk.ms&&lk.ms.length>1?lk.ms:(BRANDS_V[vb]||[]).filter(m=>!mf||m.toLowerCase().includes(mf))):[];
+  return `<div class="card" style="border:2px solid var(--y)">${vinChips(c,site?'':known?`<span class="pill">Model code ${esc(c.slice(3,8))} = ${esc(known.vm)}</span>`:`<span class="pill a">Model code ${esc(c.slice(3,8))}: new</span>`)}${site&&s.look?`<div class="cap" style="font-weight:600">${lk.found?`${esc(site)} site: ${esc(lk.name)}.${lk.ms&&lk.ms.length>1?' Pick which one:':' Our catalogue has no model by that name: pick the nearest.'}`:lk.error?`${esc(lk.error)}. Pick the model.`:`${esc(site)}’s site has no record of this chassis number. Pick the model from the RC.`}</div>`:''}
   ${known&&!mg?`<div class="cap">This code is saved as ${esc(known.vb+' '+known.vm)}. Only Manager or Admin can change it.</div><button class="btn" onclick="vinOpen('${c}','${m2Q(known.vb)}','${m2Q(known.vm)}')">Open ${esc(known.vm)}</button>`:`
   ${opts.length?`<div class="h3">Which brand is this?</div><div class="row wrap" style="gap:6px">${opts.map(b=>`<button class="chip ${vb===b?'on':''}" onclick="S.ui.vin.vb='${m2Q(b)}';S.ui.vin.mf='';refresh()">${esc(b)}</button>`).join('')}</div>`:''}
   ${vb?`<div class="h3">Which ${esc(vb)} model is this?</div><div class="inp" style="height:44px">${ic('search','s16')}<input id="vin-mf" placeholder="Type the model, e.g. ${esc((BRANDS_V[vb]||[''])[0])}" aria-label="Filter models" autocomplete="off" value="${esc(s.mf||'')}" oninput="S.ui.vin.mf=this.value;refresh()"></div>
   <div class="row wrap" style="gap:6px">${ms.slice(0,60).map(m=>`<button class="chip ${known&&known.vm===m?'on':''}" onclick="vinSet('${m2Q(vb)}','${m2Q(m)}')">${esc(m)}</button>`).join('')||'<span class="cap">No model matches.</span>'}</div>
-  <div class="cap">Pick the model once. Bike Pharma remembers code ${esc(c.slice(3,8))} for every next ${esc(vb)} chassis with it.${known?'':' Only Manager or Admin can change it later.'}</div>`:''}`}</div>`;})():'';
+  <div class="cap">${site?`The model always comes from ${esc(site)}’s site, so this pick is used for this chassis only.`:`Pick the model once. Bike Pharma remembers code ${esc(c.slice(3,8))} for every next ${esc(vb)} chassis with it.${known?'':' Only Manager or Admin can change it later.'}`}</div>`:''}`}</div>`;})():'';
  return `${m2Head('Check parts with chassis number','Type or scan the 17-letter chassis number from the RC or the bike frame. The bike opens by itself.')}
  <div class="fp-sb">${ic('scan','s20')}<input id="vin-q" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" maxlength="24" placeholder="Chassis number, e.g. MBLHAW…" aria-label="Chassis number" value="${esc(s.q||'')}" oninput="S.ui.vin.q=this.value" onkeydown="if(event.key==='Enter'){event.preventDefault();vinFind()}" style="font-family:var(--num,inherit);letter-spacing:.5px"><button class="fp-go" onclick="vinFind()" aria-label="Find bike">${ic('search','s20')}</button></div>
  ${s.err?`<div class="errmsg">${esc(s.err)}</div>`:'<p class="cap m2-hint">On the RC book, and punched on the frame near the steering.</p>'}${pick}`;}
-function vinBanner(p){const c=p.vin;return `<div class="dark-card" style="gap:8px"><span class="micro" style="color:var(--y)">BIKE FOUND FROM THE CHASSIS NUMBER</span><div class="h2" style="color:#fff">${esc(m2Bike(p))}</div><div class="cap" style="color:var(--ink3)">${esc(c)}</div>${vinChips(c)}<button class="btn line sm" onclick="vinChange('${c}')">Change bike</button></div>`;}
+function vinBanner(p){const c=p.vin;return `<div class="dark-card" style="gap:8px"><span class="micro" style="color:var(--y)">BIKE FOUND FROM THE CHASSIS NUMBER</span><div class="h2" style="color:#fff">${esc(m2Bike(p))}</div><div class="cap" style="color:var(--ink3)">${esc(c)}</div>${p.vsrc?`<div class="cap" style="color:var(--y)">${esc(p.vsrc)}</div>`:''}${vinChips(c)}<button class="btn line sm" onclick="vinChange('${c}')">Change bike</button></div>`;}
 function m2Home(f){const cats=M2_HOME.map(c=>`<button class="chip" onclick="m2Cat('${c}')">${esc(c)}</button>`).join('')+`<button class="chip on" onclick="m2Cat('All')">View all</button>`;
  const isIn=b=>CAT_ALL.some(e=>e.vb===b),BL=Object.keys(BRANDS_V).sort((x,y)=>isIn(y)-isIn(x)),nIn=BL.filter(isIn).length;
  const brands=BL.map(b=>{const c=M2_CNT[b]||{};const m=(BRANDS_V[b]||[]).length;return isIn(b)?`<button class="m2-br" onclick="go('findpart',{v:'brand',vb:'${m2Q(b)}'})"><b>${esc(b)}</b><span class="cap">${m} model${m===1?'':'s'}${c.pn?' · '+m2N(c.pn)+' parts':''}</span></button>`:`<div class="m2-br off"><b>${esc(b)}</b><span class="cap">Catalogue coming soon</span></div>`;}).join('');

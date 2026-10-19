@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { openStore, HAS_SQLITE } from './lib/store.mjs';
 import { roleClass, viewOf, scopeValue, canWrite, merge3, applyOwn, applyMine, mechLogins, moveCodes, deepEqual, cleanStrings, safeText, STAFF_ROLES, MECH_OWN, CUST_OWN } from './lib/merge.mjs';
 import { guardScoped } from './lib/custguard.mjs';
+import { vinLook } from './lib/vinlook.mjs';
 import { otpConfig, makeOtp, deliverOtp } from './lib/sms.mjs';
 import { removeDemoData } from './lib/cleanup.mjs';
 import { checkNewBills, guardValue, auditRows, BILL_KEYS } from './lib/billguard.mjs';
@@ -104,6 +105,12 @@ async function api(req, res, url, user) {
   if (p === '/api/photo') return photoUpload(req, res, user, url);
   if (p === '/api/billread') return billRead(req, res, user);
   if (p === '/api/dghot' || p === '/api/dghot/edit') return dgHot(req, res, url, user);
+  if (p === '/api/vinlook') {   // update 9o: chassis number -> model from the maker's site (staff only)
+    drain(req);
+    if (roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: user ? 'Staff login needed' : 'Please log in again' });
+    if (limited('vin:' + user.id, 60, 10 * 60 * 1000)) return json(res, 429, { error: 'Too many chassis searches, try again in a few minutes' });
+    return json(res, 200, await vinLook(url.searchParams.get('c')));
+  }
   let body = {};
   if (m === 'POST') { try { const b = await readBody(req); body = b.length ? JSON.parse(b.toString('utf8')) : {}; } catch (e) { return json(res, 400, { error: 'Bad request body' }); } }
   const catList = () => { try { return fs.readdirSync(path.join(PUBLIC_DIR, 'cat')).filter(f => f.endsWith('.json')).sort(); } catch { return []; } };

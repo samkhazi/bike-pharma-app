@@ -13,16 +13,19 @@ const RE = { ME3K5A6FGT1002169: { VIN: 'ME3K5A6FGT1002169', CategoryName: 'BS6 -
   ME3J3S5C1MC000011: { VIN: 'ME3J3S5C1MC000011', CategoryName: 'BS6', CategoryUrl: 'classic-350/y.html?searchResultName=CLASSIC 350 (BS6)' },
   ME3J3S5C1PC000011: { VIN: 'ME3J3S5C1PC000011', CategoryName: 'BS6', CategoryUrl: 'classic-350/z.html?searchResultName=CLASSIC 350 (BS6)' } };
 const HONDA = { ME4KC311AK8485736: { VEHICLE: 'CB Unicorn', MODEL: 'CBF150MH', CHASSISNO: 'ME4KC311AK8485736', SBOMCODE: 'CBF150MH', STARTDATE: '/Date(1548873000000)/' } };
-const asked = [];
+const asked = []; let ypMenu = false;
 const mock = http.createServer((q, r) => { let b = ''; q.on('data', d => b += d); q.on('end', () => {
   const j = q.url.startsWith('/ypec/') ? {} : JSON.parse(b || '{}'); r.setHeader('Content-Type', 'application/json');
   if (q.url === '/graphql') { asked.push('re'); const v = RE[j.variables && j.variables.v]; return r.end(JSON.stringify({ data: { searchQueryVindetails: { vin_detail: v || { VIN: null, CategoryName: null, CategoryUrl: null } } } })); }
   // update 9r: dealer YPEC (login, terms page once, menu pages, search)
   if (q.url.startsWith('/ypec/')) { r.setHeader('Content-Type', 'text/html');
     const f = Object.fromEntries(new URLSearchParams(b));
-    if (q.url === '/ypec/control/LoginDealer') { asked.push('ylogin:' + f.ypec_user_id); r.setHeader('Set-Cookie', 'JSESSIONID=y1; Path=/'); return r.end(`<html>TERMS OF USE <form action="/ypec/control/Accept" method="post"><input type="hidden" name="agree" value="1"><input type="submit" value="I ACCEPT"></form></html>`); }
-    if (q.url === '/ypec/control/Accept') { asked.push('yaccept:' + f.agree); return r.end('<html>ok</html>'); }
+    // like live YPEC (9t): terms page whose I ACCEPT is a link to the menu; search is "illegal access" until the menu page set the product
+    if (q.url === '/ypec/control/LoginDealer') { asked.push('ylogin:' + f.ypec_user_id); ypMenu = false; r.setHeader('Set-Cookie', 'JSESSIONID=y1; Path=/'); return r.end(`<html>TERMS OF USE <form method="post"><a href="/ypec/control/common/FrameMainMenu">I&nbsp;&nbsp;&nbsp;ACCEPT</a></form></html>`); }
+    if (q.url === '/ypec/control/common/FrameMainMenu') asked.push('yaccept:1');
+    if (q.url === '/ypec/control/common/SheetMainMenu?prodCategory=10&langId=02') ypMenu = true;
     if (q.url === '/ypec/control/specification/ListModelSelection') { asked.push('ysearch:' + (q.headers.cookie || '') + ':' + f.frameNo);
+      if (!ypMenu) return r.end('<html>Session time-out or illegal access. Please log in again.</html>');
       return r.end(f.frameNo === 'ME11CK01BB2008284' ? `<a href="JavaScript:onPdf( '','1CK1','2011','010','B','YZF-R15\\nR15 V2','BLACK METALLIC X','Y1CK100-2011B0000')">x</a>` : `<td class='MESSAGE'>Corresponding data doesn't exist.</td>`); }
     return r.end('<html>menu</html>'); }
   // update 9s: Hero e-catalogue (guest login, then the search with its token)
@@ -66,8 +69,8 @@ ok(/Royal Enfield’s site has no record of this chassis number/.test(t) && /Whi
 await vin('ME4KC311AK8485736'); st = await p.evaluate(() => cur().p); t = await T();
 ok(st.vb === 'Honda' && st.vm === 'CB Unicorn' && /Honda site: CB Unicorn \(CBF150MH\)/.test(t), 'Honda chassis opens CB Unicorn by itself ' + st.vm);
 // Yamaha (update 9r): dealer YPEC login from .env, its terms page sent once, model opens by itself
-await vin('ME11CK01BB2008284'); st = await p.evaluate(() => cur().p); t = await T();
-ok(st.vb === 'Yamaha' && st.vm === 'R15 V2' && /Yamaha site: R15 V2 \(YZF-R15, 2011, BLACK METALLIC X\)/.test(t), 'Yamaha chassis opens R15 V2 by itself ' + st.vm);
+await vin('ME11CK01BB2008284'); await p.waitForFunction(() => cur().p.v === 'secs', null, { timeout: 60000 }).catch(() => {}); await p.waitForTimeout(500); st = await p.evaluate(() => cur().p); t = await T();
+ok(st.vb === 'Yamaha' && st.vm === 'R15 V2' && /Yamaha site: R15 V2 \(YZF-R15, 2011, BLACK METALLIC X\)/.test(t), 'Yamaha chassis opens R15 V2 by itself ' + st.vm + ' ' + (t.match(/Yamaha site[^\n]*/) || [''])[0]);
 ok(asked.includes('ylogin:testuser') && asked.includes('yaccept:1') && asked.some(x => /^ysearch:JSESSIONID=y1:ME11CK01BB2008284$/.test(x)), 'YPEC: logged in with the .env values, terms page sent, search kept the login cookie ' + asked.filter(x => x[0] === 'y').join(' '));
 await vin('ME11CK01BB2009999'); t = await T();
 ok(/Yamaha’s site has no record of this chassis number/.test(t) && asked.filter(x => x.startsWith('ylogin')).length === 1, 'Yamaha: not found, staff pick; the login is reused');

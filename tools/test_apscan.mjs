@@ -39,6 +39,11 @@ await p.evaluate(async () => { catLoad('Hero'); for (let i = 0; i < 400 && CAT_A
 await p.evaluate(() => { S.ui.ap = null; go('addproduct'); }); await p.waitForTimeout(200); await p.type('#ap-pn', '11394aah00099s', { delay: 40 }); await p.waitForTimeout(3000);
 const t2 = await p.evaluate(() => document.querySelector('#vp .screen:last-child').innerText);
 ok(/FOUND IN HERO CATALOGUE/i.test(t2) && /Gasket R Crank Case Cover/i.test(t2), '11394aah00099s (small letters, S ending) finds the Hero gasket ' + (t2.match(/FOUND IN[^\n]*\n[^\n]*\n[^\n]*\n[^\n]*/) || t2.slice(300, 500)));
+// the same QR typed by a barcode gun into the box, and the sticker photo matcher (Sam 2026-10-20: 'FJBG0000218367 aa raha he')
+const Q = 'D/FJBG0000218367/JCFMVZNMS4JY/16450ACK000S      /000001/0001200.00/AAE/1/G/000/00';
+await p.evaluate(() => { S.ui.ap = null; go('addproduct'); }); await p.waitForTimeout(200); await p.fill('#ap-pn', Q); await p.waitForTimeout(3000);
+const g = await p.evaluate(Q => ({ pn: S.ui.ap.pn, sc: scMatch([Q]).exact.map(h => h.pn) }), Q);
+ok(g.pn === '16450-ACK-000' && g.sc.join() === '16450-ACK-000', 'Hero QR from a barcode gun and in the sticker scan gives 16450-ACK-000, not the serial FJBG… ' + JSON.stringify(g));
 ok(errs.length === 0, 'no page errors ' + errs.slice(0, 2).join(' | '));
 await b.close(); fs.rmSync(dir, { recursive: true, force: true });
 console.log(fails ? `\n${fails} FAILED` : '\nALL OK'); process.exit(fails ? 1 : 0);

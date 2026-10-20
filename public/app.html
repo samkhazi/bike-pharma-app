@@ -2609,7 +2609,7 @@ SCREENS.invlist=(p)=>{const k=p.kind;let title,body;
  if(k==='low'){title='Low stock';const L=lowList();body=`<p class="cap">Parts below their reorder level. Tap a part for full details.</p>${L.length?`<div class="card flush">${L.map(x=>partRow(x,`<span class="pill a">${DB.stock[x.id]} / ${reorderOf(x)}</span>`)).join('')}</div><button class="btn dark" onclick="reorderReq(${JSON.stringify(L.map(x=>x.id)).replace(/"/g,"'")})">Send reorder list to Manager</button>`:'<div class="empty">Nothing is low right now.</div>'}`;}
  if(k==='out'){title='Out of stock';const L=outList();body=`<p class="cap">Parts with zero stock. Customers see these as “Out of stock”.</p>${L.length?`<div class="card flush">${L.map(x=>partRow(x,'<span class="pill r">0 pcs</span>')).join('')}</div><button class="btn dark" onclick="reorderReq(${JSON.stringify(L.map(x=>x.id)).replace(/"/g,"'")})">Send reorder list to Manager</button>`:'<div class="empty">Every part is in stock.</div>'}`;}
  if(k==='today'){title="Today’s entries";const M=DB.moves.slice().reverse();const inQ=M.filter(m=>m.type==='in').length,outQ=M.filter(m=>m.type==='out').length;
-  body=`<div class="grid2">${statTile('g','Stock in',inQ,'entries')}${statTile('b','Billed out',outQ,'entries')}</div>${M.length?`<div class="card flush">${M.map(m=>{const x=P(m.pid)||{name:'Part',ic:'package',pn:''};return `<div class="li"><div class="tile sm ${m.type==='in'?'g':'b'}">${ic(m.type==='in'?'down':'up','s18')}</div><div class="grow"><div class="t">${esc(x.name)}</div><div class="s">${m.t} · ${esc(m.ref)} · ${esc(m.note)}${m.byN?' · by '+esc(m.byN):''}</div></div><b class="num" style="color:${m.type==='in'?'var(--g)':'var(--blue)'}">${m.type==='in'?'+':'−'}${m.q}</b></div>`;}).join('')}</div>`:'<div class="empty">No stock entries yet today.</div>'}`;}
+  body=`<div class="grid2">${statTile('g','Stock in',inQ,'entries')}${statTile('b','Billed out',outQ,'entries')}</div>${M.length?`<div class="card flush">${M.map(m=>{const x=P(m.pid)||{name:'Part',ic:'package',pn:''};return `<div class="li"><div class="tile sm ${m.type==='in'?'g':'b'}">${ic(m.type==='in'?'down':'up','s18')}</div><div class="grow"><div class="t">${esc(x.name)}</div><div class="s">${m.t} · ${esc(m.ref)} · ${esc(m.note)}${m.byN&&seesWho()?' · by '+esc(m.byN):''}</div></div><b class="num" style="color:${m.type==='in'?'var(--g)':'var(--blue)'}">${m.type==='in'?'+':'−'}${m.q}</b></div>`;}).join('')}</div>`:'<div class="empty">No stock entries yet today.</div>'}`;}
  if(k==='grn'){title='Pending GRN';const L=pendingGrns();body=L.length?`<p class="cap">Goods received from suppliers that still need to be checked and posted to stock.</p>${L.map(g=>`<button class="card" style="text-align:left" onclick="S.ui.ge=null;go('grnedit',{id:'${g.id}'})"><div class="row"><div class="tile b">${ic('truck','s20')}</div><div class="grow"><div class="h3">${g.id} · ${esc(g.supplier)}</div><div class="cap">Bill ${esc(g.inv)} · ${g.items.length} items · ${grnUnits(g)} units</div></div><span class="pill a">Pending</span></div><div class="sec cap"><span>Received ${esc(g.date)}</span><span class="link">Check & post →</span></div></button>`).join('')}`:'<div class="empty">No pending GRN. All received goods are posted.</div>';}
  return bar(title)+`<div class="scroll"><div class="pad">${body}</div></div>`;};
 function reorderReq(ids){DB.approvals.unshift({id:Date.now(),t:'Reorder request',d:`${S.user.sid} · ${ids.length} part${ids.length>1?'s':''}: ${ids.map(i=>P(i).pn).join(', ')}`,ic:'package',st:'pending'});audit('Reorder request sent',ids.length+' parts','—','Manager');save();toast('Reorder list sent to Manager');}
@@ -3383,6 +3383,8 @@ function scIndex(){const ix=new Map();const add=(code,h)=>{const k=scKey(code);i
  return ix;}
 /* exact = a known part number or barcode is on the sticker; near = one character off (never opened by itself: 1,500 catalogue numbers are one character apart) */
 function scMatch(strs){const ix=scIndex();const toks=new Set();
+ /* update 9z: Hero's box QR gives its part no. field, also without Hero's S ending */
+ strs=strs.flatMap(c=>{const h=heroQR(c);if(!h)return [c];const t=h[3].replace(/[^0-9A-Z]/g,'');return /S$/.test(t)?[t,t.slice(0,-1)]:[t];});
  strs.forEach(s=>{const p=String(s||'').toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);p.forEach(t=>toks.add(t));for(let i=0;i+1<p.length;i++)toks.add(p[i]+p[i+1]);if(p.length>1&&p.length<=4)toks.add(p.join(''));});
  const exact=new Map();
  toks.forEach(t=>{const k=scKey(t);if(k.length>=5&&ix.has(k))exact.set(k,ix.get(k));});
@@ -4679,7 +4681,8 @@ const staffAccs=()=>Object.entries(ACC()).filter(([,a])=>a&&a.sid);
 const accNameOf=sid=>{if(!sid)return '';const a=Object.values(ACC()).find(a=>a&&a.sid===sid);return a&&a.name||sid;};
 const myName=()=>S.user&&(S.user.name||S.user.sid||S.user.label)||'';
 const nowStamp=()=>{const d=new Date();return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})+', '+d.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'});};
-function addedBy(x){if(!x)return null;if(x.byN)return {n:x.byN,t:x.byT||x.at||''};
+const seesWho=()=>!!S.user&&['admin','manager'].includes(S.user.role);   /* Admin and Manager only (Sam 2026-10-20) */
+function addedBy(x){if(!x||!seesWho())return null;if(x.byN)return {n:x.byN,t:x.byT||x.at||''};
  const a=(DB.audit||[]).find(r=>r&&/^Product added/.test(r.a||'')&&r.e===x.pn);if(a)return {n:accNameOf(a.who),t:a.t||''};
  return x.by?{n:accNameOf(x.by),t:x.at||''}:null;}
 const addedByTxt=x=>{const b=addedBy(x);return b?'Added by '+esc(b.n)+(b.t?' · '+esc(b.t):''):'';};
@@ -5270,6 +5273,9 @@ function apLookNow(){clearTimeout(AP_T);const a=S.ui.ap;const pk=catPk(a.pn);if(
 /* update 9y (Sam 2026-10-20): Add product > Scan: the phone camera reads the box's barcode or QR code live and fills the part number.
    The code's text goes through scMatch (the photo scanner's matcher), so a QR full of other text (Hero's) still gives just the part number.
    No camera (blocked, or no https): Take photo, read by the same reader. */
+/* Hero's box QR: D/<serial>/<code>/<part no.>/<qty>/<MRP>/... (Sam 2026-10-20: 'D/FJBG0000218367/JCFMVZNMS4JY/16450ACK000S /000001/0001200.00/AAE/...').
+   The serial (FJBG...) is not the part no.: field 4 is. Returns the fields, or null. */
+const heroQR=c=>{const f=String(c||'').toUpperCase().split('/').map(x=>x.trim());return f.length>=5&&f[0]==='D'&&/^[0-9][0-9A-Z]{7,15}$/.test(f[3]||'')?f:null;};
 let APS=null;
 function apScanOpen(){apScanStop();APS={job:0};sheet(`<div class="stack" id="aps-body"><div class="row" style="justify-content:space-between"><div class="h3">Scan barcode or QR</div><button class="btn line sm" type="button" onclick="apScanClose()">Close</button></div>
  <div class="aps-box"><video id="aps-v" playsinline muted autoplay></video><div class="aps-aim"></div></div>
@@ -5302,8 +5308,7 @@ async function apScanPhoto(file){if(!file||!APS)return;apScanMsg('Reading the ph
 function apScanUse(codes){const a=S.ui.ap;if(!a)return false;let pn='';
  /* the pieces of the code's text that look like a part number (letters and digits, 5-18 long), Hero's 'S' ending also without it */
  const toks=[...new Set(codes.flatMap(c=>String(c).toUpperCase().split(/[^A-Z0-9-]+/)).map(t=>t.replace(/^-+|-+$/g,'')).filter(t=>/\d/.test(t)&&t.replace(/-/g,'').length>=5&&t.length<=18))];
- /* Hero's box QR: D/<serial>/<code>/<part no.>/<qty>/<MRP>/... (Sam 2026-10-20: 'D/FJBG0000218367/JCFMVZNMS4JY/16450ACK000S /000001/0001200.00/AAE/...') */
- const hq=codes.map(c=>String(c).toUpperCase().split('/').map(x=>x.trim())).find(f=>f.length>=5&&f[0]==='D'&&/^[0-9][0-9A-Z]{7,15}$/.test(f[3]||''));
+ const hq=codes.map(heroQR).find(Boolean);
  if(hq)toks.unshift(hq[3]);
  try{const m=scMatch(toks.concat(toks.filter(t=>/[0-9A-Z]{6,}S$/.test(t)).map(t=>t.slice(0,-1))));if(m.exact.length)pn=hq&&m.exact.some(h=>scKey(h.pn)===scKey(hq[3])||scKey(h.pn)+'S'===scKey(hq[3]))?m.exact.find(h=>scKey(h.pn)===scKey(hq[3])||scKey(h.pn)+'S'===scKey(hq[3])).pn:m.exact[0].pn;}catch(e){}
  /* not in a loaded catalogue: Hero's field, else a piece that starts with a digit and has letters (part numbers do; serials and codes rarely) */
@@ -5371,7 +5376,7 @@ SCREENS.addproduct=()=>{const a=S.ui.ap||(S.ui.ap=invApNew());if(a.look===undefi
  <p class="cap">Type the part number from the box, or scan its barcode. Name, brand, MRP and bikes fill in from the catalogue.</p>
  <div class="inv-2c"><div class="inv-col">
   <div class="card"><div class="h3">1 · Part number</div>
-   <form class="row" style="gap:8px" onsubmit="event.preventDefault();apLookNow()"><label class="inp grow ${E.pn?'err':''}" for="ap-pn" style="border-width:2px;border-color:var(--ink)">${ic('scan','s18')}<input id="ap-pn" autocomplete="off" autocapitalize="characters" spellcheck="false" value="${esc(a.pn)}" placeholder="Part no. on the box" oninput="S.ui.ap.pn=this.value;apLookSoon()"></label><button class="btn line sm" type="submit">Find</button><button class="btn sm" type="button" id="ap-scan" onclick="apScanOpen()" aria-label="Scan barcode or QR">${ic('scan','s18')} Scan</button></form>
+   <form class="row" style="gap:8px" onsubmit="event.preventDefault();apLookNow()"><label class="inp grow ${E.pn?'err':''}" for="ap-pn" style="border-width:2px;border-color:var(--ink)">${ic('scan','s18')}<input id="ap-pn" autocomplete="off" autocapitalize="characters" spellcheck="false" value="${esc(a.pn)}" placeholder="Part no. on the box" oninput="{const h=heroQR(this.value);if(h){this.value=h[3];}S.ui.ap.pn=this.value;apLookSoon();}"></label><button class="btn line sm" type="submit">Find</button><button class="btn sm" type="button" id="ap-scan" onclick="apScanOpen()" aria-label="Scan barcode or QR">${ic('scan','s18')} Scan</button></form>
    ${E.pn?`<div class="errmsg">${E.pn}</div>`:'<div class="cap">Works with every catalogue: Hero, Honda, TVS, Yamaha, Suzuki, Bajaj, KTM, Husqvarna, Royal Enfield, and the aftermarket ones (Endurance, Suprajit, Lumax…). A barcode gun works here too.</div>'}</div>
   ${lk.h}${manual&&lk.k!=='dup'?details:''}
  </div><div class="inv-col">${right}</div></div>

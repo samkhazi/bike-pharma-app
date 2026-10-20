@@ -64,6 +64,10 @@ for r in sheet(os.path.join(SRC, 'Lumax', 'Lumax_Master_Catalogue.xlsx'), 'Parts
     add('Lumax', r['Part Number'], r['Part Name'], r['Part Name'], r['MRP (Rs.)'], r['Compatibility'],
         img=r['Photo'] if str(r.get('Photo') or '').startswith('images/') else '')
 
+# every brand's own price lists and catalogues (update 10b): numbers the master files missed and the brands without one
+from am_lists import lists
+for k, v in lists(SRC, add).items(): print('list', v, k)
+
 # MRPs the master files missed, read by hand from the brand's own price list (15 Oct 2026 review)
 MRP_FIX = {('Gabriel', 'AM-50210071'): 493, ('Gabriel', 'AM-R365011'): 142, ('Gabriel', 'AM-R365012'): 142,   # Product Price List 2 & 3 Wheeler.pdf
            ('Endurance', '520AM02981'): 299, ('Endurance', '520AM02983'): 219,                               # ETL Price List - 16.06.2026.pdf
@@ -102,7 +106,11 @@ TY = [['Clutch cable', r'CLUTCH.*CABLE|CABLE.*CLUTCH'], ['Throttle cable', r'(TH
       ['Speedometer', r'SPEEDOMETER|METER ASSY|METER COMP|INSTRUMENT|METER ASSEMBLY'], ['Relay', r'RELAY'], ['Horn', r'\bHORN'],
       ['Bulb', r'\bBULB'], ['Regulator rectifier', r'REGULATOR|RECTIFIER'], ['CDI', r'\bCDI\b'], ['Ignition coil', r'IGNITION COIL|COIL.*IGN'],
       ['Carburettor', r'CARBUR|CARB\.? ASSY'], ['Piston', r'\bPISTON'], ['Cylinder kit', r'CYLINDER KIT|BLOCK PISTON'], ['Chain sprocket kit', r'SPROCKET|CHAIN KIT'],
-      ['Clutch switch', r'CLUTCH SWITCH'], ['Switch', r'\bSWITCH']]
+      ['Clutch switch', r'CLUTCH SWITCH'], ['Clutch hub', r'CLUTCH HUB|CLUTCH CENT|INNER CLUTCH'], ['Clutch assembly', r'CLUTCH ASS'],
+      ['Petrol tap', r'PETROL TAP|FUEL TAP|FUEL COCK'], ['Alloy wheel', r'ALLOY WHEEL|WHEEL RIM'], ['Disc plate', r'DISC PLATE|BRAKE DISC|DISC ROTOR'],
+      ['Silencer', r'SILENCER|MUFFLER'], ['Carbon brush', r'CARBON BRUSH|BRUSH BOX'], ['Leg guard', r'LEG GUARD|CRASH GUARD'],
+      ['Brake lever', r'BRAKE LEVER|LEVER.*BRAKE'], ['Clutch lever', r'CLUTCH LEVER|LEVER.*CLUTCH'], ['Oil seal', r'OIL SEAL'], ['Gasket', r'GASKET'],
+      ['Switch', r'\bSWITCH']]   # update 10b: the kinds the new lists added (Makino, King Quality, AR, Zodix...)
 TYC = [(n, re.compile(x)) for n, x in TY]
 def ty_of(*ss):
     for s in ss:
@@ -116,7 +124,9 @@ CAT = os.path.join(os.path.dirname(OUT))
 MODELS, ORIG = {}, {}
 for f in glob.glob(os.path.join(CAT, '*.json')):
     if f.endswith('-dg.json') or os.path.basename(f) in ('xref.json', 'am.json', 'am-files.json'): continue
-    d = json.load(open(f)); MODELS[d['brand']] = d['models']
+    d = json.load(open(f))
+    if 'models' not in d: continue
+    MODELS[d['brand']] = d['models']
     for r in d['d']:
         if isinstance(r[5], str) and r[5]: ORIG.setdefault(pk(r[5]), r[5])
 BRAND_RE = {'Bajaj': r'\bBAJAJ|\bBJ\b|\bBAJ\b', 'Hero': r'\bHERO|\bHR\b|\bHM\b', 'Honda': r'\bHONDA|\bHMSI\b|\bHD\b', 'TVS': r'\bTVS|\bTV\b',

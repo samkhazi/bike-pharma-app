@@ -77,6 +77,15 @@ curl http://127.0.0.1:3010/api/health
 Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 
 ## Badlav
+**Update 10d (20 Oct 2026) · Find Part: bike number (registration) se bhi**
+- Chassis wale box me ab bike ka number bhi chalta hai (KA17HC3942, "ka 17 hc 3942" bhi). Server RC service se poochta hai aur
+  RC ki details dikhti hain: owner, maker, model, saal, fuel, colour, chassis, engine, insurance, PUC.
+- RC me poora chassis number ho to bike chassis wale tarike se khulti hai (model company ki site se). Chassis chhupa ho to RC ka maker +
+  model bike kholta hai. Dono na mile to staff RC dekh ke model chunta hai.
+- Server ki .env me RC service ki key chahiye: `RC_API_KEY=...` (aur zarurat ho to `RC_API_URL`, `RC_API_AUTH=bearer` ya `header:<Naam>`,
+  `RC_API_FIELD=id_number`). Default URL Surepass ka hai. Key na ho to app bolta hai "not switched on yet". Ek number mahine me ek baar hi poocha jaata hai.
+- Test: `node tools/test_10d.mjs` (mock RC service 3029 pe; server `RC_API_KEY=test RC_API_URL=http://127.0.0.1:3029/rc` ke saath). Patch: `tools/rc10d.py`.
+
 **Update 10c (20 Oct 2026) · Find Part: aftermarket naam se bhi, aur O/0 wala part number**
 - Naam se search (jaise "coil plate pulsar", "starter motor pulsar") me ab OEM ke saath "Aftermarket parts" bhi aate hain
   (Varroc, Endurance, Lumax, Gabriel...). Catalogue ke short naam bhi samajhta hai: PLSR = Pulsar, PSPR = Passion Pro, PLTN = Platina...

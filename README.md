@@ -77,6 +77,13 @@ curl http://127.0.0.1:3010/api/health
 Backup = `data/` folder copy kar lo. Update me `data/` kabhi delete mat karo.
 
 ## Badlav
+**Update 10c (20 Oct 2026) · Find Part: aftermarket naam se bhi, aur O/0 wala part number**
+- Naam se search (jaise "coil plate pulsar", "starter motor pulsar") me ab OEM ke saath "Aftermarket parts" bhi aate hain
+  (Varroc, Endurance, Lumax, Gabriel...). Catalogue ke short naam bhi samajhta hai: PLSR = Pulsar, PSPR = Passion Pro, PLTN = Platina...
+- Part number kisi catalogue me na mile to app letter O ko zero (aur I ko one) padh ke dobara dhoondta hai. Honda box pe
+  31220-K0L-D01 aisa chhapta hai ki 0 "O" lagta hai: ab "31220KOLD01" daalo to 31220-K0L-D01 milta hai, aur upar likha aata hai kaise padha.
+- Test: `BASE4=http://127.0.0.1:3018 node tools/test_10c.mjs`. Patch: `tools/am10c.py`.
+
 **Update 8r (12 Oct 2026) · Find Part ka part page, Mittal jaisa**
 - Part kholo to computer pe teen hisse: left me diagram, beech me sirf usi diagram ke parts unke ref number (sn) ke kram me,
   right me chuna hua part (part no., MRP, stock, Add to bill / Add to stock). Phone pe diagram upar, list neeche; line pe tap

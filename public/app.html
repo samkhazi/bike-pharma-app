@@ -5281,7 +5281,7 @@ function apScanOpen(){apScanStop();APS={job:0};sheet(`<div class="stack" id="aps
  <div class="aps-box"><video id="aps-v" playsinline muted autoplay></video><div class="aps-aim"></div></div>
  <div class="cap" id="aps-msg">Starting camera…</div>
  <label class="btn line" for="aps-file">${ic('camera','s18')} Take photo instead</label><input type="file" id="aps-file" accept="image/*" capture="environment" hidden onchange="apScanPhoto(this.files[0])"></div>`);
- const d=[...document.querySelectorAll('.scrim')].pop();if(d)d.onclick=e=>{if(e.target===d)apScanClose();};apScanCam();}
+ const d=[...document.querySelectorAll('.scrim')].pop();if(d)d.onclick=e=>{if(e.target===d)apScanClose();};apScanCam();setTimeout(()=>{if(APS)apOcrW().catch(()=>{});},1500);}
 function apScanMsg(t){const e=document.getElementById('aps-msg');if(e)e.textContent=t;}
 async function apScanCam(){const o=APS;if(!o)return;
  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){apScanMsg('This browser cannot open the camera here. Use Take photo instead.');return;}
@@ -5303,9 +5303,24 @@ async function apScanCam(){const o=APS;if(!o)return;
  tick();}
 async function apScanPhoto(file){if(!file||!APS)return;apScanMsg('Reading the photo…');let codes=[];
  try{codes=await scBarcodes(await scCanvas(file,2000));}catch(e){}
- if(!APS)return;if(!codes.length||!apScanUse(codes))apScanMsg('No barcode or QR code found in the photo. Try again closer, or type the number.');}
+ if(!APS)return;if(codes.length&&apScanUse(codes,{min:70}))return;
+ /* update 10a (Sam 2026-10-20): Honda's box QR is only a genuineness code, so when the codes give no part number the label's
+    printed text is read (the same reader as Paste bill's photo) and the part number picked out of it */
+ apScanMsg('No part number in the code. Reading the label text…');let lines=[];
+ try{const c=await scCanvas(file,2000),w=await apOcrW(),r=await w.recognize(c);c.width=c.height=0;lines=String(r.data&&r.data.text||'').split(/\r?\n/).filter(l=>l.trim());}
+ catch(e){if(APS)apScanMsg(String(e&&e.message||'The label could not be read.').slice(0,120));if(!codes.length)return;}
+ if(!APS)return;
+ /* the brands the best pieces look like are loaded, so a number in their catalogue wins over a pin code or phone number */
+ const need=[...new Set(apScanUse(lines,{ocr:1,rank:1}).slice(0,6).flatMap(x=>{try{return catRoute(catPk(x[2])).l.slice(0,2);}catch(e){return [];}}))].filter(e=>e.st!==2);
+ if(need.length){apScanMsg('Checking the '+need.map(e=>e.vb).join(', ')+' catalogue…');try{catNeed(need);}catch(e){}
+  for(let i=0;i<60&&APS&&need.some(e=>e.st===0||e.st===1);i++)await new Promise(r=>setTimeout(r,250));if(!APS)return;}
+ if(lines.length&&(apScanUse(lines,{min:100,ocr:1})||apScanUse(lines,{min:70,ocr:1})))return;
+ if(!apScanUse(codes.concat(lines),{ocr:1}))apScanMsg('No part number found on the label. Try again closer, or type the number.');}
+/* the label reader stays ready while the shop scans one box after another */
+let AP_OCR=null;
+function apOcrW(){return AP_OCR||(AP_OCR=ocrWorker(()=>{}).then(async w=>{await w.setParameters({tessedit_pageseg_mode:'3'});return w;}).catch(e=>{AP_OCR=null;throw e;}));}
 /* the codes read: a catalogue number in them wins; else the code itself (a shop's own barcode) */
-function apScanUse(codes){const a=S.ui.ap;if(!a)return false;let pn='';
+function apScanUse(codes,opt){opt=opt||{};const a=S.ui.ap;if(!a)return false;let pn='';
  /* the pieces of the code's text that look like a part number (letters and digits, 5-18 long), Hero's 'S' ending also without it */
  const toks=[...new Set(codes.flatMap(c=>String(c).toUpperCase().split(/[^A-Z0-9\/-]+/).flatMap(ch=>{const q=ch.split('/'),o=[];q.forEach((x,i)=>{if(/^[A-Z]$/.test(q[i+1]||''))o.push(x+'/'+q[i+1]);o.push(x);});return o;})).map(t=>t.replace(/^-+|-+$/g,'')).filter(t=>/\d/.test(t)&&t.replace(/[-\/]/g,'').length>=5&&t.length<=20))];   /* Royal Enfield's 586031/A: a one-letter piece after a slash stays with its number */
  const hq=codes.map(heroQR).find(Boolean);
@@ -5320,7 +5335,13 @@ function apScanUse(codes){const a=S.ui.ap;if(!a)return false;let pn='';
  const sc=t=>{const v=[t];if(/^[0-9A-Z-]{6,}S$/.test(t))v.push(t.slice(0,-1));else v.push(t+'S');
   if(v.some(known))return 100;if(hq&&t===hq[3])return 90;if(v.some(shaped))return 70+(/[A-Z]/.test(t)&&/\d/.test(t)?5:0);
   if(/^[0-9]/.test(t)&&/[A-Z]/.test(t))return 40;if(/[A-Z]/.test(t))return 30;return /^\d{8,14}$/.test(t)?20:10;};
- const best=toks.map((t,n)=>[sc(t),-n,t]).sort((x,y)=>y[0]-x[0]||y[1]-x[1])[0];
+ /* text read off a printed label: some letters and digits look alike (O/0, I/1, B/8/3 at a cut edge, S/5, Z/2, G/6), so they are also
+    tried the other way; each swap costs a point */
+ const LK={O:'0','0':'O',I:'1','1':'I',B:'83',S:'5',Z:'2',G:'6'};
+ const vars=t=>{let o=[[t,0]];if(!opt.ocr)return o;[...t].forEach((ch,i)=>{if(!LK[ch]||o.length>300)return;o=o.concat(o.flatMap(([v,n])=>[...LK[ch]].map(r=>[v.slice(0,i)+r+v.slice(i+1),n+1])));});return o;};
+ const best=toks.flatMap((t,n)=>vars(t).map(([v,k])=>[sc(v)-k,-n,v])).sort((x,y)=>y[0]-x[0]||y[1]-x[1])[0];
+ if(opt.rank)return toks.flatMap((t,n)=>vars(t).map(([v,k])=>[sc(v)-k,-n,v])).sort((x,y)=>y[0]-x[0]||y[1]-x[1]);
+ if(best&&opt.min&&best[0]<opt.min)return false;
  if(best){pn=best[2];const v=catPk(pn);if(best[0]===100&&!ix.has(scKey(pn))&&/S$/.test(v)&&ix.has(scKey(v.slice(0,-1))))pn=v.slice(0,-1);
   try{const m=scMatch([pn]);if(m.exact.length===1)pn=m.exact[0].pn;}catch(e){}}
  if(!pn){apScanMsg('Read “'+String(codes[0]).slice(0,40)+'”, but no part number in it. Keep scanning or type it.');return false;}

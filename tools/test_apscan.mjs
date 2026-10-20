@@ -53,6 +53,21 @@ for (const [vb, pn] of Object.entries(PNS)) {
   const got = await p.evaluate(c => { S.ui.ap = null; go('addproduct'); apScanUse([c]); return S.ui.ap.pn; }, code);
   ok(got.replace(/[^A-Z0-9]/gi, '') === pn.replace(/[^A-Z0-9]/gi, ''), vb + ': ' + pn + ' picked from the label code (' + got + ')');
 }
+// update 10a (Sam 2026-10-20): Honda's box QR has no part number, so the photo's printed label text is read
+const lbl = await p.evaluate(() => { const c = document.createElement('canvas'); c.width = 1400; c.height = 900; const x = c.getContext('2d'); x.fillStyle = '#c9a77a'; x.fillRect(0, 0, 1400, 900);
+  x.fillStyle = '#d7262e'; x.fillRect(100, 120, 1200, 260); x.fillStyle = '#fff'; x.fillRect(100, 380, 1200, 420); x.font = 'bold 54px serif'; x.fillText('HONDA', 140, 210);
+  x.font = '30px sans-serif'; x.fillText('Greater Noida, Uttar Pradesh-201306', 640, 200); x.fillText('Phone No. 18004190680', 640, 250); x.fillStyle = '#111';
+  x.font = 'bold 44px sans-serif'; x.fillText('31220K0PDA1', 130, 450); x.fillText('Quantity:  1 Number(s)', 640, 450); x.fillText('Product :  STATOR COMP', 130, 530);
+  x.fillText('Manufactured in : MAY 2026', 130, 610); x.fillText('MRP : Rs 3 449.00 Incl. of all taxes', 130, 690); x.font = '34px sans-serif'; x.fillText('For Genuineness, SMS 6R48P014KVNV to +919649012777.', 130, 770);
+  return c.toDataURL('image/png').split(',')[1]; });
+fs.writeFileSync(dir + '/honda.png', Buffer.from(lbl, 'base64'));
+await p.evaluate(() => { S.ui.ap = null; go('addproduct'); }); await p.waitForTimeout(300);
+await p.evaluate(() => { window.apScanCam = () => {}; apScanOpen(); });   // camera off: the fake one shows Hero's QR
+await p.setInputFiles('#aps-file', dir + '/honda.png');
+await p.waitForFunction(() => !document.getElementById('aps-v') && S.ui.ap && S.ui.ap.pn, null, { timeout: 120000 }).catch(() => {});
+await p.waitForFunction(() => /FOUND IN|NOT IN THE/i.test(document.querySelector('#vp .screen:last-child').innerText), null, { timeout: 90000 }).catch(() => {});
+const hp = await p.evaluate(() => ({ pn: S.ui.ap.pn, t: document.querySelector('#vp .screen:last-child').innerText }));
+ok(hp.pn === '31220-K0P-DA1' && /FOUND IN HONDA/i.test(hp.t) && /Stator/i.test(hp.t), 'Honda label photo (QR has no part no.): the printed 31220K0PDA1 is read, not the pin code or phone ' + hp.pn);
 ok(errs.length === 0, 'no page errors ' + errs.slice(0, 2).join(' | '));
 await b.close(); fs.rmSync(dir, { recursive: true, force: true });
 console.log(fails ? `\n${fails} FAILED` : '\nALL OK'); process.exit(fails ? 1 : 0);

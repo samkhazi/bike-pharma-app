@@ -53,5 +53,8 @@ ok(t8 === 275, 'Hero editions: ' + t8);
 await p.evaluate(() => go('catup')); await p.waitForFunction(() => CUP.st === 2, null, { timeout: 30000 }).catch(() => {}); await p.waitForTimeout(500);
 const t5 = await p.evaluate(() => document.querySelector('#vp .screen:last-child').innerText);
 ok(/Updated Hero Catalogue/.test(t5), 'Catalogue files names the folder Updated Hero Catalogue');
+// update 9w: names stay on their own numbers (9m had moved them by one: 11394-AAH-00099 showed PUMP ASSY., OIL)
+const nm = await p.evaluate(P => ['11394AAH00099S', '17910KWH970S'].map(q => { const r = m2Res({ ...P, q }).list[0]; return r && r.part + ' ' + r.desc; }), P({ vb: 'Hero', vm: 'Any' }));
+ok(/^11394-AAH-00099 GASKET R CRANK CASE COVER/i.test(nm[0]) && /^17910-KWH-970 CABLE COMP THROT/i.test(nm[1]), 'Sam’s two numbers show their own names: ' + nm.join(' | '));
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close(); console.log(fails ? `\n${fails} FAILED` : '\nALL OK'); process.exit(fails ? 1 : 0);

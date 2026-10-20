@@ -16,7 +16,7 @@ import collections, json, os, re, sys, warnings
 import openpyxl
 warnings.filterwarnings('ignore')
 HERE = os.path.dirname(os.path.abspath(__file__))
-CAT = os.path.join(HERE, '..', '..', 'public', 'cat')
+CAT = os.environ.get('HERO_IN') or os.path.join(HERE, '..', '..', 'public', 'cat')   # HERO_IN: the update 9l hero.json + hero-dg.json
 DIR = 'catalogues/hero'
 PL_M = 'Other parts (price list)'
 OB_V = 'Old Hero books and lists (Scribd)'
@@ -86,6 +86,20 @@ def figs(pages):
     return out, {c: n.most_common(1)[0][0] for c, n in names.items()}
 
 
+class Ix:
+    """A name list that keeps its repeats: add() gives a name's first index, or appends it."""
+    def __init__(self, l):
+        self.l, self.i = list(l), {}
+        for n, x in enumerate(self.l):
+            self.i.setdefault(x, n)
+
+    def add(self, x):
+        if x not in self.i:
+            self.i[x] = len(self.l)
+            self.l.append(x)
+        return self.i[x]
+
+
 def main(folder, out):
     F = lambda n: os.path.join(folder, n)
     sizes = {k[:-4]: v['size'] for k, v in json.load(open(F('_transfer/scribd_pages.json'))).items()}
@@ -122,7 +136,9 @@ def main(folder, out):
     ob_nb = len(o['bk'])
     o['bk'].append([1, [], 'Part numbers from old Hero parts books and lists (Scribd) that no edition has: no diagram'])
     o['src'].append("Old Hero parts books and lists (Scribd), Sam's folder Updated Hero Catalogue > Scribd Catalogues")
-    asm, desc = {a: i for i, a in enumerate(o['asm'])}, {d: i for i, d in enumerate(o['desc'])}
+    # update 9w fix: the lists have repeated names (asm 7, desc 47); a {name: index} dict of them lost those places, so every later name
+    # moved up by one or more (Sam 2026-10-20: 11394-AAH-00099 showed PUMP ASSY., OIL, the name of the next line). Indexes stay as they are.
+    asm, desc = Ix(o['asm']), Ix(o['desc'])
     fi = {u: i for i, u in enumerate(dg['f'])}
     have = {flat(r[5]) for r in o['d']}
     pairs, add, st = set(), [], collections.Counter()
@@ -152,7 +168,7 @@ def main(folder, out):
             ref = clean(r['Ref']) or ref
             rem = ['No longer supplied (Hero)'] if 'NLS' in clean(r['Status']) else []
             a = names.get(g) or ('FIG ' + g if not g.startswith('P') else 'PAGE %d' % pg)
-            add.append([nb, -1, g, asm.setdefault(a, len(asm)), ref, pn, desc.setdefault(clean(r['Description (catalogue)']).upper(), len(desc)),
+            add.append([nb, -1, g, asm.add(a), ref, pn, desc.add(clean(r['Description (catalogue)']).upper()),
                         clean(r['Qty']), '; '.join(rem), 0, 0, [vi[v]]])
             # the diagram of a fig: the first page that shows it
             if g not in used and pg:
@@ -197,11 +213,10 @@ def main(folder, out):
     for pn, d, nls in sorted(miss.values()):
         d = d or 'PART'
         k = d[:1] if d[:1].isalpha() else '#'
-        o['d'].append([ob_nb, -1, 'OB' + k, asm.setdefault('OLD BOOK PARTS: ' + k + ' (NO DIAGRAM)', len(asm)), '', pn,
-                       desc.setdefault(d, len(desc)), '', 'No longer supplied (Hero)' if nls else '', 0, 0, [vi[OB_V]]])
+        o['d'].append([ob_nb, -1, 'OB' + k, asm.add('OLD BOOK PARTS: ' + k + ' (NO DIAGRAM)'), '', pn,
+                       desc.add(d), '', 'No longer supplied (Hero)' if nls else '', 0, 0, [vi[OB_V]]])
     st['old_book_parts'] = len(miss)
-    o['asm'] = [a for a, _ in sorted(asm.items(), key=lambda t: t[1])]
-    o['desc'] = [d for d, _ in sorted(desc.items(), key=lambda t: t[1])]
+    o['asm'], o['desc'] = asm.l, desc.l
     # old / new numbers: Hero's dashed spelling where the data has it
     dashed = {}
     for r in o['d']:

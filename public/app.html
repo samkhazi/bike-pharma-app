@@ -3993,7 +3993,7 @@ function vinPick(vb,r,ms,y){const old=ms.find(m=>/\(old\)/.test(m)),nw=ms.find(m
  if(/ - BS ?(III|IV|VI|3|4|6)\b/i.test(r.model))return old;
  const f=VIN_NEW_FROM[nw];if(!f||!y)return '';return y<f?old:y>f?nw:'';}
 async function vinAsk(c){const s=S.ui.vin;const vb=vinSite(c);s.look={busy:1,vb};refresh();let r;
- try{const x=await fetch('/api/vinlook?c='+encodeURIComponent(c),{credentials:'same-origin'});r=await x.json();if(!x.ok&&!r.error)r={error:'Search failed ('+x.status+')'};}catch(e){r={error:'No internet connection'};}
+ try{const x=await fetch('/api/vinlook?c='+encodeURIComponent(c),{credentials:'same-origin'});r=await x.json().catch(()=>({error:'Our server did not answer the chassis search ('+x.status+')'}));if(!x.ok&&!r.error)r={error:'Search failed ('+x.status+')'};}catch(e){r={error:'No internet connection'};}
  if(S.ui.vin!==s||s.c!==c)return;if(r.none&&vb==='Hero'){VIN_HERO=false;s.look=null;return vinFind();}s.look={...r,vb};
  if(r.found){const ms=vinMatch(vb,r.model);s.look.ms=ms;if(ms.length===1)return vinOpen(c,vb,ms[0],r.name);const pk=vinPick(vb,r,ms,vinYear(c));if(pk)return vinOpen(c,vb,pk,r.name);}
  s.pick=true;s.vb=vb;s.mf='';refresh();}

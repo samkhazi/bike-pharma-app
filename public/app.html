@@ -5155,8 +5155,9 @@ function invLook(pn,defer){const pk=catPk(pn);let o=INV_LK.get(pk);if(!o){o={pk,
  if(AM_ST===1&&!o.hits.length){o.st='wait';o.need=need;o.pend=need.map(e=>e.vb).concat('aftermarket');if(need.length&&!defer)catNeed(need);return o;}
  if(need.length){o.st='wait';o.need=need;o.pend=need.map(e=>e.vb);if(!defer)catNeed(need);return o;}
  o.need=[];
- /* update 9y (before looking wider): Hero's boxes and lists add an 'S' (service part) to the catalogue number: 17910KWH970S = 17910-KWH-970 */
- if(!o.hits.length&&!o.every&&/^[0-9A-Z]{6,}S$/.test(pk)){const o2=invLook(pk.slice(0,-1),defer);if(o2.st==='wait'||o2.hits.length){Object.assign(o,{st:o2.st,hits:o2.hits,need:o2.need,pend:o2.pend,in:o2.in,fail:o2.fail,more:o2.more});return o;}}
+ /* update 9y (before looking wider): Hero's boxes and lists add an 'S' (service part) to the catalogue number: 17910KWH970S = 17910-KWH-970;
+    9z: and the other way, a number typed without the S that Hero's list only has with it (sx: the S / no-S twin, not asked again) */
+ if(!o.hits.length&&!o.every&&!o.sx&&/^[0-9A-Z]{6,}$/.test(pk)){const p2=/S$/.test(pk)?pk.slice(0,-1):pk+'S';if(!INV_LK.has(p2))INV_LK.set(p2,{pk:p2,wide:0,every:0,hits:[],need:[],sx:1});else INV_LK.get(p2).sx=1;const o2=invLook(p2,defer);if(o2.st==='wait'||o2.hits.length){Object.assign(o,{st:o2.st,hits:o2.hits,need:o2.need,pend:o2.pend,in:o2.in,fail:o2.fail,more:o2.more});return o;}}
  if(!o.hits.length&&!o.wide&&R.p.length){o.wide=1;return invLook(pn,defer);}
  o.st='done';o.more=CAT_ALL.filter(e=>e.st===0&&!want.includes(e)).length;return o;}
 function invNeed(list){const u=[...new Set(list.flatMap(o=>o.need||[]))];if(u.length&&u.some(e=>!CAT_NEED.includes(e)||e.st===0))catNeed(u);}

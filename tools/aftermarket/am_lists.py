@@ -87,10 +87,16 @@ def lists(SRC, add):
     # Zodix: a picture catalogue, each part = code, price, box qty under its bike name, the part's name as the page heading
     def zx(m, h, L, i, rec):
         x = m.start('pn'); md = ''
-        for j in range(i - 1, max(-1, i - 3), -1):
+        for j in range(i - 1, max(-1, i - 6), -1):
             seg = L[j][max(0, x - 12):x + 30]
             s = sp(re.sub(r'\S*\d+[.:]\d\d\S*|\b\d+\b', '', seg))
             if s and not rec(L[j]) and not re.search(r'ZODIX|PAGE', s): md = s; break
+        # the page heading is printed flush left ("CARB. SLIDE PISTON WITH PIN"); the bike names under the pictures are indented
+        # and all capitals too, so heads() took them for headings (CSP40 was named "Hon Twstr Hon Levo")
+        h = ''
+        for j in range(i - 1, -1, -1):
+            if 'ZODIX AUTO' in L[j]:
+                h = next((sp(x) for x in L[j + 1:i] if sp(x)), ''); break
         add('Zodix', m.group('pn'), sp((h.title() if h else 'Part') + (' · ' + md if md else '')), h, m.group('mrp'), md)
     go('Zodix', ['Zodix/*.pdf'], r'(?<![\w.:])(?P<pn>[A-Z]{1,4}\d{2,5}[A-Z]?|\d{3,5}[A-Z]?)\s+(?P<mrp>\d{1,5}[.:]\d\d)\s+\d{1,4}(?=\s|$)', zx)
 

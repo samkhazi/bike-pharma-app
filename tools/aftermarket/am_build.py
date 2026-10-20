@@ -14,6 +14,10 @@ parts = []   # {b, pn, nm, g, mrp, fit, oem[], same[]}
 def add(b, pn, nm, g, mrp, fit, oem=(), same=(), img=''):
     pn = str(pn or '').strip()
     if not pn or pn.lower() in ('part number', 'part no'): return
+    # update 10h: a note glued to the code ("HA6G19K4 (BS6", "HAB21K4(BS6 125cc)") is dropped; a "code" with no digit is a maker
+    # name read from the wrong column (Bando's "HONDA", "MAHINDRA") and is not a part
+    if re.match(r'^[A-Z0-9][A-Z0-9-]{3,}\s*\(', pn): pn = re.sub(r'\s*\(.*$', '', pn)
+    if not re.search(r'[\d-]', pn): return
     parts.append({'b': b, 'pn': pn, 'nm': ' '.join(str(nm or '').split()), 'g': ' '.join(str(g or '').split()),
                   'mrp': num(mrp), 'fit': ' '.join(str(fit or '').split()), 'oem': [o for o in oem if len(pk(o)) >= 6],
                   'same': list(same), 'img': img})
@@ -96,7 +100,7 @@ L = list(seen.values())
 TY = [['Clutch cable', r'CLUTCH.*CABLE|CABLE.*CLUTCH'], ['Throttle cable', r'(THROTTLE|ACCELERATOR|ACCEL)\b.*CABLE|CABLE.*(THROTTLE|ACCEL)'],
       ['Choke cable', r'CHOKE.*CABLE|CABLE.*CHOKE'], ['Gear cable', r'GEAR.*CABLE|CABLE.*GEAR'], ['Seat lock cable', r'SEAT.*CABLE|CABLE.*SEAT'],
       ['Speedo cable', r'(SPEEDO|METER|TACHO)\w*.*CABLE|CABLE.*(SPEEDO|METER|TACHO)'], ['Brake cable', r'BRAKE.*CABLE|CABLE.*BRAKE|\bHBS\b'],
-      ['Brake shoe', r'\bSHOE'], ['Brake pad', r'\bPAD'], ['Clutch plate', r'CLUTCH.*PLATE|PLATE.*CLUTCH|FRICTION'],
+      ['Clutch shoe', r'CLUTCH SHOE'], ['Brake shoe', r'\bSHOE'], ['Brake pad', r'\bPAD'], ['Clutch plate', r'CLUTCH.*PLATE|PLATE.*CLUTCH|FRICTION'],
       ['Fork inner tube', r'INNER TUBE'], ['Weight roller', r'WEIGHT ROLLER|\bROLLER\b'], ['Steering cone set', r'STRG CLM|STEERING|CONE SET'],
       ['Shock absorber', r'SHOCK|ABSORBER|CUSHION|\bS/A\b'], ['Front fork', r'\bFORK'], ['Head lamp', r'HEAD ?LAMP|HEADLIGHT|\bH/L\b'],
       ['Tail lamp', r'TAIL ?LAMP|TAIL ?LIGHT|\bT/L\b'], ['Indicator', r'WINKER|BLINKER|INDICATOR|TURN SIGNAL'], ['Mirror', r'MIRROR'],

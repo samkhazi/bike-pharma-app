@@ -4207,7 +4207,7 @@ function amRes(q){if(!q||catPk(q).length<4)return '';const X=amLoad();if(!X)retu
  return A+B;}
 function amAdd(pn){const a=S.ui.ap=invApNew();a.pn=pn;a.look=catPk(pn);S.ui.apErr=null;S.ui.apAll=false;go('addproduct');}
 /* Add product, Stock in, Paste bill: an aftermarket number is a hit like a brand catalogue's */
-const amHits=pk=>amByPn(pk).map(p=>({vb:p.b,pk,pn:p.pn,name:catNice(p.nm)||p.pn,sec:p.ty||catNice(p.g),qty:0,mrp:p.mrp,fits:p.fm.length?p.fm.map(([b,m])=>b+' '+m):p.fit?[p.fit]:[],cat:invCatOf({desc:p.nm+' '+p.g}),am:1}));
+const amHits=pk=>amByPn(pk).map(p=>({vb:p.b,pk,pn:p.pn,name:catNice(p.nm)||p.pn,sec:p.ty||catNice(p.g),qty:0,mrp:p.mrp,fits:p.fm.length?p.fm.map(([b,m])=>b+' '+m):p.fit&&p.fit!==p.nm&&!(/\d/.test(p.fit)&&!/\s/.test(p.fit))?[p.fit]:[],cat:(c=>c==='OEM Parts'?'OES Parts':c)(invCatOf({desc:[p.ty,p.g].join(' '),asm:p.nm})),am:1}));   /* update 10h: the list's own group decides the category (Endurance's caliper kit 'with grease' is Braking, not Lubricants); a fitment that is only the name or another code is not shown as a bike */
 /* ----- aftermarket parts by name (update 10c): every word of the search in the part's name, kind or bikes; the catalogues' short forms count ----- */
 const AM_ABBR={PLSR:'PULSAR',PSPR:'PASSION PRO',PASION:'PASSION',SPLNDR:'SPLENDOR',SPLDR:'SPLENDOR',PLTN:'PLATINA',DSVR:'DISCOVER',BOXR:'BOXER',CLBR:'CALIBER',
  NTRQ:'NTORQ',APCH:'APACHE',STRTER:'STARTER',ASSY:'ASSEMBLY',ASSLY:'ASSEMBLY',ACTV:'ACTIVA',SHN:'SHINE',UNCRN:'UNICORN',GLMR:'GLAMOUR'};
@@ -5181,7 +5181,7 @@ function invW(id){return (DB.waitParts||[]).find(w=>w.id===id)||{photos:[]};}
 function invSyncP(){(DB.newProducts||[]).forEach(p=>{const i=PRODUCTS.findIndex(x=>x.id===p.id);if(i>-1)PRODUCTS[i]=p;else PRODUCTS.push(p);const v=(DB.prices||{})[p.id];if(v)Object.assign(p,v);});}
 /* ---- part number -> what the catalogues say ---- */
 const INV_CATS=[['Lubricants',/\b(ENGINE|GEAR|FORK|BRAKE|2T|4T) OIL\b|\bGREASE\b|\bCOOLANT\b|\bLUBRICANT/],['Filters',/\bFILTER|\bAIR ?CLEANER/],
- ['Brake Parts',/\bBRAKE|\bSHOE\b|\bCALIPER|\bPAD SET|\bDISC PLATE|\bROTOR\b|MASTER CYL/],['Clutch Parts',/\bCLUTCH/],['Chain & Sprocket',/\bSPROCKET|\bDRIVE CHAIN|\bCHAIN KIT|\bCHAIN,? DRIVE/],
+ ['Brake Parts',/\bBRAKE|\bBRAKING\b|(?<!CLUTCH )\bSHOE\b|\bCALIPER|\bPAD SET|\bDISC PLATE|\bROTOR\b|MASTER CYL/],['Clutch Parts',/\bCLUTCH/],['Chain & Sprocket',/\bSPROCKET|\bDRIVE CHAIN|\bCHAIN KIT|\bCHAIN,? DRIVE/],
  ['Cables',/\bCABLE\b/],['Bearings',/\bBEARING/],['Tyres',/\bTYRE|\bTIRE\b/],['Suspension',/\bSHOCK|\bFORK\b|\bSUSPENSION|\bCUSHION|\bDAMPER/],
  ['Electrical',/\bLAMP|\bBULB|\bSWITCH|\bHARNESS|\bBATTERY|\bCOIL\b|\bRELAY|\bFUSE|\bHORN|\bCDI\b|\bECU\b|\bSENSOR|\bREGULATOR|\bRECTIFIER|\bSTARTER|\bMAGNETO|\bSTATOR|\bFLASHER|\bSPARK PLUG|\bWINKER|\bTSL\b|\bINDICATOR|\bSPEEDOMETER|\bMETER\b/],
  ['Engine Parts',/\bPISTON|\bCYLINDER|\bVALVE|\bCRANK|\bCAMSHAFT|\bCAM CHAIN|\bGASKET|\bRING SET|\bCONNECTING ROD|\bOIL SEAL|\bTAPPET|\bROCKER|\bENGINE/]];
@@ -5369,7 +5369,9 @@ function apOcrW(){return AP_OCR||(AP_OCR=ocrWorker(()=>{}).then(async w=>{await 
 /* the codes read: a catalogue number in them wins; else the code itself (a shop's own barcode) */
 function apScanUse(codes,opt){opt=opt||{};const a=S.ui.ap;if(!a)return false;let pn='';
  /* the pieces of the code's text that look like a part number (letters and digits, 5-18 long), Hero's 'S' ending also without it */
- const toks=[...new Set(codes.flatMap(c=>String(c).toUpperCase().split(/[^A-Z0-9\/-]+/).flatMap(ch=>{const q=ch.split('/'),o=[];q.forEach((x,i)=>{if(/^[A-Z]$/.test(q[i+1]||''))o.push(x+'/'+q[i+1]);o.push(x);});return o;})).map(t=>t.replace(/^-+|-+$/g,'')).flatMap(t=>{const q=t.split('-'),o=[t];for(let i=1;i<q.length;i++)o.push(q.slice(0,i).join('-'),q[i]);return o;}).filter(t=>/\d/.test(t)&&t.replace(/[-\/]/g,'').length>=5&&t.length<=20))];   /* Royal Enfield's 586031/A: a one-letter piece after a slash stays with its number */
+ const toks=[...new Set(codes.flatMap(c=>String(c).toUpperCase().replace(/(?:M\.?R\.?P\.?|RS|INR|₹)[\s.:\/-]*(?:RS\.?\s*)?\d[\d,]*(?:\.\d+)?/g,' ').replace(/\b(?:MFD|MFG|MFG\.? ?DT|PKD|PACKED|EXP|DATE|BATCH DT)?[\s.:]*\b\d{1,2}[\/.-](?:19|20)?\d{2}(?:[\/.-]\d{2,4})?\b(?![\/.-]?[A-Z0-9])/g,m=>/^\s*\d{1,2}[\/.-](?:19|20)\d\d\s*$|MFD|MFG|PKD|PACKED|EXP|DATE/.test(m)?' ':m).split(/[^A-Z0-9\/.-]+/).flatMap(w=>{w=w.replace(/^[.\/-]+|[.\/-]+$/g,'');return w.includes('.')?[w,...w.split('.')]:[w];}).flatMap(ch=>{const q=ch.split('/'),o=q.length>2?[ch]:[];q.forEach((x,i)=>{if(/^[A-Z]$/.test(q[i+1]||''))o.push(x+'/'+q[i+1]);o.push(x);});return o;})).map(t=>t.replace(/^-+|-+$/g,'')).flatMap(t=>{const q=t.split('-'),o=[t];for(let i=1;i<q.length;i++)o.push(q.slice(0,i).join('-'),q[i]);return o;}).filter(t=>/\d/.test(t)&&t.replace(/[-\/.]/g,'').length>=4&&t.length<=32))];
+ /* update 10h: aftermarket numbers keep their slashes and dots whole (ASK/R/FBC/206, Spaco 060100.00.47, FCC-T-RDN-110-C.ASSY-ORG),
+    MK's 4-digit numbers count, and long ones (FCC-Y-RAY-113-S-ASSY-ORG) are kept: a short piece only wins when a list knows it */   /* Royal Enfield's 586031/A: a one-letter piece after a slash stays with its number */
  const hq=codes.map(heroQR).find(Boolean);
  if(hq)toks.unshift(hq[3]);
  /* update 9z (Sam 2026-10-20 "sabhi brands ... after market ke bhi"): each piece is scored, best first:
@@ -5380,11 +5382,11 @@ function apScanUse(codes,opt){opt=opt||{};const a=S.ui.ap;if(!a)return false;let
  const ix=scIndex(),known=t=>{const k=catPk(t);if(ix.has(scKey(t)))return true;try{if(AM&&amHits(k).length)return true;}catch(e){}return false;};
  const shaped=t=>{try{return catRoute(catPk(t)).l.length>0;}catch(e){return false;}};
  const sc=t=>{const v=[t];if(/^[0-9A-Z-]{6,}S$/.test(t))v.push(t.slice(0,-1));else v.push(t+'S');
-  if(v.some(known))return 100;if(opt.ocr&&/^\d{6}$/.test(t))return 50;   /* a pin code on the label (Pune-411035) */if(hq&&t===hq[3])return 90;if(v.some(shaped))return 70+(/[A-Z]/.test(t)&&/\d/.test(t)?5:0);
+  if(v.some(known))return 100+Math.min(catPk(t).length,20)/100;   /* two known pieces: the longer, more exact one */if(catPk(t).length<5)return 0;if(opt.ocr&&/^\d{6}$/.test(t))return 50;   /* a pin code on the label (Pune-411035) */if(hq&&t===hq[3])return 90;if(v.some(shaped))return 70+(/[A-Z]/.test(t)&&/\d/.test(t)?5:0);
   if(/^[0-9]/.test(t)&&/[A-Z]/.test(t))return 40;if(/[A-Z]/.test(t))return 30;return /^\d{8,14}$/.test(t)?20:10;};
  /* text read off a printed label: some letters and digits look alike (O/0, I/1, B/8/3 at a cut edge, S/5, Z/2, G/6), so they are also
     tried the other way; each swap costs a point */
- const LK={O:'0','0':'O',I:'1','1':'I',B:'83',S:'5',Z:'2',G:'6'};
+ const LK={O:'0','0':'O',I:'1/','1':'I/',B:'83',S:'5',Z:'2',G:'6'};   /* update 10h: a printed '/' is often read as I or 1 (ASK/R/FBC/206 -> ASK/RIFBC/206) */
  const vars=t=>{let o=[[t,0]];if(!opt.ocr)return o;[...t].forEach((ch,i)=>{if(!LK[ch]||o.length>300)return;o=o.concat(o.flatMap(([v,n])=>[...LK[ch]].map(r=>[v.slice(0,i)+r+v.slice(i+1),n+1])));});return o;};
  const best=toks.flatMap((t,n)=>vars(t).map(([v,k])=>[sc(v)-k,-n,v])).sort((x,y)=>y[0]-x[0]||y[1]-x[1])[0];
  if(opt.rank)return toks.flatMap((t,n)=>vars(t).map(([v,k])=>[sc(v)-k,-n,v])).sort((x,y)=>y[0]-x[0]||y[1]-x[1]);
@@ -5546,7 +5548,7 @@ function geNwPost(g){const nw=g.nw||[];g.nw=[];let w=0;
 /* ---------- Paste supplier bill ---------- */
 function invParse(txt){const lines=[];let skip=0;String(txt||'').split(/\r?\n/).forEach(row=>{const s=row.replace(/(\d),(\d{3})(?!\d)/g,'$1$2').trim();if(!s)return;
  const t=s.split(/[\t,;|]+|\s+/).map(x=>x.trim()).filter(Boolean);let pi=-1;
- for(let i=0;i<t.length;i++){const k=catPk(t[i]);if(k.length>=5&&/\d/.test(k)&&!/^\d+(\.\d+)?$/.test(t[i])||/^\d{6,}$/.test(t[i])){pi=i;break;}}
+ for(let i=0;i<t.length;i++){const k=catPk(t[i]);if(k.length>=5&&/\d/.test(k)&&!/^\d+(\.\d+)?$/.test(t[i])||/^\d{6,}$/.test(t[i])||i===0&&/^\d{4,5}$/.test(t[i])&&(()=>{try{amLoad();return !!AM&&amHits(k).length>0;}catch(e){return false;}})()){pi=i;break;}}   /* update 10h: MK's 4-digit and Pricol's 5-digit numbers first on a line, when an aftermarket list has them */
  if(pi<0){if(/\d/.test(s))skip++;return;}
  const nums=t.slice(pi+1).map(x=>x.replace(/^(\d+)(pcs?|nos?|no\.|qty)$/i,'$1')).filter(x=>/^\d+(\.\d+)?$/.test(x));let q=0,rate='';
  if(nums.length&&/^\d+$/.test(nums[0])){q=parseInt(nums[0]);if(nums[1])rate=nums[1];}else if(nums.length)rate=nums[0];
@@ -6072,7 +6074,7 @@ function invParse(txt){const lines=[];let skip=0;
   let s=row.replace(/(^|\s)(MRP|HSN|GST|DISC|AMT)(?:\s*[:=]\s*|\s+)(?:₹\s*)?(\d[\d.,]*)\s*%?(?=\s|$)/gi,(m,a,k,v)=>{x[k.toLowerCase()]=v.replace(/,/g,'');return a+' ';});
   s=s.replace(/(\d),(\d{3})(?!\d)/g,'$1$2').trim();if(!s)return;
   const t=s.split(/[\t,;|]+|\s+/).map(y=>y.trim()).filter(Boolean);let pi=-1;
-  for(let i=0;i<t.length;i++){const k=catPk(t[i]);if(k.length>=5&&/\d/.test(k)&&!/^\d+(\.\d+)?$/.test(t[i])||/^\d{6,}$/.test(t[i])){pi=i;break;}}
+  for(let i=0;i<t.length;i++){const k=catPk(t[i]);if(k.length>=5&&/\d/.test(k)&&!/^\d+(\.\d+)?$/.test(t[i])||/^\d{6,}$/.test(t[i])||i===0&&/^\d{4,5}$/.test(t[i])&&(()=>{try{amLoad();return !!AM&&amHits(k).length>0;}catch(e){return false;}})()){pi=i;break;}}   /* update 10h: MK's 4-digit and Pricol's 5-digit numbers first on a line, when an aftermarket list has them */
   if(pi<0){if(/\d/.test(s))skip++;return;}
   const nums=t.slice(pi+1).map(y=>y.replace(/^(\d+)(pcs?|nos?|no\.|qty)$/i,'$1')).filter(y=>/^\d+(\.\d+)?$/.test(y));let q=0,rate='';
   if(nums.length>=2&&/\./.test(nums[1])&&+nums[0]>0){q=+nums[0];rate=nums[1];}

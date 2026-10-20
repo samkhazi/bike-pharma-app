@@ -3966,7 +3966,7 @@ const vinMgr=()=>['manager','admin'].includes(S.user.role);
 /* update 9o (Sam 2026-10-19 "chassis number daalunga toh automatic vehicle details fetch hona he"): Royal Enfield and Honda chassis numbers
    are asked to the maker's own site through our server (/api/vinlook); the model comes only from that reply (Sam's rule), never from the
    saved code list. Not found or site down: staff pick the model, and that pick is not saved for the code. */
-const VIN_SITE={ME3:'Royal Enfield',ME4:'Honda',ME1:'Yamaha'};   /* ME1 Yamaha: update 9r, dealer YPEC */
+const VIN_SITE={ME3:'Royal Enfield',ME4:'Honda',ME1:'Yamaha',MD6:'TVS'};   /* ME1 Yamaha: update 9r, dealer YPEC */
 /* update 9s: Hero (MBL) is asked too, but its site answers only servers in India: when our server has Hero off it says {none}, and from then
    on Hero chassis go the old way (model picked once per code) until the page is opened again. */
 let VIN_HERO=true;const vinSite=c=>VIN_SITE[c.slice(0,3)]||(VIN_HERO&&c.slice(0,3)==='MBL'?'Hero':'');

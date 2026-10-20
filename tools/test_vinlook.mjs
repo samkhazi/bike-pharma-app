@@ -1,7 +1,7 @@
 // Update 9o (Sam 2026-10-19): Royal Enfield and Honda chassis numbers -> model from the maker's site, through our server (/api/vinlook).
 // The makers' sites are stood in by a mock on MOCK_PORT; the server under test must run with
 // VIN_RE_URL=http://127.0.0.1:3029/graphql VIN_HONDA_URL=http://127.0.0.1:3029/honda YPEC_URL=http://127.0.0.1:3029 YPEC_DEALER_CODE=D1
-// YPEC_USER_ID=testuser YPEC_PASSWORD=x (tools/run_tests.sh does).
+// YPEC_USER_ID=testuser YPEC_PASSWORD=x VIN_TVS_URL=http://127.0.0.1:3029/tvs/ (tools/run_tests.sh does).
 import http from 'node:http';
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { _honda } from '../lib/vinlook.mjs';
@@ -33,6 +33,10 @@ const mock = http.createServer((q, r) => { let b = ''; q.on('data', d => b += d)
   if (q.url === '/hero/fetchBikeSearchDetails') { asked.push('hsearch:' + q.headers['x-auth-token'] + ':' + j.vin);
     return r.end(JSON.stringify(j.vin === 'MBLHAW264RHK01290' ? { vin: j.vin, category: 'BIKE', model: 'PASSION_i3S_AACY', modelDesc: 'Passion-HZ(May,2023)', colour: '2008', colours: [{ id: '2008', name: 'BLACK (NH-1) TYPE 4' }] }
       : { msg: 'Entered VIN is incorrect, kindly check and retry with correct VIN.' })); }
+  // update 9w: TVS parts shop (guest token, then the chassis search: a flat list of parts, each with SERIES)
+  if (q.url === '/tvs/Setting/tokenGeneration') { asked.push('tlogin'); return r.end(JSON.stringify({ access_token: 'TT' })); }
+  if (q.url.startsWith('/tvs/api/Catalouge/GetPartsearch')) { const v = new URL(q.url, 'http://x').searchParams.get('frameNumber'); asked.push('tsearch:' + q.headers.authorization + ':' + v);
+    return r.end(JSON.stringify({ data: v === 'MD638AS15J1F04746' ? [1, 2, 3].map(i => ({ PART_ID: 'K' + i, SEGMENT: 'MOTORCYCLE', SERIES: 'APACHE RR 310', MODEL_DESC1: 'APACHE RR 310 BS4', MRP: 100, NDP: 80 })) : [] })); }
   if (q.url === '/honda') { asked.push('honda'); const v = _honda.hDec(j.strVIN); return r.end(JSON.stringify({ d: _honda.hEnc(JSON.stringify({ tbl_chassismaster: HONDA[v] ? [HONDA[v]] : [] })) })); }
   r.statusCode = 404; r.end('{}'); }); });
 await new Promise(ok2 => mock.listen(3029, '127.0.0.1', ok2));
@@ -89,4 +93,6 @@ await p.unroute('**/api/vinlook*');
 const anon = await (await fetch(BASE + '/api/vinlook?c=ME3K5A6FGT1002169')).status;
 ok(anon === 401, 'not logged in: no chassis lookup (' + anon + ')');
 ok(errs.length === 0, 'no page errors ' + errs.slice(0, 2).join(' | '));
+await vin('MD638AS15J1F04746'); st = await p.evaluate(() => cur().p);
+ok(st.vb === 'TVS' && st.vm === 'Apache RR 310' && asked.includes('tlogin') && asked.includes('tsearch:Bearer TT:MD638AS15J1F04746'), 'TVS chassis opens Apache RR 310 by itself ' + st.vm);
 await b.close(); mock.close(); console.log(fails ? `\n${fails} FAILED` : '\nALL OK'); process.exit(fails ? 1 : 0);

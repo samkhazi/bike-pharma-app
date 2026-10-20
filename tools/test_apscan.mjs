@@ -44,6 +44,15 @@ const Q = 'D/FJBG0000218367/JCFMVZNMS4JY/16450ACK000S      /000001/0001200.00/AA
 await p.evaluate(() => { S.ui.ap = null; go('addproduct'); }); await p.waitForTimeout(200); await p.fill('#ap-pn', Q); await p.waitForTimeout(3000);
 const g = await p.evaluate(Q => ({ pn: S.ui.ap.pn, sc: scMatch([Q]).exact.map(h => h.pn) }), Q);
 ok(g.pn === '16450-ACK-000' && g.sc.join() === '16450-ACK-000', 'Hero QR from a barcode gun and in the sticker scan gives 16450-ACK-000, not the serial FJBG… ' + JSON.stringify(g));
+// every brand and the aftermarket lists (Sam 2026-10-20 "sabhi brands ... after market ke bhi"): the part no. is picked out of
+// a label code with a serial, MRP, batch and date around it, catalogues not loaded first
+await p.evaluate(() => amLoad()); await p.waitForTimeout(2000);
+const PNS = {"hero": "94050-06000", "honda": "33450-KTE-A01", "tvs": "N7150790", "yamaha": "5BE-17211-00", "suzuki": "14310-44K00-000", "bajaj": "52PF0373", "ktm": "LAE00048", "husqvarna": "36JY0061", "royal-enfield": "586031/A", "aftermarket": "SA4S002K4"};
+for (const [vb, pn] of Object.entries(PNS)) {
+  const code = `SN20261020123456A7/${pn}/MRP:450.00/BATCH K2X9/09-2025`;
+  const got = await p.evaluate(c => { S.ui.ap = null; go('addproduct'); apScanUse([c]); return S.ui.ap.pn; }, code);
+  ok(got.replace(/[^A-Z0-9]/gi, '') === pn.replace(/[^A-Z0-9]/gi, ''), vb + ': ' + pn + ' picked from the label code (' + got + ')');
+}
 ok(errs.length === 0, 'no page errors ' + errs.slice(0, 2).join(' | '));
 await b.close(); fs.rmSync(dir, { recursive: true, force: true });
 console.log(fails ? `\n${fails} FAILED` : '\nALL OK'); process.exit(fails ? 1 : 0);

@@ -5307,12 +5307,22 @@ async function apScanPhoto(file){if(!file||!APS)return;apScanMsg('Reading the ph
 /* the codes read: a catalogue number in them wins; else the code itself (a shop's own barcode) */
 function apScanUse(codes){const a=S.ui.ap;if(!a)return false;let pn='';
  /* the pieces of the code's text that look like a part number (letters and digits, 5-18 long), Hero's 'S' ending also without it */
- const toks=[...new Set(codes.flatMap(c=>String(c).toUpperCase().split(/[^A-Z0-9-]+/)).map(t=>t.replace(/^-+|-+$/g,'')).filter(t=>/\d/.test(t)&&t.replace(/-/g,'').length>=5&&t.length<=18))];
+ const toks=[...new Set(codes.flatMap(c=>String(c).toUpperCase().split(/[^A-Z0-9\/-]+/).flatMap(ch=>{const q=ch.split('/'),o=[];q.forEach((x,i)=>{if(/^[A-Z]$/.test(q[i+1]||''))o.push(x+'/'+q[i+1]);o.push(x);});return o;})).map(t=>t.replace(/^-+|-+$/g,'')).filter(t=>/\d/.test(t)&&t.replace(/[-\/]/g,'').length>=5&&t.length<=20))];   /* Royal Enfield's 586031/A: a one-letter piece after a slash stays with its number */
  const hq=codes.map(heroQR).find(Boolean);
  if(hq)toks.unshift(hq[3]);
- try{const m=scMatch(toks.concat(toks.filter(t=>/[0-9A-Z]{6,}S$/.test(t)).map(t=>t.slice(0,-1))));if(m.exact.length)pn=hq&&m.exact.some(h=>scKey(h.pn)===scKey(hq[3])||scKey(h.pn)+'S'===scKey(hq[3]))?m.exact.find(h=>scKey(h.pn)===scKey(hq[3])||scKey(h.pn)+'S'===scKey(hq[3])).pn:m.exact[0].pn;}catch(e){}
- /* not in a loaded catalogue: Hero's field, else a piece that starts with a digit and has letters (part numbers do; serials and codes rarely) */
- if(!pn)pn=(hq&&hq[3])||toks.find(t=>/^[0-9]/.test(t)&&/[A-Z]/.test(t))||toks.find(t=>/[A-Z]/.test(t))||toks[0]||'';
+ /* update 9z (Sam 2026-10-20 "sabhi brands ... after market ke bhi"): each piece is scored, best first:
+    a number in a loaded catalogue, the shop's list or the aftermarket lists (also without / with Hero's S) > a piece shaped like
+    some brand's part numbers (CAT_PNR, known without loading the catalogue) > a piece with digits and letters > any piece.
+    Hero's box QR field 4 counts as shaped. Serials, batch codes, MRP and dates score low. */
+ try{amLoad();}catch(e){}
+ const ix=scIndex(),known=t=>{const k=catPk(t);if(ix.has(scKey(t)))return true;try{if(AM&&amHits(k).length)return true;}catch(e){}return false;};
+ const shaped=t=>{try{return catRoute(catPk(t)).l.length>0;}catch(e){return false;}};
+ const sc=t=>{const v=[t];if(/^[0-9A-Z-]{6,}S$/.test(t))v.push(t.slice(0,-1));else v.push(t+'S');
+  if(v.some(known))return 100;if(hq&&t===hq[3])return 90;if(v.some(shaped))return 70+(/[A-Z]/.test(t)&&/\d/.test(t)?5:0);
+  if(/^[0-9]/.test(t)&&/[A-Z]/.test(t))return 40;if(/[A-Z]/.test(t))return 30;return /^\d{8,14}$/.test(t)?20:10;};
+ const best=toks.map((t,n)=>[sc(t),-n,t]).sort((x,y)=>y[0]-x[0]||y[1]-x[1])[0];
+ if(best){pn=best[2];const v=catPk(pn);if(best[0]===100&&!ix.has(scKey(pn))&&/S$/.test(v)&&ix.has(scKey(v.slice(0,-1))))pn=v.slice(0,-1);
+  try{const m=scMatch([pn]);if(m.exact.length===1)pn=m.exact[0].pn;}catch(e){}}
  if(!pn){apScanMsg('Read “'+String(codes[0]).slice(0,40)+'”, but no part number in it. Keep scanning or type it.');return false;}
  try{navigator.vibrate&&navigator.vibrate(80);}catch(e){}
  apScanClose();a.pn=pn;const el=document.getElementById('ap-pn');if(el)el.value=pn;apLookNow();toast('Scanned '+pn);return true;}

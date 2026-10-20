@@ -13,7 +13,7 @@ const png = await p0.evaluate(async t => { await new Promise(r => { const s = do
   const Z = window.ZXing, m = new Z.QRCodeWriter().encode(t, Z.BarcodeFormat.QR_CODE, 300, 300, null);
   const c = document.createElement('canvas'); c.width = 1280; c.height = 720; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 1280, 720); x.fillStyle = '#000';
   const W = m.getWidth(), k = Math.floor(560 / W); for (let i = 0; i < W; i++) for (let j = 0; j < W; j++) if (m.get(i, j)) x.fillRect(360 + i * k, 80 + j * k, k, k);
-  return c.toDataURL('image/png').split(',')[1]; }, 'HERO MOTOCORP|17910KWH970S|CABLE COMP THROT|QTY 1|MRP 110.00|B.NO.AAG');
+  return c.toDataURL('image/png').split(',')[1]; }, 'D/FJBG0000218367/JCFMVZNMS4JY/16450ACK000S      /000001/0001200.00/AAE/1/G/000/00');   // Sam's Hero box QR (2026-10-20)
 await b0.close();
 fs.writeFileSync(dir + '/b.png', Buffer.from(png, 'base64'));
 execFileSync('ffmpeg', ['-loglevel', 'error', '-y', '-loop', '1', '-i', dir + '/b.png', '-t', '3', '-r', '10', '-pix_fmt', 'yuv420p', dir + '/b.y4m']);
@@ -24,16 +24,17 @@ await p.goto(BASE + '/app.html', { waitUntil: 'load' });
 await p.waitForFunction(() => typeof S !== 'undefined' && S.stack && S.stack.length && cur().s !== 'boot', null, { timeout: 15000 });
 await p.fill('#loginId', 'sam@bikepharma.com'); await p.evaluate(() => sendOtp()); await p.waitForTimeout(500);
 await p.fill('#pw1', 'Test@1234'); await p.evaluate(() => pwGo()); await p.waitForTimeout(900);
-await p.evaluate(async () => { catLoad('Hero'); for (let i = 0; i < 400 && CAT_ALL.some(e => e.vb === 'Hero' && e.st !== 2); i++) await new Promise(r => setTimeout(r, 500)); });
 await p.evaluate(() => { S.ui.ap = null; go('addproduct'); }); await p.waitForTimeout(300);
 ok(await p.isVisible('#ap-scan'), 'Add product has a Scan button');
 await p.click('#ap-scan');
 await p.waitForFunction(() => !document.getElementById('aps-v') && S.ui.ap && S.ui.ap.pn, null, { timeout: 30000 }).catch(() => {});
 const a = await p.evaluate(() => ({ pn: S.ui.ap.pn, live: !!(APS && APS.st) }));
-ok(a.pn === '17910-KWH-970' && !a.live, 'the camera read the QR code (17910KWH970S among other text): part no. ' + a.pn + ', camera off');
-await p.waitForTimeout(1500);
+ok(/^16450-?ACK-?000S?$/.test(a.pn) && !a.live, 'the camera read Sam’s Hero QR (catalogue not loaded yet): part no. ' + a.pn + ', camera off');
+await p.waitForFunction(() => /FOUND IN HERO/i.test(document.querySelector('#vp .screen:last-child').innerText), null, { timeout: 90000 }).catch(() => {});
 const t = await p.evaluate(() => document.querySelector('#vp .screen:last-child').innerText);
-ok(/FOUND IN HERO CATALOGUE/i.test(t) && /Cable Comp Throt/i.test(t), 'the Hero part opens with its own name');
+const pn2 = await p.evaluate(() => S.ui.ap.pn);
+ok(/FOUND IN HERO CATALOGUE/i.test(t) && /Injector/i.test(t) && pn2 === '16450-ACK-000', 'the Hero part is found: ' + pn2 + ' ' + (t.match(/Injector[^\n]*/i) || [''])[0]);
+await p.evaluate(async () => { catLoad('Hero'); for (let i = 0; i < 400 && CAT_ALL.some(e => e.vb === 'Hero' && e.st !== 2); i++) await new Promise(r => setTimeout(r, 500)); });
 // typed in small letters with Hero's S ending (Sam 2026-10-20)
 await p.evaluate(() => { S.ui.ap = null; go('addproduct'); }); await p.waitForTimeout(200); await p.type('#ap-pn', '11394aah00099s', { delay: 40 }); await p.waitForTimeout(3000);
 const t2 = await p.evaluate(() => document.querySelector('#vp .screen:last-child').innerText);

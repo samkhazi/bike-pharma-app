@@ -15,6 +15,7 @@ import { vinLook } from './lib/vinlook.mjs';
 import { otpConfig, makeOtp, deliverOtp } from './lib/sms.mjs';
 import { removeDemoData } from './lib/cleanup.mjs';
 import { checkNewBills, guardValue, auditRows, BILL_KEYS } from './lib/billguard.mjs';
+import { stampWho } from './lib/stamp.mjs';
 import { photoAi, AI_VER } from './lib/photoai.mjs';
 import { billAi } from './lib/billai.mjs';
 import { makeAlt } from './lib/altagent.mjs';
@@ -204,6 +205,7 @@ async function api(req, res, url, user) {
       else if (!row || row.rev <= base) merged = cv;
       else { const bj = store.versionAt(k, base); merged = merge3(bj === undefined ? undefined : JSON.parse(bj), sv, cv); }
       if (staff) { const [gv, gn] = guardValue(k, sv, merged, user, gget); merged = gv; gnotes.push(...gn); }
+      if (staff) merged = stampWho(k, sv, merged, user);   // update 9z: who added a product / stock entry
       else { const [gv, gn] = guardScoped(k, sv, merged, user, gget, ctx); merged = gv; if (gn.length) console.log(new Date().toISOString(), 'refused for', user.id, gn.join(' | ')); }
       if (!deepEqual(merged, sv)) writes[k] = JSON.stringify(merged);
       const back = scopeValue(k, merged, user);

@@ -21,6 +21,7 @@ BASE=http://127.0.0.1:3015 node tools/test_lots.mjs || r=1
 BASE=http://127.0.0.1:3015 node tools/test_kb.mjs || r=1
 BASE=http://127.0.0.1:3015 node tools/test_vinlook.mjs || r=1   # update 9o: chassis -> model from RE / Honda sites (mock makers on 3029)
 BASE=http://127.0.0.1:3015 node tools/test_apscan.mjs || r=1   # update 9y: Add product > Scan (fake camera), Hero S ending
+BASE=http://127.0.0.1:3015 node tools/test_9z.mjs || r=1   # update 9z: Added by, All <brand> models, part no. without dashes / S
 # update 9k: Find Part > Check parts with chassis number
 BASE=http://127.0.0.1:3015 node tools/test_vin.mjs || r=1
 # update 9l: Hero update (2 new editions with SVG diagrams, MRP list, price-list parts, kits, old numbers); needs Sam's update zip staged here

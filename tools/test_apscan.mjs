@@ -53,6 +53,9 @@ for (const [vb, pn] of Object.entries(PNS)) {
   const got = await p.evaluate(c => { S.ui.ap = null; go('addproduct'); apScanUse([c]); return S.ui.ap.pn; }, code);
   ok(got.replace(/[^A-Z0-9]/gi, '') === pn.replace(/[^A-Z0-9]/gi, ''), vb + ': ' + pn + ' picked from the label code (' + got + ')');
 }
+// Bajaj's box QR is "part-qty_MRP" (Sam's 36PA0093 box, 2026-10-20)
+const bj = await p.evaluate(() => { S.ui.ap = null; go('addproduct'); apScanUse(['36PA0093-1_2124']); return S.ui.ap.pn; });
+ok(bj === '36PA0093', 'Bajaj QR 36PA0093-1_2124 gives 36PA0093 ' + bj);
 // update 10a (Sam 2026-10-20): Honda's box QR has no part number, so the photo's printed label text is read
 const lbl = await p.evaluate(() => { const c = document.createElement('canvas'); c.width = 1400; c.height = 900; const x = c.getContext('2d'); x.fillStyle = '#c9a77a'; x.fillRect(0, 0, 1400, 900);
   x.fillStyle = '#d7262e'; x.fillRect(100, 120, 1200, 260); x.fillStyle = '#fff'; x.fillRect(100, 380, 1200, 420); x.font = 'bold 54px serif'; x.fillText('HONDA', 140, 210);

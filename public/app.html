@@ -4027,7 +4027,7 @@ function vinFind(){const s=S.ui.vin||(S.ui.vin={q:''});const i=document.getEleme
  if(!/^[A-HJ-NPR-Z0-9]{17}$/.test(c)){s.err=c.length===17?'This is not a chassis number: check the letters (no I, O or Q in a chassis number).':'Type the 17-letter chassis number, or the bike number like KA17HC3942. You typed '+c.length+' letters.';return refresh();}
  s.q=c;s.c=c;s.look=null;if(vinSite(c))return vinAsk(c);const m=(DB.vinMap||{})[vinKey(c)];if(m&&BRANDS_V[m.vb])return vinOpen(c,m.vb,m.vm);
  const bs=vinBrands(c);s.pick=true;s.vb=bs.length===1?bs[0]:'';s.mf='';refresh();}
-function vinOpen(c,vb,vm,src){catLoad(vb);const rc=S.ui.vin&&S.ui.vin.rc&&S.ui.vin.rc.found?S.ui.vin.rc:null;go('findpart',{v:'year',vb,vm,yr:'Any',vin:c,vy:vinYear(c),...(src?{vsrc:vb+' site: '+src}:{}),...(rc?{rcn:rc.reg}:{})});}
+function vinOpen(c,vb,vm,src){catLoad(vb);const rc=S.ui.vin&&S.ui.vin.rc&&S.ui.vin.rc.found?S.ui.vin.rc:null;const l=S.ui.vin&&S.ui.vin.look;const vnm=src&&l&&l.found?[l.name,l.model].filter(Boolean).join('|'):'';go('findpart',{v:'year',vb,vm,yr:'Any',vin:c,vy:vinYear(c),...(src?{vsrc:vb+' site: '+src}:{}),...(vnm?{vnm}:{}),...(rc?{rcn:rc.reg}:{})});}
 function vinSet(vb,vm){const s=S.ui.vin;const c=s&&s.c;if(!c)return;if(vinSite(c)){const l=s.look||{};return vinOpen(c,vb,vm,l.found?l.name:'');}const k=vinKey(c);DB.vinMap=DB.vinMap||{};const old=DB.vinMap[k];
  if(old&&(old.vb!==vb||old.vm!==vm)){if(!vinMgr()){toast('Only Manager or Admin can change a chassis code’s model');return;}audit('Chassis code model changed',k,old.vb+' '+old.vm,vb+' '+vm);}
  else if(!old)audit('Chassis code learned',k,'—',vb+' '+vm);
@@ -4066,6 +4066,9 @@ function m2FamV(p){const {vb,fam}=p;catLoad(vb);const ld=m2Ld(vb);const a=(BRAND
 function m2Year(p){const {vb,vm}=p;catLoad(vb);const ld=m2Ld(vb);const head=m2Head(esc(vb)+' '+esc(vm)+' Spare Parts — choose model year','');
  if(ld==='wait')return head+m2Wait(vb);if(ld==='err')return head+m2Err(vb);
  const V=fpVers(vb,vm);const ys=V==='wait'?[]:V.map(g=>g.lab);if(ys.length<2){if((p.vin||p.rcn)&&V!=='wait'){Object.assign(p,{v:'secs',yr:'Any',ed:ys[0]||'Any'});return m2SecsV(p);}return m2SecsV({...p,v:'secs',yr:'Any',ed:ys[0]||'Any'});}
+ /* update 10f (Sam 2026-10-20 "hamara catalogue wala setup sahi nhi he"): the maker's site names the exact variant ("CLASSIC 350 REAR DISC - BSIV
+    (1800286)"): open that variant's book, not one picked by year, so its own parts (rear disc brake hose KAB00044/A) are there. */
+ if(p.vin&&p.vnm&&V!=='wait'){const ns=String(p.vnm).split('|').map(x=>vinNorm(x.replace(/\([^)]*\)/g,''))).filter(Boolean);const g=V.find(g=>g.vs.some(v=>ns.includes(vinNorm(v))));if(g){Object.assign(p,{v:'secs',yr:'Any',ed:g.lab});return m2SecsV(p);}}
  if((p.vin||p.rcn)&&p.vy){const yo=l=>{const m=String(l).match(/(19|20)\d\d/g);return m?Math.max(...m.map(Number)):0;};const ed=ys.find(l=>yo(l)&&yo(l)<=p.vy)||ys[ys.length-1];Object.assign(p,{v:'secs',yr:'Any',ed});return m2SecsV(p);}
  const row=y=>{const sc=catScope(m2A({vb,vm,ed:y}));const rows=sc&&!sc.loading?sc.rows:[];const pn=new Set();rows.forEach(r=>{if(r.pk)pn.add(r.pk);});const n=m2Secs(rows).length;
   return `<button class="m2-row" onclick="go('findpart',{v:'secs',vb:'${m2Q(vb)}',vm:'${m2Q(vm)}',yr:'Any',ed:'${m2Q(y)}'})"><div class="grow"><div class="h3">${esc(y)}</div><div class="cap">${n} section${n===1?'':'s'}, ${m2N(pn.size)} parts</div></div>${ic('chevR','s18')}</button>`;};

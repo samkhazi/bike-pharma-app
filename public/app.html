@@ -3376,6 +3376,7 @@ function fpVar(j){const f=S.ui.fp;fpSet('vv',j<0?'Any':catVariants(f.vb,f.vm)[j]
 /* ---------- sticker scan: a photo of the box sticker gives the part number ---------- */
 /* letters OCR and barcodes confuse with digits read the same way on both sides */
 const SC_CONF={O:'0',Q:'0',D:'0',I:'1',L:'1',Z:'2',S:'5',B:'8',G:'6'};
+let SC_SK=null,SC_SKI=null;const scSorted=ix=>{if(SC_SKI!==ix){SC_SKI=ix;SC_SK=[...ix.keys()].sort();}return SC_SK;};
 const scKey=s=>String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/[OQDILZSBG]/g,c=>SC_CONF[c]);
 function scIndex(){const ix=new Map();const add=(code,h)=>{const k=scKey(code);if(k.length<5)return;const a=ix.get(k)||[];a.push(h);ix.set(k,a);};
  catRows().forEach(r=>{if(r.part)add(r.part,{t:'cat',pn:r.part,vb:r.vb,vm:r.vm,name:catNice(r.desc)});});
@@ -5362,13 +5363,15 @@ async function apScanCam(){const o=APS;if(!o)return;
 async function apScanPhoto(file){if(!file||!APS)return;apScanMsg('Reading the photo…');let codes=[];
  try{codes=await scBarcodes(await scCanvas(file,2000));}catch(e){}
  if(!APS)return;if(codes.length&&apScanUse(codes,{min:70}))return;
+ /* update 10k: a QR was read but holds no part number (Honda): a barcode on a sticker turned on its side is looked for too */
+ if(codes.length){try{const c=await scCanvas(file,2000);for(const deg of [90,-90]){const more=await scBarcodes(scTurn(c,deg,2000));codes=[...new Set(codes.concat(more))];if(more.length&&apScanUse(more,{min:70}))return;}}catch(e){}if(!APS)return;}
  /* update 10a (Sam 2026-10-20): Honda's box QR is only a genuineness code, so when the codes give no part number the label's
     printed text is read (the same reader as Paste bill's photo) and the part number picked out of it */
  apScanMsg('No part number in the code. Reading the label text…');let lines=[];
- try{const c=await scCanvas(file,2000),w=await apOcrW();
+ try{const c=await scCanvas(file,3000),w=await apOcrW();
   /* update 10i: a label photographed a little turned loses letters at the ends, so when no catalogue number is read the photo is
-     read again turned a few degrees each way (the readings are put together) */
-  for(const deg of [0,-4,4,-8,8]){if(!APS)break;const r=await w.recognize(deg?scTurn(c,deg,2000):c);lines=lines.concat(String(r.data&&r.data.text||'').split(/\r?\n/).filter(l=>l.trim()));
+     read again turned a few degrees each way, and on its side for a sticker printed upright (the readings are put together) */
+  for(const deg of [0,90,-90,-4,4,-8,8]){if(!APS)break;const r=await w.recognize(deg?scTurn(c,deg,3000):c);lines=lines.concat(String(r.data&&r.data.text||'').split(/\r?\n/).filter(l=>l.trim()));
    if(deg===0){const nd=apScanNeed(lines);if(nd.length){try{catNeed(nd);}catch(e){}for(let i=0;i<60&&APS&&nd.some(e=>e.st===0||e.st===1);i++)await new Promise(r=>setTimeout(r,250));}
     if(!apScanUse(lines,{ocr:1,rank:1}).some(x=>x[0]>=99))apScanMsg('Reading the label text… (turning the photo to read it better)');}
    if(apScanUse(lines,{ocr:1,rank:1}).some(x=>x[0]>=99))break;}
@@ -5379,8 +5382,8 @@ async function apScanPhoto(file){if(!file||!APS)return;apScanMsg('Reading the ph
  const need=apScanNeed(lines);
  if(need.length){apScanMsg('Checking the '+need.map(e=>e.vb).join(', ')+' catalogue…');try{catNeed(need);}catch(e){}
   for(let i=0;i<60&&APS&&need.some(e=>e.st===0||e.st===1);i++)await new Promise(r=>setTimeout(r,250));if(!APS)return;}
- if(lines.length&&(apScanUse(lines,{min:100,ocr:1})||apScanUse(lines,{min:70,ocr:1})))return;
- if(!apScanUse(codes.concat(lines),{ocr:1}))apScanMsg('No part number found on the label. Try again closer, or type the number.');}
+ if(lines.length&&(apScanUse(lines,{min:100,ocr:1})||apScanUse(lines,{min:96,ocr:1,pre:1})||apScanUse(lines,{min:70,ocr:1})))return;
+ if(!apScanUse(codes.concat(lines),{ocr:1,min:51}))apScanMsg('No part number found on the label. Try again closer, or type the number.');}
 const apScanNeed=lines=>[...new Set(apScanUse(lines,{ocr:1,rank:1}).slice(0,6).flatMap(x=>{try{return catRoute(catPk(x[2])).l.slice(0,2);}catch(e){return [];}}))].filter(e=>e.st!==2);
 /* the label reader stays ready while the shop scans one box after another */
 let AP_OCR=null;
@@ -5389,6 +5392,11 @@ function apOcrW(){return AP_OCR||(AP_OCR=ocrWorker(()=>{}).then(async w=>{await 
 function apScanUse(codes,opt){opt=opt||{};const a=S.ui.ap;if(!a)return false;let pn='';
  /* the pieces of the code's text that look like a part number (letters and digits, 5-18 long), Hero's 'S' ending also without it */
  const toks=[...new Set(codes.flatMap(c=>String(c).toUpperCase().replace(/(?:M\.?R\.?P\.?|RS|INR|₹)[\s.:\/-]*(?:RS\.?\s*)?\d[\d,]*(?:\.\d+)?/g,' ').replace(/\b(?:MFD|MFG|MFG\.? ?DT|PKD|PACKED|EXP|DATE|BATCH DT)?[\s.:]*\b\d{1,2}[\/.-](?:19|20)?\d{2}(?:[\/.-]\d{2,4})?\b(?![\/.-]?[A-Z0-9])/g,m=>/^\s*\d{1,2}[\/.-](?:19|20)\d\d\s*$|MFD|MFG|PKD|PACKED|EXP|DATE/.test(m)?' ':m).split(/[^A-Z0-9\/.-]+/).flatMap(w=>{w=w.replace(/^[.\/-]+|[.\/-]+$/g,'');return w.includes('.')?[w,...w.split('.')]:[w];}).flatMap(ch=>{const q=ch.split('/'),o=q.length>2?[ch]:[];q.forEach((x,i)=>{if(/^[A-Z]$/.test(q[i+1]||''))o.push(x+'/'+q[i+1]);o.push(x);});return o;})).map(t=>t.replace(/^-+|-+$/g,'')).flatMap(t=>{const q=t.split('-'),o=[t];for(let i=1;i<q.length;i++)o.push(q.slice(0,i).join('-'),q[i]);return o;}).filter(t=>/\d/.test(t)&&t.replace(/[-\/.]/g,'').length>=4&&t.length<=32))];
+ /* update 10k (Sam's video 2026-10-21): the reader breaks a number at its dashes ("02380 — KON — D01"): the pieces are also tried
+    joined; joined across a dash they count like any piece, joined across a space only when a catalogue knows them */
+ const J=new Set();if(opt.ocr)codes.forEach(c=>{const w=String(c).toUpperCase().replace(/[—–_~]/g,'-').match(/[A-Z0-9]+|-+|\s+/g)||[];const q=[];w.forEach(x=>{if(/^[A-Z0-9]/.test(x))q.push([x,'']);else if(q.length&&/-/.test(x))q[q.length-1][1]='-';else if(q.length&&!q[q.length-1][1])q[q.length-1][1]=' ';});
+  for(let i=0;i<q.length;i++)for(let n=2;n<=3&&i+n<=q.length;n++){const z=q.slice(i,i+n);if(!z.some(x=>/\d/.test(x[0])))continue;const t=z.map(x=>x[0]).join('-'),L=t.replace(/-/g,'').length;
+   if(L<8||L>18||toks.includes(t))continue;toks.push(t);if(z.slice(0,-1).some(x=>x[1]!=='-'))J.add(t);}});
  /* update 10h: aftermarket numbers keep their slashes and dots whole (ASK/R/FBC/206, Spaco 060100.00.47, FCC-T-RDN-110-C.ASSY-ORG),
     MK's 4-digit numbers count, and long ones (FCC-Y-RAY-113-S-ASSY-ORG) are kept: a short piece only wins when a list knows it */   /* Royal Enfield's 586031/A: a one-letter piece after a slash stays with its number */
  const hq=codes.map(heroQR).find(Boolean);
@@ -5400,8 +5408,8 @@ function apScanUse(codes,opt){opt=opt||{};const a=S.ui.ap;if(!a)return false;let
  try{amLoad();}catch(e){}
  const ix=scIndex(),known=t=>{const k=catPk(t);if(ix.has(scKey(t)))return true;try{if(AM&&amHits(k).length)return true;}catch(e){}return false;};
  const shaped=t=>{try{return catRoute(catPk(t)).l.length>0;}catch(e){return false;}};
- const sc=t=>{const v=[t];if(/^[0-9A-Z-]{6,}S$/.test(t))v.push(t.slice(0,-1));else v.push(t+'S');
-  if(v.some(known))return 100+Math.min(catPk(t).length,20)/100;   /* two known pieces: the longer, more exact one */if(catPk(t).length<5)return 0;if(opt.ocr&&/^\d{6}$/.test(t))return 50;   /* a pin code on the label (Pune-411035) */if(hq&&t===hq[3])return 90;if(v.some(shaped))return 70+(/[A-Z]/.test(t)&&/\d/.test(t)?5:0);
+ const sc=t=>{if(J.has(t)&&!known(t))return 0;const v=[t];if(/^[0-9A-Z-]{6,}S$/.test(t))v.push(t.slice(0,-1));else v.push(t+'S');
+  if(v.some(known))return 100+Math.min(catPk(t).length,20)/100;   /* two known pieces: the longer, more exact one */if(catPk(t).length<5)return 0;if(opt.ocr&&/^\d{6}$/.test(t))return 50;if(opt.ocr&&/^(?:91)?[6-9]\d{9}$|^1800\d{6,7}$/.test(t))return 0;   /* a phone or toll-free number on the label */   /* a pin code on the label (Pune-411035) */if(hq&&t===hq[3])return 90;if(v.some(shaped))return 70+(/[A-Z]/.test(t)&&/\d/.test(t)?5:0);
   if(/^[0-9]/.test(t)&&/[A-Z]/.test(t))return 40;if(/[A-Z]/.test(t))return 30;return /^\d{8,14}$/.test(t)?20:10;};
  /* text read off a printed label: some letters and digits look alike (O/0, I/1, B/8/3 at a cut edge, S/5, Z/2, G/6), so they are also
     tried the other way; each swap costs a point */
@@ -5411,6 +5419,11 @@ function apScanUse(codes,opt){opt=opt||{};const a=S.ui.ap;if(!a)return false;let
   t.replace(/O0|0O/g,(m,i)=>{o.push([t.slice(0,i)+t.slice(i+1),1],[t.slice(0,i+1)+t.slice(i+2),1]);return m;});
   /* every one- and two-letter swap (a long number's last letters are tried too, not only its first ones) */
   const sw=v=>{const r=[];[...v].forEach((ch,i)=>{if(LK[ch])[...LK[ch]].forEach(x=>r.push(v.slice(0,i)+x+v.slice(i+1)));});return r;};
+  /* update 10k: the last letters of a long number lost at the label's edge or misread ("31220 — K0N — D0"): a catalogue number that
+     starts with it and is at most 2 letters longer, when only one does (asked only after the whole photo was read) */
+  if(opt.pre){const k=scKey(t);if(k.length>=9){const K=scSorted(ix);let lo=0,hi=K.length;while(lo<hi){const m=(lo+hi)>>1;if(K[m]<k)lo=m+1;else hi=m;}
+   const f=[];for(let i=lo;i<K.length&&K[i].startsWith(k)&&f.length<3;i++)if(K[i].length>k.length&&K[i].length<=k.length+2)f.push(K[i]);
+   if(f.length===1){const h=ix.get(f[0])[0];const pn=h&&(h.pn||h.part);if(pn)o.push([String(pn).toUpperCase(),3]);}}}
   const one=sw(t);one.forEach(v=>o.push([v,1]));if(one.length<=40)one.forEach(v=>sw(v).forEach(w=>{if(w!==t)o.push([w,2]);}));return o;};
  /* update 10i: on a label photo the piece printed right after "Part No" / "P/N" wins over a pin code or phone number */
  const lab=new Set();if(opt.ocr)codes.forEach(c=>{const m=String(c).toUpperCase().match(/(?:PART\s*(?:NO|NUMBER|#)|P\s*\/\s*N)\.?\s*[:.-]?\s*([A-Z0-9][A-Z0-9\/.-]{3,31})/);if(m)lab.add(m[1].replace(/[.\/-]+$/,''));});
@@ -5419,7 +5432,7 @@ function apScanUse(codes,opt){opt=opt||{};const a=S.ui.ap;if(!a)return false;let
  const best=ranked[0];
  if(opt.rank)return ranked;
  if(best&&opt.min&&best[0]<opt.min)return false;
- if(best){pn=best[2];const v=catPk(pn);if(best[0]===100&&!ix.has(scKey(pn))&&/S$/.test(v)&&ix.has(scKey(v.slice(0,-1))))pn=v.slice(0,-1);
+ if(best&&best[0]>0){pn=best[2];const v=catPk(pn);if(best[0]===100&&!ix.has(scKey(pn))&&/S$/.test(v)&&ix.has(scKey(v.slice(0,-1))))pn=v.slice(0,-1);
   try{const m=scMatch([pn]);if(m.exact.length===1)pn=m.exact[0].pn;}catch(e){}}
  if(!pn){apScanMsg('Read “'+String(codes[0]).slice(0,40)+'”, but no part number in it. Keep scanning or type it.');return false;}
  try{navigator.vibrate&&navigator.vibrate(80);}catch(e){}

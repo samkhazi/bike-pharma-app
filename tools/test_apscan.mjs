@@ -61,6 +61,8 @@ for (const pn of ['ASK/R/FBC/206', '060100.00.47', '7031', 'FCC-Y-RAY-113-S-ASSY
   const got = await p.evaluate(c => { S.ui.ap = null; go('addproduct'); apScanUse([c]); return S.ui.ap.pn; }, 'MRP RS.1006 ' + pn + ' MFD 08/2026');
   ok(got === pn, 'aftermarket ' + pn + ' picked, not the MRP or date (' + got + ')');
 }
+// update 10i: a number printed with a short letter ending in the list ("ARW-5002 RS") is also found from the code alone
+ok(await p.evaluate(() => amHits(catPk('ARW-5002')).some(h => /ARW-5002/.test(h.pn || h.name || JSON.stringify(h)))), 'AR ARW-5002 finds ARW-5002 RS');
 ok(await p.evaluate(() => amHits(catPk('CSP40'))[0].name.startsWith('Carb. Slide Piston')), 'Zodix CSP40 is named from its page heading, not the bike under its picture');
 // update 10a (Sam 2026-10-20): Honda's box QR has no part number, so the photo's printed label text is read
 const lbl = await p.evaluate(() => { const c = document.createElement('canvas'); c.width = 1400; c.height = 900; const x = c.getContext('2d'); x.fillStyle = '#c9a77a'; x.fillRect(0, 0, 1400, 900);
@@ -72,11 +74,14 @@ const lbl = await p.evaluate(() => { const c = document.createElement('canvas');
 fs.writeFileSync(dir + '/honda.png', Buffer.from(lbl, 'base64'));
 await p.evaluate(() => { S.ui.ap = null; go('addproduct'); }); await p.waitForTimeout(300);
 await p.evaluate(() => { window.apScanCam = () => {}; apScanOpen(); });   // camera off: the fake one shows Hero's QR
+const sent = []; p.on('request', r => { if (r.method() !== 'GET' && !/\/api\/sync/.test(r.url())) sent.push(r.url()); });
 await p.setInputFiles('#aps-file', dir + '/honda.png');
 await p.waitForFunction(() => !document.getElementById('aps-v') && S.ui.ap && S.ui.ap.pn, null, { timeout: 120000 }).catch(() => {});
 await p.waitForFunction(() => /FOUND IN|NOT IN THE/i.test(document.querySelector('#vp .screen:last-child').innerText), null, { timeout: 90000 }).catch(() => {});
 const hp = await p.evaluate(() => ({ pn: S.ui.ap.pn, t: document.querySelector('#vp .screen:last-child').innerText }));
 ok(hp.pn === '31220-K0P-DA1' && /FOUND IN HONDA/i.test(hp.t) && /Stator/i.test(hp.t), 'Honda label photo (QR has no part no.): the printed 31220K0PDA1 is read, not the pin code or phone ' + hp.pn);
+// update 10i (Sam 2026-10-21 "scan ki photo server me save nhi honi he"): the scan photo is read on the phone, never sent
+ok(!sent.some(u => /\/api\/(photo|billread|files)/.test(u)), 'the scan photo is not sent to the server ' + sent.join(' '));
 ok(errs.length === 0, 'no page errors ' + errs.slice(0, 2).join(' | '));
 await b.close(); fs.rmSync(dir, { recursive: true, force: true });
 console.log(fails ? `\n${fails} FAILED` : '\nALL OK'); process.exit(fails ? 1 : 0);

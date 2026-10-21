@@ -3768,12 +3768,18 @@ function dgFig(r){const d=dgLoad(r.vb);if(!d||!r.ext)return null;const e=CAT_ALL
  if(!d.p)return null;const g=r.page.slice(r.page.indexOf('.')+1),f=(S.ui&&(S.ui.fpA||S.ui.fp))||{},c=cur().p||{};const vm=c.vm&&c.vm!=='Any'?c.vm:f.vm,yr=c.yr&&c.yr!=='Any'?c.yr:f.yr;
  const has=v=>{const i=e.d.vars.indexOf(v);return i>=0&&d.p[i]&&d.p[i][g]!=null;};const vv=r.vv||[];
  let v=vv.find(x=>x===f.vv&&has(x));if(!v&&yr&&yr!=='Any')v=vv.find(x=>CAT_VMOD[x]===vm&&catVyrs(x).includes(+yr)&&has(x));if(!v)v=vv.find(x=>CAT_VMOD[x]===vm&&has(x));if(!v)v=vv.find(has);if(!v)return null;
- return {u:d.f[d.p[e.d.vars.indexOf(v)][g]],box:null,view:null,v};}
+ /* update 10i (Sam 2026-10-21 "sahi part ka sahi catalogue show hona he"): when the chosen bike's book has no picture of this group,
+    another bike's picture is still shown, but marked with that bike's name so nobody takes it for this bike's diagram */
+ const es=c.ed&&c.ed!=='Any'&&c.vm&&c.vm!=='Any'?fpEdSet({vb:r.vb,vm:c.vm,ed:c.ed}):null;
+ const want=vv.filter(x=>(!vm||vm==='Any'||CAT_VMOD[x]===vm)&&(!yr||yr==='Any'||catVyrs(x).includes(+yr))&&(!f.vv||f.vv==='Any'||x===f.vv));
+ const other=(vm&&vm!=='Any'&&CAT_VMOD[v]!==vm)||(es&&!es.has(v))||(want.length&&!want.includes(v))?v:'';
+ return {u:d.f[d.p[e.d.vars.indexOf(v)][g]],box:null,view:null,v,other};}
+const dgOther=g=>g&&g.other?`<div class="cap" style="border:1.5px solid var(--amber,#b07d00);border-radius:10px;padding:6px 10px;margin-bottom:6px"><b>Picture from another bike's book:</b> ${esc(g.other)}. This bike's book has no picture of this group, so check the part number in the table.</div>`:'';
 const dgBox=b=>b?b.map(x=>+(+x).toFixed(2)).join(','):'';
 const dgEl=(g,cls,crop,extra)=>{const b=crop&&g.box||g.view;return `<div class="${cls} dg" role="img" aria-label="${crop&&g.box?'Part in the catalogue diagram':'Diagram'}" data-dg="${esc(g.u)}"${b?` data-box="${dgBox(b)}"`:''}${g.view?` data-view="${dgBox(g.view)}"`:''} style="aspect-ratio:4/3;${extra||''}"></div>`;};
 const dgCropEl=(g,cls)=>{const b=g.box,R=(b[2]-b[0])/(b[3]-b[1]);return dgEl(g,cls,1,`max-width:${Math.round(220*Math.min(Math.max(R,.6),1.6))}px`);};
 /* the whole diagram with a zoom; what to show when the viewer cannot read the project's files */
-const dgFull=(g,r,hint)=>`<div class="dg-wrap"><button class="fpc-zb" onclick="dgZoom(this)" aria-label="Open the diagram bigger">${dgEl(g,'fpc-fig')}</button><div class="micro muted" style="text-align:center;margin-top:6px">${hint||(r&&r.ref?'This part is ref '+esc(r.ref)+' on the diagram. ':'')+'Tap the diagram to zoom.'}</div><div class="dg-alt">${r&&catSee(r)||dgMiss()}</div></div>`;
+const dgFull=(g,r,hint)=>dgOther(g)+`<div class="dg-wrap"><button class="fpc-zb" onclick="dgZoom(this)" aria-label="Open the diagram bigger">${dgEl(g,'fpc-fig')}</button><div class="micro muted" style="text-align:center;margin-top:6px">${hint||(r&&r.ref?'This part is ref '+esc(r.ref)+' on the diagram. ':'')+'Tap the diagram to zoom.'}</div><div class="dg-alt">${r&&catSee(r)||dgMiss()}</div></div>`;
 function dgZoom(btn){const el=btn.querySelector('[data-dg]');if(!el)return;const sc=document.querySelector('#vp .screen');if(!sc)return;const d=document.createElement('div');d.className='fpz';d.setAttribute('role','dialog');d.setAttribute('aria-label','Full diagram');
  d.innerHTML=`<button class="fpz-x" aria-label="Close diagram">${ic('x','s20')}</button><div class="fpz-in"><div class="fpz-fig dg" data-dg="${esc(el.dataset.dg)}"${el.dataset.view?` data-box="${el.dataset.view}"`:''}${el.dataset.hk?` data-hk="${esc(el.dataset.hk)}"`:''} style="aspect-ratio:4/3"></div></div><div class="fpz-tip">Tap or pinch to zoom</div>`;
  fpzWire(d);
@@ -4155,7 +4161,12 @@ function amLoad(){if(AM_ST===0){AM_ST=1;fetch('cat/am.json').then(r=>r.ok?r.json
   AM_TY=d.ty.map(([n,x])=>[n,new RegExp(x)]);AM_ST=2;refresh();},()=>{AM_ST=3;});}return AM;}
 const amP=i=>{const p=AM.p[i];return {img:p[11]||'',i,b:AM.b[p[0]],pn:p[1],nm:p[2],g:p[3],mrp:p[4],fit:p[5],oem:p[6],same:p[7],ty:p[8],fm:p[9].map(([b,m])=>[AM.ob[b],m]),near:p[10]||[]};};
 function amType(...ss){if(!AM_TY)return '';for(const s of ss){const u=String(s||'').toUpperCase();for(const [n,x] of AM_TY)if(x.test(u))return n;}return '';}
-const amByPn=pk=>AM_PK&&pk?(AM_PK.get(pk)||[]).map(amP):[];
+/* update 10i: a list code with a short letter ending after a space ("ARW-5002 RS", "GSKT-ACTV6-FK46 A") is also found from the code
+   alone, as scanned or typed without the ending (every such ending is listed) */
+let AM_PX=null;
+const amByPn=pk=>{if(!AM_PK||!pk)return [];const x=AM_PK.get(pk);if(x)return x.map(amP);
+ if(!AM_PX){AM_PX=new Map();AM.p.forEach((p,i)=>{const m=String(p[1]).toUpperCase().match(/^(.*\d[A-Z0-9-]*)\s+[A-Z]{1,3}$/);if(m){const k=catPk(m[1]);(AM_PX.get(k)||AM_PX.set(k,[]).get(k)).push(i);}});}
+ return pk.length>=5?(AM_PX.get(pk)||[]).map(amP):[];};
 const amByOem=pk=>AM_OE&&pk?(AM_OE.get(pk)||[]).map(amP):[];
 /* same bike + same kind of part (no number printed): only a suggestion */
 const AM_TG=[['front',/\b(FRONT|FR|FRT)\b/],['rear',/\b(REAR|RR)\b/],['lh',/\b(LH|LEFT)\b/],['rh',/\b(RH|RIGHT)\b/],['disc',/\bDISC\b/],['drum',/\bDRUM\b/],['bs6',/\bBS ?-?(VI|6)\b/],['bs4',/\bBS ?-?(IV|4)\b/]];
@@ -5354,15 +5365,23 @@ async function apScanPhoto(file){if(!file||!APS)return;apScanMsg('Reading the ph
  /* update 10a (Sam 2026-10-20): Honda's box QR is only a genuineness code, so when the codes give no part number the label's
     printed text is read (the same reader as Paste bill's photo) and the part number picked out of it */
  apScanMsg('No part number in the code. Reading the label text…');let lines=[];
- try{const c=await scCanvas(file,2000),w=await apOcrW(),r=await w.recognize(c);c.width=c.height=0;lines=String(r.data&&r.data.text||'').split(/\r?\n/).filter(l=>l.trim());}
+ try{const c=await scCanvas(file,2000),w=await apOcrW();
+  /* update 10i: a label photographed a little turned loses letters at the ends, so when no catalogue number is read the photo is
+     read again turned a few degrees each way (the readings are put together) */
+  for(const deg of [0,-4,4,-8,8]){if(!APS)break;const r=await w.recognize(deg?scTurn(c,deg,2000):c);lines=lines.concat(String(r.data&&r.data.text||'').split(/\r?\n/).filter(l=>l.trim()));
+   if(deg===0){const nd=apScanNeed(lines);if(nd.length){try{catNeed(nd);}catch(e){}for(let i=0;i<60&&APS&&nd.some(e=>e.st===0||e.st===1);i++)await new Promise(r=>setTimeout(r,250));}
+    if(!apScanUse(lines,{ocr:1,rank:1}).some(x=>x[0]>=99))apScanMsg('Reading the label text… (turning the photo to read it better)');}
+   if(apScanUse(lines,{ocr:1,rank:1}).some(x=>x[0]>=99))break;}
+  c.width=c.height=0;}
  catch(e){if(APS)apScanMsg(String(e&&e.message||'The label could not be read.').slice(0,120));if(!codes.length)return;}
  if(!APS)return;
  /* the brands the best pieces look like are loaded, so a number in their catalogue wins over a pin code or phone number */
- const need=[...new Set(apScanUse(lines,{ocr:1,rank:1}).slice(0,6).flatMap(x=>{try{return catRoute(catPk(x[2])).l.slice(0,2);}catch(e){return [];}}))].filter(e=>e.st!==2);
+ const need=apScanNeed(lines);
  if(need.length){apScanMsg('Checking the '+need.map(e=>e.vb).join(', ')+' catalogue…');try{catNeed(need);}catch(e){}
   for(let i=0;i<60&&APS&&need.some(e=>e.st===0||e.st===1);i++)await new Promise(r=>setTimeout(r,250));if(!APS)return;}
  if(lines.length&&(apScanUse(lines,{min:100,ocr:1})||apScanUse(lines,{min:70,ocr:1})))return;
  if(!apScanUse(codes.concat(lines),{ocr:1}))apScanMsg('No part number found on the label. Try again closer, or type the number.');}
+const apScanNeed=lines=>[...new Set(apScanUse(lines,{ocr:1,rank:1}).slice(0,6).flatMap(x=>{try{return catRoute(catPk(x[2])).l.slice(0,2);}catch(e){return [];}}))].filter(e=>e.st!==2);
 /* the label reader stays ready while the shop scans one box after another */
 let AP_OCR=null;
 function apOcrW(){return AP_OCR||(AP_OCR=ocrWorker(()=>{}).then(async w=>{await w.setParameters({tessedit_pageseg_mode:'3'});return w;}).catch(e=>{AP_OCR=null;throw e;}));}
@@ -5386,10 +5405,19 @@ function apScanUse(codes,opt){opt=opt||{};const a=S.ui.ap;if(!a)return false;let
   if(/^[0-9]/.test(t)&&/[A-Z]/.test(t))return 40;if(/[A-Z]/.test(t))return 30;return /^\d{8,14}$/.test(t)?20:10;};
  /* text read off a printed label: some letters and digits look alike (O/0, I/1, B/8/3 at a cut edge, S/5, Z/2, G/6), so they are also
     tried the other way; each swap costs a point */
- const LK={O:'0','0':'O',I:'1/','1':'I/',B:'83',S:'5',Z:'2',G:'6'};   /* update 10h: a printed '/' is often read as I or 1 (ASK/R/FBC/206 -> ASK/RIFBC/206) */
- const vars=t=>{let o=[[t,0]];if(!opt.ocr)return o;[...t].forEach((ch,i)=>{if(!LK[ch]||o.length>300)return;o=o.concat(o.flatMap(([v,n])=>[...LK[ch]].map(r=>[v.slice(0,i)+r+v.slice(i+1),n+1])));});return o;};
- const best=toks.flatMap((t,n)=>vars(t).map(([v,k])=>[sc(v)-k,-n,v])).sort((x,y)=>y[0]-x[0]||y[1]-x[1])[0];
- if(opt.rank)return toks.flatMap((t,n)=>vars(t).map(([v,k])=>[sc(v)-k,-n,v])).sort((x,y)=>y[0]-x[0]||y[1]-x[1]);
+ const LK={O:'0','0':'O',I:'1/','1':'I/',B:'83P',P:'B',S:'5',Z:'2',G:'6',A:'4','4':'A','9':'0'};   /* update 10h: a printed '/' is often read as I or 1 (ASK/R/FBC/206 -> ASK/RIFBC/206) */
+ const vars=t=>{let o=[[t,0]];if(!opt.ocr)return o;
+  /* update 10i: the reader sometimes doubles a round letter (KCR06 read as KCRO06): also tried with one of the pair taken out */
+  t.replace(/O0|0O/g,(m,i)=>{o.push([t.slice(0,i)+t.slice(i+1),1],[t.slice(0,i+1)+t.slice(i+2),1]);return m;});
+  /* every one- and two-letter swap (a long number's last letters are tried too, not only its first ones) */
+  const sw=v=>{const r=[];[...v].forEach((ch,i)=>{if(LK[ch])[...LK[ch]].forEach(x=>r.push(v.slice(0,i)+x+v.slice(i+1)));});return r;};
+  const one=sw(t);one.forEach(v=>o.push([v,1]));if(one.length<=40)one.forEach(v=>sw(v).forEach(w=>{if(w!==t)o.push([w,2]);}));return o;};
+ /* update 10i: on a label photo the piece printed right after "Part No" / "P/N" wins over a pin code or phone number */
+ const lab=new Set();if(opt.ocr)codes.forEach(c=>{const m=String(c).toUpperCase().match(/(?:PART\s*(?:NO|NUMBER|#)|P\s*\/\s*N)\.?\s*[:.-]?\s*([A-Z0-9][A-Z0-9\/.-]{3,31})/);if(m)lab.add(m[1].replace(/[.\/-]+$/,''));});
+ const ranked=toks.flatMap((t,n)=>vars(t).map(([v,k])=>{const x=sc(v),y=k&&x<100?sc(t):x;   /* a swapped letter only helps when it makes a known number */
+  return [y-k+(lab.has(t)&&y<100?25:0),-n,k&&x<100?t:v];})).sort((x,y)=>y[0]-x[0]||y[1]-x[1]);
+ const best=ranked[0];
+ if(opt.rank)return ranked;
  if(best&&opt.min&&best[0]<opt.min)return false;
  if(best){pn=best[2];const v=catPk(pn);if(best[0]===100&&!ix.has(scKey(pn))&&/S$/.test(v)&&ix.has(scKey(v.slice(0,-1))))pn=v.slice(0,-1);
   try{const m=scMatch([pn]);if(m.exact.length===1)pn=m.exact[0].pn;}catch(e){}}
@@ -6509,7 +6537,7 @@ function m2PartV(p){const r=m2Row(p);if(!r)return m2PartV0(p);const s=DG_SLUG[r.
  const v=g?g.v:m3Vg(r),kr=m3K(r);let L=m3Rows(r.vb,r.page,v).map(q=>m3K(q)===kr?r:q);if(!L.includes(r))L=L.concat(r).sort(m3By);
  const x=m3Sel(p,L,r),k='m3'+r.i,vm=p.vm&&p.vm!=='Any'?p.vm:v&&CAT_VMOD[v]||(m2FitL(r)[0]||r.vm||'').replace(/ \(.*$/,''),ys=v?catVyrs(v):[],yr=p.yr&&p.yr!=='Any'?String(p.yr):ys.length?catYrsTxt(ys):'',cc=MODEL_CC[vm];
  if(p.si!=null){p.si=x.i;p.spk=x.pk||'';p.sref=x.ref||'';}const o=M3[k]={rows:L,sel:x.i,vb:r.vb,page:r.page,v,vm,yr},sm=new Map();PRODUCTS.forEach(y=>{const q=catPk(y.pn);if(q&&!sm.has(q))sm.set(q,y);});queueMicrotask(m3Mount);
- const dia=g?`<div class="m3-dgw dg-wrap">${dgEl(g,'fpc-fig m3-fig').replace('<div ',`<div data-hk="${k}" onclick="if(!event.target.closest('button'))dgZoom(this.closest('.m3-dgw'))" `)}<button class="m3-zb" onclick="dgZoom(this.closest('.m3-dgw'))" aria-label="Open the diagram bigger">${ic('zoom','s18')}</button><div class="dg-alt">${dgMiss()}</div></div><div class="cap m3-tip">Tap a number on the diagram or a part in the list.</div>`
+ const dia=g?dgOther(g)+`<div class="m3-dgw dg-wrap">${dgEl(g,'fpc-fig m3-fig').replace('<div ',`<div data-hk="${k}" onclick="if(!event.target.closest('button'))dgZoom(this.closest('.m3-dgw'))" `)}<button class="m3-zb" onclick="dgZoom(this.closest('.m3-dgw'))" aria-label="Open the diagram bigger">${ic('zoom','s18')}</button><div class="dg-alt">${dgMiss()}</div></div><div class="cap m3-tip">Tap a number on the diagram or a part in the list.</div>`
   :`<div class="m3-dgw m3-ld"><span class="cap">Loading diagram…</span></div>`;
  return `<div class="m3" data-k="${k}">${m2Head(esc(catNice(r.asm||r.fig))+(r.asm&&r.fig?' – '+esc(r.fig):'')+' for '+esc([r.vb,vm,cc?cc+'cc':'',yr].filter(Boolean).join(' ')),[v,r.src,L.length+' part'+(L.length===1?'':'s')].filter(Boolean).map(esc).join(' · '))}
  <div class="m3-g"><div class="m3-c1">${dia}</div><div class="m3-c2"><div class="m3-lh"><b>Parts in this diagram</b><span class="cap">${L.length}</span></div><div class="m3-list">${L.map(q=>m3Row(q,q===x,sm)).join('')}</div></div><div class="m3-c3"><div class="card m3-det">${m3Det(x,o)}</div></div></div>

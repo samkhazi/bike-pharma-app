@@ -42,7 +42,7 @@ async function openPart(p, vb, pk) { await p.evaluate(vb => catNeed([CAT_ALL.fin
 const A = '45125-AAH-F0099';   // Hero only: SHOE COMP BRAKE, MRP 160, 33 bikes
 const A2 = '06455-AAC-J10';    // Hero only: BRAKE PAD KIT, MRP 235
 const B = '14771-GB4-680';     // in Hero and Honda
-const C = '36JP0057', C2 = 'JP351010', C3 = '36JP0058';  // KTM (no MRP in the catalogue)
+const C = '36JG0160', C2 = '36JG0161', C3 = '36JG0162';  // KTM with no MRP in the catalogue (update 10g gave most KTM numbers an MRP from Sam's Mittal list)
 const D = 'ZX9988776';         // in no catalogue
 const NF = 'KX7731942';        // in no catalogue and never added (the bill photo test)
 const Y = '90340-12813';       // Yamaha only, MRP 55

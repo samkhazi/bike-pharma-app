@@ -20,6 +20,7 @@ import { stampWho } from './lib/stamp.mjs';
 import { photoAi, AI_VER } from './lib/photoai.mjs';
 import { billAi } from './lib/billai.mjs';
 import { makeAlt } from './lib/altagent.mjs';
+import { pnLookup } from './lib/pnlook.mjs';
 import { startMirror } from './lib/mysqlmirror.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -37,6 +38,7 @@ const PROTECTED = (env.PROTECTED_DIRS || 'cat,bj,ph,phh,figs').split(',').map(s 
 const OTP = otpConfig(env);
 const store = openStore(DATA_DIR);
 const MIRROR = startMirror(store, process.env);   // MySQL copy for phpMyAdmin (10m), off unless MYSQL_* are in .env
+const PNLOOK = pnLookup(PUBLIC_DIR); setTimeout(() => { PNLOOK('').catch(() => {}); }, 4000).unref();   // index the brand files soon after start
 const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 
 // ---------- first run: an empty shop, no accounts ----------
@@ -114,6 +116,11 @@ async function api(req, res, url, user) {
     if (roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: user ? 'Staff login needed' : 'Please log in again' });
     if (limited('vin:' + user.id, 60, 10 * 60 * 1000)) return json(res, 429, { error: 'Too many chassis searches, try again in a few minutes' });
     return json(res, 200, await vinLook(url.searchParams.get('c')));
+  }
+  if (p === '/api/pnlook') {   // update 10r: part number -> its lines in every brand catalogue, so a phone does not load whole catalogues
+    drain(req);
+    if (roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: user ? 'Staff login needed' : 'Please log in again' });
+    return json(res, 200, await PNLOOK(url.searchParams.get('q')));
   }
   if (p === '/api/rclook') {   // update 10d: registration number -> RC details from the paid RC API (staff only; the key stays here)
     drain(req);

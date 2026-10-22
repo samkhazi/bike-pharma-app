@@ -5221,8 +5221,8 @@ function invHits(pk){const out=[];for(const e of CAT_ALL){if(e.st!==2)continue;c
   out.push({vb:e.vb,pk,pn:r.part,name:catNice(r.desc)||r.part,sec:catNice(r.asm||''),qty:qs.length?Math.max(...qs):0,mrp,fits:m2FitL(r),cat:invCatOf(r)});}
  if(AM)out.push(...amHits(pk));return out;}
 const INV_RK=new Map();
-const invRowOf=(vb,pk)=>{if(!vb||!pk||!CAT_ALL.some(e=>e.vb===vb&&e.st===2))return null;const rs=catPkRows(vb,INV_RK.get(vb+'|'+pk)||pk);return rs.find(x=>x.ph)||rs[0]||null;};
-const invPic=r=>r?(catPhoto(r)||m2Thumb(r)):'';
+const invRowOf=(vb,pk)=>{if(!vb||!pk)return null;if(!CAT_ALL.some(e=>e.vb===vb&&e.st===2)){/* 10r: the line the server sent */for(const o of INV_LK.values())for(const h of o.hits||[])if(h.srv&&h.vb===vb&&h.pk===pk)return {srv:1,vb,part:h.srv.part,desc:h.srv.desc,ph:h.srv.ph};return null;}const rs=catPkRows(vb,INV_RK.get(vb+'|'+pk)||pk);return rs.find(x=>x.ph)||rs[0]||null;};
+const invPic=r=>r?(catPhoto(r)||(r.srv?'':m2Thumb(r))):'';
 /* look a number up: the catalogue files its shape can be in load first (catRoute), then the files it could be part of a number in,
    then (when asked) every catalogue. defer: the caller asks for the files itself (several numbers at once) */
 const INV_LK=new Map();
@@ -5241,6 +5241,30 @@ function invLook(pn,defer){const pk=catPk(pn);let o=INV_LK.get(pk);if(!o){o={pk,
 function invNeed(list){const u=[...new Set(list.flatMap(o=>o.need||[]))];if(u.length&&u.some(e=>!CAT_NEED.includes(e)||e.st===0))catNeed(u);}
 function invEvery(pk){const o=INV_LK.get(pk);if(o){o.every=1;o.st='wait';}invRefresh();}
 function invLookWait(pn,cb,t0){t0=t0||Date.now();const o=invLook(pn);if(o.st==='done'||o.st==='short'||Date.now()-t0>9e4){cb(o);return;}setTimeout(()=>invLookWait(pn,cb,t0),300);}
+/* update 10r (Sam 2026-10-22: Add product went "back" on Shivanna's phone while a part number was typed): every half-typed number loaded
+   the catalogues it could be in (Hero ~225 MB, a few parts later every brand ~750 MB) and the phone's browser, out of memory, reloaded the
+   page. On the shop's server the number is looked up there (/api/pnlook) and only that part's lines come back; nothing big loads */
+const invLook0=invLook;let INV_SV=1;
+const invSrvFits=x=>{const by=new Map();x.vv.forEach(v=>{const m=x.vmod[v]||v;by.set(m,(by.get(m)||[]).concat(v));});
+ return [...by.entries()].map(([m,vs])=>{if(vs.length>=(x.nv[m]||0))return m;const ys=vs.map(catVyrs);
+  if(ys.every(a=>a.length))return m+' ('+catYrsTxt([...new Set(ys.flat())].sort((a,b)=>a-b))+')';
+  return m+' ('+vs.map(v=>(v.startsWith(m)?v.slice(m.length):v).replace(/^[\s·]+/,'').replace(/ ?\(([^()]*)\)/g,' $1').trim()).join(', ')+')';});};
+const invSrvHit=x=>({vb:x.vb,pk:x.pk,pn:x.part,name:catNice(x.desc)||x.part,sec:catNice(x.asm||''),qty:x.qty,mrp:catMrpFix(x.part,x.mrp),fits:x.vv.length?invSrvFits(x):[],cat:invCatOf({desc:x.desc,asm:x.asm}),srv:x});
+invLook=function(pn,defer){if(!INV_SV||typeof SRV==='undefined'||!srvStaff())return invLook0(pn,defer);
+ const pk=catPk(pn);let o=INV_LK.get(pk);if(!o){o={pk,wide:0,every:0,hits:[],need:[]};INV_LK.set(pk,o);}
+ if(pk.length<4){o.st='short';o.hits=[];return o;}
+ amLoad();o.need=[];o.more=0;
+ if(!o.sv){o.sv=1;fetch('/api/pnlook?q='+encodeURIComponent(pk),{credentials:'same-origin'}).then(r=>r.ok?r.json():Promise.reject(r.status))
+  .then(j=>{o.sv=2;o.sr=j;},()=>{o.sv=3;}).then(()=>catRefresh());}
+ const am=k=>AM?amHits(k):[];
+ if(o.sv===1){o.st='wait';o.pend=['parts'];o.hits=[];o.in=[];o.fail=[];return o;}
+ if(o.sv===3){o.hits=am(pk);o.in=[];o.fail=['server'];o.st=AM_ST===1&&!o.hits.length?'wait':'done';o.pend=['aftermarket'];return o;}
+ const j=o.sr;o.in=j.in||[];o.fail=j.fail&&j.fail.length?['server']:[];
+ o.hits=(j.hits||[]).map(invSrvHit).concat(am(pk));if(!o.hits.length&&j.twin)o.hits=am(j.twin);
+ if(!o.hits.length&&/^[0-9A-Z]{6,}$/.test(pk)){const p2=/S$/.test(pk)?pk.slice(0,-1):pk+'S';o.hits=am(p2);}
+ o.st=AM_ST===1&&!o.hits.length?'wait':'done';o.pend=['aftermarket'];return o;};
+/* a failed lookup is asked again with Try again */
+{const r0=catRetry;catRetry=function(){INV_LK.forEach(o=>{if(o.sv===3)o.sv=0;});return r0.apply(this,arguments);};}
 const invFitsTxt=f=>!f||!f.length?'Not set':f.slice(0,3).join(', ')+(f.length>3?' +'+(f.length-3)+' more':'');
 /* ---- photo cleanup (Sam 16:59Z-17:25Z): the server keeps each photo exactly as taken and makes two copies with the faint logo
    behind the part: <hash>-c.jpg white background (used by default) and <hash>-w.jpg the photo as taken ("Original").
@@ -5743,6 +5767,7 @@ function ocrNear(pk){if(pk.length<6)return null;let best=null,second=99;
   const d=ocrDist(pk,k,1.2);if(d>1.2)return;if(!best||d<best.d){if(best&&best.k!==k)second=Math.min(second,best.d);best={d,k,pn};}else if(k!==best.k)second=Math.min(second,d);};
  PRODUCTS.forEach(p=>{const k=catPk(p.pn);if(k)tryK(k,p.pn);});
  CAT_ALL.forEach(e=>{if(e.st!==2)return;catPkRows(e.vb,'');const m=CAT_PKB&&CAT_PKB.get(e.vb);if(m)m.forEach((rs,k)=>tryK(k,rs[0].part||k));});
+ /* 10r: the closest catalogue numbers the server found */const sv=INV_LK.get(pk);if(sv&&sv.sr&&sv.sr.near)sv.sr.near.forEach(c=>tryK(c.k,c.pn));
  return best&&best.d<=1&&second>best.d+.25?{pn:String(best.pn).toUpperCase(),d:best.d}:null;}
 async function invOcr(inp){const f=inp.files&&inp.files[0];inp.value='';if(!f)return;
  const st=S.ui.ip||(S.ui.ip={txt:'',pick:{}}),o=st.ocr={st:'busy',pct:0,msg:'Getting the photo ready…'},show=()=>{if(S.ui.ip===st&&cur().s==='invpaste')invRefresh();};
@@ -6328,7 +6353,7 @@ function bpApplyItem(it,g){const p=P(it.pid);if(!p)return;const ch={},m=r2(+it.b
  if(/^\d{4,8}$/.test(it.hsn||'')&&String(p.hsn||'')!==String(it.hsn)){audit('HSN changed from supplier bill',p.pn,p.hsn||'—',String(it.hsn));ch.hsn=String(it.hsn);}
  if(it.gst!=null&&it.gst!==''&&BP_GST.includes(+it.gst)&&String(p.gst||'')!==String(+it.gst)){audit('GST changed from supplier bill',p.pn,(p.gst||'—')+'%',+it.gst+'%');ch.gst=String(+it.gst);}
  if(Object.keys(ch).length)bpSetP(p,ch);
- if(m>0){const pk=catPk(p.pn),f=(DB.mrpFix||{})[pk];if(invHits(pk).some(h=>+h.mrp>0&&r2(h.mrp)!==m)||f&&r2(f.m)!==m){(DB.mrpFix=DB.mrpFix||{})[pk]={m,d:isoToday(),b:inv};catMrpLive(pk,m);}}}
+ if(m>0){const pk=catPk(p.pn),f=(DB.mrpFix||{})[pk];if(invLook(p.pn,true).hits.some(h=>+h.mrp>0&&r2(h.mrp)!==m)||f&&r2(f.m)!==m){(DB.mrpFix=DB.mrpFix||{})[pk]={m,d:isoToday(),b:inv};catMrpLive(pk,m);}}}
 function bpPostFx(g){(g.items||[]).forEach(it=>bpApplyItem(it,g));
  const s=sups().find(x=>x.n===g.supplier);if(s&&g.gstin&&!/^[0-9A-Z]{15}$/.test(s.gst||''))s.gst=g.gstin;
  if(!g.bdate)g.bdate=ddmmm2iso(g.date);g.iso=isoToday();g.pays=g.pays||[];}

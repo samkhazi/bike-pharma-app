@@ -42,7 +42,8 @@ case "$c" in 200|301|302|308) ok "www.$DOM is server pe set hai ($c)";; *) bad "
 getent hosts "www.$DOM" >/dev/null 2>&1 && ok "www.$DOM DNS me hai" || bad "www.$DOM ka DNS record nahi: Cloudflare me CNAME www -> $DOM"
 
 m=$(grep -E '^OTP_MODE=' .env 2>/dev/null | cut -d= -f2)
-[ "$m" = "msg91" ] && ok "OTP asli SMS se (MSG91)" || bad "OTP test mode me hai ($m): koi bhi number + 123456 se login ho sakta hai. Real customers se pehle MSG91 keys .env me daalo"
+rk=$(grep -E '^RENFLAIR_API_KEY=.+' .env 2>/dev/null | head -1)
+if [ -n "$rk" ] && [ "$m" != "log" ]; then ok "OTP asli SMS se (Renflair)"; elif [ "$m" = "msg91" ]; then ok "OTP asli SMS se (MSG91)"; else bad "OTP test mode me hai ($m): koi bhi number + 123456 se login ho sakta hai. .env me RENFLAIR_API_KEY= ke aage apni Renflair key daalo"; fi
 crontab -l -u "$(stat -c %U .)" 2>/dev/null | grep -q "pm2 resurrect" || grep -rqs "pm2 resurrect" /etc/cron.d 2>/dev/null \
   && ok "reboot ke baad auto-start set hai" || bad "reboot auto-start nahi mila: CloudPanel > Cron Jobs me  @reboot cd $(pwd) && ./node_modules/.bin/pm2 resurrect"
 [ -d .git ] && ok "GitHub se juda hai ($(git -c safe.directory='*' log -1 --format='%h %cd' --date=format:'%d %b %H:%M' 2>/dev/null))" || bad "GitHub se juda nahi (ek baar: bash setup-github.sh)"

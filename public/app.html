@@ -1126,20 +1126,28 @@ SCREENS.submitted=()=>{const s=S.ui.done||{};return `<div class="scroll"><div cl
  <button class="btn" onclick="reset('login')">Back to login</button></div></div>`;};
 SCREENS.otp=()=>{const id=S.ui.pending;const masked=id.includes('@')?id:'+91 '+id.slice(0,5)+' '+id.slice(5);return bar('')+`<div class="scroll"><div class="pad" style="gap:22px">
  <div class="stack g6"><h1 class="h1">Enter OTP</h1><p class="cap">6-digit code sent ${id.includes('@')?'by email':'on '+(S.ui.otpCh||'SMS')} to <b style="color:var(--ink)">${esc(masked)}</b> · <button class="link" onclick="back()">Edit</button></p></div>
- <div class="otp" role="group" aria-label="6 digit OTP">${[0,1,2,3,4,5].map(i=>`<input id="otp${i}" inputmode="numeric" maxlength="1" aria-label="Digit ${i+1}" oninput="otpIn(this,${i})" onkeydown="otpKey(event,${i})">`).join('')}</div>
+ <div class="otp" role="group" aria-label="6 digit OTP">${[0,1,2,3,4,5].map(i=>`<input id="otp${i}" inputmode="numeric" ${i?'maxlength="1" autocomplete="off"':'maxlength="6" autocomplete="one-time-code"'} aria-label="Digit ${i+1}" oninput="otpIn(this,${i})" onkeydown="otpKey(event,${i})">`).join('')}</div>${otpWebSoon()}
  ${S.ui.otpErr?`<div class="errmsg">${S.ui.otpErr}</div>`:''}
  ${SRV.cfg.otpHint?`<div class="hint">${ic('lock','s16')} Test OTP (SMS not set up yet): ${SRV.cfg.otpHint}</div>`:''}
- ${(S.ui.otpTries||0)>=5?`<div class="row cap" style="background:var(--r-soft);color:var(--r);border-radius:12px;padding:10px;gap:8px">${ic('lock','s16')}<span class="grow">Too many wrong tries. For your safety this login is paused for 15 minutes.</span></div>`:''}
- <button class="btn" onclick="verify()" ${(S.ui.otpTries||0)>=5?'disabled':''}>Verify &amp; continue ${ic('chevR','s18')}</button>
+ ${(S.ui.otpTries||0)>=3?`<div class="row cap" style="background:var(--r-soft);color:var(--r);border-radius:12px;padding:10px;gap:8px">${ic('lock','s16')}<span class="grow">Too many wrong tries. Tap Resend OTP to get a new one.</span></div>`:''}
+ <button class="btn" onclick="verify()" ${(S.ui.otpTries||0)>=3?'disabled':''}>Verify &amp; continue ${ic('chevR','s18')}</button>
  <div class="row cap" style="justify-content:center;gap:6px" id="otp-rs">${otpResendHtml()}</div>
  ${SRV.cfg.otpHint?`<button class="link" style="text-align:center" onclick="fillOtp()">Auto-fill OTP</button>`:''}
 </div></div>`;};
-function otpIn(el,i){el.value=el.value.replace(/\D/g,'').slice(0,1);if(el.value&&i<5)document.getElementById('otp'+(i+1)).focus();if(i===5&&el.value)verify();}
+function otpIn(el,i){const v=el.value.replace(/\D/g,'');if(v.length>1)return otpPut(v.slice(0,6),i);el.value=v;if(el.value&&i<5)document.getElementById('otp'+(i+1)).focus();if(i===5&&el.value)verify();}
+// a whole code at once (phone keyboard OTP suggestion, paste, Android reading the SMS): spread it over the boxes and verify
+function otpPut(v,i){if(v.length===6)i=0;v.split('').slice(0,6-i).forEach((d,k)=>{const e=document.getElementById('otp'+(i+k));if(e)e.value=d;});
+ const last=document.getElementById('otp'+Math.min(5,i+v.length-1));if(last)last.focus();
+ if([0,1,2,3,4,5].every(k=>(document.getElementById('otp'+k)||{}).value)){clearTimeout(window._otpT);window._otpT=setTimeout(verify,150);}}
+// Chrome on Android reads the OTP from the SMS by itself when the SMS ends with "@bikepharma.com #123456" (WebOTP)
+function otpWebSoon(){if(!SRV.cfg.otpHint&&'OTPCredential' in window&&window._woFor!==S.ui.pending){window._woFor=S.ui.pending;setTimeout(otpWeb,0);}return '';}
+function otpWeb(){try{if(window._woAc)window._woAc.abort();const ac=window._woAc=new AbortController();setTimeout(()=>ac.abort(),5*60e3);
+ navigator.credentials.get({otp:{transport:['sms']},signal:ac.signal}).then(c=>{if(c&&/^\d{6}$/.test(c.code||'')&&cur().s==='otp'&&document.getElementById('otp0'))otpPut(c.code,0);}).catch(()=>{});}catch(e){}}
 function otpKey(e,i){if(e.key==='Backspace'&&!e.target.value&&i>0)document.getElementById('otp'+(i-1)).focus();}
 function fillOtp(){if(!document.getElementById('otp0')||!SRV.cfg.otpHint)return;String(SRV.cfg.otpHint).split('').forEach((d,i)=>document.getElementById('otp'+i).value=d);clearTimeout(window._otpT);window._otpT=setTimeout(verify,250);}
 function otpResendHtml(){const left=Math.max(0,30-Math.floor((Date.now()-(S.ui.otpSent||0))/1000));clearTimeout(window._rsT);if(left>0)window._rsT=setTimeout(()=>{const e=document.getElementById('otp-rs');if(e)e.innerHTML=otpResendHtml();},1000);
- return left>0?`Didn’t get it? Resend in <b style="color:var(--ink)">0:${String(left).padStart(2,'0')}</b>`:`Didn’t get it? <button class="link" onclick="resendOtp()">Resend OTP</button> · <button class="link" onclick="S.ui.otpCh=(S.ui.otpCh==='WhatsApp'?'SMS':'WhatsApp');S.ui.otpSent=Date.now();toast('OTP sent on '+S.ui.otpCh);refresh()">Try ${S.ui.otpCh==='WhatsApp'?'SMS':'WhatsApp'}</button>`;}
-function verify(){clearTimeout(window._otpT);if(cur().s!=='otp'||!document.getElementById('otp0'))return;const code=[0,1,2,3,4,5].map(i=>document.getElementById('otp'+i).value).join('');if((S.ui.otpTries||0)>=5)return;
+ return left>0?`Didn’t get it? Resend in <b style="color:var(--ink)">0:${String(left).padStart(2,'0')}</b>`:`Didn’t get it? <button class="link" onclick="resendOtp()">Resend OTP</button>`;}
+function verify(){clearTimeout(window._otpT);if(cur().s!=='otp'||!document.getElementById('otp0'))return;const code=[0,1,2,3,4,5].map(i=>document.getElementById('otp'+i).value).join('');if((S.ui.otpTries||0)>=3)return;
  if(code.length<6){S.ui.otpErr='Enter all 6 digits.';refresh();return;}
  const id=S.ui.pending;const su=S.ui.signup;if(S.ui.otpBusy)return;S.ui.otpBusy=1;
  api('POST','/api/login',{id,otp:code,signup:su&&su.id===id?{name:su.name.trim()}:null}).then(r=>{S.ui.otpBusy=0;if(r.error){S.ui.otpTries=(S.ui.otpTries||0)+1;S.ui.otpErr=r.error;refresh();return;}srvLogin(r);}).catch(()=>{S.ui.otpBusy=0;S.ui.otpErr='Could not reach the server. Try again.';refresh();});}
@@ -5106,7 +5114,7 @@ function catOffScreen(){return bar('Find Part')+`<div class="scroll"><div class=
 
 function srvLogin(r){bpIn(1);S.ui.otpErr=null;S.ui.pwErr=null;srvSetDb(r.db,r.rev);try{CAT_ALL.forEach(e=>{if(e.st===3)e.st=0;});}catch(e){}S.uid=r.user.id;S.user=ACC()[S.uid]||r.user;S.ui.signup=null;S.ui.pending=null;S.stack=[{s:'roleok',p:{}}];render('push');}
 function srvLogout(all){clearTimeout(SRV.t);const ch=srvDiff();const done=()=>api('POST','/api/logout',all?{all:true}:undefined).then(r=>{if(r&&r.db)srvSetDb(r.db,r.rev);}).catch(()=>{});if(Object.keys(ch).length&&S.user){SRV.busy=false;srvPush();setTimeout(done,600);}else done();}
-function resendOtp(){api('POST','/api/otp',{id:S.ui.pending}).then(r=>{if(r.error)return toast(r.error);S.ui.otpSent=Date.now();S.ui.otpTries=0;S.ui.otpErr=null;toast('New OTP sent');refresh();}).catch(()=>toast('Could not reach the server'));}
+function resendOtp(){api('POST','/api/otp',{id:S.ui.pending}).then(r=>{if(r.error)return toast(r.error);S.ui.otpSent=Date.now();S.ui.otpTries=0;S.ui.otpErr=null;window._woFor=null;[0,1,2,3,4,5].forEach(k=>{const e=document.getElementById('otp'+k);if(e)e.value='';});toast('New OTP sent');refresh();}).catch(()=>toast('Could not reach the server'));}
 /* mechanics order and pay at the Bike Pharma counter (or on WhatsApp); the shop's bill then shows in their app */
 function mOrder(lines,tot){lines=lines.filter(([x,q])=>x&&q>0);if(!lines.length){toast('Choose the parts first');return;}window._mOrd=`Bike Pharma order · ${myShop()} (${myCode()})\n`+lines.map(([x,q])=>`${x.name} · ${x.pn} × ${q}`).join('\n')+`\nAbout ${inr(tot)} at mechanic price`;
  sheet(`<div class="tile y round" style="width:64px;height:64px">${ic('cart','s28')}</div><h3 class="h2">Order from Bike Pharma</h3><p class="cap">Send this order on WhatsApp or give it at the counter. Your bill, credit and invoice show here as soon as Bike Pharma bills it.</p><div class="card">${lines.map(([x,q])=>`<div class="kv"><span>${esc(x.name)} × ${q}</span><span>${inr(lines.length===1?tot:x.mp*q)}</span></div>`).join('')}<div class="hr"></div><div class="kv big"><span>About</span><span>${inr(tot)}</span></div></div><button class="btn" onclick="mOrderWa()">${ic('chat','s18')} Send on WhatsApp</button><button class="link" style="align-self:center" onclick="closeSheet()">Close</button>`);}

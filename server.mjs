@@ -92,7 +92,7 @@ function readBody(req, limit = 24 * 1024 * 1024) {
 const RATE = new Map();
 function limited(key, max, windowMs) { const now = Date.now(); const l = (RATE.get(key) || []).filter(t => now - t < windowMs); if (l.length >= max) { RATE.set(key, l); return true; } l.push(now); RATE.set(key, l); return false; }
 setInterval(() => { const now = Date.now(); for (const [k, l] of RATE) if (!l.some(t => now - t < 3600e3)) RATE.delete(k); }, 600e3).unref();
-const ipOf = req => (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
+const ipOf = req => (req.headers['x-forwarded-for'] || '').split(',').pop().trim() || req.socket.remoteAddress || '';
 const loginError = { off: 'This login has been deactivated by Admin. Please contact your Admin.', pending: 'Your account is waiting for Bike Pharma verification.' };
 
 // ---------- web agent for part numbers no catalogue has (lib/altagent.mjs, update 8h) ----------
@@ -148,11 +148,14 @@ async function api(req, res, url, user) {
     if (acc && (STAFF_ROLES.includes(acc.role) || isEmail)) return json(res, 200, { kind: 'password', name: acc.name });
     if (!acc && isEmail) return json(res, 200, { error: 'This email isn’t registered. Staff logins are created by the Bike Pharma Admin.' });
     if (!/^[6-9]\d{9}$/.test(id)) return json(res, 200, { error: 'Enter a valid 10-digit mobile number.' });
-    if (limited('otp:' + id, 5, 600e3) || limited('otpip:' + ipOf(req), 40, 600e3)) return json(res, 200, { error: 'Too many OTP requests. Please try again in a few minutes.' });
+    // real SMS: a new OTP every 30 s at most, 5 SMS an hour per number, 20 an hour per IP (so nobody can empty the SMS balance)
+    const prev = store.kvGet('otp', id);
+    if (OTP.real && prev && prev.sent && Date.now() - prev.sent < 30e3) return json(res, 200, { error: 'Please wait ' + Math.ceil((30e3 - (Date.now() - prev.sent)) / 1000) + ' seconds before asking for a new OTP.' });
+    if (OTP.real ? (limited('otph:' + id, 5, 3600e3) || limited('otphip:' + ipOf(req), 20, 3600e3)) : (limited('otp:' + id, 5, 600e3) || limited('otpip:' + ipOf(req), 40, 600e3))) return json(res, 200, { error: 'Too many OTP requests. Please try again later.' });
     const code = makeOtp(OTP);
-    store.kvSet('otp', id, { code, exp: Date.now() + 10 * 60e3, tries: 0 });
+    store.kvSet('otp', id, { code, exp: Date.now() + 5 * 60e3, tries: 0, sent: Date.now() });
     const d = await deliverOtp(OTP, id, code);
-    if (!d.ok) return json(res, 200, { error: d.error });
+    if (!d.ok) { store.kvDel('otp', id); return json(res, 200, { error: d.error }); }
     return json(res, 200, { kind: 'otp', signup: !acc });
   }
 
@@ -168,8 +171,8 @@ async function api(req, res, url, user) {
       const o = store.kvGet('otp', id);
       if (!o) return json(res, 200, { error: 'Please ask for a new OTP.' });
       if (Date.now() > o.exp) { store.kvDel('otp', id); return json(res, 200, { error: 'This OTP has expired. Tap Resend OTP.' }); }
-      if (o.tries >= 5) return json(res, 200, { error: 'Too many wrong tries. Tap Resend OTP to get a new one.' });
-      if (String(body.otp || '') !== o.code) { o.tries++; store.kvSet('otp', id, o); const l = 5 - o.tries; return json(res, 200, { error: l > 0 ? `That OTP is incorrect. ${l} ${l === 1 ? 'try' : 'tries'} left.` : 'That OTP is incorrect.' }); }
+      if (o.tries >= 3) return json(res, 200, { error: 'Too many wrong tries. Tap Resend OTP to get a new one.' });
+      if (String(body.otp || '') !== o.code) { o.tries++; store.kvSet('otp', id, o); const l = 3 - o.tries; return json(res, 200, { error: l > 0 ? `That OTP is incorrect. ${l} ${l === 1 ? 'try' : 'tries'} left.` : 'That OTP is incorrect.' }); }
       store.kvDel('otp', id);
       if (!acc) {
         const name = safeText(String((body.signup && body.signup.name) || '').trim().slice(0, 60));

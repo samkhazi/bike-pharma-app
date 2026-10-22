@@ -13,6 +13,7 @@ node tools/test.mjs; r=$?
 # update 9c: server checks for customers, prices, audit, limits and rates
 node tools/test_9c.mjs || r=1
 node tools/test_back.mjs || r=1
+node tools/test_otp10t.mjs || r=1   # update 10t: real OTP by Renflair SMS (own server on 3018, mock Renflair on 3031)
 # update 8o: the Billing profile (no bill discount, warranty claims, cancel / change through Manager, split, estimate to bill)
 node tools/test_bill.mjs || r=1
 # update 9i: MRP lots (two MRPs of one part: add product, bill split, change lot, stock in, labels, server price)

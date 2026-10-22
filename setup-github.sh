@@ -29,7 +29,8 @@ CFG
 scan=$(ssh-keyscan -T 10 -t ed25519 -p 443 ssh.github.com 2>/dev/null)
 fp=$(printf '%s\n' "$scan" | ssh-keygen -lf - 2>/dev/null | awk '{print $2}')
 if [ "$fp" != "$GH_ED25519" ]; then echo "!! GitHub ki host key match nahi hui ($fp). Ruk gaya. Ye output mujhe bhejo."; exit 1; fi
-grep -qF "$(printf '%s' "$scan" | awk '{print $3}')" "$HOME_DIR/.ssh/known_hosts" 2>/dev/null || printf '%s\n' "$scan" >> "$HOME_DIR/.ssh/known_hosts"
+# the [ssh.github.com]:443 line itself (github.com has the same key, so looking only for the key missed it: "Host key verification failed")
+grep -qF "$(printf '%s' "$scan" | awk '{print $1, $3}')" "$HOME_DIR/.ssh/known_hosts" 2>/dev/null || printf '%s\n' "$scan" >> "$HOME_DIR/.ssh/known_hosts"
 chown -R "$SITE_USER":"$SITE_USER" "$HOME_DIR/.ssh"; chmod 600 "$HOME_DIR/.ssh/config" "$KEY"
 
 echo

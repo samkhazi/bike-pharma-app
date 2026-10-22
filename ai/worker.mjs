@@ -570,7 +570,8 @@ export async function cleanPhoto(src, outC, outW, { learn = {}, avoid = [], way 
   if (pm) keepAt = await sharp(pm.keep, { raw: { width: pm.w, height: pm.h, channels: 1 } }).resize(MODEL.side, MODEL.side, { fit: 'fill', kernel: 'cubic' }).extractChannel(0).raw().toBuffer();
   const a8 = Buffer.alloc(m8.length); for (let i = 0; i < m8.length; i++) a8[i] = keepAt ? (m8[i] * keepAt[i] + 127) / 255 : m8[i];
   const A = await sharp(a8, { raw: { width: MODEL.side, height: MODEL.side, channels: 1 } }).resize(W, H, { fit: 'fill', kernel: 'lanczos3' }).extractChannel(0).raw().toBuffer();
-  if (green) despill(rgb, A);
+  // the green the cloth throws on the part's edge out, on the clean copy only: "Original" keeps the photo as taken (it went black)
+  const rgbC = green ? Buffer.from(rgb) : rgb; if (green) despill(rgbC, A);
   lap('mask');
   // the clean copy: a square round the part (the part 4/5 of it), never bigger than the photo, nothing made smaller or bigger
   let x = 0, y = 0, s = Math.max(W, H);
@@ -589,7 +590,7 @@ export async function cleanPhoto(src, outC, outW, { learn = {}, avoid = [], way 
   }
   const [sh, LC, LW] = await Promise.all([pm ? shadowOf(A, W, H, x, y, s) : null, logoLayer(s, s), logoLayer(W, H)]);
   lap('extra');
-  const cC = composeC(rgb, A, W, H, x, y, s, LC, sh, Math.round(SHADOW.dy * s), g), cW = composeW(rgb, A, W, H, LW);
+  const cC = composeC(rgbC, A, W, H, x, y, s, LC, sh, Math.round(SHADOW.dy * s), g), cW = composeW(rgb, A, W, H, LW);
   lap('draw');
   await Promise.all([save(cC, s, s, outC), save(cW, W, H, outW)]);
   lap('save');

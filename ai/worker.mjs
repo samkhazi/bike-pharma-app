@@ -79,15 +79,41 @@ async function modelFile() {
   log('AI model ready');
   return MODEL.file;
 }
-async function ready() {
+// update 10s (Sam 2026-10-22: parts are shot on a green screen, the clean photo should take 1-2 s): sharp alone is enough for a green
+// screen photo, so the worker is up as soon as sharp loads and the AI model loads behind it, only needed for other photos
+let baseP = null, modelP = null;
+function readyBase() { return baseP || (baseP = (async () => { sharp = (await import('sharp')).default; sharp.concurrency(CPU); sharp.cache(false); })()); }
+function readyModel() { return modelP || (modelP = loadModel().catch(e => { modelP = null; throw e; })); }
+async function ready() { await readyBase(); await readyModel(); }
+async function loadModel() {
+  await readyBase();
   if (session) return;
-  sharp = (await import('sharp')).default;
   ort = (await import('onnxruntime-node')).default;
-  sharp.concurrency(CPU); sharp.cache(false);
   const file = await modelFile();
   // no memory arena: about 0.9 GB at the peak instead of 1.8 GB, a little slower
   session = await ort.InferenceSession.create(file, { intraOpNumThreads: CPU, interOpNumThreads: 1, enableCpuMemArena: false, enableMemPattern: false, graphOptimizationLevel: 'all' });
 }
+
+// green screen: most of the photo's outer frame is clearly green. Then the part's mask comes from the colour itself, at the AI's size:
+// green-ness = how much green is above red and blue, as a part of the green (so the dark green of the part's shadow on the cloth is
+// background too). Grey, black and coloured parts have none; a nearly black pixel counts as the part unless it is clearly green
+const GS = { frame: 0.04, need: 0.6, lo: 0.18, hi: 0.38, dlo: 0.3, dhi: 0.5 };   // d: nearly black pixels (a black part with the cloth's green on it stays)
+const greenOf = (r, g, b) => g > 0 ? (g - Math.max(r, b)) / g : 0;
+async function greenMask(rgb, W, H) {
+  const t = 256, sm = await sharp(rgb, { raw: { width: W, height: H, channels: 3 } }).resize(t, t, { fit: 'fill' }).raw().toBuffer();
+  const f = Math.max(2, Math.round(t * GS.frame)); let n = 0, gr = 0;
+  for (let y = 0; y < t; y++) for (let x = 0; x < t; x++) { if (x >= f && x < t - f && y >= f && y < t - f) continue; const p = (y * t + x) * 3; n++; if (sm[p + 1] > 45 && greenOf(sm[p], sm[p + 1], sm[p + 2]) > GS.hi) gr++; }
+  if (gr < n * GS.need) return null;
+  const S = MODEL.side, small = await sharp(rgb, { raw: { width: W, height: H, channels: 3 } }).resize(S, S, { fit: 'fill', kernel: 'lanczos3' }).raw().toBuffer();
+  const m8 = Buffer.alloc(S * S);
+  for (let i = 0, p = 0; i < m8.length; i++, p += 3) {
+    const r = small[p], g = small[p + 1], b = small[p + 2], k = greenOf(r, g, b), lo = g < 40 ? GS.dlo : GS.lo, hi = g < 40 ? GS.dhi : GS.hi;
+    m8[i] = k <= lo ? 255 : k >= hi ? 0 : Math.round(255 * (hi - k) / (hi - lo));
+  }
+  return m8;
+}
+// the green the cloth throws on the part's edge taken out (green never above the larger of red and blue where the part fades out)
+function despill(rgb, A) { for (let i = 0, p = 0; i < A.length; i++, p += 3) if (A[i] < 250) { const m = Math.max(rgb[p], rgb[p + 2]); if (rgb[p + 1] > m) rgb[p + 1] = m; } }
 
 // the AI's mask of the part (0..255) at the model's own size
 async function maskOf(rgb, W, H) {
@@ -489,14 +515,16 @@ async function save(buf, W, H, file) {
 // one photo: learn = { kind: { way: [wins, losses] } } (lib/photoai.mjs keeps it), avoid = ways staff said were wrong for this photo,
 // way = only this way (a test)
 export async function cleanPhoto(src, outC, outW, { learn = {}, avoid = [], way = '' } = {}) {
-  await ready();
+  await readyBase();
   const t = Date.now(), steps = {}; let t1 = t;
   const lap = k => { const n = Date.now(); steps[k] = n - t1; t1 = n; };
   // turned the way the phone held it; a see-through PNG goes on white first
   const { data: rgb, info } = await sharp(src, { failOn: 'none' }).rotate().resize({ width: MAX_SIDE, height: MAX_SIDE, fit: 'inside', withoutEnlargement: true, kernel: 'lanczos3' })
     .flatten({ background: '#ffffff' }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
   const W = info.width, H = info.height; lap('load');
-  const m8 = await maskOf(rgb, W, H); lap('ai');
+  let m8 = await greenMask(rgb, W, H); const green = !!m8;
+  if (!m8) { await readyModel().catch(e => { throw Object.assign(new Error(msg(e)), { fatal: 1 }); }); m8 = await maskOf(rgb, W, H); }
+  lap('ai');
   const P = await prep(rgb, W, H, m8), kind = kindOf(P);
   // the ways in the order that has worked best for this kind of photo; the first one with nothing wrong is kept, else the best of all
   // (no hand in the photo: "none" finds the same as "std")
@@ -517,6 +545,7 @@ export async function cleanPhoto(src, outC, outW, { learn = {}, avoid = [], way 
   if (pm) keepAt = await sharp(pm.keep, { raw: { width: pm.w, height: pm.h, channels: 1 } }).resize(MODEL.side, MODEL.side, { fit: 'fill', kernel: 'cubic' }).extractChannel(0).raw().toBuffer();
   const a8 = Buffer.alloc(m8.length); for (let i = 0; i < m8.length; i++) a8[i] = keepAt ? (m8[i] * keepAt[i] + 127) / 255 : m8[i];
   const A = await sharp(a8, { raw: { width: MODEL.side, height: MODEL.side, channels: 1 } }).resize(W, H, { fit: 'fill', kernel: 'lanczos3' }).extractChannel(0).raw().toBuffer();
+  if (green) despill(rgb, A);
   lap('mask');
   // the clean copy: a square round the part (the part 4/5 of it), never bigger than the photo, nothing made smaller or bigger
   let x = 0, y = 0, s = Math.max(W, H);
@@ -540,18 +569,18 @@ export async function cleanPhoto(src, outC, outW, { learn = {}, avoid = [], way 
   await Promise.all([save(cC, s, s, outC), save(cW, W, H, outW)]);
   lap('save');
   const why = best.j.why;
-  return { ms: Date.now() - t, width: s, height: s, part: pm ? 'found' : 'not found', hand: !!(pm && pm.hand), way: best.way, kind, tried, why, steps, wb: [g.r, g.g, g.b].map(v => Math.round(v * 100) / 100), ...(pm ? pm.st : {}) };
+  return { ms: Date.now() - t, green, width: s, height: s, part: pm ? 'found' : 'not found', hand: !!(pm && pm.hand), way: best.way, kind, tried, why, steps, wb: [g.r, g.g, g.b].map(v => Math.round(v * 100) / 100), ...(pm ? pm.st : {}) };
 }
 
 // ---- as a child process of server.mjs (lib/photoai.mjs): one photo at a time; the server ends it when there is nothing to do ----
 const msg = e => String(e && e.message || e).slice(0, 300);
 if (process.send) {
-  const readyP = ready();
-  readyP.then(() => process.send({ type: 'up' }), e => process.send({ type: 'fatal', error: msg(e) }, () => process.exit(1)));
+  const readyP = readyBase();
+  readyP.then(() => { process.send({ type: 'up' }); readyModel().catch(() => { /* said when a photo needs it */ }); }, e => process.send({ type: 'fatal', error: msg(e) }, () => process.exit(1)));
   process.on('message', async m => {
     if (!m || m.type !== 'job') return;
     try { await readyP; const r = await cleanPhoto(m.src, m.outC, m.outW, { learn: m.learn || {}, avoid: m.avoid || [] }); process.send({ type: 'done', h: m.h, ok: true, ...r }); }
-    catch (e) { process.send({ type: 'done', h: m.h, ok: false, error: msg(e) }); }
+    catch (e) { if (e && e.fatal) process.send({ type: 'fatal', error: msg(e) }, () => process.exit(1)); else process.send({ type: 'done', h: m.h, ok: false, error: msg(e) }); }
   });
   process.on('disconnect', () => process.exit(0));
 } else if (process.argv[2] === '--model') {   // ai/install.sh: download and check the model once, at update time

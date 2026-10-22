@@ -36,9 +36,9 @@ const MODEL = {
   side: 1024,
 };
 const LOGO_FILE = path.join(HERE, 'logo.png');
-const LOGO_C = 0.07;         // the clean copy: very faint, so the eye goes to the part (Sam 22:24Z)
+const LOGO_C = 0.14;         // the clean copy: faint but seen around the part (0.07 hid it: Sam 2026-10-22 "background me logo ka water mark aana he")
 const LOGO_W = 0.11;         // "Keep original": over a busy photo it may show a little more
-const LOGO_SIZE = 0.62;      // logo height, as a part of the photo's shorter side
+const LOGO_SIZE = 0.92;      // logo height, as a part of the photo's shorter side (bigger than the part, so it shows around it)
 const QUALITY = 95;          // 4:4:4 colour, no visible loss
 const AN = 768;              // which pixels are the part is worked out on a copy this big; the edge itself comes from the AI's mask
 const KS = AN / 1024;        // sizes below were first set on a 1024 copy

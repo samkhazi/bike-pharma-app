@@ -17,7 +17,7 @@ const asked = []; let ypMenu = false;
 const mock = http.createServer((q, r) => { let b = ''; q.on('data', d => b += d); q.on('end', () => {
   // update 10n: Bajaj EPC VIN search (form post vin_no; {data:{status,sku_code:[{id,text}],...}})
   if (q.url === '/bajaj/get_manufacturing_details/') { const v = new URLSearchParams(b).get('vin_no'); asked.push('bajaj:' + v); r.setHeader('Content-Type', 'application/json');
-    const T = { MD2A11CZ5PCA00001: 'PULSAR NS200 FI ABS BS6 E20', MD2JPJ403PC000001: 'KTM 390 DUKE BS6' }[v];
+    const T = { MD2A11CZ5PCA00001: 'PULSAR NS200 FI ABS BS6 E20', MD2JPJ403PC000001: 'KTM 390 DUKE BS6', MD2JPAXCXMC090925: 'Duke 125 UG (00JP98ZZ)', MD2B64BX7NWB17715: 'Pulsar 125 BSVI Single seat (Disk break) (00DH40ZZ)' }[v];
     return r.end(JSON.stringify({ data: T ? { status: true, sku_code: [{ id: 'SKU1', text: T }], plant: 'CHAKAN', vehicle_off_line_date: '2023-05-10' } : { status: false } })); }
   const j = q.url.startsWith('/ypec/') ? {} : JSON.parse(b || '{}'); r.setHeader('Content-Type', 'application/json');
   if (q.url === '/graphql') { asked.push('re'); const v = RE[j.variables && j.variables.v]; return r.end(JSON.stringify({ data: { searchQueryVindetails: { vin_detail: v || { VIN: null, CategoryName: null, CategoryUrl: null } } } })); }
@@ -104,6 +104,10 @@ await vin('MD2A11CZ5PCA00001'); st = await p.evaluate(() => cur().p);
 ok(st.vb === 'Bajaj' && st.vm === 'Pulsar NS200' && asked.includes('bajaj:MD2A11CZ5PCA00001'), 'Bajaj chassis opens Pulsar NS200 by itself ' + st.vb + ' ' + st.vm);
 await vin('MD2JPJ403PC000001'); st = await p.evaluate(() => cur().p);
 ok(st.vb === 'KTM' && st.vm === '390 Duke', 'Bajaj site says KTM 390 DUKE: opens KTM 390 Duke ' + st.vb + ' ' + st.vm);
+await vin('MD2JPAXCXMC090925'); st = await p.evaluate(() => cur().p);
+ok(st.vb === 'KTM' && st.vm === '125 Duke', 'Sam’s chassis: Bajaj site says "Duke 125 UG", opens KTM 125 Duke ' + st.vb + ' ' + st.vm);
+await vin('MD2B64BX7NWB17715'); st = await p.evaluate(() => cur().p);
+ok(st.vb === 'Bajaj' && st.vm === 'Pulsar 125', 'Sam’s chassis: Pulsar 125 BSVI Single seat, opens Bajaj Pulsar 125 ' + st.vb + ' ' + st.vm);
 await vin('MD2A11CZ9PCA00009'); t = await T();
 ok(/Bajaj’s site has no record of this chassis number/.test(t) && /Which brand is this/.test(t), 'Bajaj: not on Bajaj’s site, staff pick brand + model');
 await b.close(); mock.close(); console.log(fails ? `\n${fails} FAILED` : '\nALL OK'); process.exit(fails ? 1 : 0);

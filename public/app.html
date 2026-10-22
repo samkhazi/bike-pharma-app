@@ -3994,7 +3994,10 @@ const vinNorm=x=>String(x||'').toLowerCase().replace(/\(old\)/g,'').replace(/[^a
 function vinMatch(vb,name){const ms=BRANDS_V[vb]||[],n=vinNorm(name);if(!n)return [];
  const ex=ms.filter(m=>vinNorm(m)===n);if(ex.length)return ex;
  const inn=ms.filter(m=>vinNorm(m).length>2&&n.includes(vinNorm(m)));if(inn.length){const L=Math.max(...inn.map(m=>vinNorm(m).length));return inn.filter(m=>vinNorm(m).length===L);}
- return ms.filter(m=>vinNorm(m).includes(n));}
+ const o=ms.filter(m=>vinNorm(m).includes(n));if(o.length)return o;
+ /* same words in another order ("Duke 125 UG" = "125 Duke"): the model with the most of the site's words */
+ const tw=new Set(String(name).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean)),sw=m=>String(m).toLowerCase().replace(/\(old\)/g,'').split(/[^a-z0-9]+/).filter(Boolean);
+ const tk=ms.filter(m=>{const w=sw(m);return w.length>1&&w.every(x=>tw.has(x));});if(!tk.length)return [];const L=Math.max(...tk.map(m=>sw(m).length));return tk.filter(m=>sw(m).length===L);}
 /* update 9p (Sam 2026-10-19 "eh bhi sort out hona he"): RE's site names both the new and the old bike "CLASSIC 350", and we have two books
    (Classic 350, Classic 350 (old)). The site's own text decides first: the old books' variants carry the site's name ("Classic 350 ABS - BSVI"),
    a new bike's reply carries its BS code only in brackets ("HIMALAYAN 450 (BS6 - ...)"). Else the chassis year: before the new model came = old book. */
@@ -4009,6 +4012,8 @@ async function vinAsk(c){const s=S.ui.vin;let vb=vinSite(c);s.look={busy:1,vb};r
  /* MD2 is Bajaj, KTM and Husqvarna: when Bajaj's site has no answer, a model code saved the old way still opens */
  if(!r.found&&vb==='Bajaj'){const m=(DB.vinMap||{})[vinKey(c)];if(m&&BRANDS_V[m.vb]){s.look=null;return vinOpen(c,m.vb,m.vm);}}
  const vb0=vb;vb=r.found&&r.vb&&BRANDS_V[r.vb]?r.vb:vb;s.look={...r,vb:vb0};
+ /* Bajaj's site names KTM bikes without "KTM" and in its own word order ("Duke 125 UG" = KTM 125 Duke): every MD2 brand is tried */
+ if(r.found&&vb0==='Bajaj'&&!vinMatch(vb,r.model).length){const b2=[...new Set([vb,'Bajaj','KTM','Husqvarna'])].find(b=>BRANDS_V[b]&&vinMatch(b,r.model).length);if(b2)vb=b2;}
  if(r.found){const ms=vinMatch(vb,r.model);s.look.ms=ms;if(ms.length===1)return vinOpen(c,vb,ms[0],r.name);const pk=vinPick(vb,r,ms,vinYear(c));if(pk)return vinOpen(c,vb,pk,r.name);}
  s.pick=true;s.vb=vb;s.mf='';refresh();}
 /* ----- update 10d: the bike's registration number -> RC details (our server asks the RC service; its key stays on the server) ----- */

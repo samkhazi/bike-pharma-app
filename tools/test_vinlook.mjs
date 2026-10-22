@@ -87,6 +87,13 @@ ok(/Yamaha’s site has no record of this chassis number/.test(t) && asked.filte
 await vin('MBLHAW264RHK01290'); st = await p.evaluate(() => cur().p);
 await p.waitForFunction(() => cur().p.v === 'secs', null, { timeout: 60000 }).catch(() => {}); await p.waitForTimeout(500); t = await T();
 ok(st.vb === 'Hero' && st.vm === 'Passion HZ' && /Hero site: Passion-HZ\(May,2023\) \(BLACK \(NH-1\) TYPE 4\)/.test(t) && asked.includes('hlogin') && asked.includes('hsearch:T1:MBLHAW264RHK01290'), 'Hero chassis opens Passion HZ by itself ' + st.vm);
+// overnight review 2026-10-23 (Sam "chassis ka search bhi kaam nhi kar raha"): a chassis or bike number typed in Find Part's own search box opens the chassis search
+await p.evaluate(() => tab('findpart')); await p.waitForTimeout(300); await p.fill('#vp #fp-q', 'mblhaw264rhk01290'); await p.press('#vp #fp-q', 'Enter'); await p.waitForTimeout(1500); st = await p.evaluate(() => cur().p);
+ok(st.vb === 'Hero' && st.vm === 'Passion HZ' && st.vin === 'MBLHAW264RHK01290', 'chassis number typed in the part search box opens the bike by itself ' + JSON.stringify(st));
+await p.evaluate(() => tab('findpart')); await p.waitForTimeout(300); await p.fill('#vp #fp-q', 'KA 17 HC 3942'); await p.press('#vp #fp-q', 'Enter'); await p.waitForTimeout(1200); st = await p.evaluate(() => [cur().p.v, (S.ui.vin || {}).q]);
+ok(st[0] === 'vin' && st[1] === 'KA17HC3942', 'bike number typed in the part search box goes to the bike number search ' + st);
+await p.evaluate(() => tab('findpart')); await p.waitForTimeout(300); await p.fill('#vp #fp-q', '17101KWPD00'); await p.press('#vp #fp-q', 'Enter'); await p.waitForTimeout(1200);
+ok(await p.evaluate(() => cur().p.v === 'res'), 'a part number stays a part search');
 await vin('MBLHAW264RHK09999'); t = await T();
 ok(/Hero’s site has no record of this chassis number/.test(t), 'Hero: not on Hero’s site, staff pick');
 // server with Hero off (server outside India): Hero goes the old way, nothing else asked

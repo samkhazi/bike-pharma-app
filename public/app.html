@@ -3986,7 +3986,7 @@ const vinMgr=()=>['manager','admin'].includes(S.user.role);
 /* update 9o (Sam 2026-10-19 "chassis number daalunga toh automatic vehicle details fetch hona he"): Royal Enfield and Honda chassis numbers
    are asked to the maker's own site through our server (/api/vinlook); the model comes only from that reply (Sam's rule), never from the
    saved code list. Not found or site down: staff pick the model, and that pick is not saved for the code. */
-const VIN_SITE={ME3:'Royal Enfield',ME4:'Honda',ME1:'Yamaha',MD6:'TVS'};   /* ME1 Yamaha: update 9r, dealer YPEC */
+const VIN_SITE={ME3:'Royal Enfield',ME4:'Honda',ME1:'Yamaha',MD6:'TVS',MD2:'Bajaj'};   /* MD2 Bajaj: update 10n, Bajaj EPC; its reply may name KTM or Husqvarna */   /* ME1 Yamaha: update 9r, dealer YPEC */
 /* update 9s: Hero (MBL) is asked too, but its site answers only servers in India: when our server has Hero off it says {none}, and from then
    on Hero chassis go the old way (model picked once per code) until the page is opened again. */
 let VIN_HERO=true;const vinSite=c=>VIN_SITE[c.slice(0,3)]||(VIN_HERO&&c.slice(0,3)==='MBL'?'Hero':'');
@@ -4003,9 +4003,12 @@ function vinPick(vb,r,ms,y){const old=ms.find(m=>/\(old\)/.test(m)),nw=ms.find(m
  const n=vinNorm(r.model),vs=CAT_VARS.filter(v=>v[0]===vb&&vinNorm(v[1])===n).map(v=>CAT_VMOD[v[1]]);if(vs.length&&new Set(vs).size===1&&ms.includes(vs[0]))return vs[0];
  if(/ - BS ?(III|IV|VI|3|4|6)\b/i.test(r.model))return old;
  const f=VIN_NEW_FROM[nw];if(!f||!y)return '';return y<f?old:y>f?nw:'';}
-async function vinAsk(c){const s=S.ui.vin;const vb=vinSite(c);s.look={busy:1,vb};refresh();let r;
+async function vinAsk(c){const s=S.ui.vin;let vb=vinSite(c);s.look={busy:1,vb};refresh();let r;
  try{const x=await fetch('/api/vinlook?c='+encodeURIComponent(c),{credentials:'same-origin'});r=await x.json().catch(()=>({error:'Our server did not answer the chassis search ('+x.status+')'}));if(!x.ok&&!r.error)r={error:'Search failed ('+x.status+')'};}catch(e){r={error:'No internet connection'};}
- if(S.ui.vin!==s||s.c!==c)return;if(r.none&&vb==='Hero'){VIN_HERO=false;s.look=null;return vinFind();}s.look={...r,vb};
+ if(S.ui.vin!==s||s.c!==c)return;if(r.none&&vb==='Hero'){VIN_HERO=false;s.look=null;return vinFind();}
+ /* MD2 is Bajaj, KTM and Husqvarna: when Bajaj's site has no answer, a model code saved the old way still opens */
+ if(!r.found&&vb==='Bajaj'){const m=(DB.vinMap||{})[vinKey(c)];if(m&&BRANDS_V[m.vb]){s.look=null;return vinOpen(c,m.vb,m.vm);}}
+ const vb0=vb;vb=r.found&&r.vb&&BRANDS_V[r.vb]?r.vb:vb;s.look={...r,vb:vb0};
  if(r.found){const ms=vinMatch(vb,r.model);s.look.ms=ms;if(ms.length===1)return vinOpen(c,vb,ms[0],r.name);const pk=vinPick(vb,r,ms,vinYear(c));if(pk)return vinOpen(c,vb,pk,r.name);}
  s.pick=true;s.vb=vb;s.mf='';refresh();}
 /* ----- update 10d: the bike's registration number -> RC details (our server asks the RC service; its key stays on the server) ----- */

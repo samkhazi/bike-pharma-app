@@ -5281,7 +5281,7 @@ const invFitsTxt=f=>!f||!f.length?'Not set':f.slice(0,3).join(', ')+(f.length>3?
 /* ---- photo cleanup (Sam 16:59Z-17:25Z): the server keeps each photo exactly as taken and makes two copies with the faint logo
    behind the part: <hash>-c.jpg white background (used by default) and <hash>-w.jpg the photo as taken ("Original").
    A product keeps the copy's address, so every page and the shop show it; "Original" under a photo switches the copy. ---- */
-const PH_ST={},PH_V={},PH_CHK={},PH_AI=5;let phT=0;   // PH_AI = AI_VER in lib/photoai.mjs: a newer cleanup gets a new address, so phones never keep the older copy
+const PH_ST={},PH_V={},PH_CHK={},PH_AI=6;let phT=0;   // PH_AI = AI_VER in lib/photoai.mjs: a newer cleanup gets a new address, so phones never keep the older copy
 /* update 8e: the cleaner checks its own work (PH_CHK[hash].why) and says what would make the photo better; "Not right?" makes it
    again another way and the cleaner learns from it (Sam 22:35Z "o khud ko improve karte rehna he") */
 const PH_WHY={edge:['Part goes out of the photo','Step back a little so the whole part is in the photo, then take it again.'],small:['Part is small: go closer','Go closer so the part fills more of the photo.'],unsure:['Busy background','Put the part on a plain table or sheet and take it again.'],bite:['Hand on the part','Hold the part by its edge (or put it down) so the hand does not cover it, then take it again.'],hand:['Hand on the part','Hold the part by its edge (or put it down) so the hand does not cover it, then take it again.'],nopart:['No part found','Take the photo again with the part in the middle.'],tried:['Take this photo again','Every way of cleaning was tried on this photo. Please take it again.']};

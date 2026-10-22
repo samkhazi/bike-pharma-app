@@ -3957,7 +3957,7 @@ function fpSearchRaw(){const f=S.ui.fp;const i=document.getElementById('fp-q');i
  go('findpart',{v:'res',...A,sort:'best',n:30});}
 function fpNext(){const f=S.ui.fp||(S.ui.fp=FP0());const i=document.getElementById('fp-q');const t=(i?i.value:S.ui.fpT!=null?S.ui.fpT:f.q).trim();
  if(!t){toast('Type a part number, model or part name, like brake liner');if(i)i.focus();return;}
- const c=cur().p||{};if(c.v==='secs'||c.v==='sec'){f.vb=c.vb;f.vm=c.vm;f.yr=c.yr||'Any';f.ed=c.ed||'Any';f.cc=MODEL_CC[c.vm]?String(MODEL_CC[c.vm]):'Any';}
+ const c=cur().p||{},m3o=c.v==='part'&&(e=>e&&M3[e.dataset.k])(document.querySelector('#vp .m3'));if(m3o){f.vb=m3o.vb;f.vm=m3o.vm||'Any';f.yr=c.yr||'Any';f.ed='Any';f.cc=MODEL_CC[m3o.vm]?String(MODEL_CC[m3o.vm]):'Any';}else if(c.v==='secs'||c.v==='sec'){f.vb=c.vb;f.vm=c.vm;f.yr=c.yr||'Any';f.ed=c.ed||'Any';f.cc=MODEL_CC[c.vm]?String(MODEL_CC[c.vm]):'Any';}
  const p=vqParse(t,f);
  if(p.changed&&!Object.keys(p.set).length&&!VQ_SCRIPT.test(t)&&f.vb!=='Any'){const r=catSearch({...f,q:t});if(r&&r.hits.length&&!r.fuzzy)p.changed=false;}
  if(p.changed){if(!p.q&&!Object.keys(p.set).length){toast('Could not understand “'+t+'”. Try the English part name.');return;}
@@ -4126,6 +4126,7 @@ function m2SecV(p){const A=m2A(p);const sc=catScope(A);if(!sc)return `<div class
   :g?dgFull(g,gr,'The numbers on the diagram are the refs in the table. Tap to zoom.')+(x=>x?`<div class="dg-see">${catSee(x)}</div>`:'')(rows.find(r=>r.txt&&catSee(r)))
   :(x=>x?catSee(x):'')(rows.find(r=>r.txt))||(r0.ext&&!r0.txt&&CAT_SITE[r0.vb]?`<a class="link" href="${esc(catSiteUrl(r0))}" target="_blank" rel="noopener">See this diagram in the full ${esc(r0.vb)} catalogue</a>`:`<div class="cap">No diagram in the app for this book.</div>`);
  const seen=new Set();const tr=rows.filter(r=>{const k=String(r.ref||'')+'|'+(r.pk||r.desc);if(seen.has(k))return false;seen.add(k);return true;}).sort(m3By);
+ {const r1=tr.find(q=>q.ref)||tr[0];if(r1&&(r1.ext||dgFig(r1))){if(!m2Row(p)||m2Row(p).page!==p.pg){p.i=r1.i;p.pk=r1.pk||'';p.ref=r1.ref||'';}const h=m2PartV(p);if(h.startsWith('<div class="m3'))return h;}}
  return `${m2Head(esc(ttl)+' for '+esc(bike),esc(r0.src||'')+' · '+tr.length+' line'+(tr.length===1?'':'s'))}<div class="card" style="gap:6px">${dia}</div>
  <div class="m2-tw"><table class="m2-t"><thead><tr><th>Ref</th><th>Part</th><th>Part no.</th><th style="text-align:right">MRP</th></tr></thead><tbody>${tr.map(r=>`<tr onclick="m2Part(${r.i})" tabindex="0" onkeydown="if(event.key==='Enter')m2Part(${r.i})"><td class="num">${esc(r.ref||'—')}</td><td>${esc(catNice(r.desc))}${r.qty>1?` <span class="cap">×${esc(r.qty)}</span>`:''}${r.ns?' <span class="pill a">N.S.</span>':''}</td><td class="num">${esc(r.part||'—')}</td><td class="num" style="text-align:right">${r.mrp?inr(r.mrp):'<span class="cap">On request</span>'}</td></tr>`).join('')}</tbody></table></div>
  <div class="cap">Tap a line to open the part with its picture, fitment and stock.</div>`;}
@@ -6613,14 +6614,27 @@ function m3Det(x,o){const sh=m2Shop(x),n=sh?DB.stock[sh.id]:0,php=catPhoto(x),L=
 function m3More(x,o){const seen=new Set(),need=o.rows.filter(q=>q.pk&&q.pk!==x.pk&&/\b(GASKET|SEAL|O RING|BOLT|NUT|WASHER|SPRING|BEARING|BUSH|CLIP|PACKING|SCREW)\b/.test(q.dhay)&&!seen.has(q.pk)&&seen.add(q.pk)).slice(0,4);
  return xrSection(x)+amSection(x)+(need.length?`<div class="sec"><h3 class="h2">Commonly needed with this</h3></div><div class="stack g8">${need.map(q=>`<button class="m2-row" onclick="m3Pick(${q.i},'need')"><span class="m2-num">${esc(q.ref||'·')}</span><div class="grow"><div class="h3" style="font-size:14px">${esc(catNice(q.desc))}</div><div class="cap">${esc(q.part||'No part number')}${q.mrp?' · '+inr(q.mrp):''}</div></div>${ic('chevR','s18')}</button>`).join('')}</div>`:'');}
 /* the page; no diagram for the part (and none coming): the old page */
+/* layout A (Sam 2026-10-22, Figma "Catalogue view (23 Oct)" A): the bike on top, all its diagrams on the left, the diagram with the
+   chosen part under it, the diagram's parts on the right. Every number on every catalogue's diagram stays clickable (the 8r numbers). */
+const M3_D=new Map();let M3_DR=null;
+/* the bike's diagrams (its edition's pages in book order), each opened at its first numbered line */
+function m3Dgs(r,v,vm){const R=catRows();if(M3_DR!==R){M3_DR=R;M3_D.clear();}const k=r.vb+'|'+(v||'')+'|'+(v?'':vm||r.page);let L=M3_D.get(k);if(L)return L;
+ const rows=R.filter(q=>q.vb===r.vb&&(v?(q.vv||[]).includes(v):vm?(q.vms||[]).includes(vm):q.page===r.page));
+ L=m2Secs(rows.length?rows:[r]).map(s=>({pg:s.pg,fig:s.fig,asm:s.asm,i:(s.rows.slice().sort(m3By).find(q=>q.ref)||s.rows[0]).i}));M3_D.set(k,L);return L;}
+/* another diagram of the same bike: this screen is replaced, so Back still leaves the catalogue */
+function m3Go(i){const r=catRows()[i];if(!r)return;const c=cur().p||{};S.stack[S.stack.length-1]={s:'findpart',p:{v:'part',i,vb:r.vb,pg:r.page,pk:r.pk||'',ref:r.ref||'',vm:c.vm||'Any',yr:c.yr||'Any'}};navSave(false);render();}
+const m3DgList=(D,pg)=>`<div class="m3-lh"><b>Diagrams</b><span class="cap">${D.length}</span></div><div class="m3-dgs">${D.map((d,j)=>{const on=d.pg===pg,f=String(d.fig||'');return `<button class="m3-dg${on?' on':''}" aria-current="${on}" onclick="m3Go(${d.i})"><span class="m3-dgc num">${esc(f&&f.length<=8?f:String(j+1))}</span><span class="m3-dgn">${esc(catNice(d.asm||d.fig||'Section'))}</span></button>`;}).join('')}</div>`;
+function m3Bike(r,vm,yr,v,cc,nd){return `<div class="m3-bike"><span class="m3-bt">${esc(String(r.vb||'').split(' ')[0].slice(0,7).toUpperCase())}</span><div class="m3-bn"><b>${esc([r.vb,vm,cc?cc+'cc':''].filter(Boolean).join(' '))}</b><span>${esc([yr,v,r.src,nd>1?nd+' diagrams':''].filter(Boolean).join(' · '))}</span></div><div class="m3-bs">${m2Bar('Search parts in this bike: name or part no.','')}</div><button class="m3-cb" onclick="go('findpart',{v:'brand',vb:'${m2Q(r.vb)}'})">Change bike</button></div>`;}
 function m2PartV(p){const r=m2Row(p);if(!r)return m2PartV0(p);const s=DG_SLUG[r.vb],g=s?dgFig(r):null;if(!g&&!(r.ext&&s&&DG[s]&&DG[s].st===1))return m2PartV0(p);
  const v=g?g.v:m3Vg(r),kr=m3K(r);let L=m3Rows(r.vb,r.page,v).map(q=>m3K(q)===kr?r:q);if(!L.includes(r))L=L.concat(r).sort(m3By);
  const x=m3Sel(p,L,r),k='m3'+r.i,vm=p.vm&&p.vm!=='Any'?p.vm:v&&CAT_VMOD[v]||(m2FitL(r)[0]||r.vm||'').replace(/ \(.*$/,''),ys=v?catVyrs(v):[],yr=p.yr&&p.yr!=='Any'?String(p.yr):ys.length?catYrsTxt(ys):'',cc=MODEL_CC[vm];
  if(p.si!=null){p.si=x.i;p.spk=x.pk||'';p.sref=x.ref||'';}const o=M3[k]={rows:L,sel:x.i,vb:r.vb,page:r.page,v,vm,yr},sm=new Map();PRODUCTS.forEach(y=>{const q=catPk(y.pn);if(q&&!sm.has(q))sm.set(q,y);});queueMicrotask(m3Mount);
  const dia=g?dgOther(g)+`<div class="m3-dgw dg-wrap">${dgEl(g,'fpc-fig m3-fig').replace('<div ',`<div data-hk="${k}" onclick="if(!event.target.closest('button'))dgZoom(this.closest('.m3-dgw'))" `)}<button class="m3-zb" onclick="dgZoom(this.closest('.m3-dgw'))" aria-label="Open the diagram bigger">${ic('zoom','s18')}</button><div class="dg-alt">${dgMiss()}</div></div><div class="cap m3-tip">Tap a number on the diagram or a part in the list.</div>`
   :`<div class="m3-dgw m3-ld"><span class="cap">Loading diagram…</span></div>`;
- return `<div class="m3" data-k="${k}">${m2Head(esc(catNice(r.asm||r.fig))+(r.asm&&r.fig?' – '+esc(r.fig):'')+' for '+esc([r.vb,vm,cc?cc+'cc':'',yr].filter(Boolean).join(' ')),[v,r.src,L.length+' part'+(L.length===1?'':'s')].filter(Boolean).map(esc).join(' · '))}
- <div class="m3-g"><div class="m3-c1">${dia}</div><div class="m3-c2"><div class="m3-lh"><b>Parts in this diagram</b><span class="cap">${L.length}</span></div><div class="m3-list">${L.map(q=>m3Row(q,q===x,sm)).join('')}</div></div><div class="m3-c3"><div class="card m3-det">${m3Det(x,o)}</div></div></div>
+ const D=m3Dgs(r,v,vm),di=D.findIndex(d=>d.pg===r.page),ttl=catNice(r.asm||r.fig)+(r.asm&&r.fig?' – '+r.fig:'');
+ const dh=`<div class="m3-dh">${di>0?`<button class="m3-nb" onclick="m3Go(${D[di-1].i})" aria-label="Previous diagram">${ic('chevL','s18')}</button>`:''}<div class="m3-dt"><b>${esc(ttl)}</b><span class="cap">${di>=0?'Diagram '+(di+1)+' of '+D.length+' · ':''}${L.length} part${L.length===1?'':'s'}</span></div>${di>=0&&di<D.length-1?`<button class="m3-nb" onclick="m3Go(${D[di+1].i})" aria-label="Next diagram">${ic('chevR','s18')}</button>`:''}</div>`;
+ return `<div class="m3 m3a" data-k="${k}">${m3Bike(r,vm,yr,v,cc,D.length)}
+ <div class="m3-g"><div class="m3-c0">${m3DgList(D,r.page)}</div><div class="m3-c1">${dh}${dia}<div class="m3-c3"><div class="card m3-det">${m3Det(x,o)}</div></div></div><div class="m3-c2"><div class="m3-lh"><b>Parts in this diagram</b><span class="cap">${L.length}</span></div><div class="m3-list">${L.map(q=>m3Row(q,q===x,sm)).join('')}</div></div></div>
  <div class="m3-more">${m3More(x,o)}</div></div>`;}
 /* CSS decides the columns (by the page's own width), JS follows: the right column hidden (a phone) = the details open under the chosen line */
 const m3Nw=el=>getComputedStyle(el.querySelector('.m3-c3')).display==='none';
@@ -6629,7 +6643,8 @@ const m3Top=(el,box,lim,sm)=>{const a=el.getBoundingClientRect(),b=box.getBoundi
 function m3Place(el){el=el||document.querySelector('#vp .m3');if(!el)return;const d=el.querySelector('.m3-det'),c3=el.querySelector('.m3-c3'),row=el.querySelector('.m3-row.on');if(!d||!c3)return;
  if(m3Nw(el)){if(row&&row.nextElementSibling!==d)row.after(d);}else if(d.parentNode!==c3)c3.append(d);}
 /* once the page is drawn: the details in place, the list (a phone: the page) at the searched part the first time, where it was after that */
-function m3Mount(){const el=document.querySelector('#vp .m3:not([data-m])');if(!el)return;el.dataset.m=1;m3Place(el);const p=cur().p||{},ls=el.querySelector('.m3-list'),row=el.querySelector('.m3-row.on'),sc=el.closest('.scroll');
+function m3Mount(){const el=document.querySelector('#vp .m3:not([data-m])');if(!el)return;el.dataset.m=1;m3Place(el);
+ const dl=el.querySelector('.m3-dg.on'),db=dl&&dl.parentNode;if(db){if(db.scrollWidth>db.clientWidth)db.scrollLeft=dl.offsetLeft-(db.clientWidth-dl.offsetWidth)/2;if(db.scrollHeight>db.clientHeight)db.scrollTop=dl.offsetTop-(db.clientHeight-dl.offsetHeight)/2;}const p=cur().p||{},ls=el.querySelector('.m3-list'),row=el.querySelector('.m3-row.on'),sc=el.closest('.scroll');
  if(!p.m3o){p.m3o=1;if(row){m3Mid(row,ls);if(sc&&m3Nw(el))m3Top(row,sc,.85);}}else{if(p.m3y!=null)ls.scrollTop=p.m3y;if(sc&&p.m3t!=null)sc.scrollTop=p.m3t;}
  ls.addEventListener('scroll',()=>{p.m3y=ls.scrollTop;},{passive:true});if(sc)sc.addEventListener('scroll',()=>{p.m3t=sc.scrollTop;},{passive:true});}
 /* another line chosen in place (from: 'dg' a number on the diagram, 'need' the list under the columns); refresh() and Back keep it */
@@ -6985,6 +7000,21 @@ html:not(.wv) .screen.hasnav.in-fade>:not(.nav){animation:fade .28s ease-out}
 .m3-more:empty{display:none}
 @container (min-width:680px){.m3-g{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}.m3-c1{grid-row:span 2;position:sticky;top:0}.m3-c3{display:flex}.m3-list{max-height:45vh;overflow-y:auto;overflow-x:hidden}}
 @container (min-width:860px){.m3-g{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) minmax(0,.9fr);gap:16px}.m3-c1{grid-row:auto}.m3-c3{align-self:stretch}.m3-list{max-height:max(320px,calc(100vh - 260px))}.m3-det{position:sticky;top:0;max-height:calc(100vh - 230px);overflow-y:auto;padding:14px}.m3-det .fpc-pn{font-size:17px}.m3-more .stack.g8{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}}
+.m3-bike{display:flex;align-items:center;gap:12px 14px;flex-wrap:wrap;background:#121212;color:#fff;border-radius:18px;padding:14px 16px;margin-bottom:14px}
+.m3-bt{width:48px;height:48px;border-radius:12px;background:var(--y);color:#121212;display:grid;place-items:center;font:800 11px/1 'Chakra Petch',sans-serif;flex:none}
+.m3-bn{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1 1 220px}.m3-bn b{font-size:19px;font-weight:800;line-height:1.2}.m3-bn span{font-size:12px;color:#b5b5b5}
+.m3-bs{flex:1 1 320px;min-width:0}.m3-bs .fp-sb{margin:0}
+.m3-cb{border:1.5px solid var(--y);color:var(--y);border-radius:12px;padding:10px 14px;font-weight:800;font-size:13px;flex:none}
+.m3-c0{display:flex;flex-direction:column;gap:8px;min-width:0}
+.m3-dgs{position:relative;display:flex;gap:6px;overflow-x:auto;scrollbar-width:thin;padding-bottom:4px}
+.m3-dg{display:flex;align-items:center;gap:8px;flex:none;max-width:230px;text-align:left;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:8px 10px;font-size:13px;color:var(--ink)}
+.m3-dg.on{background:var(--y-soft);border-color:var(--y);font-weight:700}
+.m3-dgc{font-size:12px;color:var(--muted);font-weight:700;flex:none;min-width:30px}.m3-dg.on .m3-dgc{color:var(--ink)}
+.m3-dgn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.m3-dh{display:flex;align-items:center;gap:10px}.m3-dt{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0}.m3-dt b{font-size:16px;font-weight:800;line-height:1.3}
+.m3-nb{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;flex:none;color:var(--ink)}
+@container (min-width:680px){.m3a .m3-g{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)}.m3a .m3-c0{grid-column:1/-1}.m3a .m3-c1{grid-row:auto;position:static}.m3a .m3-det{position:static;max-height:none;overflow:visible}}
+@container (min-width:900px){.m3a .m3-g{grid-template-columns:minmax(170px,.45fr) minmax(0,1.5fr) minmax(0,1fr);gap:16px}.m3a .m3-c0{grid-column:auto;position:sticky;top:0}.m3a .m3-dgs{flex-direction:column;overflow-x:hidden;overflow-y:auto;max-height:max(320px,calc(100vh - 230px));background:var(--card);border:1px solid var(--line);border-radius:16px;padding:6px;gap:2px}.m3a .m3-dg{max-width:none;border-color:transparent}.m3a .m3-dg.on{border-color:var(--y)}.m3a .m3-dgn{white-space:normal}.m3a .m3-list{max-height:max(300px,calc(100vh - 340px))}}
 /* ---- diagram numbers (update 8r): a soft yellow box on each number, the chosen part's number filled ---- */
 .dg{position:relative}
 .hs{position:absolute;padding:0;margin:0;border:0;background:rgba(255,204,0,.1);border-radius:4px;box-shadow:0 0 0 1.5px rgba(214,160,0,.7);cursor:pointer;z-index:1;min-width:6px;min-height:6px}

@@ -24,11 +24,11 @@ for (const [W, H, tag] of [[1280, 900, 'computer'], [390, 844, 'phone']]) {
     const box = s => { const e = el.querySelector(s); if (!e) return null; const r = e.getBoundingClientRect(); return { l: Math.round(r.left), r: Math.round(r.right), t: Math.round(r.top), b: Math.round(r.bottom), w: Math.round(r.width) }; };
     return { k: el.dataset.k, n: o.rows.length, rows: el.querySelectorAll('.m3-row').length, pages: [...new Set(o.rows.map(q => q.page))], ed: !!o.v && o.rows.every(q => (q.vv || []).includes(o.v)), sel: o.sel, on: on.length === 1 ? +on[0].dataset.i : -1, si: cur().p.si,
       pn: (d.querySelector('.fpc-pn') || {}).textContent || '', inList: d.parentNode.classList.contains('m3-list'), afterOn: on.length === 1 && on[0].nextElementSibling === d,
-      s: cur().s, len: S.stack.length, c1: box('.m3-c1'), c2: box('.m3-c2'), c3: box('.m3-c3'), det: box('.m3-det'), hk: !!el.querySelector('.dg[data-hk="' + el.dataset.k + '"]') }; });
+      s: cur().s, len: S.stack.length, c0: box('.m3-c0'), c1: box('.m3-c1'), c2: box('.m3-c2'), c3: box('.m3-c3'), det: box('.m3-det'), hk: !!el.querySelector('.dg[data-hk="' + el.dataset.k + '"]') }; });
   // nothing wider than the window: the page, the screen's boxes, and every element of the part page
   const wide = () => p.evaluate(() => { const vw = innerWidth, s = document.querySelector('#vp .screen:last-child'), o = []; if (document.documentElement.scrollWidth > vw + 1) o.push('page ' + document.documentElement.scrollWidth);
     s.querySelectorAll('.scroll,.pad,.card,.m3,.m3-g,.m3-list').forEach(e => { if (e.scrollWidth > e.clientWidth + 1) o.push(String(e.className).slice(0, 24) + ' ' + e.scrollWidth + '>' + e.clientWidth); });
-    s.querySelectorAll('.m3 *').forEach(e => { const r = e.getBoundingClientRect(); if (r.width && (r.right > vw + 1 || r.left < -1)) o.push(e.tagName + '.' + String(e.className.baseVal ?? e.className).slice(0, 20) + ' ' + Math.round(r.left) + '..' + Math.round(r.right)); }); return o.slice(0, 5); });
+    s.querySelectorAll('.m3 *').forEach(e => { if (e.closest('.m3-dgs')) return; const r = e.getBoundingClientRect(); if (r.width && (r.right > vw + 1 || r.left < -1)) o.push(e.tagName + '.' + String(e.className.baseVal ?? e.className).slice(0, 20) + ' ' + Math.round(r.left) + '..' + Math.round(r.right)); }); return o.slice(0, 5); });
   const shot = async (name, tall) => { const vs = p.viewportSize();
     if (tall) { const h = await p.evaluate(() => { const s = document.querySelector('#vp .screen:last-child .scroll'); return s ? s.scrollHeight + 160 : 0; }); if (h > vs.height) { await p.setViewportSize({ width: vs.width, height: Math.min(h, 5000) }); await p.waitForTimeout(400); } }
     await p.screenshot({ path: `${OUT}/partpage-${name}.png` }); if (tall) { await p.setViewportSize(vs); await p.waitForTimeout(300); } };
@@ -42,8 +42,9 @@ for (const [W, H, tag] of [[1280, 900, 'computer'], [390, 844, 'phone']]) {
   ok(!/Parts in this assembly/.test(t) && /Parts in this diagram/.test(t) && /Tap a number on the diagram or a part in the list/.test(tip), `${tag}: no old "Parts in this assembly" list, the new list and the hint under the diagram are there`);
   ok(/Not in your stock list yet/.test(t) && /Add to stock/.test(t), `${tag}: the chosen part not in stock has "Add to stock" (admin)`);
   if (tag === 'computer') {
-    ok(s.c1.r <= s.c2.l && s.c2.r <= s.c3.l && Math.abs(s.c1.t - s.c2.t) < 40 && Math.abs(s.c2.t - s.c3.t) < 40 && s.c1.w > s.c2.w && s.c3.w > 200 && !s.inList,
-      `computer: diagram | list | details side by side ${JSON.stringify([s.c1, s.c2, s.c3])}`);
+    // layout A (update 10z): the bike's diagrams | the diagram with the chosen part under it | the diagram's parts
+    ok(s.c0.r <= s.c1.l && s.c1.r <= s.c2.l && Math.abs(s.c0.t - s.c1.t) < 40 && Math.abs(s.c1.t - s.c2.t) < 40 && s.c1.w > s.c2.w && s.c3.w > 200 && s.c3.t > s.c1.t + 60 && s.c3.l >= s.c1.l && s.c3.r <= s.c1.r && !s.inList,
+      `computer: diagrams | diagram with the chosen part under it | parts list ${JSON.stringify([s.c0, s.c1, s.c3, s.c2])}`);
   } else {
     ok(!s.c3.w && s.inList && s.afterOn, `phone: the details sit right under the chosen line (in the list ${s.inList}, after it ${s.afterOn})`);
     ok(s.c1.b <= s.c2.t + 1, `phone: the diagram on top, the list under it ${JSON.stringify([s.c1, s.c2])}`);
@@ -96,10 +97,18 @@ for (const [W, H, tag] of [[1280, 900, 'computer'], [390, 844, 'phone']]) {
   s = await st(); hs = await p.evaluate(() => window.__hs);
   const inView = await p.evaluate(i => { const r = document.querySelector(`#vp .m3-row[data-i="${i}"]`).getBoundingClientRect(), l = document.querySelector('#vp .m3-list').getBoundingClientRect(), sc = document.querySelector('#vp .screen:last-child .scroll').getBoundingClientRect();
     return r.top >= Math.max(l.top, sc.top) - 1 && r.bottom <= Math.min(l.bottom, sc.bottom) + 1; }, last.i);
-  ok(s.on === last.i && s.pn === (last.pn || '') && inView && hs === s.k && s.len === lenB, `${tag}: a diagram number (m3Pick 'dg') picks the last line, it scrolls into view, hsSel(${hs}) is told`);
+  ok(s.on === last.i && s.pn === (last.pn || '') && inView && hs === s.k && s.len === lenB, `${tag}: a diagram number (m3Pick 'dg') picks the last line, it scrolls into view, hsSel(${hs}) is told ${JSON.stringify({ on: s.on, i: last.i, inView, len: s.len, lenB })}`);
   if (tag === 'phone') ok(s.afterOn, 'phone: the diagram number opens the details under its line');
   w = await wide(); ok(!w.length, `${tag}: the bigger diagram's page fits ${W} px ` + w.join(' | '));
   await shot(tag + '-big');
+  // layout A: the bike's diagrams listed (this one marked); Next opens the next diagram of the same bike and edition in place; a section opens the same page
+  const dg = await p.evaluate(async () => { const el = document.querySelector('#vp .m3'), o = M3[el.dataset.k], L = [...el.querySelectorAll('.m3-dg')], on = L.filter(b => b.classList.contains('on')), j = L.indexOf(on[0]), len = S.stack.length;
+    const nb = [...el.querySelectorAll('.m3-nb')].find(b => /Next/.test(b.getAttribute('aria-label'))); if (!nb) return { n: L.length, on: on.length, nb: 0 };
+    nb.click(); await new Promise(r => setTimeout(r, 300)); const e2 = document.querySelector('#vp .m3'), o2 = M3[e2.dataset.k], L2 = [...e2.querySelectorAll('.m3-dg')];
+    return { n: L.length, on: on.length, len, len2: S.stack.length, vb: o2.vb === o.vb, v: o2.v === o.v, pg: o2.page !== o.page, one: o2.rows.every(q => q.page === o2.page), j, j2: L2.findIndex(b => b.classList.contains('on')) }; });
+  ok(dg.n > 1 && dg.on === 1 && dg.len2 === dg.len && dg.vb && dg.v && dg.pg && dg.one && dg.j2 === dg.j + 1, `${tag}: the bike's diagrams listed, this one marked; Next opens the next one of the same bike and edition in place ${JSON.stringify(dg)}`);
+  const sv = await p.evaluate(() => { const el = document.querySelector('#vp .m3'), o = M3[el.dataset.k]; go('findpart', { v: 'sec', vb: o.vb, vm: o.vm || 'Any', yr: 'Any', pg: o.page }); const e2 = document.querySelector('#vp .m3'); return !!e2 && M3[e2.dataset.k].page === o.page && e2.querySelectorAll('.m3-row.on').length === 1 && !!e2.querySelector('.m3-dg.on'); });
+  ok(sv, `${tag}: a section from the bike's section list opens the same page (its diagram with the numbers, its parts)`);
   // the brand's diagram list still coming: the new page with "Loading diagram…", then the diagram once it is in
   const ld = await p.evaluate(i => { delete DG.hero; const r = catRows()[i]; go('findpart', { v: 'part', i, vb: r.vb, pg: r.page, pk: r.pk, ref: r.ref || '', vm: 'Any' });
     const el = document.querySelector('#vp .m3'); return !!el && /Loading diagram/.test(el.textContent) && !!el.querySelector('.m3-row.on'); }, iA);

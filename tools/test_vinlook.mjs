@@ -94,6 +94,8 @@ await p.evaluate(() => tab('findpart')); await p.waitForTimeout(300); await p.fi
 ok(st[0] === 'vin' && st[1] === 'KA17HC3942', 'bike number typed in the part search box goes to the bike number search ' + st);
 await p.evaluate(() => tab('findpart')); await p.waitForTimeout(300); await p.fill('#vp #fp-q', '17101KWPD00'); await p.press('#vp #fp-q', 'Enter'); await p.waitForTimeout(1200);
 ok(await p.evaluate(() => cur().p.v === 'res'), 'a part number stays a part search');
+await p.evaluate(() => tab('findpart')); await p.waitForTimeout(300); await p.fill('#vp #fp-q', 'MBLHAW264RHK0129'); await p.press('#vp #fp-q', 'Enter'); await p.waitForTimeout(1200); st = await p.evaluate(() => [cur().p.v, (S.ui.vin || {}).err || '']);
+ok(st[0] === 'vin' && /You typed 16 letters/.test(st[1]), 'a chassis number one letter short says how many letters were typed ' + st);
 await vin('MBLHAW264RHK09999'); t = await T();
 ok(/Hero’s site has no record of this chassis number/.test(t), 'Hero: not on Hero’s site, staff pick');
 // server with Hero off (server outside India): Hero goes the old way, nothing else asked

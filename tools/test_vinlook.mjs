@@ -40,7 +40,8 @@ const mock = http.createServer((q, r) => { let b = ''; q.on('data', d => b += d)
   // update 9w: TVS parts shop (guest token, then the chassis search: a flat list of parts, each with SERIES)
   if (q.url === '/tvs/Setting/tokenGeneration') { asked.push('tlogin'); return r.end(JSON.stringify({ access_token: 'TT' })); }
   if (q.url.startsWith('/tvs/api/Catalouge/GetPartsearch')) { const v = new URL(q.url, 'http://x').searchParams.get('frameNumber'); asked.push('tsearch:' + q.headers.authorization + ':' + v);
-    return r.end(JSON.stringify({ data: v === 'MD638AS15J1F04746' ? [1, 2, 3].map(i => ({ PART_ID: 'K' + i, SEGMENT: 'MOTORCYCLE', SERIES: 'APACHE RR 310', MODEL_DESC1: 'APACHE RR 310 BS4', MRP: 100, NDP: 80 })) : [] })); }
+    return r.end(JSON.stringify({ data: v === 'MD638AS15J1F04746' ? [1, 2, 3].map(i => ({ PART_ID: 'K' + i, SEGMENT: 'MOTORCYCLE', SERIES: 'APACHE RR 310', MODEL_DESC1: 'APACHE RR 310 BS4', MRP: 100, NDP: 80 }))
+      : v === 'MD626AK38P2B02810' ? [1, 2, 3, 4].map(i => ({ PART_ID: 'N' + i, MODEL: i < 3 ? 'TVS NTORQ' : 'NTORQ 125', MODEL_DESC1: 'TVS NTORQ', SEGMENT: 'SCOOTER', SERIES: 'NTORQ Series' })) : [] })); }
   if (q.url === '/honda') { asked.push('honda'); const v = _honda.hDec(j.strVIN); return r.end(JSON.stringify({ d: _honda.hEnc(JSON.stringify({ tbl_chassismaster: HONDA[v] ? [HONDA[v]] : [] })) })); }
   r.statusCode = 404; r.end('{}'); }); });
 await new Promise(ok2 => mock.listen(3029, '127.0.0.1', ok2));
@@ -99,6 +100,8 @@ ok(anon === 401, 'not logged in: no chassis lookup (' + anon + ')');
 ok(errs.length === 0, 'no page errors ' + errs.slice(0, 2).join(' | '));
 await vin('MD638AS15J1F04746'); st = await p.evaluate(() => cur().p);
 ok(st.vb === 'TVS' && st.vm === 'Apache RR 310' && asked.includes('tlogin') && asked.includes('tsearch:Bearer TT:MD638AS15J1F04746'), 'TVS chassis opens Apache RR 310 by itself ' + st.vm);
+await vin('MD626AK38P2B02810'); st = await p.evaluate(() => cur().p);
+ok(st.vb === 'TVS' && st.vm === 'Ntorq 125', 'Sam’s TVS chassis: site says MODEL NTORQ 125 / SERIES NTORQ Series, opens Ntorq 125 ' + st.vm);
 // update 10n: Bajaj chassis -> model from Bajaj's EPC; KTM made by Bajaj on MD2 opens KTM
 await vin('MD2A11CZ5PCA00001'); st = await p.evaluate(() => cur().p);
 ok(st.vb === 'Bajaj' && st.vm === 'Pulsar NS200' && asked.includes('bajaj:MD2A11CZ5PCA00001'), 'Bajaj chassis opens Pulsar NS200 by itself ' + st.vb + ' ' + st.vm);

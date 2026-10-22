@@ -145,7 +145,8 @@ async function api(req, res, url, user) {
     if ((stateVal('staffOff') || []).includes(id)) return json(res, 200, { error: loginError.off });
     if (acc && acc.status === 'pending') return json(res, 200, { error: loginError.pending });
     const isEmail = id.includes('@');
-    if (acc && (STAFF_ROLES.includes(acc.role) || isEmail)) return json(res, 200, { kind: 'password', name: acc.name });
+    // staff and Admin: password, but a mobile-number login gets a real SMS OTP instead (Sam 2026-10-22, update 10t); never the test OTP
+    if (acc && (isEmail || (STAFF_ROLES.includes(acc.role) && !(OTP.real && /^[6-9]\d{9}$/.test(id))))) return json(res, 200, { kind: 'password', name: acc.name });
     if (!acc && isEmail) return json(res, 200, { error: 'This email isn’t registered. Staff logins are created by the Bike Pharma Admin.' });
     if (!/^[6-9]\d{9}$/.test(id)) return json(res, 200, { error: 'Enter a valid 10-digit mobile number.' });
     // real SMS: a new OTP every 30 s at most, 5 SMS an hour per number, 20 an hour per IP (so nobody can empty the SMS balance)

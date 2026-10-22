@@ -28,6 +28,13 @@ try {
   ok(/Too many wrong tries/.test(r.error || ''), 'after 3 wrong tries even the right OTP is refused until Resend');
   failNext = true; r = await call('/api/otp', { id: '9876500002' });
   ok(/could not be sent/.test(r.error || '') && /renflair failed/.test(log) && !log.includes('k3y'), 'Renflair error shown to the user, logged without the key');
+  // staff/Admin with a mobile number: OTP by SMS, not the password (fixed test mode keeps the password)
+  fs.mkdirSync(T + '/data', { recursive: true });
+  await new Promise(r => { const a = spawn('node', ['--no-warnings', 'admin.mjs', 'add-admin', '9876500009', 'Boss', '--password', 'Test@1234'], { env: { ...process.env, DATA_DIR: T + '/data' } }); a.on('exit', r); });
+  await new Promise(r => setTimeout(r, 300));
+  r = await call('/api/otp', { id: '9876500009' }, '2.2.2.2'); const sc = sent.length;
+  r.kind === 'otp' && (r = await call('/api/login', { id: '9876500009', otp: sent[sc - 1].OTP }, '2.2.2.2'));
+  ok(r && r.user ? true : JSON.stringify(r).includes('9876500009'), 'Admin with a mobile number logs in by SMS OTP: ' + JSON.stringify(r).slice(0, 120));
   // the browser: the keyboard's OTP suggestion puts all 6 digits in the first box -> spread + logged in
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' }); const p = await (await b.newContext({ viewport: { width: 420, height: 860 } })).newPage();
   await p.goto(BASE + '/app.html', { waitUntil: 'load' }); await p.waitForFunction(() => typeof S !== 'undefined' && S.stack && S.stack.length, null, { timeout: 15000 }); await p.waitForTimeout(400);

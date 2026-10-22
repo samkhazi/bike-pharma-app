@@ -5279,13 +5279,13 @@ const phOrig=u=>/-w\.jpg$/.test(u||'');
 const phSrc=u=>{const k=phH(u);return k?u+'?v='+(PH_V[k]||PH_AI):u;};
 const phBusy=k=>PH_ST[k]==='queued'||PH_ST[k]==='working';
 const phNoAi=k=>!k||['off','failed','waiting','missing'].includes(PH_ST[k]);
-function phWatch(k,st){if(!k)return;if(st)PH_ST[k]=st;else if(!(k in PH_ST))PH_ST[k]='?';if(!phT&&Object.keys(PH_ST).some(x=>PH_ST[x]==='?'||phBusy(x)))phT=setTimeout(phPoll,st?2500:300);}
+function phWatch(k,st){if(!k)return;if(st)PH_ST[k]=st;else if(!(k in PH_ST))PH_ST[k]='?';if(!phT&&Object.keys(PH_ST).some(x=>PH_ST[x]==='?'||phBusy(x)))phT=setTimeout(phPoll,st?1000:300);}
 async function phPoll(){phT=0;const hs=Object.keys(PH_ST).filter(k=>PH_ST[k]==='?'||phBusy(k)).slice(0,40);if(!hs.length)return;
  try{const r=await fetch('/api/photo/status?h='+hs.join(','),{credentials:'same-origin',cache:'no-store'});if(!r.ok)throw new Error(r.status);const j=await r.json();
   document.documentElement.classList.toggle('phai',!!j.ai&&['ready','working'].includes(j.ai.state));
   hs.forEach(k=>{const st=(j.st||{})[k]||'missing',was=PH_ST[k];if((j.chk||{})[k])PH_CHK[k]=j.chk[k];if(st===was)return;if(st==='done'&&was!=='?')PH_V[k]=Date.now();PH_ST[k]=st;phPaint(k);});}
  catch(e){hs.forEach(k=>{if(PH_ST[k]==='?')PH_ST[k]='';});return;}
- if(hs.some(phBusy))phT=setTimeout(phPoll,2500);}
+ if(hs.some(phBusy))phT=setTimeout(phPoll,1000);}
 /* only the photo boxes change (a whole redraw would take the cursor out of the field being typed in) */
 function phPaint(k){document.querySelectorAll('[data-ph="'+k+'"]').forEach(el=>{el.classList.toggle('pend',phBusy(k));el.classList.toggle('noai',phNoAi(k));
   const w=phWhy(k);el.querySelectorAll('.inv-why').forEach(x=>{x.textContent=w?'Retake: '+w[0].toLowerCase():'';x.title=w?w[1]:'';x.hidden=!w;});

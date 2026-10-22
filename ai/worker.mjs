@@ -378,6 +378,28 @@ export function pick(P, way) {
   const chk = { bite: (bite - mended) / nKept, mended: mended / nKept, handLeft: handLeft / nKept, edge: onEdge / (2 * (w + h)), part: nKept / N, unsure: unsureK / nKept };
   return { keep, w, h, box: [x0 / sc, y0 / sc, (x1 + 1) / sc, (y1 + 1) / sc], hand: useHand && n2 < nFg, st: { fg: nFg, kept: nKept, proof: P.proof, rest: Math.round(n2 / nFg * 100) / 100 }, chk };
 }
+// the part on a green screen: every piece the green does not cover, joined pieces as one (a cap on its neck, a cable on its plug);
+// only crumbs (dust, a speck of glare) go. No hand checks: the grey-world colour fix turns a green photo's metal and brass skin-like.
+export function pickGreen(P) {
+  const { w, h, N, al, fg, nFg, sc } = P;
+  if (nFg < N * 0.001) return null;
+  const K = areas(fg, w, h); let kmax = 0;
+  for (let id = 1; id < K.st.length; id++) kmax = Math.max(kmax, K.st[id].n);
+  const kept = new Uint8Array(N);
+  for (let i = 0; i < N; i++) if (K.lab[i] && K.st[K.lab[i]].n >= Math.max(kmax * 0.01, N * 0.0002)) kept[i] = 1;
+  let x0 = w, y0 = h, x1 = -1, y1 = -1, onEdge = 0, unsureK = 0, nKept = 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x; if (!kept[i]) continue;
+    nKept++; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    if (x === 0 || y === 0 || x === w - 1 || y === h - 1) onEdge++;
+    if (al[i] < 160) unsureK++;
+  }
+  if (!nKept) return null;
+  const zone = grow(kept, w, h, 3), keep = Buffer.alloc(N);
+  for (let i = 0; i < N; i++) keep[i] = zone[i] ? 255 : 0;
+  const chk = { bite: 0, mended: 0, handLeft: 0, edge: onEdge / (2 * (w + h)), part: nKept / N, unsure: 0 };
+  return { keep, w, h, box: [x0 / sc, y0 / sc, (x1 + 1) / sc, (y1 + 1) / sc], hand: false, st: { fg: nFg, kept: nKept, proof: false, rest: 1 }, chk };
+}
 // how wrong a result looks (0 = nothing seen) and what the person taking photos could do better. A tan or brown part (skinPart) makes
 // the hand test unsure, so a bite counts more and skin left on it less.
 export function judge(P, r) {
@@ -530,7 +552,10 @@ export async function cleanPhoto(src, outC, outW, { learn = {}, avoid = [], way 
   // (no hand in the photo: "none" finds the same as "std")
   const order = (way && WAYS[way] ? [way] : orderFor(learn[kind], avoid)).filter(w => P.proof || w !== 'none' || avoid.includes('std')), tried = [];
   let best = null;
-  for (const w of order.length ? order : ['std']) {
+  // a green screen photo: the green already tells part from background, so everything joined to the part stays (the hand and
+  // "loose bits" checks split a carburettor's rubber cap off at its narrow neck, Sam 2026-10-22 19:19Z "parts cut rahe hein")
+  if (green && (way === 'green' || (!way && !avoid.includes('green')))) { const r = pickGreen(P); best = { way: 'green', r, j: judge(P, r) }; tried.push({ way: 'green', pen: best.j.pen, why: best.j.why }); }
+  else for (const w of order.length ? order : ['std']) {
     const r = pick(P, WAYS[w]), j = judge(P, r);
     tried.push({ way: w, pen: j.pen, why: j.why });
     if (!best || j.pen < best.j.pen) best = { way: w, r, j };

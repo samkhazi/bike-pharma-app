@@ -4088,7 +4088,11 @@ function m2Year(p){const {vb,vm}=p;catLoad(vb);const ld=m2Ld(vb);const head=m2He
  /* update 10f (Sam 2026-10-20 "hamara catalogue wala setup sahi nhi he"): the maker's site names the exact variant ("CLASSIC 350 REAR DISC - BSIV
     (1800286)"): open that variant's book, not one picked by year, so its own parts (rear disc brake hose KAB00044/A) are there. */
  if(p.vin&&p.vnm&&V!=='wait'){const ns=String(p.vnm).split('|').flatMap(x=>[vinNorm(x),vinNorm(x.replace(/\([^)]*\)/g,''))]).filter(Boolean);const g=V.find(g=>g.vs.some(v=>ns.includes(vinNorm(v))));if(g){Object.assign(p,{v:'secs',yr:'Any',ed:g.lab});return m2SecsV(p);}}
- if((p.vin||p.rcn)&&p.vy){const yo=l=>{const m=String(l).match(/(19|20)\d\d/g);return m?Math.max(...m.map(Number)):0;};const ed=ys.find(l=>yo(l)&&yo(l)<=p.vy)||ys[ys.length-1];Object.assign(p,{v:'secs',yr:'Any',ed});return m2SecsV(p);}
+ if((p.vin||p.rcn)&&p.vy){const yo=l=>{const m=String(l).match(/(19|20)\d\d/g);return m?Math.max(...m.map(Number)):0;};/* update 10p: when the maker's site names the emission norm (Bajaj "Pulsar 125 BSVI ..."), only books of that norm: a 2022 BS VI bike opens the BS6 book, never the 2020 BS4 one */
+ const bsN=l=>/BS\s?(VI|6)\b|OBD/i.test(l)?6:/BS\s?(IV|4)\b/i.test(l)?4:/BS\s?(III|3)\b/i.test(l)?3:0;const nn=p.vin&&p.vnm?bsN(p.vnm):0;
+ /* every brand: with no norm in the site's text, the build year decides: BS VI was a must from April 2020, so 2021+ = BS6 books, 2019 and older = not BS6 (2020 stays by year) */
+ const okN=l=>nn?bsN(l)===nn:p.vy>=2021?![3,4].includes(bsN(l)):p.vy&&p.vy<=2019?bsN(l)!==6:true;const ys2=ys.some(l=>bsN(l))&&ys.some(okN)?ys.filter(okN):ys;
+ const ed=ys2.find(l=>yo(l)&&yo(l)<=p.vy)||ys2[ys2.length-1];Object.assign(p,{v:'secs',yr:'Any',ed});return m2SecsV(p);}
  const row=y=>{const sc=catScope(m2A({vb,vm,ed:y}));const rows=sc&&!sc.loading?sc.rows:[];const pn=new Set();rows.forEach(r=>{if(r.pk)pn.add(r.pk);});const n=m2Secs(rows).length;
   return `<button class="m2-row" onclick="go('findpart',{v:'secs',vb:'${m2Q(vb)}',vm:'${m2Q(vm)}',yr:'Any',ed:'${m2Q(y)}'})"><div class="grow"><div class="h3">${esc(y)}</div><div class="cap">${n} section${n===1?'':'s'}, ${m2N(pn.size)} parts</div></div>${ic('chevR','s18')}</button>`;};
  const st=m2Stat(vb,vm);

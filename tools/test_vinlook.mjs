@@ -107,7 +107,7 @@ ok(st.vb === 'KTM' && st.vm === '390 Duke', 'Bajaj site says KTM 390 DUKE: opens
 await vin('MD2JPAXCXMC090925'); st = await p.evaluate(() => cur().p);
 ok(st.vb === 'KTM' && st.vm === '125 Duke', 'Sam’s chassis: Bajaj site says "Duke 125 UG", opens KTM 125 Duke ' + st.vb + ' ' + st.vm);
 await vin('MD2B64BX7NWB17715'); st = await p.evaluate(() => cur().p);
-ok(st.vb === 'Bajaj' && st.vm === 'Pulsar 125', 'Sam’s chassis: Pulsar 125 BSVI Single seat, opens Bajaj Pulsar 125 ' + st.vb + ' ' + st.vm);
+ok(st.vb === 'Bajaj' && st.vm === 'Pulsar 125' && /BS ?(VI|6)/.test(st.ed || '') && !/BS ?(IV|4)/.test(st.ed || ''), 'Sam’s chassis: Pulsar 125 BSVI Single seat, opens Bajaj Pulsar 125 BS6 book (not 2020 BS4) ' + st.vb + ' ' + st.vm + ' | ' + st.ed);
 await vin('MD2A11CZ9PCA00009'); t = await T();
 ok(/Bajaj’s site has no record of this chassis number/.test(t) && /Which brand is this/.test(t), 'Bajaj: not on Bajaj’s site, staff pick brand + model');
 await b.close(); mock.close(); console.log(fails ? `\n${fails} FAILED` : '\nALL OK'); process.exit(fails ? 1 : 0);

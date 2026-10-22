@@ -3808,7 +3808,7 @@ function dgZoom(btn){const el=btn.querySelector('[data-dg]');if(!el)return;const
 /* ----- Admin · Catalogue files: each brand's catalogue (cat/<slug>-dg.json) lists the files its diagrams are read from (dir + [name, size]).
    Admin picks the brand's folder on his computer; only those files go to the server, in pieces, once each: a file already there with the
    same size is never sent again, a broken connection carries on where it stopped (Sam: "double double upload nahi hona he"). ----- */
-const CUP={st:0,sets:null,run:null,t:0};
+const CUP={st:0,sets:null,run:null,t:0,q:[]};
 function cupLoad(force){if(CUP.st===1||(CUP.st===2&&!force)||typeof SRV==='undefined')return;CUP.st=1;
  const sl=[...new Set(CAT_ALL.map(e=>DG_SLUG[e.vb]).filter(Boolean))];
  Promise.all(sl.map(s=>fetch('cat/'+s+'-dg.json',{credentials:'same-origin'}).then(r=>r.ok?r.json():null,()=>null).then(d=>[s,d]))).then(async L=>{const sets={};
@@ -3834,11 +3834,11 @@ function cupProg(r){const pc=Math.min(100,Math.floor(100*r.sent/(r.total||1))),s
   r.other?`${r.other} other file${r.other===1?' is':'s are'} not part of this catalogue, left on your computer.`:'',
   r.missing?`${r.missing} needed file${r.missing===1?' is':'s are'} not in the folder you chose.`:''].filter(Boolean);
  return `<div class="stack g6"><div class="cup-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pc}"><i style="width:${pc}%"></i></div>${L.map(x=>`<div class="cap">${x}</div>`).join('')}${r.err?`<div class="cap" style="color:var(--r)">${esc(r.err)}</div>`:''}</div>`;}
-function cupCard(o){const t=cupStat(o),r=CUP.run&&CUP.run.dir===o.dir?CUP.run:null,live=r&&!r.end,ready=t.n===t.all,id='cup'+o.dir.replace(/\W/g,''),nm=o.brands.join(' + ');
- const pill=live?`<span class="pill b">Uploading · ${Math.min(100,Math.floor(100*r.sent/(r.total||1)))}%</span>`:ready?`<span class="pill g">Ready</span>`:`<span class="pill a">Waiting for files</span>`;
+function cupCard(o){const t=cupStat(o),r=CUP.run&&CUP.run.dir===o.dir?CUP.run:null,live=r&&!r.end,ready=t.n===t.all,qi=CUP.q.findIndex(x=>x[0].dir===o.dir),id='cup'+o.dir.replace(/\W/g,''),nm=o.brands.join(' + ');
+ const pill=live?`<span class="pill b">Uploading · ${Math.min(100,Math.floor(100*r.sent/(r.total||1)))}%</span>`:qi>=0?`<span class="pill a">In line · ${qi+1}</span>`:ready?`<span class="pill g">Ready</span>`:`<span class="pill a">Waiting for files</span>`;
  return `<div class="card stack g10"><div class="row" style="gap:10px"><div class="tile y">${ic('file','s20')}</div><div class="grow" style="min-width:0"><div class="h3">${esc(nm)}</div><div class="cap">${t.n} of ${t.all} files on the server · ${cupMB(t.b)} of ${cupMB(t.tb)}</div></div>${pill}</div>
-  ${r?cupProg(r):''}
-  ${live?`<button class="btn line" onclick="cupStop()">Stop upload</button>`:ready?`<p class="cap" style="margin:0">${o.am?'All '+esc(o.brands[0])+' files are on your server, in their original quality.':'Every '+esc(o.brands.join(' and '))+' diagram opens from your server now, in its original quality.'}</p>`:`<label class="btn" for="${id}" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">${ic('upload','s18')} Choose the ${esc(o.brands[0])} folder</label><input id="${id}" type="file" webkitdirectory directory multiple hidden onchange="cupPick(this,'${m2Q(o.dir)}')">
+  ${qi>=0?`<div class="cap">${CUP.q[qi][0].todo.length} file${CUP.q[qi][0].todo.length===1?'':'s'} · ${cupMB(CUP.q[qi][0].total)} · starts by itself when the upload${qi?'s':''} before ${qi?'it finish':'it finishes'}.</div>`:r?cupProg(r):''}
+  ${live?`<button class="btn line" onclick="cupStop()">Stop upload</button>`:qi>=0?`<button class="btn line" onclick="cupUnq('${m2Q(o.dir)}')">Remove from line</button>`:ready?`<p class="cap" style="margin:0">${o.am?'All '+esc(o.brands[0])+' files are on your server, in their original quality.':'Every '+esc(o.brands.join(' and '))+' diagram opens from your server now, in its original quality.'}</p>`:`<label class="btn" for="${id}" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">${ic('upload','s18')} Choose the ${esc(o.brands[0])} folder</label><input id="${id}" type="file" webkitdirectory directory multiple hidden onchange="cupPick(this,'${m2Q(o.dir)}')">
    <label class="link" for="${id}f" style="text-align:center" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">or choose the files</label><input id="${id}f" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.zip,.json,.csv,.txt" hidden onchange="cupPick(this,'${m2Q(o.dir)}')">
    <p class="cap" style="margin:0">On your computer: ${o.pick?'<b>'+esc(o.pick)+'</b>':'the '+esc(o.brands[0])+' folder inside All Catalogues'}. Only the files this catalogue needs are sent. Keep this page open until it says Done.</p>${cupSpace(o)}`}</div>`;}
 SCREENS.catup=()=>{cupLoad();const s=CUP.sets;
@@ -3847,15 +3847,19 @@ SCREENS.catup=()=>{cupLoad();const s=CUP.sets;
  return bar('Catalogue files',{back:S.stack.length>1})+`<div class="scroll"><div class="pad" style="gap:16px"><p class="cap" style="margin:0">Each brand's diagrams open straight from its catalogue files on your server, exactly as they are: no change in quality. Every staff profile with Find Part uses these same files.</p>${CUP.free!=null?`<p class="cap" style="margin:0">Free space on your server: <b>${cupMB(CUP.free)}</b></p>`:''}${body}</div></div>`;};
 const cupHome=()=>{if(!S.user||S.user.role!=='admin'||typeof SRV==='undefined')return '';cupLoad();const s=CUP.sets;if(!s||!Object.keys(s).length)return '';const r=cupLive();
  const miss=Object.values(s).filter(o=>{const t=cupStat(o);return t.n<t.all;});
- return `<button class="row card" style="flex-direction:row;text-align:left;gap:12px;align-items:center" onclick="go('catup')"><div class="tile y">${ic('upload','s20')}</div><div class="grow" style="min-width:0"><div class="h3">Catalogue files · Admin</div><div class="cap">${r?`Uploading ${esc(r.cur)} · ${Math.min(100,Math.floor(100*r.sent/(r.total||1)))}%`:miss.length?`${Object.keys(s).length-miss.length} brands ready · ${miss.length} waiting for files. Tap to upload.`:'All catalogue files are on your server.'}</div></div><span class="chev">${ic('chevR','s18')}</span></button>`;};
-function cupPick(inp,dir){const o=CUP.sets&&CUP.sets[dir];const fl=[...(inp.files||[])];inp.value='';if(!o||!fl.length)return;if(cupLive()){toast('An upload is already running');return;}
+ return `<button class="row card" style="flex-direction:row;text-align:left;gap:12px;align-items:center" onclick="go('catup')"><div class="tile y">${ic('upload','s20')}</div><div class="grow" style="min-width:0"><div class="h3">Catalogue files · Admin</div><div class="cap">${r?`Uploading ${esc(r.cur)} · ${Math.min(100,Math.floor(100*r.sent/(r.total||1)))}%${CUP.q.length?' · '+CUP.q.length+' more in line':''}`:miss.length?`${Object.keys(s).length-miss.length} brands ready · ${miss.length} waiting for files. Tap to upload.`:'All catalogue files are on your server.'}</div></div><span class="chev">${ic('chevR','s18')}</span></button>`;};
+function cupPick(inp,dir){const o=CUP.sets&&CUP.sets[dir];const fl=[...(inp.files||[])];inp.value='';if(!o||!fl.length)return;if(CUP.q.some(x=>x[0].dir===dir)||(cupLive()&&CUP.run.dir===dir)){toast(o.brands[0]+' is already uploading or in line');return;}
  const pick=new Map();let dup=0,other=0,spare=0;const sp=new Set();
  fl.forEach(f=>{const z=o.files.get(f.name);if(z===f.size){if(pick.has(f.name))dup++;else pick.set(f.name,f);}else if(o.spare.get(f.name)===f.size){if(sp.has(f.name))dup++;else{sp.add(f.name);spare++;}}else other++;});
  const todo=[...pick.values()].filter(f=>o.have.get(f.name)!==f.size);
  const missing=[...o.files.keys()].filter(n=>!pick.has(n)&&o.have.get(n)!==o.files.get(n)).length;
- const r=CUP.run={dir,todo,done:0,sent:0,total:todo.reduce((t,f)=>t+f.size,0),cur:'',err:'',skip:pick.size-todo.length,dup,other,spare,missing,t0:Date.now(),end:0,stopped:0};
- if(!todo.length){r.end=Date.now();refresh();if(!pick.size)toastWarn('No '+o.brands[0]+' catalogue files in that folder');return;}
- cupRun(r,o);refresh();}
+ const r={dir,todo,done:0,sent:0,total:todo.reduce((t,f)=>t+f.size,0),cur:'',err:'',skip:pick.size-todo.length,dup,other,spare,missing,t0:Date.now(),end:0,stopped:0};
+ if(!todo.length){if(!cupLive())CUP.run=r;r.end=Date.now();refresh();toastWarn(pick.size?o.brands[0]+': all its files are already on the server':'No '+o.brands[0]+' catalogue files in that folder');return;}
+ if(cupLive()){CUP.q.push([r,o]);toast(o.brands[0]+' is in line: it starts by itself after the current upload');refresh();return;}
+ CUP.run=r;cupRun(r,o);refresh();}
+// update 10u (Sam 2026-10-22: "ek file upload kiya aur uske baad turant ek aur catalogue"): a folder picked while another brand uploads waits in line and starts by itself
+function cupUnq(dir){CUP.q=CUP.q.filter(x=>x[0].dir!==dir);refresh();}
+function cupNext(){const n=CUP.q.shift();if(!n)return;const [r,o]=n;r.todo=r.todo.filter(f=>o.have.get(f.name)!==f.size);r.total=r.todo.reduce((t,f)=>t+f.size,0);r.t0=Date.now();CUP.run=r;if(!r.todo.length){r.end=Date.now();refresh();cupNext();return;}cupRun(r,o);refresh();}
 function cupStop(){const r=cupLive();if(r){r.stopped=1;if(r.ac)try{r.ac.abort();}catch(e){}}refresh();}
 async function cupRun(r,o){const wait=ms=>new Promise(w=>setTimeout(w,ms));let chunk=4*1024*1024,lock=null;
  try{if(navigator.wakeLock)lock=await navigator.wakeLock.request('screen');}catch(e){}
@@ -3872,7 +3876,7 @@ async function cupRun(r,o){const wait=ms=>new Promise(w=>setTimeout(w,ms));let c
   if(!r.stopped&&have>=f.size){r.done++;o.have.set(f.name,f.size);r.err='';}}
  r.end=Date.now();r.cur='';r.ac=null;try{if(lock)lock.release();}catch(e){}removeEventListener('beforeunload',cupWarn);
  for(const k in CAT_PFDIR)delete CAT_PFDIR[k];
- if(r.done&&!r.stopped)toast(`${o.brands.join(' + ')}: ${r.done} file${r.done===1?'':'s'} uploaded`);refresh();}
+ if(r.done&&!r.stopped)toast(`${o.brands.join(' + ')}: ${r.done} file${r.done===1?'':'s'} uploaded`);refresh();if(CUP.q.length&&CUP.run===r)setTimeout(cupNext,1500);}
 /* ----- compatible: the same part number in another brand's book (cat/xref.json), and sister bikes that share a platform ----- */
 let XR=null,XR_ST=0;function xrLoad(){if(XR_ST===0){XR_ST=1;fetch('cat/xref.json').then(r=>r.ok?r.json():Promise.reject(r.status)).then(d=>{XR=d;XR_ST=2;refresh();},()=>{XR_ST=3;});}return XR;}
 /* [brand, model test, sister brand, sister models, why] */

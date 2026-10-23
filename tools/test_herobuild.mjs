@@ -26,7 +26,7 @@ fs.writeFileSync(R + '/hero_hidden_models.json', JSON.stringify({
 fs.writeFileSync(R + '/hero_oldnew_harvest.json', JSON.stringify({ supercedence: [['88888-OLD-001', '99999-TST-001', 'a', 'b', ''], ['99999-TST-003', 'NLS', 'c', '', '']], searchParts: [['77777-TST-009', 'SEARCH ONLY', 66, '', null, 'PART', '77777-TST-009', '']] }));
 
 await new Promise(r => { const a = spawn('node', ['--no-warnings', 'admin.mjs', 'add-admin', 'sam@bikepharma.com', 'Sam', '--password', 'Test@1234'], { env: { ...process.env, DATA_DIR: T + '/data' } }); a.on('exit', r); });
-const srv = spawn('node', ['--no-warnings', 'server.mjs'], { env: { ...process.env, PORT: '3018', DATA_DIR: T + '/data', FILES_DIR: T + '/pf', PHOTO_AI: 'off' }, stdio: ['ignore', 'pipe', 'pipe'] });
+const srv = spawn('node', ['--no-warnings', 'server.mjs'], { env: { ...process.env, PORT: '3018', DATA_DIR: T + '/data', FILES_DIR: T + '/pf', PHOTO_AI: 'off', CAT_ROWS_DAY_PCT: '30' }, stdio: ['ignore', 'pipe', 'pipe'] });
 let log = ''; srv.stdout.on('data', d => log += d); srv.stderr.on('data', d => log += d);
 const BASE = 'http://127.0.0.1:3018';
 let cookie = '';
@@ -37,7 +37,15 @@ try {
   const lr = await fetch(BASE + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: 'sam@bikepharma.com', password: 'Test@1234' }) });
   cookie = (lr.headers.get('set-cookie') || '').split(';')[0];
   const PUB = process.env.PUBLIC_DIR || 'public', pub = JSON.parse(fs.readFileSync(PUB + '/cat/hero.json', 'utf8'));
-  const d = await (await get('/cat/hero.json')).json(), g = await (await get('/cat/hero-dg.json')).json();
+  const d = JSON.parse(fs.readFileSync(T + '/data/cat/hero.json', 'utf8')), g = await (await get('/cat/hero-dg.json')).json();
+  // 11v: phones get the head only, the part lines from /api/cat/rows
+  const hd = await (await get('/cat/hero.json')).json(), post = b => fetch(BASE + '/api/cat/rows', { method: 'POST', headers: { cookie, 'Content-Type': 'application/json' }, body: JSON.stringify({ b: 'hero', ...b }) }).then(r => r.json());
+  ok(hd.split === 1 && hd.d.length === 0 && hd.n === d.d.length && !Object.keys(hd.mrp).length && !Object.keys(hd.phf).length && hd.vars.length === d.vars.length, 'cat/hero.json sends the head only: no part lines, MRPs or photos');
+  ok(hd.mst['Splendor Plus'] && hd.mst['Splendor Plus'][0] === d.d.filter(r => r[11].some(k => d.vmod[d.vars[k]] === 'Splendor Plus')).length, "the head counts each bike's lines");
+  const sp = await post({ m: ['Splendor Plus'] });
+  ok(sp.g.length === hd.mst['Splendor Plus'][0] && sp.d.every((r, i) => JSON.stringify(r) === JSON.stringify(d.d[sp.g[i]])) && sp.mrp['99999-TST-001'] === 123 && sp.phf['99999-TST-001'], "a bike's lines come with their MRPs and photos");
+  const pn = await post({ pn: '99999TST001' });
+  ok(pn.g.length === d.d.filter(r => r[5] === '99999-TST-001').length + d.d.filter(r => /99999TST001/.test(String(r[8]).toUpperCase().replace(/[^A-Z0-9]/g, '')) && r[5] !== '99999-TST-001').length, 'a part number: every line with it');
   ok(d.vars.length === pub.vars.length + 3, 'two new editions (+ the search list) added, the one the app already has (Achiever Nov 2014) not twice');
   ok(d.d.some(r => r[5] === '77777-TST-009' && d.vmod[d.vars[r[11][0]]] === 'Other parts (price list)'), 'a search-list number no edition has is under Other parts');
   ok(d.vmod['Splendor+ (Sep, 2003)'] === 'Splendor Plus' && d.vmod['Dash export (July, 2017)'] === 'Dash' && d.models.includes('Dash'), 'editions put under their bike (Splendor Plus; Dash, new, named export)');
@@ -88,5 +96,9 @@ try {
   const sv = p.vars.indexOf('Splendor+ (Sep, 2003)');
   ok(/^pf:catalogues\/hero-raw\//.test(pg.f[pg.p[sv]['E-1']]) && pg.f[pg.p[sv]['E-9']] === 'pdf:catalogues/hero-pdf/Splendor+ (Sep, 2003) [SPLENDOR_TST1].pdf:0:100:4:0,0,1,1', 'Raw Data picture first, else the PDF page');
   ok(pg.f[pg.p[gv]['F-2']] === 'pdf:catalogues/hero-pdf/Glamour (Jan, 2020) [GLAM_NEW].pdf:0:200:5:0,0,1,1', 'PDF-only edition diagram = its PDF page');
+  // 11v: one login pulling bike after bike (more than CAT_ROWS_DAY_PCT=30 % of the lines today) is stopped, like a copy
+  let st = 0, n = 0; for (const m of Object.keys(hd.mst)) { const r = await fetch(BASE + '/api/cat/rows', { method: 'POST', headers: { cookie, 'Content-Type': 'application/json' }, body: JSON.stringify({ b: 'hero', m: [m] }) }); st = r.status; await r.arrayBuffer(); n++; if (st !== 200) break; }
+  ok(st === 429 && n > 1 && (await get('/cat/royal-enfield.json')).status === 429, 'a login that pulls a third of the Hero lines is stopped for the day (' + n + ' bikes)');
+  ok((await fetch(BASE + '/api/cat/rows', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"b":"hero","m":["Dash"]}' })).status === 401, 'no login: no lines');
 } catch (e) { ok(false, 'error ' + e.stack); }
 srv.kill(); if (fails) console.log(log.slice(-2000)); console.log(fails ? fails + ' FAILED' : 'ALL PASS'); process.exit(fails ? 1 : 0);

@@ -42,7 +42,7 @@ ok(/FOUND IN HERO CATALOGUE/i.test(t2) && /Gasket R Crank Case Cover/i.test(t2),
 // the same QR typed by a barcode gun into the box, and the sticker photo matcher (Sam 2026-10-20: 'FJBG0000218367 aa raha he')
 const Q = 'D/FJBG0000218367/JCFMVZNMS4JY/16450ACK000S      /000001/0001200.00/AAE/1/G/000/00';
 await p.evaluate(() => { S.ui.ap = null; go('addproduct'); }); await p.waitForTimeout(200); await p.fill('#ap-pn', Q); await p.waitForTimeout(3000);
-const g = await p.evaluate(Q => ({ pn: S.ui.ap.pn, sc: scMatch([Q]).exact.map(h => h.pn) }), Q);
+const g = await p.evaluate(async Q => { await scSplit([Q]); return { pn: S.ui.ap.pn, sc: scMatch([Q]).exact.map(h => h.pn) }; }, Q);
 ok(g.pn === '16450-ACK-000' && g.sc.join() === '16450-ACK-000', 'Hero QR from a barcode gun and in the sticker scan gives 16450-ACK-000, not the serial FJBG… ' + JSON.stringify(g));
 // every brand and the aftermarket lists (Sam 2026-10-20 "sabhi brands ... after market ke bhi"): the part no. is picked out of
 // a label code with a serial, MRP, batch and date around it, catalogues not loaded first

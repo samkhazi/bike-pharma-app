@@ -37,6 +37,7 @@ const corners = (p, u) => p.evaluate(async u => { const im = new Image(); im.src
   return [[8, 8], [c.width - 9, 8], [8, c.height - 9], [c.width - 9, c.height - 9]].map(([a, b]) => Array.from(x.getImageData(a, b, 1, 1).data.slice(0, 3))); }, u);
 const aiDone = (p, expr) => p.waitForFunction(e => eval(e).every(u => PH_ST[phH(u)] === 'done'), expr, { timeout: 120000 });
 async function openPart(p, vb, pk) { await p.evaluate(vb => catNeed([CAT_ALL.find(e => e.vb === vb)]), vb); await p.waitForFunction(vb => CAT_ALL.find(e => e.vb === vb).st === 2, vb, { timeout: 90000 });
+  await p.evaluate(([vb, pk]) => { const e = CAT_ALL.find(e => e.vb === vb); if (e.split) return catSplitQ(e, 'pn:' + pk, { pn: pk }) === 2 || e.spr.get('pn:' + pk); }, [vb, pk]);   // 11v: a split brand's lines come as asked
   const ok1 = await p.evaluate(([vb, pk]) => { const rows = catRows(); const i = rows.findIndex(r => r.pk === pk && r.vb === vb && !r.xl); if (i < 0) return false; const r = rows[i]; go('findpart', { v: 'part', i, vb: r.vb, pg: r.page, pk: r.pk, ref: r.ref || '', vm: 'Any' }); return true; }, [vb, pk]);
   await p.waitForTimeout(500); return ok1; }
 const A = '45125-AAH-F0099';   // Hero only: SHOE COMP BRAKE, MRP 160, 33 bikes

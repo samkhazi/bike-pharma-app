@@ -26,6 +26,7 @@ import { catGuard } from './lib/catguard.mjs';
 import { spawn } from 'node:child_process';
 import { HERO_RAW } from './lib/herobuild.mjs';
 import { backups } from './lib/backup.mjs';
+import { catSplit } from './lib/catsplit.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 export function loadEnv(file) {
@@ -60,7 +61,10 @@ function heroBuild(why) {
 }
 heroBuild('start');
 const BACKUP = backups({ store, dataDir: DATA_DIR, env });   // 11u: every night + Admin > More > Backups
-const PNLOOK = pnLookup(PUBLIC_DIR, [HERO_OUT]); setTimeout(() => { PNLOOK('').catch(() => {}); }, 4000).unref();   // index the brand files soon after start
+// 11v: Hero goes to phones as a head + the part lines they need (lib/catsplit.mjs); CAT_SPLIT=off sends the whole file as before
+const heroFile = () => { for (const d of [HERO_OUT, path.join(PUBLIC_DIR, 'cat')]) { const f = path.join(d, 'hero.json'); if (fs.existsSync(f)) return f; } return null; };
+const SPLIT = catSplit({ file: slug => slug === 'hero' && String(env.CAT_SPLIT || '').toLowerCase() !== 'off' ? heroFile() : null, pct: +env.CAT_ROWS_DAY_PCT || 60 });
+const PNLOOK = pnLookup(PUBLIC_DIR, [HERO_OUT], { load: f => { const h = SPLIT && heroFile(); return h && f === h && String(env.CAT_SPLIT || '').toLowerCase() !== 'off' ? SPLIT.data(f) : null; } }); setTimeout(() => { PNLOOK('').catch(() => {}); }, 4000).unref();   // index the brand files soon after start
 const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 
 // ---------- first run: an empty shop, no accounts ----------
@@ -169,6 +173,19 @@ async function api(req, res, url, user) {
   const cfg = () => ({ otpHint: OTP.mode === 'fixed' ? OTP.fixed : null, otpMode: OTP.mode, version: VERSION, cat: catList() });
   const full = u => ({ user: u ? u : null, db: viewOf(store.stateAll().map(r => r.key), reader(), u, true), rev: store.rev(), cfg: cfg() });
 
+  if (p === '/api/cat/rows' && m === 'POST') {   // 11v: the part lines of a split catalogue the phone needs now (staff only, counted like cat/ files)
+    if (roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: user ? 'Staff login needed' : 'Please log in again' });
+    const e = CATG.check(user); if (e) return json(res, 429, { error: e });
+    const slug = String(body.b || ''); if (!/^[a-z0-9-]{1,40}$/.test(slug)) return json(res, 400, { error: 'Bad catalogue' });
+    let r; try { r = SPLIT.rows(slug, body, user); } catch (x) { console.log(new Date().toISOString(), 'cat rows failed', x.message); return json(res, 500, { error: 'Could not read the catalogue' }); }
+    if (r.error) return json(res, r.code || 400, { error: r.error });
+    if (r.over) { CATG.stop(user, 'lines', ipOf(req)); return json(res, 429, { error: CATG.check(user) || 'Catalogue limit for today reached' }); }
+    delete r.over;
+    const raw = Buffer.from(JSON.stringify(r)), gz = /\bgzip\b/.test(req.headers['accept-encoding'] || ''), out = gz ? zlib.gzipSync(raw, { level: 6 }) : raw;
+    CATG.count(user, 'cat', raw.length, 'cat/' + slug + '.json lines ' + r.g.length, ipOf(req));
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Content-Length': out.length, 'Cache-Control': 'no-store', 'Vary': 'Accept-Encoding', ...(gz ? { 'Content-Encoding': 'gzip' } : {}) });
+    return res.end(out);
+  }
   if (p === '/api/alt') return ALT.api(m, body, user, res);
   if (p === '/api/health' && m === 'GET') return json(res, 200, { ok: true, rev: store.rev(), sqlite: HAS_SQLITE, version: VERSION, photoAi: PHOTO_AI.summary(), billAi: BILL_AI.summary(), mysql: MIRROR.summary() });
   if (p === '/api/boot' && m === 'GET') { if (!user && cookies(req).bp_s) setSession(req, res, '', true); return json(res, 200, full(user)); }
@@ -316,6 +333,7 @@ async function api(req, res, url, user) {
   }
   if (p === '/api/catsec/unlock' && m === 'POST') {
     if (!user || user.role !== 'admin') { drain(req); return json(res, user ? 403 : 401, { error: 'Only Admin' }); }
+    SPLIT.reset(String(body.id || ''));
     return json(res, 200, { ok: CATG.unlock(String(body.id || ''), user.id) });
   }
 
@@ -644,6 +662,18 @@ function serveStatic(req, res, url, user) {
   if (PROTECTED.includes(top) && roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: 'Staff login needed' });
   const isCat = top === 'cat' && rel.endsWith('.json');
   if (isCat) { const e = CATG.check(user); if (e) return json(res, 429, { error: e }); }
+  if (rel === 'cat/hero.json') {   // 11v: the head only (catsplit); the lines come from /api/cat/rows
+    let hd = null; try { hd = SPLIT.head('hero'); } catch (x) { console.log(new Date().toISOString(), 'hero head failed', x.message); }
+    if (hd) {
+      const h = { 'Content-Type': 'application/json; charset=utf-8', 'ETag': hd.etag, 'Cache-Control': 'private, no-cache', 'X-Content-Type-Options': 'nosniff', 'Vary': 'Accept-Encoding' };
+      if (req.headers['if-none-match'] === hd.etag) { res.writeHead(304, h); return res.end(); }
+      if (!hd.gz) hd.gz = zlib.gzipSync(hd.buf, { level: 6 });
+      const gz = /\bgzip\b/.test(req.headers['accept-encoding'] || ''), out = gz ? hd.gz : hd.buf;
+      if (req.method !== 'HEAD') CATG.count(user, 'cat', hd.buf.length, rel, ipOf(req));
+      res.writeHead(200, { ...h, 'Content-Length': out.length, ...(gz ? { 'Content-Encoding': 'gzip' } : {}) });
+      return res.end(req.method === 'HEAD' ? undefined : out);
+    }
+  }
   let file = path.join(PUBLIC_DIR, rel);
   if (HERO_SERVED.has(rel) && fs.existsSync(path.join(HERO_OUT, path.basename(rel)))) file = path.join(HERO_OUT, path.basename(rel));
   let st; try { st = fs.statSync(file); } catch (e) { return json(res, 404, { error: 'Not found' }); }

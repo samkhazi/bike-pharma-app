@@ -434,6 +434,7 @@ button.card:active,button.pcard:active,.qa:active,.qa2:active{transform:scale(.9
 .fpz.z .fpz-in img{width:1430px;max-width:none;cursor:zoom-out}
 .fpz-x{position:absolute;top:12px;right:12px;width:44px;height:44px;border-radius:22px;background:#fff;color:#141413;display:grid;place-items:center;z-index:1;border:0}
 .fpz-tip{color:#fff;text-align:center;font-size:13px;padding:10px 16px 16px}
+.fpz.ph:not(.z) .fpz-in img{width:auto;max-width:100%;max-height:100%;object-fit:contain}
 .s14{width:14px;height:14px}
 .spin{width:18px;height:18px;border-radius:50%;border:2.5px solid var(--line);border-top-color:var(--ink);animation:bpRot .8s linear infinite;flex:none}
 @keyframes bpRot{to{transform:rotate(360deg)}}
@@ -2593,7 +2594,7 @@ SCREENS.scanfind=()=>{const x=S.ui.scanHit?P(S.ui.scanHit):null;const edit=canEd
  <form class="row" style="gap:8px" onsubmit="event.preventDefault();doScan(document.getElementById('sc-code').value)"><label class="search grow" for="sc-code">${ic('scan','s20')}<input id="sc-code" inputmode="text" placeholder="Barcode or part number" value="${esc(S.ui.scanMiss||'')}"></label><button class="btn sm" type="submit">Find</button></form>
  ${S.ui.scanMiss?`<div class="card" style="border:1.5px solid var(--r)"><div class="row">${ic('alert','s20')}<div class="grow"><div class="h3">No part found for “${esc(S.ui.scanMiss)}”</div><div class="cap">Check the code, or add it as a new product.</div></div></div>${edit?`<button class="btn sm" style="width:100%" onclick="S.ui.ap=null;S.ui.apErr=null;go('addproduct');setTimeout(()=>{if(S.ui.ap){S.ui.ap.barcode='${esc(S.ui.scanMiss)}';refresh();}},0)">+ Add as new product</button>`:''}</div>`:''}${S.ui.scanMiss?fpHit(S.ui.scanMiss):''}
  ${x?`<div class="card" style="border:1.5px solid var(--y)">
-  <div class="row top"><div class="tile n inv-tile" style="width:56px;height:56px">${x.photos&&x.photos[0]?`<img src="${esc(phSrc(x.photos[0]))}" alt="" loading="lazy">`:ic(x.ic,'s28')}</div><div class="grow"><div class="micro muted">${esc(x.pack?x.pack+' · Aftermarket':x.brand+(x.type?' · '+x.type:''))}</div><div class="h3">${esc(x.name)}</div><div class="cap">${x.pn} · ${barcodeOf(x)}</div>${addedBy(x)?`<div class="cap muted">${addedByTxt(x)}</div>`:''}</div></div>
+  <div class="row top">${x.photos&&x.photos[0]?`<button class="tile n inv-tile" style="width:56px;height:56px;padding:0;border:0;cursor:zoom-in" onclick="phZoom('${x.id}',0)" aria-label="Open photo"><img src="${esc(phSrc(x.photos[0]))}" alt="" loading="lazy"></button>`:`<div class="tile n inv-tile" style="width:56px;height:56px">${ic(x.ic,'s28')}</div>`}<div class="grow"><div class="micro muted">${esc(x.pack?x.pack+' · Aftermarket':x.brand+(x.type?' · '+x.type:''))}</div><div class="h3">${esc(x.name)}</div><div class="cap">${x.pn} · ${barcodeOf(x)}</div>${addedBy(x)?`<div class="cap muted">${addedByTxt(x)}</div>`:''}</div></div>
   <div class="grid2">
    <div class="stat ${st===0?'r':st<10?'y':'g'}" style="padding:12px"><span class="micro">In stock</span><span class="v">${st} pcs</span><span class="cap">${st===0?'Out of stock':st<10?'Low · reorder':'OK'}</span></div>
    <div class="stat k" style="padding:12px;background:var(--k);color:#fff;border:0"><span class="micro" style="color:var(--ink3)">Rack</span><span class="v" style="color:var(--y)">${binOf(x.id)}</span><span class="cap" style="color:var(--ink3)">Rack-Shelf-Bin</span></div>
@@ -3372,6 +3373,12 @@ function catZoom(i){const r=catRows()[i];const sc=document.querySelector('#vp .s
  d.innerHTML=`<button class="fpz-x" aria-label="Close diagram">${ic('x','s20')}</button><div class="fpz-in">${catFigEl(r,'fpz-fig')}</div><div class="fpz-tip">${r.ref?'Ref '+esc(r.ref)+' · ':''}Tap or pinch to zoom</div>`;
  fpzWire(d);
  const k=e=>{if(e.key==='Escape')close();},close=()=>{d.remove();document.removeEventListener('keydown',k);};d.querySelector('.fpz-x').onclick=close;document.addEventListener('keydown',k);sc.appendChild(d);d.querySelector('.fpz-x').focus();}
+/* 11p: a product photo over the screen (Scan to find), same zoom as a diagram; more photos = Next */
+function phZoom(id,n){const x=P(id),ph=(x&&x.photos)||[];const sc=document.querySelector('#vp .screen');if(!sc||!ph.length)return;n=((n||0)%ph.length+ph.length)%ph.length;
+ document.querySelectorAll('.fpz.ph').forEach(e=>e.remove());const d=document.createElement('div');d.className='fpz ph';d.setAttribute('role','dialog');d.setAttribute('aria-label','Photo');
+ d.innerHTML=`<button class="fpz-x" aria-label="Close photo">${ic('x','s20')}</button><div class="fpz-in"><img class="fpz-fig" src="${esc(phSrc(ph[n]))}" alt="${esc(x.name)}"></div><div class="fpz-tip">${ph.length>1?`<button class="btn sm" id="phz-next">Next photo (${n+1}/${ph.length})</button> · `:''}Tap or pinch to zoom</div>`;
+ fpzWire(d);const k=e=>{if(e.key==='Escape')close();},close=()=>{d.remove();document.removeEventListener('keydown',k);};d.querySelector('.fpz-x').onclick=close;document.addEventListener('keydown',k);
+ const nx=d.querySelector('#phz-next');if(nx)nx.onclick=()=>{close();phZoom(id,n+1);};sc.appendChild(d);d.querySelector('.fpz-x').focus();}
 function fpTry(t){const i=document.getElementById('fp-q');if(i)i.value=t;S.ui.fp.q=t;fpSearch();}
 const fpEntry=()=>`<button class="row card" style="flex-direction:row;text-align:left;border:1.5px solid var(--y)" onclick="go('findpart')"><div class="tile y">${ic('pin','s20')}</div><div class="grow"><div class="h3">Find Part</div><div class="cap">Part number + diagram from ${CAT_ALL.length} brands’ parts catalogues, and our stock</div></div><span class="chev">${ic('chevR','s18')}</span></button>`;
 /* pictures load only near the screen: sheets of diagram pages are big. A picture out of a .bin file stays once it is in */

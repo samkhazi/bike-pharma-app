@@ -35,6 +35,10 @@ ok(JSON.stringify(st.L.map(l => [l.m, l.q])) === '[[210,3],[245,5]]', 'lots 210 
 // part stock in Scan to find
 await Ad.evaluate(id => { S.ui.scanHit = id; S.ui.scanMiss = null; go('scanfind'); }, pid); await Ad.waitForTimeout(300);
 t = await T(Ad); ok(/Stock by MRP/i.test(t) && /Sells first/i.test(t) && /₹200/.test(t) && /Count \/ fix lot qty/i.test(t), 'scan to find shows the lots with prices and the fix button');
+// 11p (Sam 2026-10-23 'photo open nahi ho raha'): a tap on the photo opens it over the screen, Close shuts it
+await Ad.click(SC + ' button[aria-label="Open photo"]'); await Ad.waitForTimeout(300);
+const zd = await Ad.evaluate(() => { const d = document.querySelector('.fpz.ph'); return d ? d.querySelector('img').getAttribute('src') : null; }); ok(zd && /photos/.test(zd), 'scan to find: photo opens full screen ' + zd);
+await Ad.click('.fpz.ph .fpz-x'); await Ad.waitForTimeout(200); ok(await Ad.evaluate(() => !document.querySelector('.fpz.ph')), 'photo closes');
 await sync(Ad);
 
 // make a Billing login

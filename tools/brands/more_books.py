@@ -146,6 +146,8 @@ def yamaha():
     jd('yamaha.json', o); jd('yamaha-dg.json', dg); print('yamaha', dict(n))
 
 tvs(); yamaha()
+# 11j: folders that are not model books but go up the same way (Hero Raw Data); kept here so a rebuild keeps them
+sets += json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'extra_sets.json')))['sets']
 if sets: jd('more-files.json', {'sets': sets})
 if APP and added_models:
     a = open(APP, encoding='utf-8').read()

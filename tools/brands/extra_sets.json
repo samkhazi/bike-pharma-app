@@ -1,0 +1,47 @@
+{
+ "sets": [
+  {
+   "dir": "catalogues/hero-raw",
+   "name": "Hero (Raw Data)",
+   "pick": "Downloads > Hero Catalogue > Raw Data",
+   "files": [
+    [
+     "Hero_Discontinuation_Parts_List.xlsx",
+     4482346
+    ],
+    [
+     "hero_hidden_diagrams_1.zip",
+     240185464
+    ],
+    [
+     "hero_hidden_diagrams_2.zip",
+     240204257
+    ],
+    [
+     "hero_hidden_diagrams_3.zip",
+     240291696
+    ],
+    [
+     "hero_hidden_diagrams_4.zip",
+     46867178
+    ],
+    [
+     "hero_hidden_models.json",
+     61743714
+    ],
+    [
+     "hero_hidden_photos_1.zip",
+     241480378
+    ],
+    [
+     "hero_hidden_photos_2.zip",
+     52767422
+    ],
+    [
+     "hero_oldnew_harvest.json",
+     3258426
+    ]
+   ]
+  }
+ ]
+}

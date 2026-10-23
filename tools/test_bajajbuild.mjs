@@ -21,8 +21,9 @@ for (const f of BAJAJ_ZIPS.slice(1)) zip(f, []);
 fs.writeFileSync(D + '/Pulsar 220 LED (May, 2026) [00DK15ZZ].pdf', '%PDF-1.4 test');
 const ed = (sku, title, mon, year, folder, plates, src = 'viewer') => ({ sku, title, mon, year, folder, file: `${title} (${mon}, ${year}) [${sku}].pdf`, size: 14, src, plates });
 fs.writeFileSync(D + '/bajaj_build.json', JSON.stringify({ v: 1, eds: [
-  ed('00DH60ZZ', 'Pulsar 150 BS VI OBD2', 'Apr', 2023, 'PULSAR 150', [['1 - COVER CYLINDER HEAD', 'aa11', [['1', 'PD511536', 'COVER ASSEMBLY HEAD CYLINDER', '1'], ['2', 'JG511021', 'WASHER', '2']]],
+  Object.assign(ed('00DH60ZZ', 'Pulsar 150 BS VI OBD2', 'Apr', 2023, 'PULSAR 150', [['1 - COVER CYLINDER HEAD', 'aa11', [['1', 'PD511536', 'COVER ASSEMBLY HEAD CYLINDER', '1'], ['2', 'JG511021', 'WASHER', '2']]],
     ['2 - FRAME', 'bb22', [['1', 'DK101010', 'FRAME BODY', '1']]], ['3 - TOOL KIT', 'zz99', [['1', 'JF300011', 'TOOL KIT', '1']]]]),
+    { bom: [['1', 'COVER CYLINDER HEAD', 'PD511999', 'GASKET COVER HEAD', '1', '2023-04-01', ''], ['48', 'Electrical Equipments', 'DJ201201', 'WIRING HARNESS', '1', '2010-12-01', '2012-05-01']] }),
   ed('00DH70ZZ', 'Pulsar 150 SD', 'Oct', 2025, 'Pulsar 150 SD', [['1 - Cover Cylinder Head', 'aa11', [['1', 'PD511536', 'COVER ASSEMBLY HEAD CYLINDER', '1']]]]),
   ed('00JR67ZZ', 'Pulsar 150 Single Seat, TFT, Twin Disc, ISG', 'Aug', 2026, 'Pulsar 150 UG', [['1 - COVER CYLINDER HEAD', 'aa11', [['1', 'PD511536', 'COVER ASSEMBLY HEAD CYLINDER', '1']]]]),
   ed('00DK15ZZ', 'Pulsar 220 LED', 'May', 2026, 'Pulsar 220 LED', [['1 - FRAME', ['pdf', 8, '0.2186,0.0642,0.7836,0.5642'], [['1', 'DK101011', 'FRAME BODY', '1']]],
@@ -57,6 +58,9 @@ try {
   ok(head.length === 1 && head[0][11].join() === [V('00DH70ZZ'), V('00DH60ZZ'), V('00JR67ZZ')].sort((a, b) => a - b).join() && head[0][2] === '1' && d.asm[head[0][3]] === 'COVER CYLINDER HEAD', 'compatible: one line lists every edition with the same part (fig 1, its assembly)');
   ok(head[0][4] === '1' && byPn('JG511021')[0][7] === '2' && /Old no\. JG511000/.test(byPn('JG511021')[0][8]) && /New no\. KPAA6200/.test(byPn('14151033')[0][8]), 'ref no. and qty kept; old and new numbers from the Excel');
   ok(Object.keys(d.mrp).length === 0 && !JSON.stringify(d).includes('KTM'), 'no prices at all (Sam), nothing of KTM');
+  const bom1 = byPn('PD511999')[0], bom2 = byPn('DJ201201')[0];
+  ok(bom1 && bom1[2] === '1' && bom1[1] === -1 && bom1[4] === '' && /Bajaj BOM list/.test(bom1[8]) && bom2 && bom2[2] === '48' && d.asm[bom2[3]] === 'ELECTRICAL EQUIPMENTS' && bom2[1] === -2 && /used till 2012-05-01/.test(bom2[8]),
+    "12c: the rest of the book's BOM is in too: under its plate's diagram, a plate the book has not under its own name; an ended part says till when");
   const pg = g.p[String(V('00DH60ZZ'))], m = /^pf:(.+):(\d+):(\d+)$/.exec(g.f[pg['1']]);
   ok(m && m[1] === 'catalogues/bajaj/Viewer_img_01.zip' && g.f[pg['1']] === g.f[g.p[String(V('00DH70ZZ'))]['1']], 'diagram from the viewer zip, the same picture shared by the editions');
   const pic = Buffer.from(await (await get(`/api/files/read?path=${encodeURIComponent(m[1])}&offset=${m[2]}&length=${m[3]}`)).arrayBuffer());

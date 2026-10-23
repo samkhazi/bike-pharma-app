@@ -23,6 +23,8 @@ import { makeAlt } from './lib/altagent.mjs';
 import { pnLookup } from './lib/pnlook.mjs';
 import { startMirror } from './lib/mysqlmirror.mjs';
 import { catGuard } from './lib/catguard.mjs';
+import { spawn } from 'node:child_process';
+import { HERO_RAW } from './lib/herobuild.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 export function loadEnv(file) {
@@ -40,6 +42,22 @@ const OTP = otpConfig(env);
 const store = openStore(DATA_DIR);
 const MIRROR = startMirror(store, process.env);   // MySQL copy for phpMyAdmin (10m), off unless MYSQL_* are in .env
 const CATG = catGuard(store, DATA_DIR, env); CATG.tidy(); setInterval(() => CATG.tidy(), 86400e3).unref();   // catalogue limits + log (11h)
+// Hero made on the server from Sam's Raw Data upload (11k): DATA_DIR/cat/hero.json, hero-dg.json and app.html (its Hero part number line)
+// are served instead of the public ones; made again when the Raw Data or the app's own Hero files are newer
+const HERO_OUT = path.join(DATA_DIR, 'cat'), HERO_RAW_DIR = path.join(FILES_DIR, 'catalogues', 'hero-raw'), HERO_SERVED = new Set(['cat/hero.json', 'cat/hero-dg.json', 'app.html']);
+let heroBusy = false, heroAgain = false;
+const mtime = f => { try { return fs.statSync(f).mtimeMs; } catch { return 0; } };
+function heroBuild(why) {
+  if (!HERO_RAW.every(f => fs.existsSync(path.join(HERO_RAW_DIR, f)))) return false;
+  const src = [...HERO_RAW.map(f => path.join(HERO_RAW_DIR, f)), ...['cat/hero.json', 'cat/hero-dg.json', 'app.html'].map(f => path.join(PUBLIC_DIR, f)), path.join(ROOT, 'lib', 'herobuild.mjs')];
+  if (why === 'start' && mtime(path.join(HERO_OUT, 'hero.json')) > Math.max(...src.map(mtime))) return false;
+  if (heroBusy) { heroAgain = true; return true; }
+  heroBusy = true;
+  const c = spawn(process.execPath, ['--max-old-space-size=3072', path.join(ROOT, 'lib', 'herobuild.mjs'), PUBLIC_DIR, HERO_RAW_DIR, HERO_OUT], { stdio: ['ignore', 'inherit', 'inherit'] });
+  c.on('exit', code => { console.log(new Date().toISOString(), 'hero build (' + why + ') ended', code); heroBusy = false; if (heroAgain) { heroAgain = false; heroBuild('again'); } });
+  return true;
+}
+heroBuild('start');
 const PNLOOK = pnLookup(PUBLIC_DIR); setTimeout(() => { PNLOOK('').catch(() => {}); }, 4000).unref();   // index the brand files soon after start
 const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 
@@ -401,7 +419,7 @@ async function catUpload(req, res, url, user) {
   catBusy.delete(abs);
   let have = sizeOf(part);
   if (have !== off + len) { try { fs.truncateSync(part, off); } catch (x) {} return json(res, 400, { error: 'The piece did not arrive whole, sending it again', have: off }); }
-  if (have === size) { fs.renameSync(part, abs); console.log(new Date().toISOString(), 'catalogue file uploaded', rel, size, 'by', user.id); return json(res, 200, { have, done: true }); }
+  if (have === size) { fs.renameSync(part, abs); console.log(new Date().toISOString(), 'catalogue file uploaded', rel, size, 'by', user.id); if (abs.startsWith(HERO_RAW_DIR + path.sep)) heroBuild('upload'); return json(res, 200, { have, done: true }); }
   return json(res, 200, { have, done: false });
 }
 
@@ -602,7 +620,8 @@ function serveStatic(req, res, url, user) {
   if (PROTECTED.includes(top) && roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: 'Staff login needed' });
   const isCat = top === 'cat' && rel.endsWith('.json');
   if (isCat) { const e = CATG.check(user); if (e) return json(res, 429, { error: e }); }
-  const file = path.join(PUBLIC_DIR, rel);
+  let file = path.join(PUBLIC_DIR, rel);
+  if (HERO_SERVED.has(rel) && fs.existsSync(path.join(HERO_OUT, path.basename(rel)))) file = path.join(HERO_OUT, path.basename(rel));
   let st; try { st = fs.statSync(file); } catch (e) { return json(res, 404, { error: 'Not found' }); }
   if (st.isDirectory()) return json(res, 404, { error: 'Not found' });
   const ext = path.extname(file).toLowerCase(); const type = MIME[ext] || 'application/octet-stream';

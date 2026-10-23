@@ -58,7 +58,12 @@ try {
   ok(Object.keys(d.phf).length === Object.keys(pub.phf).length + 1, 'only part numbers of the catalogue get a photo');
   const app = await (await get('/app.html')).text(), pa = fs.readFileSync(PUB + '/app.html', 'utf8');
   const hl = s => (/'Hero':\['[^']*','[^']*'\]/.exec(s) || [''])[0];
-  ok(app.length > 1000 && hl(app) && hl(app) !== hl(pa) && app.replace(hl(app), '') === pa.replace(hl(pa), ''), 'app sent with only its Hero part number line made again');
+  ok(app.length > 1000 && hl(app) && hl(app) !== hl(pa), 'app sent with its Hero part number line made again');
+  // 11o: the Find Part model lists + tile count follow the made list (Sam: Harley not in Hero's model list); nothing else changed
+  const bl = s => [(/Object\.assign\(BRANDS_V,\{[\s\S]*?("Hero":\[[^\]]*\])/.exec(s) || [])[1], (/const BRANDS_V=\{[\s\S]*?(\bHero:\[[^\]]*\])/.exec(s) || [])[1], (/"Hero":\{"m":\d+,"pn":\d+\}/.exec(s) || [])[0]];
+  const [a1, a2, a3] = bl(app), [p1, p2, p3] = bl(pa);
+  ok(a1.startsWith('"Hero":["Splendor Plus"') && a1.includes('"Dash"') && a2.includes("'Dash'") && a3 === '"Hero":{"m":' + d.models.filter(m => m !== 'Other parts (price list)').length + ',"pn":' + new Set(d.d.map(r => r[5])).size + '}', 'Find Part model list has the new bikes (app order first): ' + a3);
+  ok([[hl(app), hl(pa)], [a1, p1], [a2, p2], [a3, p3]].reduce((s, [x, y]) => s.replace(x, y), app) === pa, 'nothing else in the app changed');
   ok(fs.existsSync(T + '/data/cat/hero-build.json'), 'build report saved');
   ok((await get('/api/catup?path=' + encodeURIComponent('catalogues/hero-pdf/VIDA VX2 Go 2.2 RQ - Plus\u00a04.4 RQ (AUG.,2026) [VIDA_EBAJ].pdf') + '&size=10')).status === 200, 'PDF > Models names ([code], no-break space) can be uploaded');
   // a newer Raw Data file: made again at the next start

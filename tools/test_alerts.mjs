@@ -57,6 +57,14 @@ try {
   ok(await until(() => mail(/Website files changed/)) && /nginx\.conf/.test(mail(/Website files changed/).text), 'its nginx file changed: an alert');
   const t = await (await fetch(BASE + '/api/alerts/test', { method: 'POST', headers: { cookie, 'Content-Type': 'application/json' }, body: '{}' })).json();
   ok(t.ok && await until(() => mail(/test email/)), 'Admin: Send a test email');
+  // a day before the counting started: the report comes from the products' own "Added by" date (server stamp "22 Oct, 3:45 pm")
+  const rr = await (await fetch(BASE + '/api/alerts/report', { method: 'POST', headers: { cookie, 'Content-Type': 'application/json' }, body: JSON.stringify({ day: '2026-10-22' }) })).json();
+  ok(rr.ok && await until(() => mail(/daily report 22-10-2026/)) && /not counted/.test(mail(/daily report 22-10-2026/).text), 'Admin: a past day\'s report on demand');
+  const { monitor } = await import('../lib/monitor.mjs'), kv = new Map();
+  const fs2 = { kvGet: (n, k) => kv.get(n + k), kvSet: (n, k, v) => kv.set(n + k, v), kvAll: () => [], kvDel: () => {} };
+  const M2 = monitor({ store: fs2, rootDir: T, dataDir: T + '/m2', env: { MONITOR_TICK_MS: '99999999' }, getState: () => [{ id: 'a', name: 'Old clutch plate', pn: 'CP-1', byN: 'Ravi', byT: '22 Oct, 3:45 pm', photos: [] }, { id: 'b', name: 'Other', pn: 'X', byN: 'Ravi', byT: '21 Oct, 1:00 pm', photos: ['/photos/x.jpg'] }], photoGone: () => false, photoDir: T, log: () => {} });
+  const r2 = M2.reportText('2026-10-22');
+  ok(/1 products added, 1 without photo/.test(r2.subject) && /Ravi: 1/.test(r2.text) && /Old clutch plate · CP-1 · by Ravi · 3:45 pm · no photo/.test(r2.text), 'a past day: products counted from their Added by date');
   ok((await fetch(BASE + '/api/alerts')).status === 401, 'no login: no alert list');
   ok(!/abcdefghijklmnop|abcd efgh/.test(log + fs.readFileSync(T + '/data/alerts.log', 'utf8')), 'the password is in no log');
 } catch (e) { ok(false, 'error ' + e.stack); }

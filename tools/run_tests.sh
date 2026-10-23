@@ -26,7 +26,6 @@ node tools/test_bill.mjs || r=1
 # update 9i: MRP lots (two MRPs of one part: add product, bill split, change lot, stock in, labels, server price)
 BASE=http://127.0.0.1:3015 node tools/test_lots.mjs || r=1
 BASE=http://127.0.0.1:3015 node tools/test_split.mjs || r=1   # update 11v: Hero head + lines as needed
-BASE=http://127.0.0.1:3015 node tools/test_split.mjs || r=1   # update 11v: Hero head + lines as needed
 # update 9j: typing on a phone keeps the same box (keyboard stays open)
 BASE=http://127.0.0.1:3015 node tools/test_kb.mjs || r=1
 BASE=http://127.0.0.1:3015 node tools/test_vinlook.mjs || r=1   # update 9o: chassis -> model from RE / Honda sites (mock makers on 3029)

@@ -187,8 +187,9 @@ async function api(req, res, url, user) {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Content-Length': out.length, 'Cache-Control': 'no-store', 'Vary': 'Accept-Encoding', ...(gz ? { 'Content-Encoding': 'gzip' } : {}) });
     return res.end(out);
   }
-  if (p === '/api/alerts' || p === '/api/alerts/test') {   // 11w: Admin sees whether email alerts are on, the last alerts, and sends a test email
+  if (p === '/api/alerts' || p === '/api/alerts/test' || p === '/api/alerts/report') {   // 11w: Admin sees whether email alerts are on, the last alerts, and sends a test email
     if (!user || user.role !== 'admin') return json(res, user ? 403 : 401, { error: 'Admin only' });
+    if (p === '/api/alerts/report' && m === 'POST') { const d = String((body && body.day) || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return json(res, 400, { error: 'Pick a date' }); try { await MON.report(d); return json(res, 200, { ok: true }); } catch (e) { return json(res, 200, { error: String(e.message || e) }); } }
     if (p === '/api/alerts/test' && m === 'POST') { try { await MON.test(); return json(res, 200, { ok: true }); } catch (e) { return json(res, 200, { error: String(e.message || e) }); } }
     let l = []; try { l = fs.readFileSync(path.join(DATA_DIR, 'alerts.log'), 'utf8').trim().split('\n').slice(-200).map(x => { try { return JSON.parse(x); } catch { return null; } }).filter(x => x && x.title).slice(-15).reverse(); } catch {}
     const mask = e => e.replace(/^(.{2}).*(@.*)$/, '$1…$2');

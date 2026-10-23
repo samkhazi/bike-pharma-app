@@ -25,6 +25,7 @@ import { startMirror } from './lib/mysqlmirror.mjs';
 import { catGuard } from './lib/catguard.mjs';
 import { spawn } from 'node:child_process';
 import { HERO_RAW } from './lib/herobuild.mjs';
+import { backups } from './lib/backup.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 export function loadEnv(file) {
@@ -58,6 +59,7 @@ function heroBuild(why) {
   return true;
 }
 heroBuild('start');
+const BACKUP = backups({ store, dataDir: DATA_DIR, env });   // 11u: every night + Admin > More > Backups
 const PNLOOK = pnLookup(PUBLIC_DIR, [HERO_OUT]); setTimeout(() => { PNLOOK('').catch(() => {}); }, 4000).unref();   // index the brand files soon after start
 const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 
@@ -129,6 +131,18 @@ async function api(req, res, url, user) {
   if (p === '/api/photo/status') return photoStatus(req, res, url, user);
   if (p === '/api/photo/wrong') return photoWrong(req, res, url, user);
   if (p === '/api/photo') return photoUpload(req, res, user, url);
+  if (p === '/api/backups' || p === '/api/backups/file') {
+    if (!user || user.role !== 'admin') { drain(req); return json(res, user ? 403 : 401, { error: 'Only Admin' }); }
+    if (p === '/api/backups' && m === 'GET') return json(res, 200, { list: BACKUP.list(), copyTo: BACKUP.copyTo, keep: BACKUP.keep, at: BACKUP.at, busy: BACKUP.busy() });
+    if (p === '/api/backups' && m === 'POST') { drain(req); try { const name = await BACKUP.make('admin'); return json(res, 200, { name, list: BACKUP.list() }); } catch (e) { return json(res, 500, { error: 'Backup failed: ' + e.message }); } }
+    if (p === '/api/backups/file' && m === 'GET') {
+      const f = BACKUP.file(url.searchParams.get('name')); if (!f) return json(res, 404, { error: 'Backup not found' });
+      console.log(new Date().toISOString(), 'backup downloaded', path.basename(f), 'by', user.id);
+      res.writeHead(200, { 'Content-Type': 'application/gzip', 'Content-Length': fs.statSync(f).size, 'Content-Disposition': 'attachment; filename="' + path.basename(f) + '"', 'Cache-Control': 'no-store' });
+      return fs.createReadStream(f).pipe(res);
+    }
+    drain(req); return json(res, 405, { error: 'Method not allowed' });
+  }
   if (p === '/api/photos/missing' && m === 'GET') return json(res, roleClass(user) === 'staff' ? 200 : user ? 403 : 401, roleClass(user) === 'staff' ? photosMissing(reader()) : { error: 'Staff login needed' });
   if (p === '/api/billread') return billRead(req, res, user);
   if (p === '/api/dghot' || p === '/api/dghot/edit') return dgHot(req, res, url, user);

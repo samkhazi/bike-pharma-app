@@ -19,6 +19,7 @@ node tools/test_back.mjs || r=1
 node tools/test_otp10t.mjs || r=1   # update 10t: real OTP by Renflair SMS (own server on 3018, mock Renflair on 3031)
 node tools/test_catguard.mjs || r=1   # update 11h: catalogue guard (daily amount per login, log, Admin unlock; own server on 3019)
 node tools/test_herobuild.mjs || r=1   # update 11k: Hero made on the server from the Raw Data upload (own server on 3018)
+node tools/test_backup.mjs || r=1   # update 11u: backups (own server on 3022)
 # update 8o: the Billing profile (no bill discount, warranty claims, cancel / change through Manager, split, estimate to bill)
 node tools/test_bill.mjs || r=1
 # update 9i: MRP lots (two MRPs of one part: add product, bill split, change lot, stock in, labels, server price)

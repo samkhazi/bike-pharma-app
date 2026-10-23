@@ -39,6 +39,11 @@ t = await T(Ad); ok(/Stock by MRP/i.test(t) && /Sells first/i.test(t) && /₹200
 await Ad.click(SC + ' button[aria-label="Open photo"]'); await Ad.waitForTimeout(300);
 const zd = await Ad.evaluate(() => { const d = document.querySelector('.fpz.ph'); return d ? d.querySelector('img').getAttribute('src') : null; }); ok(zd && /photos/.test(zd), 'scan to find: photo opens full screen ' + zd);
 await Ad.click('.fpz.ph .fpz-x'); await Ad.waitForTimeout(200); ok(await Ad.evaluate(() => !document.querySelector('.fpz.ph')), 'photo closes');
+// 11q (Sam: Products & stock rack box had no photo, bikes, MRP): the rack sheet shows them, read only; its photo opens too
+await Ad.evaluate(id => rackEdit(id), pid); await Ad.waitForTimeout(200);
+t = await ST(Ad); ok(/MRP/.test(t) && /245/.test(t) && /Save rack/i.test(t) && await Ad.evaluate(() => !!document.querySelector('.sheet button[aria-label="Open photo"]')), 'rack sheet: photo, MRP, rack only');
+await Ad.click('.sheet button[aria-label="Open photo"]'); await Ad.waitForTimeout(250); ok(await Ad.evaluate(() => !!document.querySelector('.fpz.ph')), 'rack sheet photo opens full screen');
+await Ad.click('.fpz.ph .fpz-x'); await Ad.evaluate(() => closeSheet()); await Ad.waitForTimeout(150);
 await sync(Ad);
 
 // make a Billing login

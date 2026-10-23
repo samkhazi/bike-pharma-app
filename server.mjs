@@ -25,6 +25,7 @@ import { startMirror } from './lib/mysqlmirror.mjs';
 import { catGuard } from './lib/catguard.mjs';
 import { spawn } from 'node:child_process';
 import { HERO_RAW } from './lib/herobuild.mjs';
+import { HONDA_RAW } from './lib/hondabuild.mjs';
 import { backups } from './lib/backup.mjs';
 import { catSplit } from './lib/catsplit.mjs';
 import { monitor } from './lib/monitor.mjs';
@@ -47,25 +48,43 @@ const MIRROR = startMirror(store, process.env);   // MySQL copy for phpMyAdmin (
 const CATG = catGuard(store, DATA_DIR, env); CATG.tidy(); setInterval(() => CATG.tidy(), 86400e3).unref();   // catalogue limits + log (11h)
 // Hero made on the server from Sam's Raw Data upload (11k) and the PDF > Models index (11m: hero_pdf_index.json, its parts + diagram pages): DATA_DIR/cat/hero.json, hero-dg.json and app.html (its Hero part number line)
 // are served instead of the public ones; made again when the Raw Data or the app's own Hero files are newer
-const HERO_OUT = path.join(DATA_DIR, 'cat'), HERO_RAW_DIR = path.join(FILES_DIR, 'catalogues', 'hero-raw'), HERO_PDF_DIR = path.join(FILES_DIR, 'catalogues', 'hero-pdf'), HERO_SERVED = new Set(['cat/hero.json', 'cat/hero-dg.json', 'app.html']);
-let heroBusy = false, heroAgain = false;
+const HERO_OUT = path.join(DATA_DIR, 'cat'), HERO_RAW_DIR = path.join(FILES_DIR, 'catalogues', 'hero-raw'), HERO_PDF_DIR = path.join(FILES_DIR, 'catalogues', 'hero-pdf'), HERO_SERVED = new Set(['cat/hero.json', 'cat/hero-dg.json', 'cat/honda.json', 'cat/honda-dg.json', 'app.html']);
+// 11z: Honda the same way, from the whole Downloads > Honda Catalogue folder (FILES_DIR/catalogues/honda); one build at a time, as both write app.html
+const HONDA_DIR = path.join(FILES_DIR, 'catalogues', 'honda');
+let heroBusy = false;
 const mtime = f => { try { return fs.statSync(f).mtimeMs; } catch { return 0; } };
 function heroBuild(why) {
   if (!HERO_RAW.every(f => fs.existsSync(path.join(HERO_RAW_DIR, f)))) return false;
   const src = [...HERO_RAW.map(f => path.join(HERO_RAW_DIR, f)), ...['cat/hero.json', 'cat/hero-dg.json', 'app.html'].map(f => path.join(PUBLIC_DIR, f)), path.join(ROOT, 'lib', 'herobuild.mjs'), path.join(HERO_PDF_DIR, 'hero_pdf_index.json')];
   if (why === 'start' && mtime(path.join(HERO_OUT, 'hero.json')) > Math.max(...src.map(mtime))) return false;
-  if (heroBusy) { heroAgain = true; return true; }
-  heroBusy = true;
-  const c = spawn(process.execPath, ['--max-old-space-size=3072', path.join(ROOT, 'lib', 'herobuild.mjs'), PUBLIC_DIR, HERO_RAW_DIR, HERO_OUT, HERO_PDF_DIR], { stdio: ['ignore', 'inherit', 'inherit'] });
-  c.on('exit', code => { console.log(new Date().toISOString(), 'hero build (' + why + ') ended', code); heroBusy = false; if (heroAgain) { heroAgain = false; heroBuild('again'); } });
+  catBuild('hero', why, [path.join(ROOT, 'lib', 'herobuild.mjs'), PUBLIC_DIR, HERO_RAW_DIR, HERO_OUT, HERO_PDF_DIR]);
   return true;
 }
-heroBuild('start');
+function hondaBuild(why) {
+  if (!HONDA_RAW.every(f => fs.existsSync(path.join(HONDA_DIR, f)))) return false;
+  const src = [...HONDA_RAW.map(f => path.join(HONDA_DIR, f)), path.join(PUBLIC_DIR, 'app.html'), path.join(ROOT, 'lib', 'hondabuild.mjs'), path.join(ROOT, 'lib', 'herobuild.mjs')];
+  if (why === 'start' && mtime(path.join(HERO_OUT, 'honda.json')) > Math.max(...src.map(mtime))) return false;
+  catBuild('honda', why, [path.join(ROOT, 'lib', 'hondabuild.mjs'), PUBLIC_DIR, HONDA_DIR, HERO_OUT]);
+  return true;
+}
+const catQ = [];   // [slug, why, args]: the builds waiting, run one after another
+function catBuild(slug, why, args) {
+  if (catQ.some(q => q[0] === slug && q !== catQ[0])) return;   // already waiting (a running one is made again after it)
+  catQ.push([slug, why, args]); if (catQ.length === 1) catRun();
+}
+function catRun() {
+  const q = catQ[0]; if (!q) return;
+  heroBusy = q[0] === 'hero';
+  const c = spawn(process.execPath, ['--max-old-space-size=3072', ...q[2]], { stdio: ['ignore', 'inherit', 'inherit'] });
+  c.on('exit', code => { console.log(new Date().toISOString(), q[0] + ' build (' + q[1] + ') ended', code); heroBusy = false; catQ.shift(); catRun(); });
+}
+heroBuild('start'); hondaBuild('start');
 const BACKUP = backups({ store, dataDir: DATA_DIR, env });   // 11u: every night + Admin > More > Backups
 // 11v: Hero goes to phones as a head + the part lines they need (lib/catsplit.mjs); CAT_SPLIT=off sends the whole file as before
-const heroFile = () => { for (const d of [HERO_OUT, path.join(PUBLIC_DIR, 'cat')]) { const f = path.join(d, 'hero.json'); if (fs.existsSync(f)) return f; } return null; };
-const SPLIT = catSplit({ file: slug => slug === 'hero' && String(env.CAT_SPLIT || '').toLowerCase() !== 'off' ? heroFile() : null, pct: +env.CAT_ROWS_DAY_PCT || 60 });
-const PNLOOK = pnLookup(PUBLIC_DIR, [HERO_OUT], { load: f => { const h = SPLIT && heroFile(); return h && f === h && String(env.CAT_SPLIT || '').toLowerCase() !== 'off' ? SPLIT.data(f) : null; } }); setTimeout(() => { PNLOOK('').catch(() => {}); }, 4000).unref();   // index the brand files soon after start
+const heroFile = (slug = 'hero') => { for (const d of slug === 'hero' ? [HERO_OUT, path.join(PUBLIC_DIR, 'cat')] : [HERO_OUT]) { const f = path.join(d, slug + '.json'); if (fs.existsSync(f)) return f; } return null; };
+const SPLIT_B = new Set(['hero', 'honda']);   // the brands sent as a head + lines (11v, Honda 11z)
+const SPLIT = catSplit({ file: slug => SPLIT_B.has(slug) && String(env.CAT_SPLIT || '').toLowerCase() !== 'off' ? heroFile(slug) : null, pct: +env.CAT_ROWS_DAY_PCT || 60 });
+const PNLOOK = pnLookup(PUBLIC_DIR, [HERO_OUT], { load: f => { if (!SPLIT || String(env.CAT_SPLIT || '').toLowerCase() === 'off') return null; for (const b of SPLIT_B) if (f === heroFile(b)) return SPLIT.data(f); return null; } }); setTimeout(() => { PNLOOK('').catch(() => {}); }, 4000).unref();   // index the brand files soon after start
 const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 
 // ---------- first run: an empty shop, no accounts ----------
@@ -170,7 +189,7 @@ async function api(req, res, url, user) {
   }
   let body = {};
   if (m === 'POST') { try { const b = await readBody(req); body = b.length ? JSON.parse(b.toString('utf8')) : {}; } catch (e) { return json(res, 400, { error: 'Bad request body' }); } }
-  const catList = () => { const l = new Set(); for (const d of [path.join(PUBLIC_DIR, 'cat'), HERO_OUT]) { try { for (const f of fs.readdirSync(d)) if (f.endsWith('.json') && f !== 'hero-build.json') l.add(f); } catch {} } return [...l].sort(); };
+  const catList = () => { const l = new Set(); for (const d of [path.join(PUBLIC_DIR, 'cat'), HERO_OUT]) { try { for (const f of fs.readdirSync(d)) if (f.endsWith('.json') && !/-(build|app)\.json$/.test(f)) l.add(f); } catch {} } return [...l].sort(); };
   const cfg = () => ({ otpHint: OTP.mode === 'fixed' ? OTP.fixed : null, otpMode: OTP.mode, version: VERSION, cat: catList() });
   const full = u => ({ user: u ? u : null, db: viewOf(store.stateAll().map(r => r.key), reader(), u, true), rev: store.rev(), cfg: cfg() });
 
@@ -394,7 +413,7 @@ async function api(req, res, url, user) {
 // GET  /api/catup?path=catalogues/ktm/X.pdf&size=N   -> { have, done }  (how much of it the server already has)
 // POST /api/catup?path=...&size=N&offset=K, body = the next bytes (one piece of the file) -> { have, done }
 // A file already here with the same size is never taken again (one copy only); a cut connection resumes where it stopped.
-const CAT_EXTS = new Set(['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.zip', '.json', '.csv', '.xlsx', '.xls', '.txt']);
+const CAT_EXTS = new Set(['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.zip', '.json', '.csv', '.xlsx', '.xls', '.txt', '.bin', '.gz', '.tsv']);
 const CAT_CHUNK_MAX = 16 * 1024 * 1024;
 const catBusy = new Set();
 function ascii85(buf) {
@@ -463,7 +482,7 @@ async function catUpload(req, res, url, user) {
   catBusy.delete(abs);
   let have = sizeOf(part);
   if (have !== off + len) { try { fs.truncateSync(part, off); } catch (x) {} return json(res, 400, { error: 'The piece did not arrive whole, sending it again', have: off }); }
-  if (have === size) { fs.renameSync(part, abs); console.log(new Date().toISOString(), 'catalogue file uploaded', rel, size, 'by', user.id); if (abs.startsWith(HERO_RAW_DIR + path.sep) || abs === path.join(HERO_PDF_DIR, 'hero_pdf_index.json')) heroBuild('upload'); return json(res, 200, { have, done: true }); }
+  if (have === size) { fs.renameSync(part, abs); console.log(new Date().toISOString(), 'catalogue file uploaded', rel, size, 'by', user.id); if (abs.startsWith(HERO_RAW_DIR + path.sep) || abs === path.join(HERO_PDF_DIR, 'hero_pdf_index.json')) heroBuild('upload'); if (path.dirname(abs) === HONDA_DIR && HONDA_RAW.includes(path.basename(abs))) hondaBuild('upload'); return json(res, 200, { have, done: true }); }
   return json(res, 200, { have, done: false });
 }
 
@@ -677,8 +696,9 @@ function serveStatic(req, res, url, user) {
   if (PROTECTED.includes(top) && roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: 'Staff login needed' });
   const isCat = top === 'cat' && rel.endsWith('.json');
   if (isCat) { const e = CATG.check(user); if (e) return json(res, 429, { error: e }); }
-  if (rel === 'cat/hero.json') {   // 11v: the head only (catsplit); the lines come from /api/cat/rows
-    let hd = null; try { hd = SPLIT.head('hero'); } catch (x) { console.log(new Date().toISOString(), 'hero head failed', x.message); }
+  const spl = /^cat\/([a-z]+)\.json$/.exec(rel);
+  if (spl && SPLIT_B.has(spl[1])) {   // 11v: the head only (catsplit); the lines come from /api/cat/rows
+    let hd = null; try { hd = SPLIT.head(spl[1]); } catch (x) { console.log(new Date().toISOString(), spl[1] + ' head failed', x.message); }
     if (hd) {
       const h = { 'Content-Type': 'application/json; charset=utf-8', 'ETag': hd.etag, 'Cache-Control': 'private, no-cache', 'X-Content-Type-Options': 'nosniff', 'Vary': 'Accept-Encoding' };
       if (req.headers['if-none-match'] === hd.etag) { res.writeHead(304, h); return res.end(); }

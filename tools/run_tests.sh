@@ -2,6 +2,9 @@
 # fresh database + server on port 3015, then the Playwright suite
 cd "$(dirname "$0")/.."
 T=/tmp/claude-0/bptest
+# update 11m: the old brand lists are gone from public/cat (Sam 2026-10-23); the tests use them from git (11l) in their own public folder
+P=/tmp/claude-0/bptest-pub; rm -rf $P; mkdir -p $P; git archive 9dba268 public/cat | tar -x -C $P --strip-components=1; cp -r public/app.html public/index.html public/vendor $P/; cp -r public/cat/. $P/cat/
+export PUBLIC_DIR=$P
 for pid in $(pgrep -x node); do if tr "\0" "\n" < /proc/$pid/environ 2>/dev/null | grep -qx "PORT=3015"; then kill $pid; fi; done
 sleep 0.8
 rm -rf $T/data; mkdir -p $T/pf/catalogues/test; python3 -c "open('$T/pf/catalogues/test/a.bin','wb').write(bytes(range(256)))"

@@ -36,7 +36,7 @@ try {
   ok(/hero build \(start\) ended 0/.test(log), 'Raw Data found at start: Hero made on the server');
   const lr = await fetch(BASE + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: 'sam@bikepharma.com', password: 'Test@1234' }) });
   cookie = (lr.headers.get('set-cookie') || '').split(';')[0];
-  const pub = JSON.parse(fs.readFileSync('public/cat/hero.json', 'utf8'));
+  const PUB = process.env.PUBLIC_DIR || 'public', pub = JSON.parse(fs.readFileSync(PUB + '/cat/hero.json', 'utf8'));
   const d = await (await get('/cat/hero.json')).json(), g = await (await get('/cat/hero-dg.json')).json();
   ok(d.vars.length === pub.vars.length + 3, 'two new editions (+ the search list) added, the one the app already has (Achiever Nov 2014) not twice');
   ok(d.d.some(r => r[5] === '77777-TST-009' && d.vmod[d.vars[r[11][0]]] === 'Other parts (price list)'), 'a search-list number no edition has is under Other parts');
@@ -56,7 +56,7 @@ try {
   const ph = d.phf['99999-TST-001'];
   ok(ph && d.phz[ph[0]] === 'catalogues/hero-raw/hero_hidden_photos_1.zip' && ph[3] === 64 && ph[4] === 32, 'part photo with its size');
   ok(Object.keys(d.phf).length === Object.keys(pub.phf).length + 1, 'only part numbers of the catalogue get a photo');
-  const app = await (await get('/app.html')).text(), pa = fs.readFileSync('public/app.html', 'utf8');
+  const app = await (await get('/app.html')).text(), pa = fs.readFileSync(PUB + '/app.html', 'utf8');
   const hl = s => (/'Hero':\['[^']*','[^']*'\]/.exec(s) || [''])[0];
   ok(app.length > 1000 && hl(app) && hl(app) !== hl(pa) && app.replace(hl(app), '') === pa.replace(hl(pa), ''), 'app sent with only its Hero part number line made again');
   ok(fs.existsSync(T + '/data/cat/hero-build.json'), 'build report saved');
@@ -64,9 +64,23 @@ try {
   fs.utimesSync(R + '/hero_hidden_models.json', new Date(), new Date(Date.now() + 5000));
   // Hero from the Raw Data alone (no Hero file in the app)
   const { writeHero } = await import('../lib/herobuild.mjs');
-  fs.mkdirSync(T + '/pub', { recursive: true }); fs.copyFileSync('public/app.html', T + '/pub/app.html');
+  fs.mkdirSync(T + '/pub', { recursive: true }); fs.copyFileSync(PUB + '/app.html', T + '/pub/app.html');
   const inf = writeHero(T + '/pub', R, T + '/only');
   const o = JSON.parse(fs.readFileSync(T + '/only/hero.json', 'utf8'));
   ok(inf.editions === 3 && o.vars.length === 4 && o.models.join() === 'Achiever 150,Splendor Plus,Dash,Other parts (price list)', 'Raw Data alone: its 3 editions, Other parts last: ' + o.models.join());
+  // update 11m: with the PDF > Models index: each PDF an edition (its Raw Data model when the code matches), PDF-only editions get the
+  // PDF's own rows, a group with no Raw Data picture shows its PDF page
+  fs.mkdirSync(T + '/pdf', { recursive: true });
+  fs.writeFileSync(T + '/pdf/hero_pdf_index.json', JSON.stringify({ eds: [
+    { file: 'Splendor+ (Sep, 2003) [SPLENDOR_TST1].pdf', size: 100, title: 'Splendor+ (Sep, 2003)', code: 'SPLENDOR_TST1', export: false, year: 2003, cc: '100CC', folder: 'Splendor', figs: [['E-1', 'CYLINDER HEAD COVER', 3, [0, 0, 1, 0.5]], ['E-9', 'NO PICTURE', 4, [0, 0, 1, 1]]] },
+    { file: 'Glamour (Jan, 2020) [GLAM_NEW].pdf', size: 200, title: 'Glamour (Jan, 2020)', code: 'GLAM_NEW', export: false, year: 2020, cc: '125CC', folder: 'Glamour', figs: [['F-2', 'KEY SET', 5, [0, 0, 1, 1], [['1', '35010-ACL-D0099', 'KEY SET', '1', '1,055', 'Chalu Purana: 35010ACLD00'], ['2', '35100-ACL-D0099', 'SWITCH', '1', '520', 'Not serviceable']]]] }] }));
+  const ip = writeHero(T + '/pub', R, T + '/withpdf', T + '/pdf');
+  const p = JSON.parse(fs.readFileSync(T + '/withpdf/hero.json', 'utf8')), pg = JSON.parse(fs.readFileSync(T + '/withpdf/hero-dg.json', 'utf8'));
+  ok(ip.editions === 4 && p.models.join() === 'Glamour,Achiever 150,Splendor Plus,Dash,Other parts (price list)', 'PDF index: its 2 editions + the Raw Data ones no PDF has: ' + p.models.join());
+  const gv = p.vars.indexOf('Glamour (Jan, 2020)'), gr = p.d.filter(r => r[11].includes(gv));
+  ok(gr.length === 2 && gr[0][5] === '35010-ACL-D0099' && p.mrp['35010-ACL-D0099'] === 1055 && /Old no\. 35010ACLD00/.test(gr[0][8]) && /No longer supplied/.test(gr[1][8]), 'PDF-only edition: rows, MRP, old number, not serviceable from the PDF');
+  const sv = p.vars.indexOf('Splendor+ (Sep, 2003)');
+  ok(/^pf:catalogues\/hero-raw\//.test(pg.f[pg.p[sv]['E-1']]) && pg.f[pg.p[sv]['E-9']] === 'pdf:catalogues/hero-pdf/Splendor+ (Sep, 2003) [SPLENDOR_TST1].pdf:0:100:4:0,0,1,1', 'Raw Data picture first, else the PDF page');
+  ok(pg.f[pg.p[gv]['F-2']] === 'pdf:catalogues/hero-pdf/Glamour (Jan, 2020) [GLAM_NEW].pdf:0:200:5:0,0,1,1', 'PDF-only edition diagram = its PDF page');
 } catch (e) { ok(false, 'error ' + e.stack); }
 srv.kill(); if (fails) console.log(log.slice(-2000)); console.log(fails ? fails + ' FAILED' : 'ALL PASS'); process.exit(fails ? 1 : 0);

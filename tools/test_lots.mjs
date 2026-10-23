@@ -149,6 +149,17 @@ ok(!ml2.ids.includes(gid), 'part is off the Photos missing list');
 // a part with a real photo: staff still cannot swap it straight
 await B.evaluate(id => { const q = DB.newProducts.find(x => x.id === id); q.photos = ['/photos/' + 'cd'.repeat(16) + '-c.jpg']; save(); }, gid); await sync(B); await fresh(B);
 ok(await B.evaluate(([id, u]) => P(id).photos[0] === u, [gid, nu]), 'a present photo cannot be replaced by staff without Admin');
+// 11y (Sam: "items has only one photo ... ek ek aur photo add"): the Only 1 photo tab; staff add a 2nd photo without Admin, the first stays
+await fresh(Ad); await Ad.evaluate(() => { S.ui.phTab = 'one'; phMissLoad(); go('phmiss'); }); await Ad.waitForTimeout(800);
+const t1 = await T(Ad); ok(/Only 1 photo/.test(t1) && t1.includes('Gone photo part'), 'Only 1 photo tab lists the part with one photo ' + t1.slice(0, 300));
+await B.evaluate(id => { S.ui.phAdd = id; peOpen(id); }, gid); await B.waitForTimeout(250);
+ok(/no approval/i.test(await T(B)) && await B.evaluate(() => S.ui.pe.keep === 1 && document.querySelectorAll('[aria-label="Remove photo"]').length === 0), 'add mode: no approval, the old photo cannot be removed');
+const nu2 = await B.evaluate(async () => { const c = document.createElement('canvas'); c.width = 40; c.height = 30; c.getContext('2d').fillRect(5, 5, 20, 20); const bl = await new Promise(r => c.toBlob(r, 'image/jpeg')); const r = await fetch('/api/photo', { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: bl, credentials: 'same-origin' }); return (await r.json()).url; });
+await B.evaluate(u => { S.ui.pe.photos.push(u); peSave(); }, nu2); await B.waitForTimeout(300);
+await sync(B); await fresh(B);
+ok(await B.evaluate(([id, u, u2]) => P(id).photos.length === 2 && P(id).photos[0] === u && P(id).photos[1] === u2 && !DB.approvals.some(a => a.pedit && a.pedit.pid === id), [gid, nu, nu2]), 'server kept the added photo, first photo unchanged, no request');
+await B.evaluate(([id, u2]) => { const q = DB.newProducts.find(x => x.id === id); q.photos = [u2]; save(); }, [gid, nu2]); await sync(B); await fresh(B);
+ok(await B.evaluate(id => P(id).photos.length === 2, gid), 'staff still cannot remove a photo without Admin');
 ok(!errs.length, 'no page errors ' + errs.slice(0, 3).join(' | '));
 await b.close();
 console.log(fails ? fails + ' FAILED' : 'ALL OK'); process.exit(fails ? 1 : 0);

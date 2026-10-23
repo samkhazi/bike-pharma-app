@@ -20,10 +20,12 @@ node tools/test_otp10t.mjs || r=1   # update 10t: real OTP by Renflair SMS (own 
 node tools/test_catguard.mjs || r=1   # update 11h: catalogue guard (daily amount per login, log, Admin unlock; own server on 3019)
 node tools/test_herobuild.mjs || r=1   # update 11k: Hero made on the server from the Raw Data upload (own server on 3018)
 node tools/test_backup.mjs || r=1   # update 11u: backups (own server on 3022)
+node tools/test_alerts.mjs || r=1   # update 11w: email alerts + 9 pm report (own server on 3023, fake SMTP on 3024)
 # update 8o: the Billing profile (no bill discount, warranty claims, cancel / change through Manager, split, estimate to bill)
 node tools/test_bill.mjs || r=1
 # update 9i: MRP lots (two MRPs of one part: add product, bill split, change lot, stock in, labels, server price)
 BASE=http://127.0.0.1:3015 node tools/test_lots.mjs || r=1
+BASE=http://127.0.0.1:3015 node tools/test_split.mjs || r=1   # update 11v: Hero head + lines as needed
 BASE=http://127.0.0.1:3015 node tools/test_split.mjs || r=1   # update 11v: Hero head + lines as needed
 # update 9j: typing on a phone keeps the same box (keyboard stays open)
 BASE=http://127.0.0.1:3015 node tools/test_kb.mjs || r=1

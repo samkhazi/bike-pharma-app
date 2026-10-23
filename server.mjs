@@ -27,6 +27,7 @@ import { spawn } from 'node:child_process';
 import { HERO_RAW } from './lib/herobuild.mjs';
 import { backups } from './lib/backup.mjs';
 import { catSplit } from './lib/catsplit.mjs';
+import { monitor } from './lib/monitor.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 export function loadEnv(file) {
@@ -186,6 +187,13 @@ async function api(req, res, url, user) {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Content-Length': out.length, 'Cache-Control': 'no-store', 'Vary': 'Accept-Encoding', ...(gz ? { 'Content-Encoding': 'gzip' } : {}) });
     return res.end(out);
   }
+  if (p === '/api/alerts' || p === '/api/alerts/test') {   // 11w: Admin sees whether email alerts are on, the last alerts, and sends a test email
+    if (!user || user.role !== 'admin') return json(res, user ? 403 : 401, { error: 'Admin only' });
+    if (p === '/api/alerts/test' && m === 'POST') { try { await MON.test(); return json(res, 200, { ok: true }); } catch (e) { return json(res, 200, { error: String(e.message || e) }); } }
+    let l = []; try { l = fs.readFileSync(path.join(DATA_DIR, 'alerts.log'), 'utf8').trim().split('\n').slice(-200).map(x => { try { return JSON.parse(x); } catch { return null; } }).filter(x => x && x.title).slice(-15).reverse(); } catch {}
+    const mask = e => e.replace(/^(.{2}).*(@.*)$/, '$1…$2');
+    return json(res, 200, { on: MON.on, to: MON.to.map(mask), last: l.map(x => ({ at: x.at, title: x.title })) });
+  }
   if (p === '/api/alt') return ALT.api(m, body, user, res);
   if (p === '/api/health' && m === 'GET') return json(res, 200, { ok: true, rev: store.rev(), sqlite: HAS_SQLITE, version: VERSION, photoAi: PHOTO_AI.summary(), billAi: BILL_AI.summary(), mysql: MIRROR.summary() });
   if (p === '/api/boot' && m === 'GET') { if (!user && cookies(req).bp_s) setSession(req, res, '', true); return json(res, 200, full(user)); }
@@ -218,14 +226,14 @@ async function api(req, res, url, user) {
     if ((stateVal('staffOff') || []).includes(id)) return json(res, 200, { error: loginError.off });
     if (limited('login:' + id, 20, 600e3) || limited('loginip:' + ipOf(req), 100, 600e3)) return json(res, 200, { error: 'Too many tries. Please wait a few minutes.' });
     if (body.password != null) {
-      if (!acc) return json(res, 200, { error: 'This login isn’t registered.' });
-      if (!checkPw(body.password, store.kvGet('pw', id))) return json(res, 200, { error: 'Wrong password. Try again or ask the Bike Pharma Admin for a new one.' });
+      if (!acc) { MON.loginFail(ipOf(req), id, 'no such login'); return json(res, 200, { error: 'This login isn’t registered.' }); }
+      if (!checkPw(body.password, store.kvGet('pw', id))) { MON.loginFail(ipOf(req), id, 'wrong password'); return json(res, 200, { error: 'Wrong password. Try again or ask the Bike Pharma Admin for a new one.' }); }
     } else {
       const o = store.kvGet('otp', id);
       if (!o) return json(res, 200, { error: 'Please ask for a new OTP.' });
       if (Date.now() > o.exp) { store.kvDel('otp', id); return json(res, 200, { error: 'This OTP has expired. Tap Resend OTP.' }); }
       if (o.tries >= 3) return json(res, 200, { error: 'Too many wrong tries. Tap Resend OTP to get a new one.' });
-      if (String(body.otp || '') !== o.code) { o.tries++; store.kvSet('otp', id, o); const l = 3 - o.tries; return json(res, 200, { error: l > 0 ? `That OTP is incorrect. ${l} ${l === 1 ? 'try' : 'tries'} left.` : 'That OTP is incorrect.' }); }
+      if (String(body.otp || '') !== o.code) { MON.loginFail(ipOf(req), id, 'wrong OTP'); o.tries++; store.kvSet('otp', id, o); const l = 3 - o.tries; return json(res, 200, { error: l > 0 ? `That OTP is incorrect. ${l} ${l === 1 ? 'try' : 'tries'} left.` : 'That OTP is incorrect.' }); }
       store.kvDel('otp', id);
       if (!acc) {
         const name = safeText(String((body.signup && body.signup.name) || '').trim().slice(0, 60));
@@ -235,6 +243,7 @@ async function api(req, res, url, user) {
       }
     }
     if (acc.status === 'pending') return json(res, 200, { error: loginError.pending });
+    MON.loginOk({ id, ...acc }, ipOf(req), roleClass({ id, ...acc }) === 'staff');
     const t = sessionCreate(id); setSession(req, res, t);
     return json(res, 200, full({ id, ...acc }));
   }
@@ -278,6 +287,7 @@ async function api(req, res, url, user) {
       else { const bj = store.versionAt(k, base); merged = merge3(bj === undefined ? undefined : JSON.parse(bj), sv, cv); }
       if (staff) { const [gv, gn] = guardValue(k, sv, merged, user, gget); merged = gv; gnotes.push(...gn); }
       if (staff) merged = stampWho(k, sv, merged, user);   // update 9z: who added a product / stock entry
+      if (staff) try { MON.write(k, sv, merged, user, ipOf(req)); } catch (e) { console.log('monitor write', e.message); }   // 11w: report + mass delete alert
       else { const [gv, gn] = guardScoped(k, sv, merged, user, gget, ctx); merged = gv; if (gn.length) console.log(new Date().toISOString(), 'refused for', user.id, gn.join(' | ')); }
       if (!deepEqual(merged, sv)) writes[k] = JSON.stringify(merged);
       const back = scopeValue(k, merged, user);
@@ -461,6 +471,10 @@ async function catUpload(req, res, url, user) {
 // The app shows the copies lib/photoai.mjs makes (background white or as taken, the faint logo behind the part): <hash>-c.jpg / <hash>-w.jpg.
 // The photo as taken is for shop staff only.
 const PHOTO_DIR = path.join(DATA_DIR, 'photos');
+// 11w: security alerts by email at once + the 9 pm products report (lib/monitor.mjs; SMTP_* and ALERT_TO in .env)
+const MON = monitor({ store, rootDir: ROOT, dataDir: DATA_DIR, env, getState: k => stateVal(k), photoGone: u => photoGone(u), photoDir: PHOTO_DIR });
+CATG.onStop = (user, kind, ip) => MON.catStop(user, kind, ip);
+setTimeout(() => MON.alert('start', String(process.pid), 'Website server started', ['The Bike Pharma site started (after update.sh, a restart or a server reboot).', 'If nobody ran update.sh or restarted it just now, check the server.']), 5000).unref();
 const PHOTO_MAX = 25 * 1024 * 1024;
 const PHOTO_URL = /^\/photos\/([a-f0-9]{32})(?:-([cw]))?\.(jpg|png|webp)$/;
 const PHOTO_AI = photoAi({ root: ROOT, photoDir: PHOTO_DIR, dataDir: DATA_DIR, env });
@@ -708,6 +722,7 @@ function serveStatic(req, res, url, user) {
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://x');
+    MON.probe(ipOf(req), url.pathname + url.search, req.method);   // 11w: requests only hacking tools send
     const user = userOf(req);
     if (url.pathname.startsWith('/api/')) return await api(req, res, url, user);
     if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'Method not allowed' });

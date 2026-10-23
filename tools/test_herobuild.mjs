@@ -38,7 +38,8 @@ try {
   cookie = (lr.headers.get('set-cookie') || '').split(';')[0];
   const pub = JSON.parse(fs.readFileSync('public/cat/hero.json', 'utf8'));
   const d = await (await get('/cat/hero.json')).json(), g = await (await get('/cat/hero-dg.json')).json();
-  ok(d.vars.length === pub.vars.length + 2, 'two new editions added, the one the app already has (Achiever Nov 2014) not twice');
+  ok(d.vars.length === pub.vars.length + 3, 'two new editions (+ the search list) added, the one the app already has (Achiever Nov 2014) not twice');
+  ok(d.d.some(r => r[5] === '77777-TST-009' && d.vmod[d.vars[r[11][0]]] === 'Other parts (price list)'), 'a search-list number no edition has is under Other parts');
   ok(d.vmod['Splendor+ (Sep, 2003)'] === 'Splendor Plus' && d.vmod['Dash export (July, 2017)'] === 'Dash' && d.models.includes('Dash'), 'editions put under their bike (Splendor Plus; Dash, new, named export)');
   ok(d.models[d.models.length - 1] === pub.models[pub.models.length - 1], "'Other parts' stays last");
   const vi = d.vars.indexOf('Splendor+ (Sep, 2003)'), rows = d.d.filter(r => r[11].includes(vi));
@@ -61,5 +62,11 @@ try {
   ok(fs.existsSync(T + '/data/cat/hero-build.json'), 'build report saved');
   // a newer Raw Data file: made again at the next start
   fs.utimesSync(R + '/hero_hidden_models.json', new Date(), new Date(Date.now() + 5000));
+  // Hero from the Raw Data alone (no Hero file in the app)
+  const { writeHero } = await import('../lib/herobuild.mjs');
+  fs.mkdirSync(T + '/pub', { recursive: true }); fs.copyFileSync('public/app.html', T + '/pub/app.html');
+  const inf = writeHero(T + '/pub', R, T + '/only');
+  const o = JSON.parse(fs.readFileSync(T + '/only/hero.json', 'utf8'));
+  ok(inf.editions === 3 && o.vars.length === 4 && o.models.join() === 'Achiever 150,Splendor Plus,Dash,Other parts (price list)', 'Raw Data alone: its 3 editions, Other parts last: ' + o.models.join());
 } catch (e) { ok(false, 'error ' + e.stack); }
 srv.kill(); if (fails) console.log(log.slice(-2000)); console.log(fails ? fails + ' FAILED' : 'ALL PASS'); process.exit(fails ? 1 : 0);

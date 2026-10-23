@@ -7,13 +7,14 @@ sleep 0.8
 rm -rf $T/data; mkdir -p $T/pf/catalogues/test; python3 -c "open('$T/pf/catalogues/test/a.bin','wb').write(bytes(range(256)))"
 DATA_DIR=$T/data node --no-warnings admin.mjs add-admin sam@bikepharma.com "Sam" --password Test@1234 >/dev/null
 DATA_DIR=$T/data node --no-warnings tools/test_shop.mjs >/dev/null
-VIN_RE_URL=http://127.0.0.1:3029/graphql VIN_HONDA_URL=http://127.0.0.1:3029/honda YPEC_URL=http://127.0.0.1:3029 HERO_URL=http://127.0.0.1:3029/hero/ VIN_TVS_URL=http://127.0.0.1:3029/tvs/ VIN_BAJAJ_URL=http://127.0.0.1:3029/bajaj/ YPEC_DEALER_CODE=D1 YPEC_USER_ID=testuser YPEC_PASSWORD=x PHOTO_AI=off DATA_DIR=$T/data FILES_DIR=$T/pf PORT=3015 node --no-warnings server.mjs > $T/server.log 2>&1 &
+VIN_RE_URL=http://127.0.0.1:3029/graphql VIN_HONDA_URL=http://127.0.0.1:3029/honda YPEC_URL=http://127.0.0.1:3029 HERO_URL=http://127.0.0.1:3029/hero/ VIN_TVS_URL=http://127.0.0.1:3029/tvs/ VIN_BAJAJ_URL=http://127.0.0.1:3029/bajaj/ YPEC_DEALER_CODE=D1 YPEC_USER_ID=testuser YPEC_PASSWORD=x CAT_DAY_MB=100000 CAT_FILES_DAY_MB=100000 PHOTO_AI=off DATA_DIR=$T/data FILES_DIR=$T/pf PORT=3015 node --no-warnings server.mjs > $T/server.log 2>&1 &
 sleep 1.2
 node tools/test.mjs; r=$?
 # update 9c: server checks for customers, prices, audit, limits and rates
 node tools/test_9c.mjs || r=1
 node tools/test_back.mjs || r=1
 node tools/test_otp10t.mjs || r=1   # update 10t: real OTP by Renflair SMS (own server on 3018, mock Renflair on 3031)
+node tools/test_catguard.mjs || r=1   # update 11h: catalogue guard (daily amount per login, log, Admin unlock; own server on 3019)
 # update 8o: the Billing profile (no bill discount, warranty claims, cancel / change through Manager, split, estimate to bill)
 node tools/test_bill.mjs || r=1
 # update 9i: MRP lots (two MRPs of one part: add product, bill split, change lot, stock in, labels, server price)

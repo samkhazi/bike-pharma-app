@@ -22,6 +22,7 @@ import { billAi } from './lib/billai.mjs';
 import { makeAlt } from './lib/altagent.mjs';
 import { pnLookup } from './lib/pnlook.mjs';
 import { startMirror } from './lib/mysqlmirror.mjs';
+import { catGuard } from './lib/catguard.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 export function loadEnv(file) {
@@ -38,6 +39,7 @@ const PROTECTED = (env.PROTECTED_DIRS || 'cat,bj,ph,phh,figs').split(',').map(s 
 const OTP = otpConfig(env);
 const store = openStore(DATA_DIR);
 const MIRROR = startMirror(store, process.env);   // MySQL copy for phpMyAdmin (10m), off unless MYSQL_* are in .env
+const CATG = catGuard(store, DATA_DIR, env); CATG.tidy(); setInterval(() => CATG.tidy(), 86400e3).unref();   // catalogue limits + log (11h)
 const PNLOOK = pnLookup(PUBLIC_DIR); setTimeout(() => { PNLOOK('').catch(() => {}); }, 4000).unref();   // index the brand files soon after start
 const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 
@@ -274,6 +276,16 @@ async function api(req, res, url, user) {
     return json(res, 200, { ok: true });
   }
 
+  // catalogue guard (11h): Admin sees today's catalogue use and the stopped logins, and can unlock one
+  if (p === '/api/catsec' && m === 'GET') {
+    if (!user || user.role !== 'admin') return json(res, user ? 403 : 401, { error: 'Only Admin' });
+    return json(res, 200, CATG.report());
+  }
+  if (p === '/api/catsec/unlock' && m === 'POST') {
+    if (!user || user.role !== 'admin') { drain(req); return json(res, user ? 403 : 401, { error: 'Only Admin' }); }
+    return json(res, 200, { ok: CATG.unlock(String(body.id || ''), user.id) });
+  }
+
   if ((p === '/api/files/list' || p === '/api/files/read') && m === 'GET') {
     if (!user) return json(res, 401, { error: 'not_granted' });
     if (roleClass(user) !== 'staff') return json(res, 403, { error: 'not_granted' });
@@ -292,6 +304,7 @@ async function api(req, res, url, user) {
       return json(res, 200, { entries, cursor: null });
     }
     if (!st.isFile()) return json(res, 404, { error: 'not_found' });
+    { const e = CATG.check(user); if (e) return json(res, 429, { error: e }); }
     const off = Math.max(0, +url.searchParams.get('offset') || 0); let len = +url.searchParams.get('length') || 0;
     if (!len || len > 32 * 1024 * 1024) len = Math.min(st.size - off, 32 * 1024 * 1024);
     len = Math.max(0, Math.min(len, st.size - off));
@@ -299,6 +312,7 @@ async function api(req, res, url, user) {
     const etag = `W/"${st.size.toString(16)}-${Math.floor(st.mtimeMs).toString(16)}-${off.toString(16)}-${len.toString(16)}${a85 ? '-a' : ''}"`;
     const head = { 'X-File-Size': st.size, 'Cache-Control': 'private, max-age=604800', 'ETag': etag, 'X-Content-Type-Options': 'nosniff' };
     if (req.headers['if-none-match'] === etag) { res.writeHead(304, head); return res.end(); }
+    CATG.count(user, 'files', len, rel, ipOf(req));
     if (a85) { // a diagram stored in a catalogue PDF as ASCII85 text: send the JPEG bytes exactly as they were put in
       const buf = Buffer.alloc(len); const fd = fs.openSync(abs, 'r'); try { fs.readSync(fd, buf, 0, len, off); } finally { fs.closeSync(fd); }
       const img = ascii85(buf);
@@ -586,29 +600,34 @@ function serveStatic(req, res, url, user) {
   if (rel.includes('..') || rel.includes('\0')) return json(res, 404, { error: 'Not found' });
   const top = rel.split('/')[0];
   if (PROTECTED.includes(top) && roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: 'Staff login needed' });
+  const isCat = top === 'cat' && rel.endsWith('.json');
+  if (isCat) { const e = CATG.check(user); if (e) return json(res, 429, { error: e }); }
   const file = path.join(PUBLIC_DIR, rel);
   let st; try { st = fs.statSync(file); } catch (e) { return json(res, 404, { error: 'Not found' }); }
   if (st.isDirectory()) return json(res, 404, { error: 'Not found' });
   const ext = path.extname(file).toLowerCase(); const type = MIME[ext] || 'application/octet-stream';
   const etag = `W/"${st.size.toString(16)}-${Math.floor(st.mtimeMs).toString(16)}"`;
   // catalogue data (cat/) is asked again each time (304 when unchanged), so a pushed catalogue shows at once, not after an hour
-  const h = { 'Content-Type': type, 'ETag': etag, 'Cache-Control': ext === '.html' || top === 'cat' ? 'no-cache' : 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff', 'Accept-Ranges': 'bytes', 'Vary': 'Accept-Encoding', ...(ext === '.html' ? { 'X-Frame-Options': 'SAMEORIGIN', 'Referrer-Policy': 'strict-origin-when-cross-origin' } : {}) };
+  const h = { 'Content-Type': type, 'ETag': etag, 'Cache-Control': top === 'cat' ? 'private, no-cache' : ext === '.html' ? 'no-cache' : 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff', 'Accept-Ranges': 'bytes', 'Vary': 'Accept-Encoding', ...(ext === '.html' ? { 'X-Frame-Options': 'SAMEORIGIN', 'Referrer-Policy': 'strict-origin-when-cross-origin' } : {}) };
   if (req.headers['if-none-match'] === etag) { res.writeHead(304, h); return res.end(); }
   const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
   if (range && st.size) {
     let a = range[1] === '' ? Math.max(0, st.size - +range[2]) : +range[1], b = range[2] === '' || range[1] === '' ? st.size - 1 : Math.min(+range[2], st.size - 1);
     if (a > b || a >= st.size) { res.writeHead(416, { 'Content-Range': `bytes */${st.size}` }); return res.end(); }
+    if (isCat && req.method !== 'HEAD') CATG.count(user, 'cat', b - a + 1, rel, ipOf(req));
     res.writeHead(206, { ...h, 'Content-Range': `bytes ${a}-${b}/${st.size}`, 'Content-Length': b - a + 1 });
     if (req.method === 'HEAD') return res.end();
     return fs.createReadStream(file, { start: a, end: b }).pipe(res);
   }
   if (GZ_TYPES.has(ext) && st.size < 40 * 1024 * 1024 && /\bgzip\b/.test(req.headers['accept-encoding'] || '')) {
     const buf = gzipped(file, st);
+    if (isCat && req.method !== 'HEAD') CATG.count(user, 'cat', st.size, rel, ipOf(req));
     res.writeHead(200, { ...h, 'Content-Encoding': 'gzip', 'Content-Length': buf.length });
     return res.end(req.method === 'HEAD' ? undefined : buf);
   }
   res.writeHead(200, { ...h, 'Content-Length': st.size });
   if (req.method === 'HEAD') return res.end();
+  if (isCat) CATG.count(user, 'cat', st.size, rel, ipOf(req));
   fs.createReadStream(file).pipe(res);
 }
 

@@ -15,7 +15,7 @@ import { vinLook } from './lib/vinlook.mjs';
 import { rcLook } from './lib/rclook.mjs';
 import { otpConfig, makeOtp, deliverOtp } from './lib/sms.mjs';
 import { removeDemoData } from './lib/cleanup.mjs';
-import { checkNewBills, guardValue, auditRows, BILL_KEYS } from './lib/billguard.mjs';
+import { checkNewBills, guardValue, auditRows, BILL_KEYS, setPhotoGone } from './lib/billguard.mjs';
 import { stampWho } from './lib/stamp.mjs';
 import { photoAi, AI_VER } from './lib/photoai.mjs';
 import { billAi } from './lib/billai.mjs';
@@ -129,6 +129,7 @@ async function api(req, res, url, user) {
   if (p === '/api/photo/status') return photoStatus(req, res, url, user);
   if (p === '/api/photo/wrong') return photoWrong(req, res, url, user);
   if (p === '/api/photo') return photoUpload(req, res, user, url);
+  if (p === '/api/photos/missing' && m === 'GET') return json(res, roleClass(user) === 'staff' ? 200 : user ? 403 : 401, roleClass(user) === 'staff' ? photosMissing(reader()) : { error: 'Staff login needed' });
   if (p === '/api/billread') return billRead(req, res, user);
   if (p === '/api/dghot' || p === '/api/dghot/edit') return dgHot(req, res, url, user);
   if (p === '/api/vinlook') {   // update 9o: chassis number -> model from the maker's site (staff only)
@@ -562,6 +563,15 @@ function photoStatus(req, res, url, user) {
   return json(res, 200, { ai: PHOTO_AI.summary(), st, chk });
 }
 // POST /api/photo/wrong?h=<hash>: staff say the clean copy is not right; it is made again another way (and the AI learns from it)
+// 11t (Sam 2026-10-23): the parts whose photos the server no longer has (the 22 Oct break-in emptied data/photos): { ids, n }
+const photoHash = u => (/^\/photos\/([a-f0-9]{32})/.exec(String(u || '')) || [])[1];
+function photoGone(u) { const h = photoHash(u); if (!h) return false; return !['jpg', 'png', 'webp'].some(x => fs.existsSync(path.join(PHOTO_DIR, h + '.' + x))) && !fs.existsSync(path.join(PHOTO_DIR, h + '-c.jpg')); }
+setPhotoGone(photoGone);
+function photosMissing(get) {
+  const ids = [];
+  for (const p of get('newProducts') || []) { if (!p || typeof p !== 'object') continue; const ph = Array.isArray(p.photos) ? p.photos : []; if (!ph.length || ph.every(photoGone)) ids.push(p.id); }
+  return { ids, n: ids.length };
+}
 function photoWrong(req, res, url, user) {
   if (req.method !== 'POST') { drain(req); return json(res, 405, { error: 'Method not allowed' }); }
   drain(req);

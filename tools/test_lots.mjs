@@ -130,6 +130,25 @@ const ad = await Ad.evaluate(id => ({ mrp: P(id).mrp, price: P(id).price, fits: 
 ok(ad.mrp === 300 && ad.price === 285 && JSON.stringify(ad.fits) === '["Hero Splendor Plus"]' && ad.au, 'Admin change saved with new prices and audit ' + JSON.stringify(ad));
 await sync(Ad); await fresh(Ad);
 ok(await Ad.evaluate(id => P(id).mrp === 300 && P(id).fits[0] === 'Hero Splendor Plus', pid), 'server kept the Admin change');
+// 11t (Sam: Photos missing list): a part whose photo file is gone is listed; staff take a new photo and it saves without Admin
+const GONE = '/photos/' + 'ab'.repeat(16) + '-c.jpg';
+const gid = await Ad.evaluate(g => { const id = 'n' + Date.now(); const p = { id, name: 'Gone photo part', brand: 'HERO', type: '', cat: 'OEM Parts', pn: 'GONE' + Date.now().toString().slice(-5), pack: '', mrp: 100, price: 95, mp: 85, stock: 1, warDays: 0, reorder: 10, ic: 'package', fits: ['Universal'], bin: '', barcode: '', pending: false, photos: [g], unit: 'pcs' }; DB.newProducts.push(p); PRODUCTS.push(p); DB.stock[id] = 1; save(); return id; }, GONE);
+await sync(Ad); await fresh(B);
+const ml = await B.evaluate(() => api('GET', '/api/photos/missing'));
+ok(ml.ids && ml.ids.includes(gid) && !ml.ids.includes(pid), 'server lists the part whose photo is gone (not the others) ' + JSON.stringify(ml).slice(0, 120));
+await B.evaluate(() => { phMissLoad(); }); await B.waitForTimeout(800);
+await B.evaluate(id => peOpen(id), gid); await B.waitForTimeout(250);
+ok(/no approval/i.test(await T(B)), 'photo-only save needs no approval for a missing photo');
+const nu = await B.evaluate(async () => { const c = document.createElement('canvas'); c.width = 40; c.height = 30; c.getContext('2d').fillRect(0, 0, 20, 20); const bl = await new Promise(r => c.toBlob(r, 'image/jpeg')); const r = await fetch('/api/photo', { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: bl, credentials: 'same-origin' }); return (await r.json()).url; });
+await B.evaluate(u => { S.ui.pe.photos = [u]; peSave(); }, nu); await B.waitForTimeout(300);
+ok(await B.evaluate(id => P(id).photos[0] !== undefined && !DB.approvals.some(a => a.pedit && a.pedit.pid === id), gid), 'saved straight, no request');
+await sync(B); await fresh(B);
+ok(await B.evaluate(([id, u]) => P(id).photos[0] === u, [gid, nu]), 'server kept the new photo from staff');
+const ml2 = await B.evaluate(() => api('GET', '/api/photos/missing'));
+ok(!ml2.ids.includes(gid), 'part is off the Photos missing list');
+// a part with a real photo: staff still cannot swap it straight
+await B.evaluate(id => { const q = DB.newProducts.find(x => x.id === id); q.photos = ['/photos/' + 'cd'.repeat(16) + '-c.jpg']; save(); }, gid); await sync(B); await fresh(B);
+ok(await B.evaluate(([id, u]) => P(id).photos[0] === u, [gid, nu]), 'a present photo cannot be replaced by staff without Admin');
 ok(!errs.length, 'no page errors ' + errs.slice(0, 3).join(' | '));
 await b.close();
 console.log(fails ? fails + ' FAILED' : 'ALL OK'); process.exit(fails ? 1 : 0);

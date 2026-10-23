@@ -60,6 +60,7 @@ try {
   const hl = s => (/'Hero':\['[^']*','[^']*'\]/.exec(s) || [''])[0];
   ok(app.length > 1000 && hl(app) && hl(app) !== hl(pa) && app.replace(hl(app), '') === pa.replace(hl(pa), ''), 'app sent with only its Hero part number line made again');
   ok(fs.existsSync(T + '/data/cat/hero-build.json'), 'build report saved');
+  ok((await get('/api/catup?path=' + encodeURIComponent('catalogues/hero-pdf/VIDA VX2 Go 2.2 RQ - Plus\u00a04.4 RQ (AUG.,2026) [VIDA_EBAJ].pdf') + '&size=10')).status === 200, 'PDF > Models names ([code], no-break space) can be uploaded');
   // a newer Raw Data file: made again at the next start
   fs.utimesSync(R + '/hero_hidden_models.json', new Date(), new Date(Date.now() + 5000));
   // Hero from the Raw Data alone (no Hero file in the app)

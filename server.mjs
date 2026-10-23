@@ -381,7 +381,7 @@ async function catUpload(req, res, url, user) {
   }
   const rel = path.posix.normalize('/' + (url.searchParams.get('path') || '')).replace(/^\/+/, '');
   const segs = rel.split('/');
-  if (segs[0] !== 'catalogues' || segs.length < 3 || segs.some(x => !/^[A-Za-z0-9_][A-Za-z0-9 ._()+,&-]{0,150}$/.test(x) || x === '..') || !CAT_EXTS.has(path.extname(rel).toLowerCase()) || rel.endsWith('.part')) {
+  if (segs[0] !== 'catalogues' || segs.length < 3 || segs.some(x => !/^[A-Za-z0-9_][A-Za-z0-9 \u00a0._()[\]+,&-]{0,150}$/.test(x) || x === '..') || !CAT_EXTS.has(path.extname(rel).toLowerCase()) || rel.endsWith('.part')) {
     drain(req); return json(res, 400, { error: 'This file name or type cannot be uploaded' });
   }
   const size = Math.floor(+url.searchParams.get('size'));

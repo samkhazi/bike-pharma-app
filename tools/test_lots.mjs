@@ -102,6 +102,34 @@ ok(await B.evaluate(id => S.ui.inv.items[id] === 1 && S.ui.inv.lot[id] === 260, 
 // one-MRP parts are unchanged
 const one = await B.evaluate(() => { const x = PRODUCTS.find(p => DB.stock[p.id] > 0 && !(DB.lots || {})[p.id]); return x ? JSON.stringify(lotLines(x.id, 2, false)) === JSON.stringify([{ m: r2(x.mrp), q: 2, r: x.price }]) : 'none'; });
 ok(one === true || one === 'none', 'a part with one MRP bills as before');
+// 11r (Sam 2026-10-23 "only admin can edit, staff give request for approval"): change a product's details
+await fresh(Ad); await fresh(B);
+// staff: the button sends a request; nothing changes until Admin approves
+await B.evaluate(id => { S.ui.scanHit = id; S.ui.scanMiss = null; go('scanfind'); }, pid); await B.waitForTimeout(250);
+ok(/Request a change/i.test(await T(B)), 'scan to find: staff see Request a change');
+await B.evaluate(id => peOpen(id), pid); await B.waitForTimeout(250);
+ok(await B.evaluate(() => cur().s === 'prodedit' && /Send to Admin/i.test(document.querySelector('#vp .screen:last-child').innerText)), 'change form opens for staff');
+await B.fill('#pe-name', 'Horn assembly'); await B.evaluate(() => peSave()); await B.waitForTimeout(300);
+const rq = await B.evaluate(id => { const a = DB.approvals.find(x => x.pedit && x.pedit.pid === id); return a && { st: a.st, ch: a.pedit.ch, name: P(id).name }; }, pid);
+ok(rq && rq.st === 'pending' && rq.ch.name && rq.ch.name[1] === 'Horn assembly' && rq.name === 'Horn comp.', 'staff change is a pending request; the part is unchanged ' + JSON.stringify(rq));
+await sync(B);
+// staff writing the product straight is undone by the server
+await B.evaluate(id => { const q = DB.newProducts.find(x => x.id === id); q.name = 'Hacked name'; q.fits = ['Hero Glamour']; save(); }, pid); await sync(B); await fresh(B);
+ok(await B.evaluate(id => P(id).name === 'Horn comp.' && P(id).fits[0] === 'Universal', pid), 'server keeps the product as it was when staff change it directly');
+ok(await B.evaluate(() => { const a = DB.approvals.find(x => x.pedit); return a && a.st === 'pending'; }), 'request reached the server');
+// Admin approves: the change is applied
+await fresh(Ad);
+const aid = await Ad.evaluate(() => (DB.approvals.find(x => x.pedit && x.st === 'pending') || {}).id);
+await Ad.evaluate(id => { go('approvals'); decide(id, 'approved'); }, aid); await Ad.waitForTimeout(300);
+ok(await Ad.evaluate(id => P(id).name === 'Horn assembly' && DB.newProducts.find(x => x.id === id).name === 'Horn assembly', pid), 'Admin approves: name changed');
+// Admin changes straight away (MRP + bike); prices follow the MRP
+await Ad.evaluate(id => peOpen(id), pid); await Ad.waitForTimeout(250);
+ok(/Save changes/i.test(await T(Ad)), 'Admin sees Save changes');
+await Ad.fill('#pe-mrp', '300'); await Ad.evaluate(() => { S.ui.pe.universal = false; S.ui.pe.add = 'Hero Splendor Plus'; peFitAdd(); }); await Ad.evaluate(() => peSave()); await Ad.waitForTimeout(300);
+const ad = await Ad.evaluate(id => ({ mrp: P(id).mrp, price: P(id).price, fits: P(id).fits, au: DB.audit.some(a => /Product changed/.test(JSON.stringify(a))) }), pid);
+ok(ad.mrp === 300 && ad.price === 285 && JSON.stringify(ad.fits) === '["Hero Splendor Plus"]' && ad.au, 'Admin change saved with new prices and audit ' + JSON.stringify(ad));
+await sync(Ad); await fresh(Ad);
+ok(await Ad.evaluate(id => P(id).mrp === 300 && P(id).fits[0] === 'Hero Splendor Plus', pid), 'server kept the Admin change');
 ok(!errs.length, 'no page errors ' + errs.slice(0, 3).join(' | '));
 await b.close();
 console.log(fails ? fails + ' FAILED' : 'ALL OK'); process.exit(fails ? 1 : 0);

@@ -28,6 +28,7 @@ import { HERO_RAW } from './lib/herobuild.mjs';
 import { HONDA_RAW } from './lib/hondabuild.mjs';
 import { BAJAJ_RAW } from './lib/bajajbuild.mjs';
 import { YAMAHA_RAW } from './lib/yamahabuild.mjs';
+import { RE_RAW } from './lib/rebuild.mjs';
 import { backups } from './lib/backup.mjs';
 import { catSplit } from './lib/catsplit.mjs';
 import { monitor } from './lib/monitor.mjs';
@@ -51,13 +52,15 @@ const MIRROR = startMirror(store, process.env);   // MySQL copy for phpMyAdmin (
 const CATG = catGuard(store, DATA_DIR, env); CATG.tidy(); setInterval(() => CATG.tidy(), 86400e3).unref();   // catalogue limits + log (11h)
 // Hero made on the server from Sam's Raw Data upload (11k) and the PDF > Models index (11m: hero_pdf_index.json, its parts + diagram pages): DATA_DIR/cat/hero.json, hero-dg.json and app.html (its Hero part number line)
 // are served instead of the public ones; made again when the Raw Data or the app's own Hero files are newer
-const HERO_OUT = path.join(DATA_DIR, 'cat'), HERO_RAW_DIR = path.join(FILES_DIR, 'catalogues', 'hero-raw'), HERO_PDF_DIR = path.join(FILES_DIR, 'catalogues', 'hero-pdf'), HERO_SERVED = new Set(['cat/hero.json', 'cat/hero-dg.json', 'cat/honda.json', 'cat/honda-dg.json', 'cat/bajaj.json', 'cat/bajaj-dg.json', 'cat/yamaha.json', 'cat/yamaha-dg.json', 'app.html']);
+const HERO_OUT = path.join(DATA_DIR, 'cat'), HERO_RAW_DIR = path.join(FILES_DIR, 'catalogues', 'hero-raw'), HERO_PDF_DIR = path.join(FILES_DIR, 'catalogues', 'hero-pdf'), HERO_SERVED = new Set(['cat/hero.json', 'cat/hero-dg.json', 'cat/honda.json', 'cat/honda-dg.json', 'cat/bajaj.json', 'cat/bajaj-dg.json', 'cat/yamaha.json', 'cat/yamaha-dg.json', 'cat/royal-enfield.json', 'cat/royal-enfield-dg.json', 'app.html']);
 // 11z: Honda the same way, from the whole Downloads > Honda Catalogue folder (FILES_DIR/catalogues/honda); one build at a time, as both write app.html
 const HONDA_DIR = path.join(FILES_DIR, 'catalogues', 'honda');
 // 12b: Bajaj too, from Downloads > Bajaj Catalogue (FILES_DIR/catalogues/bajaj)
 const BAJAJ_DIR = path.join(FILES_DIR, 'catalogues', 'bajaj');
 // 12e: Yamaha too, from Downloads > Yamaha Catalogue (FILES_DIR/catalogues/yamaha)
 const YAMAHA_DIR = path.join(FILES_DIR, 'catalogues', 'yamaha');
+// 12g: Royal Enfield too, from Downloads > Royal Enfield Catalogue (FILES_DIR/catalogues/royal-enfield)
+const RE_DIR = path.join(FILES_DIR, 'catalogues', 'royal-enfield');
 let heroBusy = false;
 const mtime = f => { try { return fs.statSync(f).mtimeMs; } catch { return 0; } };
 function heroBuild(why) {
@@ -88,6 +91,13 @@ function yamahaBuild(why) {
   catBuild('yamaha', why, [path.join(ROOT, 'lib', 'yamahabuild.mjs'), PUBLIC_DIR, YAMAHA_DIR, HERO_OUT]);
   return true;
 }
+function reBuild(why) {
+  if (!RE_RAW.every(f => fs.existsSync(path.join(RE_DIR, f)))) return false;
+  const src = [...RE_RAW.map(f => path.join(RE_DIR, f)), path.join(PUBLIC_DIR, 'app.html'), path.join(ROOT, 'lib', 'rebuild.mjs'), path.join(ROOT, 'lib', 'herobuild.mjs')];
+  if (why === 'start' && mtime(path.join(HERO_OUT, 'royal-enfield.json')) > Math.max(...src.map(mtime))) return false;
+  catBuild('royal-enfield', why, [path.join(ROOT, 'lib', 'rebuild.mjs'), PUBLIC_DIR, RE_DIR, HERO_OUT]);
+  return true;
+}
 const catQ = [];   // [slug, why, args]: the builds waiting, run one after another
 function catBuild(slug, why, args) {
   if (catQ.some(q => q[0] === slug && q !== catQ[0])) return;   // already waiting (a running one is made again after it)
@@ -99,11 +109,11 @@ function catRun() {
   const c = spawn(process.execPath, ['--max-old-space-size=3072', ...q[2]], { stdio: ['ignore', 'inherit', 'inherit'] });
   c.on('exit', code => { console.log(new Date().toISOString(), q[0] + ' build (' + q[1] + ') ended', code); heroBusy = false; catQ.shift(); catRun(); });
 }
-heroBuild('start'); hondaBuild('start'); bajajBuild('start'); yamahaBuild('start');
+heroBuild('start'); hondaBuild('start'); bajajBuild('start'); yamahaBuild('start'); reBuild('start');
 const BACKUP = backups({ store, dataDir: DATA_DIR, env });   // 11u: every night + Admin > More > Backups
 // 11v: Hero goes to phones as a head + the part lines they need (lib/catsplit.mjs); CAT_SPLIT=off sends the whole file as before
 const heroFile = (slug = 'hero') => { for (const d of slug === 'hero' ? [HERO_OUT, path.join(PUBLIC_DIR, 'cat')] : [HERO_OUT]) { const f = path.join(d, slug + '.json'); if (fs.existsSync(f)) return f; } return null; };
-const SPLIT_B = new Set(['hero', 'honda', 'bajaj', 'yamaha']);   // the brands sent as a head + lines (11v, Honda 11z)
+const SPLIT_B = new Set(['hero', 'honda', 'bajaj', 'yamaha', 'royal-enfield']);   // the brands sent as a head + lines (11v, Honda 11z)
 const SPLIT = catSplit({ file: slug => SPLIT_B.has(slug) && String(env.CAT_SPLIT || '').toLowerCase() !== 'off' ? heroFile(slug) : null, pct: +env.CAT_ROWS_DAY_PCT || 60 });
 const PNLOOK = pnLookup(PUBLIC_DIR, [HERO_OUT], { load: f => { if (!SPLIT || String(env.CAT_SPLIT || '').toLowerCase() === 'off') return null; for (const b of SPLIT_B) if (f === heroFile(b)) return SPLIT.data(f); return null; } }); setTimeout(() => { PNLOOK('').catch(() => {}); }, 4000).unref();   // index the brand files soon after start
 const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
@@ -503,7 +513,7 @@ async function catUpload(req, res, url, user) {
   catBusy.delete(abs);
   let have = sizeOf(part);
   if (have !== off + len) { try { fs.truncateSync(part, off); } catch (x) {} return json(res, 400, { error: 'The piece did not arrive whole, sending it again', have: off }); }
-  if (have === size) { fs.renameSync(part, abs); console.log(new Date().toISOString(), 'catalogue file uploaded', rel, size, 'by', user.id); if (abs.startsWith(HERO_RAW_DIR + path.sep) || abs === path.join(HERO_PDF_DIR, 'hero_pdf_index.json')) heroBuild('upload'); if (path.dirname(abs) === HONDA_DIR && HONDA_RAW.includes(path.basename(abs))) hondaBuild('upload'); if (path.dirname(abs) === BAJAJ_DIR && BAJAJ_RAW.includes(path.basename(abs))) bajajBuild('upload'); if (path.dirname(abs) === YAMAHA_DIR && YAMAHA_RAW.includes(path.basename(abs))) yamahaBuild('upload'); return json(res, 200, { have, done: true }); }
+  if (have === size) { fs.renameSync(part, abs); console.log(new Date().toISOString(), 'catalogue file uploaded', rel, size, 'by', user.id); if (abs.startsWith(HERO_RAW_DIR + path.sep) || abs === path.join(HERO_PDF_DIR, 'hero_pdf_index.json')) heroBuild('upload'); if (path.dirname(abs) === HONDA_DIR && HONDA_RAW.includes(path.basename(abs))) hondaBuild('upload'); if (path.dirname(abs) === BAJAJ_DIR && BAJAJ_RAW.includes(path.basename(abs))) bajajBuild('upload'); if (path.dirname(abs) === YAMAHA_DIR && YAMAHA_RAW.includes(path.basename(abs))) yamahaBuild('upload'); if (path.dirname(abs) === RE_DIR && RE_RAW.includes(path.basename(abs))) reBuild('upload'); return json(res, 200, { have, done: true }); }
   return json(res, 200, { have, done: false });
 }
 
@@ -717,7 +727,7 @@ function serveStatic(req, res, url, user) {
   if (PROTECTED.includes(top) && roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: 'Staff login needed' });
   const isCat = top === 'cat' && rel.endsWith('.json');
   if (isCat) { const e = CATG.check(user); if (e) return json(res, 429, { error: e }); }
-  const spl = /^cat\/([a-z]+)\.json$/.exec(rel);
+  const spl = /^cat\/([a-z-]+)\.json$/.exec(rel);
   if (spl && SPLIT_B.has(spl[1])) {   // 11v: the head only (catsplit); the lines come from /api/cat/rows
     let hd = null; try { hd = SPLIT.head(spl[1]); } catch (x) { console.log(new Date().toISOString(), spl[1] + ' head failed', x.message); }
     if (hd) {

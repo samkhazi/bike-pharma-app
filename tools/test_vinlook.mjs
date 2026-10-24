@@ -131,7 +131,7 @@ ok(/Bajaj’s site has no record of this chassis number/.test(t) && /Which brand
 // update 12f: RE chassis via RE's EPC DataStore + the index from Sam's RE catalogue
 asked.length = 0;
 let jr = await p.evaluate(() => fetch('/api/vinlook?c=ME3J3A5FAM2000624', { credentials: 'same-origin' }).then(x => x.json()));
-ok(jr.found && jr.model === 'METEOR 350 SUPERNOVA BROWN' && jr.name === 'METEOR 350 SUPERNOVA BROWN (BS6 - VWQA60NN)' && jr.code === 'VWQA60NN' && asked.join() === 'restore:Bearer testkey:ME3J3A5FAM2000624',
+ok(jr.found && jr.model === 'METEOR 350 SUPERNOVA BROWN' && jr.name === 'METEOR 350 SUPERNOVA BROWN (BS6 - VWQA60NN)' && jr.vm === 'Meteor 350' && jr.code === 'VWQA60NN' && asked.join() === 'restore:Bearer testkey:ME3J3A5FAM2000624',
   'RE: EPC DataStore names the variant code, the index its model; the key sent as Bearer; the spares site not asked ' + JSON.stringify(jr) + asked.join());
 jr = await p.evaluate(() => fetch('/api/vinlook?c=ME3U3S5C1KC000022', { credentials: 'same-origin' }).then(x => x.json()));
 ok(jr.found && jr.model === 'CLASSIC 350' && asked.includes('restore:Bearer testkey:ME3U3S5C1KC000022') && asked.includes('re'), 'RE: DataStore has no record: the spares site as before');

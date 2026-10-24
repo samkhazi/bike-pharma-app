@@ -4107,6 +4107,7 @@ async function vinAsk(c){const s=S.ui.vin;let vb=vinSite(c);s.look={busy:1,vb};r
  const vb0=vb;vb=r.found&&r.vb&&BRANDS_V[r.vb]?r.vb:vb;s.look={...r,vb:vb0};
  /* Bajaj's site names KTM bikes without "KTM" and in its own word order ("Duke 125 UG" = KTM 125 Duke): every MD2 brand is tried */
  if(r.found&&vb0==='Bajaj'&&!vinMatch(vb,r.model).length){const b2=[...new Set([vb,'Bajaj','KTM','Husqvarna'])].find(b=>BRANDS_V[b]&&vinMatch(b,r.model).length);if(b2)vb=b2;}
+ if(r.found&&r.vm&&(BRANDS_V[vb]||[]).includes(r.vm))return vinOpen(c,vb,r.vm,r.name);   /* 12g: RE names its app model */
  if(r.found){const ms=vinMatch(vb,r.model);s.look.ms=ms;if(ms.length===1)return vinOpen(c,vb,ms[0],r.name);const pk=vinPick(vb,r,ms,vinYear(c));if(pk)return vinOpen(c,vb,pk,r.name);}
  s.pick=true;s.vb=vb;s.mf='';refresh();}
 /* ----- update 10d: the bike's registration number -> RC details (our server asks the RC service; its key stays on the server) ----- */

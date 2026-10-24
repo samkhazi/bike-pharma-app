@@ -3852,10 +3852,12 @@ function dgFig(r){const d=dgLoad(r.vb);if(!d||!r.ext)return null;const e=CAT_ALL
  if(d.r){const k=dgLocal(r);if(k<0)return null;const fi=d.r[k];if(fi==null||fi<0)return null;return {u:d.f[fi],box:d.b&&d.b[k]||null,view:d.v&&d.v[fi]||null};}
  if(!d.p)return null;const g=r.page.slice(r.page.indexOf('.')+1),f=(S.ui&&(S.ui.fpA||S.ui.fp))||{},c=cur().p||{};const vm=c.vm&&c.vm!=='Any'?c.vm:f.vm,yr=c.yr&&c.yr!=='Any'?c.yr:f.yr;
  const has=v=>{const i=e.d.vars.indexOf(v);return i>=0&&d.p[i]&&d.p[i][g]!=null;};const vv=r.vv||[];
- let v=vv.find(x=>x===f.vv&&has(x));if(!v&&yr&&yr!=='Any')v=vv.find(x=>CAT_VMOD[x]===vm&&catVyrs(x).includes(+yr)&&has(x));if(!v)v=vv.find(x=>CAT_VMOD[x]===vm&&has(x));if(!v)v=vv.find(has);if(!v)return null;
+ const es0=c.ed&&c.ed!=='Any'&&c.vm&&c.vm!=='Any'?fpEdSet({vb:r.vb,vm:c.vm,ed:c.ed}):null;
+ let v=vv.find(x=>x===f.vv&&has(x));if(!v&&es0)v=vv.find(x=>es0.has(x)&&has(x));   /* 12k: the open edition's own picture first (RE: 4,672 variants share lines) */
+ if(!v&&yr&&yr!=='Any')v=vv.find(x=>CAT_VMOD[x]===vm&&catVyrs(x).includes(+yr)&&has(x));if(!v)v=vv.find(x=>CAT_VMOD[x]===vm&&has(x));if(!v)v=vv.find(has);if(!v)return null;
  /* update 10i (Sam 2026-10-21 "sahi part ka sahi catalogue show hona he"): when the chosen bike's book has no picture of this group,
     another bike's picture is still shown, but marked with that bike's name so nobody takes it for this bike's diagram */
- const es=c.ed&&c.ed!=='Any'&&c.vm&&c.vm!=='Any'?fpEdSet({vb:r.vb,vm:c.vm,ed:c.ed}):null;
+ const es=es0;
  const want=vv.filter(x=>(!vm||vm==='Any'||CAT_VMOD[x]===vm)&&(!yr||yr==='Any'||catVyrs(x).includes(+yr))&&(!f.vv||f.vv==='Any'||x===f.vv));
  const other=(vm&&vm!=='Any'&&CAT_VMOD[v]!==vm)||(es&&!es.has(v))||(want.length&&!want.includes(v))?v:'';
  return {u:d.f[d.p[e.d.vars.indexOf(v)][g]],box:null,view:null,v,other};}

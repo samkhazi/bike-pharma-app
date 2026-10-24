@@ -11,7 +11,8 @@ const RE = { ME3K5A6FGT1002169: { VIN: 'ME3K5A6FGT1002169', CategoryName: 'BS6 -
   ME3U3S5C1KC000011: { VIN: 'ME3U3S5C1KC000011', CategoryName: 'BS4', CategoryUrl: 'classic-350/bs4.html?searchResultName=CLASSIC 350 (BS4)' },
   ME3U3S5F2LK959792: { VIN: 'ME3U3S5F2LK959792', CategoryName: 'VBQN60GM', CategoryUrl: 'classic-350/x.html?searchResultName=CLASSIC 350 ABS - BSVI (VBQN60GM)' },
   ME3J3S5C1MC000011: { VIN: 'ME3J3S5C1MC000011', CategoryName: 'BS6', CategoryUrl: 'classic-350/y.html?searchResultName=CLASSIC 350 (BS6)' },
-  ME3J3S5C1PC000011: { VIN: 'ME3J3S5C1PC000011', CategoryName: 'BS6', CategoryUrl: 'classic-350/z.html?searchResultName=CLASSIC 350 (BS6)' } };
+  ME3J3S5C1PC000011: { VIN: 'ME3J3S5C1PC000011', CategoryName: 'BS6', CategoryUrl: 'classic-350/z.html?searchResultName=CLASSIC 350 (BS6)' },
+  ME3U3S5C1KC000022: { VIN: 'ME3U3S5C1KC000022', CategoryName: 'BS4', CategoryUrl: 'classic-350/bs4.html?searchResultName=CLASSIC 350 (BS4)' } };
 const HONDA = { ME4KC311AK8485736: { VEHICLE: 'CB Unicorn', MODEL: 'CBF150MH', CHASSISNO: 'ME4KC311AK8485736', SBOMCODE: 'CBF150MH', STARTDATE: '/Date(1548873000000)/' } };
 const asked = []; let ypMenu = false;
 const mock = http.createServer((q, r) => { let b = ''; q.on('data', d => b += d); q.on('end', () => {
@@ -20,6 +21,11 @@ const mock = http.createServer((q, r) => { let b = ''; q.on('data', d => b += d)
     const T = { MD2A11CZ5PCA00001: 'PULSAR NS200 FI ABS BS6 E20', MD2JPJ403PC000001: 'KTM 390 DUKE BS6', MD2JPAXCXMC090925: 'Duke 125 UG (00JP98ZZ)', MD2B64BX7NWB17715: 'Pulsar 125 BSVI Single seat (Disk break) (00DH40ZZ)' }[v];
     return r.end(JSON.stringify({ data: T ? { status: true, sku_code: [{ id: 'SKU1', text: T }], plant: 'CHAKAN', vehicle_off_line_date: '2023-05-10' } : { status: false } })); }
   const j = q.url.startsWith('/ypec/') ? {} : JSON.parse(b || '{}'); r.setHeader('Content-Type', 'application/json');
+  // update 12f: RE EPC DataStore (Authorization from RE_VIN_AUTH; MaterialNumber = variant code)
+  if (q.url.startsWith('/re-store')) { const v = new URL(q.url, 'http://x').searchParams.get('vinNumber'); asked.push('restore:' + q.headers.authorization + ':' + v);
+    if (v === 'ME3J3A5FAM2000624') return r.end(JSON.stringify({ VIN: v, MaterialNumber: 'VWQA60NN' }));
+    if (v === 'ME3K5A6FGT1002169') return r.end(JSON.stringify({ VIN: v, MaterialNumber: 'VQJG60AB' }));   // not in the index: the spares site names it
+    r.statusCode = 404; return r.end('{}'); }
   if (q.url === '/graphql') { asked.push('re'); const v = RE[j.variables && j.variables.v]; return r.end(JSON.stringify({ data: { searchQueryVindetails: { vin_detail: v || { VIN: null, CategoryName: null, CategoryUrl: null } } } })); }
   // update 9r: dealer YPEC (login, terms page once, menu pages, search)
   if (q.url.startsWith('/ypec/')) { r.setHeader('Content-Type', 'text/html');
@@ -122,4 +128,11 @@ await vin('MD2B64BX7NWB17715'); st = await p.evaluate(() => cur().p);
 ok(st.vb === 'Bajaj' && st.vm === 'Pulsar 125' && /BS ?(VI|6)/.test(st.ed || '') && !/BS ?(IV|4)/.test(st.ed || ''), 'Sam’s chassis: Pulsar 125 BSVI Single seat, opens Bajaj Pulsar 125 BS6 book (not 2020 BS4) ' + st.vb + ' ' + st.vm + ' | ' + st.ed);
 await vin('MD2A11CZ9PCA00009'); t = await T();
 ok(/Bajaj’s site has no record of this chassis number/.test(t) && /Which brand is this/.test(t), 'Bajaj: not on Bajaj’s site, staff pick brand + model');
+// update 12f: RE chassis via RE's EPC DataStore + the index from Sam's RE catalogue
+asked.length = 0;
+let jr = await p.evaluate(() => fetch('/api/vinlook?c=ME3J3A5FAM2000624', { credentials: 'same-origin' }).then(x => x.json()));
+ok(jr.found && jr.model === 'METEOR 350 SUPERNOVA BROWN' && jr.name === 'METEOR 350 SUPERNOVA BROWN (BS6 - VWQA60NN)' && jr.code === 'VWQA60NN' && asked.join() === 'restore:Bearer testkey:ME3J3A5FAM2000624',
+  'RE: EPC DataStore names the variant code, the index its model; the key sent as Bearer; the spares site not asked ' + JSON.stringify(jr) + asked.join());
+jr = await p.evaluate(() => fetch('/api/vinlook?c=ME3U3S5C1KC000022', { credentials: 'same-origin' }).then(x => x.json()));
+ok(jr.found && jr.model === 'CLASSIC 350' && asked.includes('restore:Bearer testkey:ME3U3S5C1KC000022') && asked.includes('re'), 'RE: DataStore has no record: the spares site as before');
 await b.close(); mock.close(); console.log(fails ? `\n${fails} FAILED` : '\nALL OK'); process.exit(fails ? 1 : 0);

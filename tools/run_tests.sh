@@ -8,9 +8,10 @@ export PUBLIC_DIR=$P
 for pid in $(pgrep -x node); do if tr "\0" "\n" < /proc/$pid/environ 2>/dev/null | grep -qx "PORT=3015"; then kill $pid; fi; done
 sleep 0.8
 rm -rf $T/data; mkdir -p $T/pf/catalogues/test; python3 -c "open('$T/pf/catalogues/test/a.bin','wb').write(bytes(range(256)))"
+mkdir -p $T/pf/catalogues/royal-enfield; echo '{"v":{"VWQA60NN":["METEOR 350 SUPERNOVA BROWN","BS6 - VWQA60NN"]}}' > $T/pf/catalogues/royal-enfield/re_vin_index.json   # 12f: RE chassis index
 DATA_DIR=$T/data node --no-warnings admin.mjs add-admin sam@bikepharma.com "Sam" --password Test@1234 >/dev/null
 DATA_DIR=$T/data node --no-warnings tools/test_shop.mjs >/dev/null
-VIN_RE_URL=http://127.0.0.1:3029/graphql VIN_HONDA_URL=http://127.0.0.1:3029/honda YPEC_URL=http://127.0.0.1:3029 HERO_URL=http://127.0.0.1:3029/hero/ VIN_TVS_URL=http://127.0.0.1:3029/tvs/ VIN_BAJAJ_URL=http://127.0.0.1:3029/bajaj/ YPEC_DEALER_CODE=D1 YPEC_USER_ID=testuser YPEC_PASSWORD=x CAT_DAY_MB=100000 CAT_FILES_DAY_MB=100000 PHOTO_AI=off DATA_DIR=$T/data FILES_DIR=$T/pf PORT=3015 node --no-warnings server.mjs > $T/server.log 2>&1 &
+VIN_RE_URL=http://127.0.0.1:3029/graphql RE_VIN_URL=http://127.0.0.1:3029/re-store RE_VIN_AUTH=testkey VIN_HONDA_URL=http://127.0.0.1:3029/honda YPEC_URL=http://127.0.0.1:3029 HERO_URL=http://127.0.0.1:3029/hero/ VIN_TVS_URL=http://127.0.0.1:3029/tvs/ VIN_BAJAJ_URL=http://127.0.0.1:3029/bajaj/ YPEC_DEALER_CODE=D1 YPEC_USER_ID=testuser YPEC_PASSWORD=x CAT_DAY_MB=100000 CAT_FILES_DAY_MB=100000 PHOTO_AI=off DATA_DIR=$T/data FILES_DIR=$T/pf PORT=3015 node --no-warnings server.mjs > $T/server.log 2>&1 &
 sleep 1.2
 node tools/test.mjs; r=$?
 # update 9c: server checks for customers, prices, audit, limits and rates

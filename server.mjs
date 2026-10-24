@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { openStore, HAS_SQLITE } from './lib/store.mjs';
 import { roleClass, viewOf, scopeValue, canWrite, merge3, applyOwn, applyMine, mechLogins, moveCodes, deepEqual, cleanStrings, safeText, STAFF_ROLES, MECH_OWN, CUST_OWN } from './lib/merge.mjs';
 import { guardScoped } from './lib/custguard.mjs';
-import { vinLook } from './lib/vinlook.mjs';
+import { vinLook, vinSetup } from './lib/vinlook.mjs';
 import { rcLook } from './lib/rclook.mjs';
 import { otpConfig, makeOtp, deliverOtp } from './lib/sms.mjs';
 import { removeDemoData } from './lib/cleanup.mjs';
@@ -42,6 +42,7 @@ const PORT = +env.PORT || 3010, HOST = env.HOST || '127.0.0.1';
 const DATA_DIR = path.resolve(ROOT, env.DATA_DIR || 'data');
 const PUBLIC_DIR = path.resolve(ROOT, env.PUBLIC_DIR || 'public');
 const FILES_DIR = path.resolve(ROOT, env.FILES_DIR || path.join(DATA_DIR, 'project-files'));
+vinSetup({ filesDir: FILES_DIR });   // 12f: RE chassis index
 const SESSION_DAYS = +env.SESSION_DAYS || 30;
 const PROTECTED = (env.PROTECTED_DIRS || 'cat,bj,ph,phh,figs').split(',').map(s => s.trim()).filter(Boolean);
 const OTP = otpConfig(env);

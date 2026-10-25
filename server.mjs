@@ -24,7 +24,7 @@ import { pnLookup } from './lib/pnlook.mjs';
 import { startMirror } from './lib/mysqlmirror.mjs';
 import { catGuard } from './lib/catguard.mjs';
 import { spawn } from 'node:child_process';
-import { HERO_RAW } from './lib/herobuild.mjs';
+import { HERO_RAW, HERO_OPT, HERO_XL } from './lib/herobuild.mjs';
 import { HONDA_RAW } from './lib/hondabuild.mjs';
 import { BAJAJ_RAW } from './lib/bajajbuild.mjs';
 import { YAMAHA_RAW } from './lib/yamahabuild.mjs';
@@ -52,7 +52,7 @@ const MIRROR = startMirror(store, process.env);   // MySQL copy for phpMyAdmin (
 const CATG = catGuard(store, DATA_DIR, env); CATG.tidy(); setInterval(() => CATG.tidy(), 86400e3).unref();   // catalogue limits + log (11h)
 // Hero made on the server from Sam's Raw Data upload (11k) and the PDF > Models index (11m: hero_pdf_index.json, its parts + diagram pages): DATA_DIR/cat/hero.json, hero-dg.json and app.html (its Hero part number line)
 // are served instead of the public ones; made again when the Raw Data or the app's own Hero files are newer
-const HERO_OUT = path.join(DATA_DIR, 'cat'), HERO_RAW_DIR = path.join(FILES_DIR, 'catalogues', 'hero-raw'), HERO_PDF_DIR = path.join(FILES_DIR, 'catalogues', 'hero-pdf'), HERO_SERVED = new Set(['cat/hero.json', 'cat/hero-dg.json', 'cat/honda.json', 'cat/honda-dg.json', 'cat/bajaj.json', 'cat/bajaj-dg.json', 'cat/yamaha.json', 'cat/yamaha-dg.json', 'cat/royal-enfield.json', 'cat/royal-enfield-dg.json', 'app.html']);
+const HERO_OUT = path.join(DATA_DIR, 'cat'), HERO_RAW_DIR = path.join(FILES_DIR, 'catalogues', 'hero-raw'), HERO_PDF_DIR = path.join(FILES_DIR, 'catalogues', 'hero-pdf'), HERO_XL_DIR = path.join(FILES_DIR, 'catalogues', 'hero-excel'), HERO_SERVED = new Set(['cat/hero.json', 'cat/hero-dg.json', 'cat/honda.json', 'cat/honda-dg.json', 'cat/bajaj.json', 'cat/bajaj-dg.json', 'cat/yamaha.json', 'cat/yamaha-dg.json', 'cat/royal-enfield.json', 'cat/royal-enfield-dg.json', 'app.html']);
 // 11z: Honda the same way, from the whole Downloads > Honda Catalogue folder (FILES_DIR/catalogues/honda); one build at a time, as both write app.html
 const HONDA_DIR = path.join(FILES_DIR, 'catalogues', 'honda');
 // 12b: Bajaj too, from Downloads > Bajaj Catalogue (FILES_DIR/catalogues/bajaj)
@@ -65,9 +65,9 @@ let heroBusy = false;
 const mtime = f => { try { return fs.statSync(f).mtimeMs; } catch { return 0; } };
 function heroBuild(why) {
   if (!HERO_RAW.every(f => fs.existsSync(path.join(HERO_RAW_DIR, f)))) return false;
-  const src = [...HERO_RAW.map(f => path.join(HERO_RAW_DIR, f)), ...['cat/hero.json', 'cat/hero-dg.json', 'app.html'].map(f => path.join(PUBLIC_DIR, f)), path.join(ROOT, 'lib', 'herobuild.mjs'), path.join(HERO_PDF_DIR, 'hero_pdf_index.json')];
+  const src = [...HERO_RAW.map(f => path.join(HERO_RAW_DIR, f)), ...HERO_OPT.map(f => path.join(HERO_RAW_DIR, f)), ...HERO_XL.map(f => path.join(HERO_XL_DIR, f)), ...['cat/hero.json', 'cat/hero-dg.json', 'app.html'].map(f => path.join(PUBLIC_DIR, f)), path.join(ROOT, 'lib', 'herobuild.mjs'), path.join(HERO_PDF_DIR, 'hero_pdf_index.json')];
   if (why === 'start' && mtime(path.join(HERO_OUT, 'hero.json')) > Math.max(...src.map(mtime))) return false;
-  catBuild('hero', why, [path.join(ROOT, 'lib', 'herobuild.mjs'), PUBLIC_DIR, HERO_RAW_DIR, HERO_OUT, HERO_PDF_DIR]);
+  catBuild('hero', why, [path.join(ROOT, 'lib', 'herobuild.mjs'), PUBLIC_DIR, HERO_RAW_DIR, HERO_OUT, HERO_PDF_DIR, HERO_XL_DIR]);
   return true;
 }
 function hondaBuild(why) {
@@ -513,7 +513,7 @@ async function catUpload(req, res, url, user) {
   catBusy.delete(abs);
   let have = sizeOf(part);
   if (have !== off + len) { try { fs.truncateSync(part, off); } catch (x) {} return json(res, 400, { error: 'The piece did not arrive whole, sending it again', have: off }); }
-  if (have === size) { fs.renameSync(part, abs); console.log(new Date().toISOString(), 'catalogue file uploaded', rel, size, 'by', user.id); if (abs.startsWith(HERO_RAW_DIR + path.sep) || abs === path.join(HERO_PDF_DIR, 'hero_pdf_index.json')) heroBuild('upload'); if (path.dirname(abs) === HONDA_DIR && HONDA_RAW.includes(path.basename(abs))) hondaBuild('upload'); if (path.dirname(abs) === BAJAJ_DIR && BAJAJ_RAW.includes(path.basename(abs))) bajajBuild('upload'); if (path.dirname(abs) === YAMAHA_DIR && YAMAHA_RAW.includes(path.basename(abs))) yamahaBuild('upload'); if (path.dirname(abs) === RE_DIR && RE_RAW.includes(path.basename(abs))) reBuild('upload'); return json(res, 200, { have, done: true }); }
+  if (have === size) { fs.renameSync(part, abs); console.log(new Date().toISOString(), 'catalogue file uploaded', rel, size, 'by', user.id); if (abs.startsWith(HERO_RAW_DIR + path.sep) || abs.startsWith(HERO_XL_DIR + path.sep) || abs === path.join(HERO_PDF_DIR, 'hero_pdf_index.json')) heroBuild('upload'); if (path.dirname(abs) === HONDA_DIR && HONDA_RAW.includes(path.basename(abs))) hondaBuild('upload'); if (path.dirname(abs) === BAJAJ_DIR && BAJAJ_RAW.includes(path.basename(abs))) bajajBuild('upload'); if (path.dirname(abs) === YAMAHA_DIR && YAMAHA_RAW.includes(path.basename(abs))) yamahaBuild('upload'); if (path.dirname(abs) === RE_DIR && RE_RAW.includes(path.basename(abs))) reBuild('upload'); return json(res, 200, { have, done: true }); }
   return json(res, 200, { have, done: false });
 }
 

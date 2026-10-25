@@ -117,5 +117,41 @@ try {
   ok(!d.d.some(r => r[11].includes(dv) && r[5] === '99999-TST-002'), 'a discontinued number some list already has is not added twice');
   const pl = await (await get('/api/pnlook?q=17910TST940S')).json();
   ok(pl.hits && pl.hits.some(h => h.part === '17910-TST-940'), 'searching 17910TST940S finds it');
+  // 12m (Sam 2026-10-25 "koi bhi part miss nhi hona he", "har part aur har part ka diagram aur photo"): the A-Z + old/new lists (Excel),
+  // Sam's own parts list, the upload package photos and the old Hero Honda books
+  { const R2 = T + '/raw2', X = T + '/xl'; fs.cpSync(R, R2, { recursive: true }); fs.mkdirSync(X, { recursive: true });
+    const c = (col, v) => `<c r="${col}1" t="inlineStr"><is><t>${v}</t></is></c>`, row = vs => '<row>' + vs.map((v, i) => c('ABCDEFGHIJKLMNOP'[i], v)).join('') + '</row>';
+    const xlsx = (f, sheets) => { const D = W + '/x' + Math.random().toString(36).slice(2); fs.mkdirSync(D + '/xl/worksheets', { recursive: true });
+      sheets.forEach((rs, i) => rs && fs.writeFileSync(D + `/xl/worksheets/sheet${i + 1}.xml`, `<?xml version="1.0"?><worksheet><sheetData>${rs.map(row).join('')}</sheetData></worksheet>`));
+      execFileSync('zip', ['-q', '-r', f, 'xl'], { cwd: D }); };
+    xlsx(X + '/Hero_All_Parts_A-Z.xlsx', [[['Part No', 'Part Name', 'MRP (Rs)', 'Status', 'MOQ', 'Type', 'Naya Part No', 'Naya MRP', 'Purane Numbers', 'Alternate', 'Fits (models)'],
+        ['55555-TST-100', 'LEVER TEST', '250', 'Public e-catalogue me nahi', '', '', '', '', '55555TST099', '', 'Xtreme Sports (Feb, 2015), Duet (Sep, 2015)'],
+        ['99999-TST-003', 'BOLT TEST', '75', 'Chalu (Regular)', '', '', '', '', '', '', ''],
+        ['99999-TST-002', 'GASKET TEST', '', 'Purana number, naya number dekho', '', '', '99999-TST-NEW', '', '', '', '']],
+      null, [['Kit No', 'Kit Name', 'MRP (Rs)'], ['20K999S', 'KIT TEST', '945']], [['Family', 'Model', 'Model name (code)'], ['CD Deluxe', 'CD Deluxe (Nov, 2006)', 'CD_DELUXE_MMC']]]);
+    xlsx(R2 + '/HERO PARTS ;IST.xlsx', [[['Part #', 'SKU'], ['*44444TST200S*', '*44444TST200S*'], ['44444TST201S', 'CABLE TEST-44444TST201S']]]);
+    fs.writeFileSync(W + '/44444-TST-201.jpg', jpg('photo2')); fs.mkdirSync(W + '/HERO_Upload_Package/images/parts', { recursive: true }); fs.mkdirSync(W + '/HERO_Upload_Package/images/group', { recursive: true });
+    fs.copyFileSync(W + '/44444-TST-201.jpg', W + '/HERO_Upload_Package/images/parts/44444-TST-201.jpg'); fs.copyFileSync(W + '/E-1_SPLENDOR_TST1.jpg', W + '/HERO_Upload_Package/images/group/55555-TST-100.jpg');
+    execFileSync('zip', ['-0', '-q', '-r', R2 + '/HERO_Upload_Package_IMAGES_part1.zip', 'HERO_Upload_Package'], { cwd: W });
+    fs.writeFileSync(R2 + '/old-book.pdf', Buffer.alloc(300));
+    fs.writeFileSync(R2 + '/hero_old_books.json', JSON.stringify({ books: [{ file: 'old-book.pdf', size: 300, title: 'CD Dawn (Nov, 2006)', pages: [[24, 'F-3', 'HANDLE LEVER', [['1', '17910-TST-940', 'CABLE COMP., THROTTLE', '1'], ['2', '33333-TST-300', 'GRIP TEST', '2']]]] },
+      { file: 'not-uploaded.pdf', size: 9, title: 'Passion PRO', pages: [[3, 'E-1', 'X', [['1', '22222-TST-001', 'X', '1']]]] }] }));
+    const i2 = writeHero(T + '/pub', R2, T + '/lists', null, X), q = JSON.parse(fs.readFileSync(T + '/lists/hero.json', 'utf8')), qg = JSON.parse(fs.readFileSync(T + '/lists/hero-dg.json', 'utf8'));
+    const lv = q.vars.indexOf('Hero parts lists (Excel)'), bv = q.vars.indexOf('CD Dawn (Nov, 2006) (old Hero Honda book)'), rowsOf = n => q.d.filter(r => r[5] === n);
+    ok(i2.oldBooks === 1 && bv >= 0 && !q.vars.some(v => /Passion PRO/.test(v)), 'old Hero Honda book whose PDF is uploaded is an edition; one not uploaded is left out');
+    const bk = rowsOf('17910-TST-940');
+    ok(bk.length === 1 && bk[0][11].join() === String(bv) && bk[0][1] === -1 && qg.f[qg.p[bv]['F-3']] === 'pdf:catalogues/hero-raw/old-book.pdf:0:300:24:0,0,1,1',
+      '17910-TST-940 shows in its old book with the page as diagram (not again in the discontinued list)');
+    ok(/Discontinued 30-11-2018/.test(bk[0][8]) && /New no\. 17910-TST-A00/.test(bk[0][8]) && /Last model CD Deluxe \(Nov, 2006\)/.test(bk[0][8]), 'the book row keeps the discontinued date, new no. and the last model by name');
+    const a = rowsOf('55555-TST-100')[0];
+    ok(a && a[11].join() === String(lv) && q.desc[a[6]] === 'LEVER TEST' && q.mrp['55555-TST-100'] === 250 && /Not in Hero's e-catalogue/.test(a[8]) && /Old no\. 55555TST099/.test(a[8]) && /Fits Xtreme Sports \(Feb, 2015\), Duet \(Sep, 2015\)$/.test(a[8]),
+      'A-Z part no list has: name, MRP, status in English, old no., bikes (names with commas kept whole)');
+    ok(q.mrp['99999-TST-003'] === 75 && rowsOf('99999-TST-002').every(r => /New no\. 99999-TST-NEW/.test(r[8])) && rowsOf('99999-TST-003').length === 1, 'a known part gets its missing MRP and new no. from the lists, no second row');
+    ok(rowsOf('20K999S').length === 1 && q.mrp['20K999S'] === 945, 'kits from the A-Z list');
+    const s1 = rowsOf('44444TST200S'), s2 = rowsOf('44444TST201S');
+    ok(s1.length === 1 && s2.length === 1 && q.desc[s2[0][6]] === 'CABLE TEST' && s1[0][11].join() === String(lv), "Sam's own parts list: every number in (name without the number)");
+    ok(q.phf['44444TST201S'] && q.phz[q.phf['44444TST201S'][0]] === 'catalogues/hero-raw/HERO_Upload_Package_IMAGES_part1.zip' && !q.phf['55555-TST-100'], 'upload package part photo goes to the same part written without dashes; diagrams in it are not photos');
+    ok(i2.lists && i2.lists.parts === 4 && i2.lists.files.join() === 'Hero_All_Parts_A-Z.xlsx,HERO PARTS ;IST.xlsx', 'build report counts the list parts: ' + JSON.stringify(i2.lists));
+  }
 } catch (e) { ok(false, 'error ' + e.stack); }
 srv.kill(); if (fails) console.log(log.slice(-2000)); console.log(fails ? fails + ' FAILED' : 'ALL PASS'); process.exit(fails ? 1 : 0);

@@ -136,6 +136,11 @@ try {
     fs.writeFileSync(R2 + '/old-book.pdf', Buffer.alloc(300));
     fs.writeFileSync(R2 + '/hero_old_books.json', JSON.stringify({ books: [{ file: 'old-book.pdf', size: 300, title: 'CD Dawn (Nov, 2006)', pages: [[24, 'F-3', 'HANDLE LEVER', [['1', '17910-TST-940', 'CABLE COMP., THROTTLE', '1'], ['2', '33333-TST-300', 'GRIP TEST', '2']]]] },
       { file: 'not-uploaded.pdf', size: 9, title: 'Passion PRO', pages: [[3, 'E-1', 'X', [['1', '22222-TST-001', 'X', '1']]]] }] }));
+    // 12n: the MRP lists (own MRP only)
+    xlsx(X + '/Hero_Parts_MRP_Filled.xlsx', [[['Part No', 'Part Name', 'Status', 'New part no.', 'Bikes', 'In app now', 'MRP (Rs)', 'Matched Part No', 'e-cat Description', 'Match via'],
+      ['44444TST201S', 'CABLE TEST', '', '', '', 'Not yet', '315', '44444-TST-201', '', 'exact'], ['44444TST200S', '', '', '', '', 'Not yet', '99', 'family:44444TST2', '', 'variant-family']]]);
+    xlsx(X + '/Hero_MRP_Extra_From_Catalogue.xlsx', [[['Part No', 'Part Name', 'Status', 'MRP (Rs)', 'Matched Part No', 'Source'], ['33333-TST-300, 33333-TST-300H', 'GRIP TEST', '', '120', '33333-TST-300', 'Same part (A-Z)'],
+      ['17910-TST-940', 'CABLE', '', '400', '17910-TST-A00', 'Naye number ka MRP (A-Z)']]]);
     const i2 = writeHero(T + '/pub', R2, T + '/lists', null, X), q = JSON.parse(fs.readFileSync(T + '/lists/hero.json', 'utf8')), qg = JSON.parse(fs.readFileSync(T + '/lists/hero-dg.json', 'utf8'));
     const lv = q.vars.indexOf('Hero parts lists (Excel)'), bv = q.vars.indexOf('CD Dawn (Nov, 2006) (old Hero Honda book)'), rowsOf = n => q.d.filter(r => r[5] === n);
     ok(i2.oldBooks === 1 && bv >= 0 && !q.vars.some(v => /Passion PRO/.test(v)), 'old Hero Honda book whose PDF is uploaded is an edition; one not uploaded is left out');
@@ -151,7 +156,9 @@ try {
     const s1 = rowsOf('44444TST200S'), s2 = rowsOf('44444TST201S');
     ok(s1.length === 1 && s2.length === 1 && q.desc[s2[0][6]] === 'CABLE TEST' && s1[0][11].join() === String(lv), "Sam's own parts list: every number in (name without the number)");
     ok(q.phf['44444TST201S'] && q.phz[q.phf['44444TST201S'][0]] === 'catalogues/hero-raw/HERO_Upload_Package_IMAGES_part1.zip' && !q.phf['55555-TST-100'], 'upload package part photo goes to the same part written without dashes; diagrams in it are not photos');
-    ok(i2.lists && i2.lists.parts === 4 && i2.lists.files.join() === 'Hero_All_Parts_A-Z.xlsx,HERO PARTS ;IST.xlsx', 'build report counts the list parts: ' + JSON.stringify(i2.lists));
+    ok(i2.lists && i2.lists.parts === 4 && i2.lists.files.join() === 'Hero_All_Parts_A-Z.xlsx,HERO PARTS ;IST.xlsx,Hero_Parts_MRP_Filled.xlsx,Hero_MRP_Extra_From_Catalogue.xlsx', 'build report counts the list parts: ' + JSON.stringify(i2.lists));
+    ok(q.mrp['44444TST201S'] === 315 && q.mrp['33333-TST-300'] === 120 && q.mrp['44444TST200S'] == null && q.mrp['17910-TST-940'] == null && i2.lists.mrpFound === 2 && i2.lists.mrpNotOwn === 2,
+      "MRP lists: a part's own MRP is used; a look-alike or new number's MRP is not");
   }
 } catch (e) { ok(false, 'error ' + e.stack); }
 srv.kill(); if (fails) console.log(log.slice(-2000)); console.log(fails ? fails + ' FAILED' : 'ALL PASS'); process.exit(fails ? 1 : 0);

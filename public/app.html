@@ -3785,7 +3785,7 @@ function catFitsG(vv,vb){const by=new Map();vv.forEach(v=>{const m=catVmod(v)||v
   if(ys.every(a=>a.length))return {m,note:catYrsTxt([...new Set(ys.flat())].sort((a,b)=>a-b)),g:[]};
   const G=new Map();vs.forEach(v=>{let t=(v.startsWith(m)?v.slice(m.length):v).replace(/^[\s·]+/,'').replace(/^\((.*)\)$/,'$1').trim(),code='';
    const c=t.match(/\s*(?:-\s*)?\b([A-Z0-9]*\d[A-Z0-9]*[A-Z][A-Z0-9]*(?:\s*\/\s*[A-Z0-9]{5,})*)$/);if(c&&c[1].length>=6&&c.index>0){code=c[1].replace(/\s*\/\s*/g,' / ');t=t.slice(0,c.index).replace(/[\s-]+$/,'');}
-   const seg=t.split(/\s+-\s+/);if(seg.length>1&&/\d{3}/.test(seg[0]))seg.shift();const k=seg.join(' · ').toLowerCase().replace(/\b[a-z]/g,a=>a.toUpperCase()).replace(/\b(Bs ?(Vi|Iv|6|4)|Abs|Ds|Ss|Uk|Usa|Eu)\b/gi,a=>a.toUpperCase())||'Variant';
+   const seg=t.split(/\s+-\s+/);if(seg.length>1&&/\d{3}/.test(seg[0]))seg.shift();const mu=m.toUpperCase();if(seg[0].toUpperCase().startsWith(mu+' '))seg[0]=seg[0].slice(mu.length+1);const k=seg.join(' · ').toLowerCase().replace(/\b[a-z]/g,a=>a.toUpperCase()).replace(/\b(Bs ?(Vi|Iv|6|4)|Abs|Ds|Ss|Uk|Usa|Eu)\b/gi,a=>a.toUpperCase())||'Variant';
    const o=G.get(k)||{n:k,c:[]};if(code)o.c.push(code);G.set(k,o);});
   return {m,note:vs.length+' of '+tot+' variants',g:[...G.values()]};});}
 function catFitsBox(L,vb){if(!L.length)return '';const grp=o=>`<li><span>${esc(o.n)}</span>${o.c.length?`<details class="fit-c"><summary>${o.c.length} code${o.c.length===1?'':'s'}</summary><div class="num">${o.c.map(esc).join(', ')}</div></details>`:''}</li>`;

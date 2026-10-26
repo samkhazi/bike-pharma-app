@@ -753,6 +753,8 @@ function serveStatic(req, res, url, user) {
   }
   let file = path.join(PUBLIC_DIR, rel);
   if (HERO_SERVED.has(rel) && fs.existsSync(path.join(HERO_OUT, path.basename(rel)))) file = path.join(HERO_OUT, path.basename(rel));
+  // 13a: the aftermarket parts list, made on Sam's Mac from All Catalogues > After Market Brands and uploaded in Admin > More > Catalogue files
+  if (rel === 'cat/am.json' && fs.existsSync(path.join(FILES_DIR, 'catalogues', 'aftermarket', 'am_build.json'))) file = path.join(FILES_DIR, 'catalogues', 'aftermarket', 'am_build.json');
   let st; try { st = fs.statSync(file); } catch (e) { return json(res, 404, { error: 'Not found' }); }
   if (st.isDirectory()) return json(res, 404, { error: 'Not found' });
   const ext = path.extname(file).toLowerCase(); const type = MIME[ext] || 'application/octet-stream';

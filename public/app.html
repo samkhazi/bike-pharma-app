@@ -2861,7 +2861,7 @@ const catBinAll=f=>CAT_BIN[f]||(CAT_BIN[f]=fetch(f).then(x=>{if(!x.ok)throw Erro
 const catBin=u=>{if(CAT_BURL[u])return CAT_BURL[u];const [,f,o,l]=u.split(':'),a=+o,n=+l;
  const one=()=>fetch(f,{headers:{Range:'bytes='+a+'-'+(a+n-1)}}).then(x=>{if(x.status===206){CAT_RG=true;return x.arrayBuffer();}if(!x.ok)throw Error(x.status);
   CAT_RG=false;const p=x.arrayBuffer();if(!CAT_BIN[f])CAT_BIN[f]=p;return p.then(b=>b.slice(a,a+n));});
- const p=(CAT_RG===false||CAT_BIN[f]?catBinAll(f).then(b=>b.slice(a,a+n)):one()).then(b=>URL.createObjectURL(new Blob([b],{type:'image/jpeg'})));
+ const p=(CAT_RG===false||CAT_BIN[f]?catBinAll(f).then(b=>b.slice(a,a+n)):one()).then(b=>URL.createObjectURL(new Blob([b],{type:new Uint8Array(b.buffer||b,b.byteOffset||0,1)[0]===0x89?'image/png':'image/jpeg'})));   /* 12y: TVS diagrams are PNG */
  CAT_BURL[u]=p;p.catch(()=>{delete CAT_BURL[u];});return p;};
 const catMk=(e,d)=>new Promise((ok,no)=>{const vb=e.vb,rows=[],n=d.d.length;let j=0;
  const sp=d.figs.map(f=>({u:d.sheets[f[0]][0],W:d.sheets[f[0]][1],H:d.sheets[f[0]][2],x:f[1],y:f[2],w:f[3],h:f[4]}));

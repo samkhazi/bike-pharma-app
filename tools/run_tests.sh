@@ -24,6 +24,7 @@ node tools/test_hondabuild.mjs || r=1   # update 11z: Honda made on the server f
 node tools/test_bajajbuild.mjs || r=1   # update 12b: Bajaj made on the server from the Bajaj Catalogue folder (own server on 3027)
 node tools/test_yamahabuild.mjs || r=1   # update 12e: Yamaha made on the server from the Yamaha Catalogue folder (own server on 3028)
 node tools/test_rebuild.mjs || r=1   # update 12g: Royal Enfield made on the server from the RE Catalogue folder (own server on 3030)
+node tools/test_tvsbuild.mjs || r=1   # update 12y: TVS made on the server from the TVS Catalogues folder (own server on 3031)
 node tools/test_12h.mjs || r=1   # update 12h: bike number -> RC through VR Garage (mock on 3031)
 node tools/test_backup.mjs || r=1   # update 11u: backups (own server on 3022)
 node tools/test_alerts.mjs || r=1   # update 11w: email alerts + 9 pm report (own server on 3023, fake SMTP on 3024)

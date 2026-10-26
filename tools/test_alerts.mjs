@@ -6,12 +6,20 @@ const T = '/tmp/claude-0/bptest-alerts'; fs.rmSync(T, { recursive: true, force: 
 fs.writeFileSync(T + '/nginx.conf', 'proxy_pass http://127.0.0.1:3010;');
 // the fake SMTP server: keeps every mail (decoded) and the login it got
 const mails = []; let auth = [];
+// a mail's parts (12z: text + html + the PDF report): text = the plain text part, html, pdf (Buffer)
+function parse(h, b) {
+  const o = { text: '', html: '', pdf: null }, walk = (h, b) => { const bd = /boundary="([^"]+)"/.exec(h);
+    if (bd) { for (const p of b.split('--' + bd[1]).slice(1, -1)) { const i = p.indexOf('\n\n'); walk(p.slice(0, i), p.slice(i + 2)); } return; }
+    const v = Buffer.from(b.replace(/\s/g, ''), 'base64');
+    if (/application\/pdf/.test(h)) o.pdf = v; else if (/text\/html/.test(h)) o.html = v.toString(); else if (!o.text) o.text = v.toString(); };
+  walk(h, b); return o;
+}
 const smtp = net.createServer(s => {
   let buf = '', data = false, msg = [], rcpt = [], st = 0;
   s.write('220 fake ESMTP\r\n');
   s.on('data', d => { buf += d; let i; while ((i = buf.indexOf('\r\n')) >= 0) { const l = buf.slice(0, i); buf = buf.slice(i + 2);
     if (data) { if (l === '.') { data = false; const raw = msg.join('\n'), [h, b] = raw.split('\n\n'); const sub = (/^Subject: (.*)$/m.exec(h) || [])[1] || '';
-      mails.push({ to: rcpt.slice(), subject: /^=\?UTF-8\?B\?/.test(sub) ? Buffer.from(sub.slice(10, -2), 'base64').toString() : sub, text: Buffer.from(b.replace(/\s/g, ''), 'base64').toString() }); msg = []; rcpt = []; s.write('250 queued\r\n'); } else msg.push(l.replace(/^\.\./, '.')); continue; }
+      mails.push({ to: rcpt.slice(), subject: /^=\?UTF-8\?B\?/.test(sub) ? Buffer.from(sub.slice(10, -2), 'base64').toString() : sub, ...parse(h, raw.slice(h.length + 2)) }); msg = []; rcpt = []; s.write('250 queued\r\n'); } else msg.push(l.replace(/^\.\./, '.')); continue; }
     if (st) { auth.push(Buffer.from(l, 'base64').toString()); s.write(st++ === 1 ? '334 UGFzc3dvcmQ6\r\n' : '235 ok\r\n'); if (st > 2) st = 0; continue; }
     if (/^EHLO/.test(l)) s.write('250-fake\r\n250 AUTH LOGIN\r\n'); else if (l === 'AUTH LOGIN') { st = 1; s.write('334 VXNlcm5hbWU6\r\n'); }
     else if (/^MAIL FROM/.test(l)) s.write('250 ok\r\n'); else if (/^RCPT TO:<(.*)>/.test(l)) { rcpt.push(/<(.*)>/.exec(l)[1]); s.write('250 ok\r\n'); } else if (l === 'DATA') { data = true; s.write('354 go\r\n'); } else if (l === 'QUIT') { s.write('221 bye\r\n'); s.end(); } else s.write('250 ok\r\n'); } });
@@ -28,10 +36,11 @@ const mail = re => mails.find(m => re.test(m.subject));
 const login = (ip, password) => fetch(BASE + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': ip }, body: JSON.stringify({ id: 'sam@bikepharma.com', password }) });
 try {
   await until(() => /on http/.test(log));
-  ok(await until(() => mail(/Website server started/)), 'server start: an email');
-  const m0 = mail(/Website server started/);
-  ok(m0.to.join() === 'one@test.in,two@test.in' && auth[0] === 'alerts@test.in' && auth[1] === 'abcdefghijklmnop', 'to both addresses, logged in with the Gmail App Password (spaces taken out)');
   ok(await until(() => mail(/daily report/)), 'the products report goes at the report hour: ' + (mail(/daily report/) || {}).subject);
+  const m0 = mail(/daily report/);
+  ok(m0.to.join() === 'one@test.in,two@test.in' && auth[0] === 'alerts@test.in' && auth[1] === 'abcdefghijklmnop', 'to both addresses, logged in with the Gmail App Password (spaces taken out)');
+  ok(/Products added (today|that day)/.test(m0.text) && /BIKE PHARMA/.test(m0.html) && m0.pdf && m0.pdf.slice(0, 5).toString() === '%PDF-' && /%%EOF\s*$/.test(m0.pdf.toString('latin1')), 'the report: plain text, a designed html email and a PDF attached');
+  await wait(1500); ok(!mails.some(m => /server started/i.test(m.subject)), '12z: no email when the server starts');
   // first good login from one IP, then wrong passwords from another
   let r = await login('10.0.0.1', 'Test@1234'); const cookie = (r.headers.get('set-cookie') || '').split(';')[0]; await r.json();
   for (let i = 0; i < 10; i++) await (await login('6.6.6.6', 'nope' + i)).json();

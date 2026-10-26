@@ -8,11 +8,9 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 PM2=./node_modules/.bin/pm2
 if [ ! -x "$PM2" ]; then echo "pm2 nahi mila: pehle  bash install.sh  chalao"; exit 1; fi
-if "$PM2" jlist 2>/dev/null | grep -q '"name":"bikepharma"'; then
-  "$PM2" restart bikepharma >/dev/null
-else
-  NODE_ARGS=""; node -e "require('node:sqlite')" >/dev/null 2>&1 || NODE_ARGS="--experimental-sqlite"
-  NODE_ARGS="$NODE_ARGS" "$PM2" start ecosystem.config.cjs >/dev/null
-fi
+# 12z: always start from ecosystem.config.cjs, so a changed memory limit takes effect ("pm2 restart" keeps the old settings)
+"$PM2" delete bikepharma >/dev/null 2>&1 || true
+NODE_ARGS=""; node -e "require('node:sqlite')" >/dev/null 2>&1 || NODE_ARGS="--experimental-sqlite"
+NODE_ARGS="$NODE_ARGS" "$PM2" start ecosystem.config.cjs >/dev/null
 "$PM2" save >/dev/null 2>&1 || true
 "$PM2" status bikepharma 2>/dev/null | grep -E "bikepharma" | head -1 || true

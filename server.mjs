@@ -535,7 +535,8 @@ const PHOTO_DIR = path.join(DATA_DIR, 'photos');
 // 11w: security alerts by email at once + the 9 pm products report (lib/monitor.mjs; SMTP_* and ALERT_TO in .env)
 const MON = monitor({ store, rootDir: ROOT, dataDir: DATA_DIR, env, getState: k => stateVal(k), photoGone: u => photoGone(u), photoDir: PHOTO_DIR });
 CATG.onStop = (user, kind, ip) => MON.catStop(user, kind, ip);
-setTimeout(() => MON.alert('start', String(process.pid), 'Website server started', ['The Bike Pharma site started (after update.sh, a restart or a server reboot).', 'If nobody ran update.sh or restarted it just now, check the server.']), 5000).unref();
+// 12z: no email when the site starts (Sam 2026-10-26: one came every few seconds while pm2 restarted it); only a line in the log
+console.log(new Date().toISOString(), 'server started, pid ' + process.pid);
 const PHOTO_MAX = 25 * 1024 * 1024;
 const PHOTO_URL = /^\/photos\/([a-f0-9]{32})(?:-([cw]))?\.(jpg|png|webp)$/;
 const PHOTO_AI = photoAi({ root: ROOT, photoDir: PHOTO_DIR, dataDir: DATA_DIR, env });

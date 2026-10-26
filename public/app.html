@@ -3261,6 +3261,12 @@ function catSearch(A){const sc=catScope(A);if(!sc)return null;const q=A.q.trim()
   let list=sc.rows.filter(m);
   if(!list.length&&!same){list=wide(m);if(list.length)out.wide=1;}
   if(!list.length){list=sc.rows.filter(m2);if(!list.length&&!same){list=wide(m2);if(list.length)out.wide=1;}}
+  /* 12w (Sam: 16700AAEL42 in Bajaj Pulsar 220F said "not found", it is Hero's): a number not in this brand is looked for in the
+     catalogues its shape points to, split brands asked on the server too, and shown as another brand's part */
+  if(!list.length&&A.vb!=='Any'){const R=catRoute(pq),L=R.l.filter(e=>e.vb!==A.vb),need=L.filter(e=>e.st<2);
+   if(need.length){catNeed(need);if(need.some(e=>e.st<2&&e.st!==3)){out.loading='pn';out.pend=need.filter(e=>e.st!==3).map(e=>e.vb);out.fail=out.fail||[];return out;}}
+   const sp=L.filter(e=>e.split&&e.st===2),ss=sp.map(e=>catSplitQ(e,'pn:'+pq,{pn:q}));if(ss.includes(1)){out.loading='pn';out.pend=sp.filter((e,i)=>ss[i]===1).map(e=>e.vb);out.fail=out.fail||[];return out;}
+   const vbs=new Set(L.map(e=>e.vb));list=catRows().filter(r=>vbs.has(r.vb)&&m(r));if(list.length)out.wide=1;}
   /* Any brand: the files the number can be in load side by side (catRoute); the less likely ones only when those have not got it.
      Until they are in, the screen says it is still looking, not that the number is in no catalogue */
   if(A.vb==='Any'){const R=CAT_EVERY===pq?{l:CAT_ALL.slice(),p:[]}:catRoute(pq),two=!list.length&&R.l.every(e=>e.st>1),want=R.l.concat(two?R.p:[]),need=want.filter(e=>e.st<2);if(need.length)catNeed(need);

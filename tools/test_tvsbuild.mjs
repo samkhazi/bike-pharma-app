@@ -5,9 +5,17 @@ import { spawn, execFileSync } from 'node:child_process'; import fs from 'node:f
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 const T = '/tmp/claude-0/bptest-tvs'; fs.rmSync(T, { recursive: true, force: true });
 const D = T + '/pf/catalogues/tvs'; fs.mkdirSync(D, { recursive: true });
-const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex');
+const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452000002000000018008060000001f', 'hex');
 fs.mkdirSync(T + '/z'); fs.writeFileSync(T + '/z/FIG01.png', PNG);
 execFileSync('zip', ['-0', '-q', D + '/tvs_diagrams.zip', 'FIG01.png'], { cwd: T + '/z' });
+// 13b: TVS Catalogue2 extras: part photos, a colour picture with its painted parts, a kit with its photo and contents, new/old numbers
+fs.writeFileSync(T + '/z/K6020030.png', PNG); execFileSync('zip', ['-0', '-q', D + '/TVS_Part_Photos_01.zip', 'K6020030.png'], { cwd: T + '/z' });
+fs.mkdirSync(T + '/z/MOPED/XL100/1', { recursive: true }); fs.writeFileSync(T + '/z/MOPED/XL100/1/RED (1AP).png', PNG);
+execFileSync('zip', ['-0', '-q', D + '/TVS_Painted_Parts_MOPED.zip', 'MOPED/XL100/1/RED (1AP).png'], { cwd: T + '/z' });
+fs.mkdirSync(T + '/z/photos'); fs.writeFileSync(T + '/z/photos/P320980.png', PNG); execFileSync('zip', ['-0', '-q', D + '/TVS_Kit_Parts.zip', 'photos/P320980.png'], { cwd: T + '/z' });
+fs.writeFileSync(D + '/tvs_extra.json', JSON.stringify({ sup: { S1200270: 'S1200280' }, alt: { K6020030: ['K6020031'] }, blocked: ['N81406704D'], parts: [['N9999990', 'NEW PART FROM FULL LIST']], mrp: { P1003501A: 735, K6020030: 1 },
+  painted: [['MOPED', 'XL100', '1', 'RED', '1AP', 'TVS_Painted_Parts_MOPED.zip', 'MOPED/XL100/1/RED (1AP).png', [['1', 'P1003501A', 'Fender Front Red', '1']]]],
+  kits: [['MOPED', 'XL Super', 'P320980', 'PISTON KIT STD', 'XL/ SUPER', 'photos/P320980.png', [['420950000', 'SPRING RING12X1', '2', '']]]] }));
 fs.writeFileSync(D + '/tvs_build.json', JSON.stringify({ src: 'test',
   eds: [{ m: 'Wego 110', v: 'DRUM', kind: 'cat', figs: [['1', 'ENGINE ASSY', 'FIG01', [['1', 'K6020030', 'CRANKSHAFT ASSY WEGO', '1', ''], ['2', 'S1200270', 'TUBULAR DOWEL', '4', 'BSIV']]]] },
     { m: 'Wego 110', v: 'DISC', kind: 'cat', figs: [['1', 'ENGINE ASSY', 'FIG01', [['1', 'K6020030', 'CRANKSHAFT ASSY WEGO', '1', '']]]] },
@@ -24,18 +32,24 @@ try {
   const lr = await fetch(BASE + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: 'sam@bikepharma.com', password: 'Test@1234' }) });
   cookie = (lr.headers.get('set-cookie') || '').split(';')[0];
   const d = JSON.parse(fs.readFileSync(T + '/data/cat/tvs.json', 'utf8')), g = await (await get('/cat/tvs-dg.json')).json();
-  ok(d.models.join() === 'Wego 110,Jive,Other parts (price list)' && d.vars[2] === 'Jive · JIVE BASE BASE 2010 (where-used list)', 'models in the app order; where-used variants named so; price list last');
+  ok(d.models.join() === 'XL100,Wego 110,Jive,Kits (TVS),Other parts (price list)' && d.vars.includes('Jive · JIVE BASE BASE 2010 (where-used list)'), 'models in the app order; where-used variants named so; kits and price list last: ' + d.models.join());
   const by = pn => d.d.filter(r => r[5] === pn);
-  ok(by('K6020030').length === 1 && by('K6020030')[0][11].join() === '0,1' && by('S1200270')[0][11].join() === '0' && by('S1200270')[0][8] === 'BSIV', 'one line lists every variant with the part; remarks kept');
+  ok(by('K6020030').length === 1 && by('K6020030')[0][11].map(i => d.vars[i]).join() === 'Wego 110 · DRUM,Wego 110 · DISC' && by('S1200270')[0][11].map(i => d.vars[i]).join() === 'Wego 110 · DRUM' && by('S1200270')[0][8] === 'New no. S1200280; BSIV', 'one line lists every variant with the part; remarks kept');
   ok(d.mrp.K6020030 === 4675 && !/ndp/i.test(JSON.stringify(d)), 'MRP only');
   ok(by('G4011180').length === 1 && by('G4011180')[0][8] === 'Kit / consumable', 'price-list part with no model kept');
-  const ref = g.f[g.p['0']['1']], m = /^pf:catalogues\/tvs\/tvs_diagrams\.zip:(\d+):(\d+)$/.exec(ref || '');
+  ok(by('K6020030')[0][8] === 'Alternate no. K6020031' && by('N81406704D')[0][8] === 'Blocked by TVS' && by('N9999990').length === 1, '13b: alternate / blocked noted, parts only in the full list added');
+  const pv = d.vars.indexOf('XL100 · RED · painted parts'), pr = by('P1003501A')[0], kv = d.vars.indexOf('Kits (TVS) · XL Super kits');
+  ok(pv >= 0 && pr && pr[11].join() === String(pv) && pr[4] === '1' && d.mrp.P1003501A === 735 && d.mrp.K6020030 === 4675, '13b: painted parts per colour, MRP added only where none');
+  const pref = g.f[g.p[String(pv)]['Painted parts · RED']], km = by('420950000')[0];
+  ok(/TVS_Painted_Parts_MOPED\.zip:\d+:\d+$/.test(pref || '') && kv >= 0 && km && km[8] === 'In kit P320980' && by('P320980')[0][4] === 'Kit', '13b: colour picture as the diagram; kit with its contents');
+  const ph = d.phf.K6020030; ok(ph && d.phz[ph[0]] === 'catalogues/tvs/TVS_Part_Photos_01.zip' && ph[3] === 512 && ph[4] === 384 && d.phf.P320980, '13b: each part\'s own photo from the photo zips, with its size');
+  const ref = g.f[g.p[String(d.vars.indexOf('Wego 110 · DRUM'))]['1']], m = /^pf:catalogues\/tvs\/tvs_diagrams\.zip:(\d+):(\d+)$/.exec(ref || '');
   ok(m && fs.readFileSync(D + '/tvs_diagrams.zip').subarray(+m[1], +m[1] + +m[2]).equals(PNG), 'diagram = its PNG in the zip, by byte range');
-  ok(g.p['2']['Black + Gold'] == null, 'a colour list has no diagram');
+  ok(g.p[String(d.vars.indexOf('Jive · JIVE BASE BASE 2010 (where-used list)'))]['Black + Gold'] == null, 'a colour list has no diagram');
   const hd = await (await get('/cat/tvs.json')).json();
   ok(hd.split === 1 && hd.d.length === 0 && hd.n === d.d.length, 'cat/tvs.json sends the head only');
   const mf = JSON.parse(fs.readFileSync('public/cat/more-files.json', 'utf8')).sets.find(s => s.dir === 'catalogues/tvs');
-  ok(mf && mf.pick === 'Downloads > TVS Catalogues' && mf.files.map(f => f[0]).join() === 'tvs_build.json,tvs_diagrams.zip', 'upload card: tvs_build.json + tvs_diagrams.zip');
+  ok(mf && mf.pick === 'All Catalogues > TVS Catalogue2' && mf.files.length === 13 && mf.files[0][0] === 'tvs_build.json', 'upload card: the old 2 files + the 11 new ones');
 } catch (e) { ok(false, 'error ' + e.stack); }
 finally { srv.kill(); }
 if (fails) console.log(log.slice(-3000));

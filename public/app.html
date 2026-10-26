@@ -3051,8 +3051,13 @@ const catQb=q=>{q=String(q||'').trim().toUpperCase();const k=catPk(q);
  return /^[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{3}$/.test(q)?k.slice(0,10):/^[A-Z0-9]{5}-[A-Z0-9]{3}-[A-Z0-9]{5}$/.test(q)?k.slice(0,11):/^[A-Z0-9]{5}-[A-Z0-9]{4}-[A-Z0-9]{1,4}$/.test(q)?k.slice(0,9):'';};
 /* numbers a remark gives for the same line: TVS 'Alternate no. X in the TVS parts list', Kawasaki India 'Old Bajaj (Probiking) no. PB...' */
 /* 12l (Sam 2026-10-25 "old part ke neeche usi part ka new part number bhi show hona he"): the new number of a replaced part, under it */
-const catNewNo=rem=>{const a=[...new Set([...String(rem||'').matchAll(/New no\. ([A-Z0-9][A-Z0-9-]{4,})/g)].map(m=>m[1]))];
- return a.length?`<div class="row wrap" style="gap:6px;align-items:center"><span class="pill g">New part no.</span>${a.map(n=>`<b class="num">${esc(n)}</b>`).join(' ')}</div>`:/No replacement \(Hero: NLS\)/.test(rem||'')?`<div class="cap" style="font-weight:600">No new part number: Hero has stopped this part</div>`:'';};
+/* 12x (Sam: "new part number pe old part number show hona he, with MRP"): New and Old part no. from the catalogue note, each with its
+   own MRP (a split brand's MRP comes from the server once) */
+const catNoMrp=(vb,n)=>{const e=vb&&CAT_ALL.find(x=>x.vb===vb);if(!e||!e.d)return 0;const m=catMrpFix(n,catMrpOf(e.d,n));if(!m&&e.split&&e.st===2)catSplitQ(e,'pn:'+catPk(n),{pn:n});return m;};
+const catNewNo=(rem,vb,skip)=>{const nos=re=>{const seen=new Set();return [...String(rem||'').matchAll(re)].map(m=>m[1]).sort((a,b)=>b.includes('-')-a.includes('-')).filter(n=>{const k=catPk(n);if(seen.has(k)||k===catPk(skip||''))return false;seen.add(k);return true;});};
+ const a=nos(/New no\. ([A-Z0-9][A-Z0-9-]{4,})/g),o=nos(/Old no\. ([A-Z0-9][A-Z0-9-]{4,})/g);
+ const line=(pill,cls,l)=>`<div class="row wrap" style="gap:6px;align-items:center"><span class="pill ${cls}">${pill}</span>${l.map(n=>{const m=catNoMrp(vb,n);return `<b class="num">${esc(n)}</b>${m?`<span class="cap" style="font-weight:600">MRP ${inr(m)}</span>`:''}`;}).join(' ')}</div>`;
+ return (a.length?line('New part no.','g',a):/No replacement \(Hero: NLS\)/.test(rem||'')?`<div class="cap" style="font-weight:600">No new part number: Hero has stopped this part</div>`:'')+(o.length?line('Old part no.','',o):'');};
 const catAlt=rem=>{if(!rem||!/no\. /.test(rem))return null;/* 'Old no. X' too (Hero, update 9l) */const a=[...String(rem).matchAll(/(?:Alternate|Old|Probiking\)) no\. ([A-Z0-9][A-Z0-9-]{4,})/g)].map(m=>catPk(m[1]));return a.length?a:null;};
 /* the keys a row is searched by: part number, its base and other numbers, name words, name + diagram words, old and new numbers */
 const catRow=o=>{o.vm=o.vms[0]||'Any';o.pk=catPk(o.part);o.pb=catPb(o.vb,o.part,o.rem);o.alt=catAlt(o.rem);const n=catNorm(o.desc);o.dhay=' '+n+' ';o.dw=n.split(' ');o.hw=catNorm(o.desc+' '+(o.asm||'')).split(' ');o.opk=catPk(o.old);o.spk=catPk(o.sup);return o;};
@@ -3344,7 +3349,7 @@ function catCard(r){const key=r.page+'-'+r.i;const open=!!(S.ui.fpOpen||{})[key]
  ${eng||r.ns?`<div class="row wrap" style="gap:6px">${eng?`<span class="pill ${eng[1]}">${eng[0]}</span>`:''}${r.ns?`<span class="pill a">${r.xl?'Not sold separately':'N.S. in catalogue (not supplied)'}</span>`:''}</div>`:''}
  ${r.old&&!r.sia?`<div class="cap">Old part no. <span class="num">${esc(r.old)}</span></div>`:''}
  ${r.note?`<div class="cap">${esc(r.note)}</div>`:''}
- ${catNewNo(r.rem)}${r.rem&&!/^BS(VI|IV)$/i.test(r.rem)?`<div class="cap">Catalogue note: ${esc(r.rem.replace(/\bthe line above it( \(same ref\))?/i,r.ref?'ref '+r.ref:'another line of this diagram'))}</div>`:''}
+ ${catNewNo(r.rem,r.vb)}${r.rem&&!/^BS(VI|IV)$/i.test(r.rem)?`<div class="cap">Catalogue note: ${esc(r.rem.replace(/\bthe line above it( \(same ref\))?/i,r.ref?'ref '+r.ref:'another line of this diagram'))}</div>`:''}
  ${x?`<button class="row" style="gap:8px;background:var(--y-soft);border-radius:12px;padding:10px 12px;text-align:left;width:100%" onclick="S.ui.scanHit='${x.id}';S.ui.scanMiss=null;go('scanfind')"><div class="grow"><div class="micro muted">${n>0?n+' '+(x.unit||'pcs')+' in stock':'Out of stock'} · Rack</div><b style="font-size:18px">${ic('pin','s16')} ${binOf(x.id)}</b></div><div style="text-align:right"><div class="micro muted">MRP</div><b class="num" style="font-size:18px">${inr(x.mrp)}</b></div></button>`:r.part?invFpAdd(r):''}
  ${r.ext&&!r.txt&&!r.sp&&!r.nofig&&CAT_SITE[r.vb]?`<a class="link" style="align-self:flex-start" href="${esc(catSiteUrl(r))}" target="_blank" rel="noopener">See this diagram in the full ${esc(r.vb)} catalogue</a>`:''}
  ${fv.length?catFitsBox(catFitsG(fv,r.vb),r.vb):''}
@@ -4405,7 +4410,7 @@ function m2PartV0(p){const r=m2Row(p);if(!r)return `<div class="empty">This part
  <div class="grid2 fpc-facts">${facts.map(([a,b])=>`<div><div class="micro muted">${a}</div><b>${esc(b)}</b></div>`).join('')}</div>
  ${r.ns?`<span class="pill a">${r.xl?'Not sold separately':'N.S. in catalogue (not supplied)'}</span>`:''}
  ${r.old&&!r.sia?`<div class="cap">Old part no. <span class="num">${esc(r.old)}</span></div>`:''}${r.note?`<div class="cap">${esc(r.note)}</div>`:''}
- ${catNewNo(r.rem)}${r.rem&&!/^BS(VI|IV)$/i.test(r.rem)?`<div class="cap">Catalogue note: ${esc(r.rem)}</div>`:''}
+ ${catNewNo(r.rem,r.vb)}${r.rem&&!/^BS(VI|IV)$/i.test(r.rem)?`<div class="cap">Catalogue note: ${esc(r.rem)}</div>`:''}
  ${catFitsAt(r)}
  </div>
  ${xrSection(r)}${amSection(r)}${coNeed(r,asm,q=>`m2Part(${q.i})`)}
@@ -6814,7 +6819,7 @@ function m3Det(x,o){const sh=m2Shop(x),n=sh?DB.stock[sh.id]:0,php=catPhoto(x),L=
  <div class="stack" style="gap:2px"><div class="micro muted">${x.sia?'Part number of the assembly':'Part number'}</div>${x.part?`<div class="row m3-pnr"><b class="fpc-pn num grow" id="pn-${x.i}">${esc(x.part)}</b><button class="btn line sm" onclick="catCopy(${x.i})">Copy</button></div>`:`<div class="cap">No number in the catalogue (ordered by colour or as a kit)</div>`}</div>
  <div class="m2-pr" style="font-size:20px">${m2Price(x)}</div>
  ${x.sup?`<div class="row cap" style="background:var(--amber-soft);border-radius:10px;padding:8px 10px">${ic('alert','s16')}<span class="grow">Replaced by <b class="num">${esc(x.sup)}</b>. Order the new number.</span></div>`:''}
- ${x.ns?`<span class="pill a" style="align-self:flex-start">${x.xl?'Not sold separately':'N.S. in catalogue (not supplied)'}</span>`:''}${x.old&&!x.sia?`<div class="cap">Old part no. <span class="num">${esc(x.old)}</span></div>`:''}${x.note?`<div class="cap">${esc(x.note)}</div>`:''}${catNewNo(x.rem)}${x.rem&&!/^BS(VI|IV)$/i.test(x.rem)?`<div class="cap">Catalogue note: ${esc(x.rem)}</div>`:''}
+ ${x.ns?`<span class="pill a" style="align-self:flex-start">${x.xl?'Not sold separately':'N.S. in catalogue (not supplied)'}</span>`:''}${x.old&&!x.sia?`<div class="cap">Old part no. <span class="num">${esc(x.old)}</span></div>`:''}${x.note?`<div class="cap">${esc(x.note)}</div>`:''}${catNewNo(x.rem,x.vb,x.old)}${x.rem&&!/^BS(VI|IV)$/i.test(x.rem)?`<div class="cap">Catalogue note: ${esc(x.rem)}</div>`:''}
  ${sh?`<button class="row" style="gap:8px;background:var(--y-soft);border-radius:12px;padding:10px 12px;text-align:left;width:100%" onclick="S.ui.scanHit='${sh.id}';S.ui.scanMiss=null;go('scanfind')"><div class="grow"><div class="micro muted">${n>0?n+' '+(sh.unit||'pcs')+' in stock':'Out of stock'} · Rack</div><b style="font-size:18px">${ic('pin','s16')} ${esc(binOf(sh.id))}</b></div><div style="text-align:right"><div class="micro muted">Our MRP</div><b class="num" style="font-size:18px">${inr(sh.mrp)}</b></div></button>${n>0?`<button class="btn" onclick="S.ui.scanHit='${sh.id}';S.ui.scanMiss=null;go('scanfind')">${ic('cart','s18')} Add to bill</button>`:allowed('partorders')?`<button class="btn line" onclick="soNewSheet('${sh.id}')">Take order for customer</button>`:''}`:x.part?invFpAdd(x):''}
  <div class="grid2 fpc-facts">${facts.map(([a,b])=>`<div${a==='Book'?' class="m3-wide"':''}><div class="micro muted">${a}</div><b>${esc(b)}</b></div>`).join('')}</div>
  ${catFitsAt(x)}`;}

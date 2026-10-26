@@ -4393,7 +4393,7 @@ function m2PartV0(p){const r=m2Row(p);if(!r)return `<div class="empty">This part
  ${catNewNo(r.rem)}${r.rem&&!/^BS(VI|IV)$/i.test(r.rem)?`<div class="cap">Catalogue note: ${esc(r.rem)}</div>`:''}
  ${catFitsAt(r)}
  </div>
- ${xrSection(r)}${amSection(r)}${need.length?`<div class="sec"><h3 class="h2">Commonly needed with this</h3></div><div class="stack g8">${need.map(mini).join('')}</div>`:''}
+ ${xrSection(r)}${amSection(r)}${coNeed(r,asm,q=>`m2Part(${q.i})`)}
  ${asm.length?`<div class="sec"><h3 class="h2">Parts in this assembly</h3><span class="cap">${asm.length}</span></div><div class="stack g8">${asm.slice(0,8).map(mini).join('')}</div>${asm.length>8?`<button class="btn line" onclick="${secLink}">See all ${asm.length+1} in this section</button>`:''}`:''}`;}
 /* ----- the screen ----- */
 SCREENS.findpart=()=>{altListLoad();const f=S.ui.fp||(S.ui.fp=FP0());const p=cur().p||{};const v=p.v||'home';
@@ -6804,8 +6804,19 @@ function m3Det(x,o){const sh=m2Shop(x),n=sh?DB.stock[sh.id]:0,php=catPhoto(x),L=
  <div class="grid2 fpc-facts">${facts.map(([a,b])=>`<div${a==='Book'?' class="m3-wide"':''}><div class="micro muted">${a}</div><b>${esc(b)}</b></div>`).join('')}</div>
  ${catFitsAt(x)}`;}
 /* under the columns: the same number in other brands, and the gaskets, seals, bolts... of this diagram */
-function m3More(x,o){const seen=new Set(),need=o.rows.filter(q=>q.pk&&q.pk!==x.pk&&/\b(GASKET|SEAL|O RING|BOLT|NUT|WASHER|SPRING|BEARING|BUSH|CLIP|PACKING|SCREW)\b/.test(q.dhay)&&!seen.has(q.pk)&&seen.add(q.pk)).slice(0,4);
- return xrSection(x)+amSection(x)+(need.length?`<div class="sec"><h3 class="h2">Commonly needed with this</h3></div><div class="stack g8">${need.map(q=>`<button class="m2-row" onclick="m3Pick(${q.i},'need')"><span class="m2-num">${esc(q.ref||'·')}</span><div class="grow"><div class="h3" style="font-size:14px">${esc(catNice(q.desc))}</div><div class="cap">${esc(q.part||'No part number')}${q.mrp?' · '+inr(q.mrp):''}</div></div>${ic('chevR','s18')}</button>`).join('')}</div>`:'');}
+/* 12s (Sam: "isko bhi jod-de"): "Commonly needed with this" puts first the parts sold on the same bills as this part (our own
+   bills, cancelled ones left out), then the gaskets, seals, bolts... of the same diagram; 6 at most */
+let CO_SOLD=null,CO_K='';
+function coSold(pk){const bs=DB.bills||[],k=bs.length+'|'+(bs.length?bs[bs.length-1].id:'');if(CO_K!==k){CO_SOLD=new Map();CO_K=k;
+  bs.forEach(b=>{if(b.cancel)return;const ks=[...new Set((b.items||[]).map(i=>catPk(P(i.pid).pn)).filter(c=>c.length>=4))];ks.forEach(a=>{let m=CO_SOLD.get(a);if(!m)CO_SOLD.set(a,m=new Map());ks.forEach(c=>{if(c!==a)m.set(c,(m.get(c)||0)+1);});});});}
+ const m=pk&&CO_SOLD.get(pk);return m?[...m.entries()].sort((a,b)=>b[1]-a[1]):[];}
+function coNeed(x,rows,pick){const seen=new Set([x.pk]),out=[],tx=n=>`Sold together ${n} time${n===1?'':'s'}`;
+ const row=(q,sub)=>`<button class="m2-row" onclick="${pick(q)}"><span class="m2-num">${esc(q.ref||'·')}</span><div class="grow"><div class="h3" style="font-size:14px">${esc(catNice(q.desc))}</div><div class="cap">${esc(q.part||'No part number')}${q.mrp?' · '+inr(q.mrp):''}${sub?' · <b>'+sub+'</b>':''}</div></div>${ic('chevR','s18')}</button>`;
+ coSold(x.pk).forEach(([pk,n])=>{if(out.length>=4||seen.has(pk))return;const q=rows.find(r=>r.pk===pk);const sp=q?null:PRODUCTS.find(p=>catPk(p.pn)===pk);if(!q&&!sp)return;seen.add(pk);
+  out.push(q?row(q,tx(n)):`<button class="m2-row" onclick="S.ui.scanHit='${sp.id}';S.ui.scanMiss=null;go('scanfind')"><span class="m2-num">${ic('cart','s16')}</span><div class="grow"><div class="h3" style="font-size:14px">${esc(sp.name)}</div><div class="cap">${esc(sp.pn)}${sp.mrp?' · '+inr(sp.mrp):''} · <b>${tx(n)}</b></div></div>${ic('chevR','s18')}</button>`);});
+ rows.forEach(q=>{if(out.length>=6||!q.pk||seen.has(q.pk)||!/\b(GASKET|SEAL|O RING|BOLT|NUT|WASHER|SPRING|BEARING|BUSH|CLIP|PACKING|SCREW)\b/.test(q.dhay))return;seen.add(q.pk);out.push(row(q,''));});
+ return out.length?`<div class="sec"><h3 class="h2">Commonly needed with this</h3></div><div class="stack g8">${out.join('')}</div>`:'';}
+function m3More(x,o){return xrSection(x)+amSection(x)+coNeed(x,o.rows,q=>`m3Pick(${q.i},'need')`);}
 /* the page; no diagram for the part (and none coming): the old page */
 /* layout A (Sam 2026-10-22, Figma "Catalogue view (23 Oct)" A): the bike on top, all its diagrams on the left, the diagram with the
    chosen part under it, the diagram's parts on the right. Every number on every catalogue's diagram stays clickable (the 8r numbers). */

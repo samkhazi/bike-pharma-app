@@ -4017,7 +4017,7 @@ function heroDmsCheck(){if(S.ui.hdBusy)return;S.ui.hdBusy=1;toast('Checking Hero
   <button class="btn" onclick="heroDmsApply()">Update ${L.length+F.length} MRPs</button>`:`<p class="cap">Every Hero part in your list already has the dealer list MRP.</p>`}<button class="btn line" onclick="closeSheet()">Close</button>`);
 },()=>{S.ui.hdBusy=0;toast('Could not read the Hero list');});}
 function heroDmsApply(){if(S.user.role!=='admin')return;const h=S.ui.hd;if(!h)return;let n=0;
- h.L.forEach(x=>{const p=P(x.id);if(!p||r2(+p.mrp||0)===r2(x.m))return;const pr=invPrices(x.m);audit('MRP changed from Hero dealer list',p.pn,invInr(p.mrp||0),invInr(x.m));bpSetP(p,{mrp:x.m,price:pr.price,mp:pr.mp});n++;});
+ h.L.forEach(x=>{const p=P(x.id);if(!p||r2(+p.mrp||0)===r2(x.m))return;const pr=invPrices(x.m),L0=lotsOf(p.id);audit('MRP changed from Hero dealer list',p.pn,invInr(p.mrp||0),invInr(x.m));bpSetP(p,{mrp:x.m,price:pr.price,mp:pr.mp});lotsSet(p.id,L0);n++;   /* shelf stock keeps its printed MRP */});
  h.F.forEach(k=>{if(DB.mrpFix&&DB.mrpFix[k]){delete DB.mrpFix[k];INV_LK.delete(k);n++;}});
  S.ui.hd=null;save();closeSheet();toast(n+' MRPs updated from the Hero list');refresh();}
 const cupHome=()=>{if(!S.user||S.user.role!=='admin'||typeof SRV==='undefined')return '';cupLoad();const s=CUP.sets;if(!s||!Object.keys(s).length)return '';const r=cupLive();

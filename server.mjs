@@ -15,7 +15,7 @@ import { vinLook, vinSetup } from './lib/vinlook.mjs';
 import { rcLook } from './lib/rclook.mjs';
 import { otpConfig, makeOtp, deliverOtp } from './lib/sms.mjs';
 import { removeDemoData } from './lib/cleanup.mjs';
-import { checkNewBills, guardValue, auditRows, BILL_KEYS, setPhotoGone } from './lib/billguard.mjs';
+import { checkNewBills, renumBills, guardValue, auditRows, BILL_KEYS, setPhotoGone } from './lib/billguard.mjs';
 import { stampWho } from './lib/stamp.mjs';
 import { photoAi, AI_VER } from './lib/photoai.mjs';
 import { billAi } from './lib/billai.mjs';
@@ -341,7 +341,8 @@ async function api(req, res, url, user) {
     const writes = {}, changed = {}, refused = [];
     const staff = roleClass(user) === 'staff', scoped = !staff;
     // update 8o (Sam 2026-10-12): the Billing rules are checked here, not trusted from the app (lib/billguard.mjs)
-    const gget = reader(); const gnotes = staff ? checkNewBills(changes, user, gget) : [];
+    const gget = reader(); const RN = staff ? renumBills(changes, gget) : { renamed: [], keys: new Set() };   // 13l
+    const gnotes = staff ? checkNewBills(changes, user, gget) : [];
     const gblock = gnotes.length ? new Set(BILL_KEYS) : null;
     // orders first: the wallet and warranty checks of a customer look at the orders of this same sync
     const ctx = { stock: null };
@@ -366,7 +367,7 @@ async function api(req, res, url, user) {
       else { const [gv, gn] = guardScoped(k, sv, merged, user, gget, ctx); merged = gv; if (gn.length) console.log(new Date().toISOString(), 'refused for', user.id, gn.join(' | ')); }
       if (!deepEqual(merged, sv)) writes[k] = JSON.stringify(merged);
       const back = scopeValue(k, merged, user);
-      if (!deepEqual(back, cv0)) changed[k] = back === undefined ? null : back; // cleaned text goes back to the writer too
+      if (!deepEqual(back, cv0) || RN.keys.has(k)) changed[k] = back === undefined ? null : back; // cleaned text goes back to the writer too
     }
     // a customer's new online order takes its parts out of the shop's stock here (the app may not write stock)
     if (ctx.stock) { writes.stock = JSON.stringify(ctx.stock); changed.stock = scopeValue('stock', ctx.stock, user); }
@@ -391,7 +392,7 @@ async function api(req, res, url, user) {
       const now = viewOf(store.stateAll().map(r => r.key), get, user, true);
       for (const k of refused) if (k in now && !deepEqual(now[k], changes[k])) changed[k] = now[k];
     }
-    const resp = { rev, changed, ...(gnotes.length ? { why: gnotes[0] } : {}) };
+    const resp = { rev, changed, ...(gnotes.length ? { why: gnotes[0] } : {}), ...(RN.renamed.length ? { renum: RN.renamed } : {}) };
     if (pid) { const L = (SYNC_SEEN.get(user.id) || []).slice(-7); L.push({ pid, resp }); SYNC_SEEN.delete(user.id); SYNC_SEEN.set(user.id, L); if (SYNC_SEEN.size > 2000) SYNC_SEEN.delete(SYNC_SEEN.keys().next().value); }   // the last 8 pushes of a login (two devices on one login)
     return json(res, 200, resp);
   }

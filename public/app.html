@@ -5279,13 +5279,18 @@ function srvRenumLocal(rn,sent,changed){let sids=new Set();try{sids=new Set((JSO
  const all=new Set([...(DB.bills||[]).map(b=>String(b.id)),...((changed&&changed.bills)||[]).map(b=>b&&String(b.id))]);
  rn.forEach(([a,z])=>{const lb=(DB.bills||[]).find(b=>String(b.id)===z&&!sids.has(z));if(!lb)return;const m=/^(.*?)(\d+)$/.exec(z);if(!m)return;
   let n=Math.max(0,...[...all].map(x=>x&&x.startsWith(m[1])&&/^\d+$/.test(x.slice(m[1].length))?+x.slice(m[1].length):0))+1;const nid=m[1]+String(n).padStart(m[2].length,'0');all.add(nid);
-  const re=new RegExp('(?<![\\w])'+z.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?!\\d)','g');
-  for(const k of Object.keys(DB)){if(k==='bills')continue;let j;try{j=JSON.stringify(DB[k]);}catch(e){continue;}if(typeof j==='string'&&re.test(j)){re.lastIndex=0;try{DB[k]=JSON.parse(j.replace(re,nid));}catch(e){}}re.lastIndex=0;}
-  lb.id=nid;toast('Bill '+z+' is now '+nid+' (the number was given to another bill)');});}
+  srvRe(DB,z,nid);toast('Bill '+z+' is now '+nid+' (the number was given to another bill)');});
+ /* then what this device did to the sent bill after sending it (cancel, returns...) follows it to its new number, and so does the sent copy */
+ rn.forEach(([a,z])=>{srvRe(DB,a,z);srvRe(sent,a,z,1);});}
+function srvRe(o,a,z,str){const re=new RegExp('(?<![\\w])'+a.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?!\\d)','g');for(const k of Object.keys(o)){let j;try{j=str?o[k]:JSON.stringify(o[k]);}catch(e){continue;}if(typeof j!=='string')continue;re.lastIndex=0;if(!re.test(j))continue;re.lastIndex=0;const t=j.replace(re,z);if(str){o[k]=t;if(SRV.snap[k]===j)SRV.snap[k]=t;}else try{o[k]=JSON.parse(t);}catch(e){}}}
+/* 13m: MRP lots per part merged as counts per MRP (as the server's mergeLots) */
+function srvLots(b,v,l){const o=x=>x&&typeof x==='object'&&!Array.isArray(x);if(!o(v)||!o(l))return l;b=o(b)?b:{};const J=JSON.stringify,out={},qm=L=>{const r={};(Array.isArray(L)?L:[]).forEach(x=>{if(o(x))r[x.m]=(r[x.m]||0)+(+x.q||0);});return r;};
+ new Set([...Object.keys(v),...Object.keys(l),...Object.keys(b)]).forEach(k=>{if(J(l[k])===J(b[k])){if(k in v)out[k]=v[k];return;}if(J(v[k])===J(b[k])){if(k in l)out[k]=l[k];return;}
+  const B=qm(b[k]),S=qm(v[k]),C=qm(l[k]),seen=new Set(),rows=[];[...(v[k]||[]),...(l[k]||[])].forEach(r=>{if(!o(r)||seen.has(String(r.m)))return;seen.add(String(r.m));const x=B[r.m]||0,sq=S[r.m]||0,c=C[r.m]||0;const q=sq!==x&&c!==x?Math.max(0,sq+(c-x)):c!==x?c:sq;if(q>0)rows.push({...r,q});});if(rows.length)out[k]=rows;});return out;}
 function srvApply(ch,sent){if(!ch)return;let n=0;for(const k of Object.keys(ch)){const v=ch[k];if(v===null)continue;const j=JSON.stringify(v);let now;try{now=JSON.stringify(DB[k]);}catch(e){}
   /* 13h: a key with changes here that the server hasn't got yet (changed during this request, or not sent yet) is merged, not replaced */
   const base=sent&&k in sent?sent[k]:SRV.snap[k];
-  if(now!==undefined&&base!==undefined&&now!==base&&now!==j){try{DB[k]=srvMerge(JSON.parse(base),v,DB[k]);}catch(e){continue;}SRV.snap[k]=j;n++;}
+  if(now!==undefined&&base!==undefined&&now!==base&&now!==j){try{DB[k]=(k==='lots'?srvLots:srvMerge)(JSON.parse(base),v,DB[k]);}catch(e){continue;}SRV.snap[k]=j;n++;}
   else{if(SRV.snap[k]===j&&now===j)continue;DB[k]=v;SRV.snap[k]=j;n++;}
   if(k==='newProducts')invSyncP();if(k==='offers'||k==='newProducts'||k==='stock')try{offApply();}catch(e){}}
  if(n&&S.user&&!(document.activeElement&&document.activeElement.matches('input,textarea,select'))&&!document.querySelector('#vp .scrim'))try{refresh();}catch(e){}}

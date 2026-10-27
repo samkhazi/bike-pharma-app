@@ -963,7 +963,7 @@ function acSalPayOk(k){const mo=acMon(isoToday());if(salPaid(k,mo))return closeS
  audit('Salary paid',a.sid||k,'—',inr(sal-cut)+(cut?' (advance '+inr(cut)+' cut)':''));save();closeSheet();toast('Salary paid');refresh();}
 
 /* 10. refunds: a return is approved first (Manager / Admin, update 8n); the Accountant marks the money given back */
-const acRefunds=()=>(DB.returns||[]).filter(r=>r.mode&&!['Wallet','Exchange','Dues'].includes(r.mode)&&+r.amt>0);
+const acRefunds=()=>(DB.returns||[]).filter(r=>r.mode&&!['Wallet','Exchange','Dues'].includes(r.mode)&&+r.amt>0&&(String(r.id).startsWith('C-')||!((DB.bills||[]).find(b=>b.id===r.bill)||{}).cancel));   /* 13o: a cancelled bill's refunds are in its cancel */
 SCREENS.acref=()=>{const L=acRefunds(),w=(DB.approvals||[]).filter(a=>a.ret&&a.st==='pending'),due=L.filter(r=>!r.given);
  return bar('Refunds')+`<div class="scroll"><div class="pad">
  ${w.length?`${sec('Waiting for approval ('+w.length+')')}<div class="card flush">${w.map(a=>li(esc(deEsc(a.t)),esc(deEsc(a.d)),'<span class="pill a">Pending</span>','history','')).join('')}</div>`:''}
@@ -1775,7 +1775,7 @@ SCREENS.mearn=()=>{const mo=MON[new Date().getMonth()];const jobs=(DB.jobs||[]).
 /* ===== BILLING: day closing, counter returns, hold bill, estimate ===== */
 const DENOMS=[500,200,100,50,20,10,5,2,1];
 SCREENS.dayclose=()=>{const c=collected('Cash'),u=collected('UPI');const card=collected('Card');const fc=(DB.fcol||[]).filter(x=>x.st==='To deposit');const fcT=fc.filter(x=>x.pm==='Cash'&&x.d===today()).reduce((a,x)=>a+x.amt,0);
- const refunds=(DB.returns||[]).filter(x=>x.given&&x.given.d===isoToday()&&x.given.mode==='Cash').reduce((a,x)=>a+x.amt,0);const open=S.ui.dcOpen??2000;const exp=open+c.total-fcT-refunds;
+ const refunds=(DB.returns||[]).filter(x=>x.given&&x.given.d===isoToday()&&x.given.mode==='Cash'&&(String(x.id).startsWith('C-')||!((DB.bills||[]).find(b=>b.id===x.bill)||{}).cancel)).reduce((a,x)=>a+x.amt,0);const open=S.ui.dcOpen??2000;const exp=open+c.total-fcT-refunds;
  const n=S.ui.dcN||(S.ui.dcN={});const counted=DENOMS.reduce((a,d)=>a+d*(+n[d]||0),0);const diff=counted-exp;const done=(DB.closings||[]).find(x=>x.iso?x.iso===isoToday():x.d===today());
  return bar('Day closing')+`<div class="scroll"><div class="pad">
  ${done?`<div class="row" style="background:var(--g-soft);border-radius:14px;padding:12px;color:var(--g)">${ic('checkC','s18')}<span class="cap grow" style="color:var(--g)"><b>Day closed at ${done.t}</b> by ${esc(done.by)} · difference ${done.diff===0?'nil':inr(done.diff)}</span></div>`:''}
@@ -1826,7 +1826,7 @@ function crApply(bid,amt,sel,mode,why,fromAp){const b=DB.bills.find(x=>x.id===bi
  DB.returns=[{id,bill:bid,items,amt,mode,why,d:today(),...(wb?{w:wb,tot}:{}),...(mode==='Exchange'?{exOpen:amt}:{})},...(DB.returns||[])];   /* 13h: exchange credit kept on the return until a bill uses it */
  if(b.mob&&b.kind!=='mech'&&+b.amt>0){const e=cwList(b.mob).find(x=>x.t==='Cashback · '+b.id);const back=e&&e.cr?Math.min(e.cr,Math.round(e.cr*tot/b.amt)):0;if(back)cwAdd(b.mob,{t:'Cashback taken back · '+id,dr:back});}
  if(mode==='Dues'){const v=crDueInv(b);const less=v?Math.min(amt,v.amt-v.paid):0;if(v)v.amt=r2(v.amt-less);const rest=r2(amt-less);if(rest>0)DB.returns.unshift({id:id+'-R',bill:bid,items:{},amt:rest,mode:'Cash',why:'Rest of '+id+' after the dues',d:today()});}   /* 13f: paid out by the Accountant (Refunds) */
- if(mode==='Wallet'){if(b.mob)cwAdd(b.mob,{t:'Refund · '+id,cr:amt});else if(b.kind==='mech')DB.wl.push({d:today(),t:'Refund · '+id,cr:amt});}
+ if(mode==='Wallet'){if(b.kind==='mech')DB.wl.push({d:today(),t:'Refund · '+id,cr:amt});else if(b.mob)cwAdd(b.mob,{t:'Refund · '+id,cr:amt});}
  if(why==='Damaged'||why==='Warranty replace')DB.approvals.unshift({id:Date.now(),t:'Return · '+why,d:bid+' · '+inr(amt),ic:'history',st:'pending'});
  audit('Counter return',id,bid,inr(amt)+' · '+mode);save();S.ui.crSel={};if(fromAp)return id;
  sheet(`${okBadge(72)}<h3 class="h2">${id} done</h3><p class="cap">${inr(amt)} ${mode==='Dues'?'taken off what '+esc(b.pname||b.p||'the mechanic')+' owes':mode==='Wallet'?'added to '+esc(b.pname||b.p||'customer')+'’s wallet':mode==='Exchange'?'credit for exchange · add the new part on the invoice':'refunded by '+mode}. ${why==='Damaged'?'Items kept aside as damaged.':'Items back in stock.'}</p>${mode==='Exchange'?`<button class="btn" onclick="exOpenInv('${id}')">Open invoice for exchange</button>`:`<button class="btn" onclick="closeSheet();refresh()">Done</button>`}`);}
@@ -2033,7 +2033,7 @@ function csvOf(k){const q=v=>{v=String(v??'');return /[",\n]/.test(v)?'"'+v.repl
  k==='sreg'?[['Bill','Time','Party','GSTIN','Taxable','CGST','SGST','Total','Mode'],...DB.bills.filter(b=>!b.cancel).map(b=>{const t=gstTaxable(b.items||[],b.amt);return [b.id,b.t,b.pname||b.p,b.kind==='mech'?mechGst(b):'',t.toFixed(2),((b.amt-t)/2).toFixed(2),((b.amt-t)/2).toFixed(2),b.amt,b.pm];})]:
  k==='branch'?[['Branch','Sales','Purchases','Gross profit','Margin %','Outstanding','Stock value','Staff','Mechanics','Orders','Returns'],...BRANCHES.map(b=>[b.n,b.sales,b.purch,b.gp,(b.sales?b.gp/b.sales*100:0).toFixed(1),b.out,b.stock,b.staff,b.mech,b.orders,b.ret])]:
  k==='product'?[['Part no','Name','Brand','Category','Sold (30 days)','Price','Sales value','Stock'],...PRODUCTS.map(x=>[x.pn,x.name,x.brand,x.cat,sold30(x),x.price,sold30(x)*x.price,DB.stock[x.id]])]:
- k==='payment'?[['Date / time','From','Mode','Amount','Reference'],...DB.bills.filter(b=>b.pm!=='Credit').map(b=>[today()+' '+b.t,b.pname||b.p,b.pm,b.amt-(b.w||0)-(+b.exch||0),b.id]),...DB.cl.filter(x=>x.pay).map(x=>[x.d,myShop()||'Mechanic',String(x.ref||'').split(' ')[0],x.pay,x.ref||'']),...(DB.orec||[]).map(x=>[x.d,PARTY(x.code).n,x.pm,x.amt,x.ref])]:
+ k==='payment'?[['Date / time','From','Mode','Amount','Reference'],...DB.bills.filter(b=>!b.cancel&&b.pm!=='Credit').map(b=>[today()+' '+b.t,b.pname||b.p,b.pm,b.amt-(b.w||0)-(+b.exch||0),b.id]),...DB.cl.filter(x=>x.pay).map(x=>[x.d,myShop()||'Mechanic',String(x.ref||'').split(' ')[0],x.pay,x.ref||'']),...(DB.orec||[]).map(x=>[x.d,PARTY(x.code).n,x.pm,x.amt,x.ref])]:
  k==='ageing'?[['Code','Mechanic','Outstanding','Overdue invoices','Credit']
   ,...MECHS_R().map(m=>[m.code,m.n,mechDue(m.code),allDues().filter(v=>v.m.code===m.code&&isOverdue(v)).length,creditBlocked(m.code)?'Blocked':'OK'])]:
  k==='expense'?[['Date','Category','Note','Amount'],...(DB.exp||expSeed()).map(x=>[x.d,x.c,x.n,x.a])]:
@@ -2531,7 +2531,7 @@ function billCancel(bid,r){const b=DB.bills.find(x=>x.id===bid);if(!b||b.cancel)
  let unpaid=0;Object.values(DB.omech||{}).forEach(L=>(L||[]).forEach(v=>{if(v.id===b.id){const u=Math.max(0,(+v.amt||0)-(+v.paid||0)),k=Math.min(keep,u);keep-=k;unpaid+=u-k;v.amt=r2((+v.paid||0)+k);}}));
  (DB.returns||[]).filter(x=>x.bill===b.id&&+x.exOpen>0).forEach(x=>{const c=Math.min(+x.exOpen,unpaid);unpaid-=c;x.exOpen=r2(+x.exOpen-c);});   /* 13i: exchange credit for pieces never paid for closes with the dues */
  if(b.exch&&r.type!=='Change')exchBack(b.kind,b.mob,b.exch,'C-'+b.id,b.id);   /* 13g: a corrected bill carries it instead */
- if(b.w){if(b.kind==='mech')DB.wl.push({d:today(),t:'Refund · '+b.id,cr:b.w});else if(b.mob)cwAdd(b.mob,{t:'Refund · '+b.id,cr:b.w});}
+ {const wl=r2((+b.w||0)-(DB.returns||[]).filter(x=>x.bill===b.id).reduce((a,x)=>a+(+x.w||0),0));if(wl>0){if(b.kind==='mech')DB.wl.push({d:today(),t:'Refund · '+b.id,cr:wl});else if(b.mob)cwAdd(b.mob,{t:'Refund · '+b.id,cr:wl});}}   /* 13o: less what returns already gave back */
  if(b.mob&&b.kind!=='mech'){const W=cwList(b.mob),e=W.find(x=>x.t==='Cashback · '+b.id);const rs=new Set((DB.returns||[]).filter(r=>r.bill===b.id).map(r=>'Cashback taken back · '+r.id));const took=W.filter(x=>rs.has(x.t)).reduce((a,x)=>a+(+x.dr||0),0);const back=e&&e.cr?Math.max(0,e.cr-took):0;if(back)cwAdd(b.mob,{t:'Cashback taken back · '+b.id,dr:back});}   /* 13f: less what returns of this bill already took back */
  DB.warranties=DB.warranties.filter(w=>w.inv!==b.id);audit('Bill cancelled',b.id,inr(b.amt),(r.type==='Change'?'For a corrected bill · ':'')+r.why);}
 function blRebill(bid){const b=DB.bills.find(x=>x.id===bid);if(!b)return;if(b.rebilled||(DB.held||[]).some(h=>h.inv&&h.inv.rebillOf===bid)){toast('The corrected bill is already made or on hold');return;}if(S.ui.inv&&Object.values(S.ui.inv.items||{}).some(q=>q>0)){toast('Hold or finish the current bill first');return;}
@@ -5301,14 +5301,14 @@ function srvApply(ch,sent){if(!ch)return;let n=0;
   else{if(SRV.snap[k]===j&&now===j)continue;DB[k]=v;SRV.snap[k]=j;n++;}
   if(k==='newProducts')invSyncP();if(k==='offers'||k==='newProducts'||k==='stock')try{offApply();}catch(e){}}
  if(n&&S.user&&!(document.activeElement&&document.activeElement.matches('input,textarea,select'))&&!document.querySelector('#vp .scrim'))try{refresh();}catch(e){}}
-function srvPush(){if(!S.user&&!SRV.out)return;const g=SRV.gen;if(SRV.busy){SRV.again=true;return;}const P0=SRV.pend;const ch=P0?P0.ch:srvDiff();const keys=Object.keys(ch);if(!keys.length)return;SRV.busy=true;
+function srvPush(){if(!S.user&&!SRV.out)return;const g=SRV.gen;if(SRV.busy){SRV.again=true;return;}const P0=SRV.pend;const ch=P0?P0.ch:srvDiff();const keys=Object.keys(ch);if(!keys.length)return;SRV.busy=true;SRV.pushN=(SRV.pushN||0)+1;
  /* 13f: a push whose answer was lost is sent again exactly (same id), and the server answers it once */
  const pid=P0?P0.pid:Date.now().toString(36)+Math.random().toString(36).slice(2,8);const body=P0?P0.body:'{"base":'+SRV.rev+',"pid":"'+pid+'","changes":{'+keys.map(k=>JSON.stringify(k)+':'+ch[k]).join(',')+'}}';SRV.pend={pid,ch,body};
  fetch('/api/sync',{method:'POST',headers:{'Content-Type':'application/json'},body,credentials:'same-origin',keepalive:body.length<60000}).then(async r=>{if(r.status===401){SRV.pend=null;srvExpired();return;}if(!r.ok){if(r.status<500)SRV.pend=null;throw new Error('sync '+r.status);}const j=await r.json();if(g!==SRV.gen)return;SRV.pend=null;if(P0)SRV.again=true;keys.forEach(k=>SRV.snap[k]=ch[k]);SRV.rev=j.rev;if(j.renum&&j.renum.length)srvRenumLocal(j.renum,ch,j.changed);srvApply(j.changed,ch);if(j.renum&&j.renum.length)toast(j.renum.map(([a,z])=>'Bill '+a+' is now '+z).join(' · ')+' (another counter used the number)');if(j.why){closeSheet();sheet(`<h3 class="h2">Not saved</h3><p class="cap">The server refused this: ${esc(j.why)}. Ask Manager if it is needed.</p><button class="btn" onclick="closeSheet();refresh()">OK</button>`);}if(SRV.fail>=3)toast('Saved to the server ✓');SRV.fail=0;})
  .catch(()=>{SRV.fail++;if(SRV.fail===3)toast('Could not save to the server · retrying');SRV.again=true;})
  .finally(()=>{SRV.busy=false;if(SRV.again){SRV.again=false;clearTimeout(SRV.t);SRV.t=setTimeout(srvPush,SRV.fail?Math.min(30000,2000*SRV.fail):300);}});}
-function srvPoll(){if(!S.user||SRV.busy||document.hidden)return;const g=SRV.gen;if(Object.keys(srvDiff()).length){srvPush();return;}
- fetch('/api/sync?since='+SRV.rev,{credentials:'same-origin'}).then(r=>r.status===401?(srvExpired(),null):r.ok?r.json():null).then(j=>{if(j&&g===SRV.gen){SRV.rev=j.rev;srvApply(j.changed);}}).catch(()=>{});}
+function srvPoll(){if(!S.user||SRV.busy||document.hidden)return;const g=SRV.gen,r0=SRV.rev,p0=SRV.pushN||0;if(Object.keys(srvDiff()).length){srvPush();return;}
+ fetch('/api/sync?since='+SRV.rev,{credentials:'same-origin'}).then(r=>r.status===401?(srvExpired(),null):r.ok?r.json():null).then(j=>{if(j&&g===SRV.gen&&!SRV.busy&&SRV.rev===r0&&(SRV.pushN||0)===p0){SRV.rev=j.rev;srvApply(j.changed);}   /* 13o: an answer older than a push since is dropped */}).catch(()=>{});}
 setInterval(srvPoll,15000);
 addEventListener('visibilitychange',()=>{if(document.hidden){clearTimeout(SRV.t);srvPush();}else srvPoll();});
 function srvExpired(){if(!S.user)return;bpIn(0);S.user=null;S.uid=null;S.ui={};S.stack=[{s:'login',p:{}}];render('fade');toast('Your login expired · please log in again');api('GET','/api/boot').then(b=>{if(b&&b.db)srvSetDb(b.db,b.rev);}).catch(()=>{});}

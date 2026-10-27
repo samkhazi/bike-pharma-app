@@ -15,3 +15,5 @@ public/phh/
 public/figs/
 .build/
 __pycache__/
+brand_sync/.venv/
+brand_sync/data/

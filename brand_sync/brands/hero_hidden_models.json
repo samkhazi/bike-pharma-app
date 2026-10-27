@@ -1,0 +1,1214 @@
+{
+"ACHIEVER_AAMC": {
+"desc": "Achiever (May, 2014)",
+"year": 2014,
+"modelCC": "150CC",
+"base": "ACHIEVER"
+},
+"ACHIEVER_AAMA": {
+"desc": "Achiever (July, 2012)",
+"year": 2012,
+"modelCC": "150CC",
+"base": "ACHIEVER"
+},
+"ACHIEVER_KTNH": {
+"desc": "Achiever (Apr, 2010)",
+"year": 2010,
+"modelCC": "150CC",
+"base": "ACHIEVER"
+},
+"ACHIEVER_MMC": {
+"desc": "Achiever (Nov, 2006)",
+"year": 2006,
+"modelCC": "150CC",
+"base": "ACHIEVER"
+},
+"ACHIEVER": {
+"desc": "Achiever (Oct, 2005)",
+"year": 2005,
+"modelCC": "150CC",
+"base": "ACHIEVER"
+},
+"CBZ_XTREME_KVEF": {
+"desc": "X-TREME (formerly CBZ X-TREME - Oct, 2008)",
+"year": 2008,
+"modelCC": "150CC",
+"base": "X-TREME"
+},
+"CBZ_XTREME": {
+"desc": "X-TREME (formerly CBZ X-TREME - Oct, 2006)",
+"year": 2006,
+"modelCC": "150CC",
+"base": "X-TREME"
+},
+"CBZ_XTREME_KVEG": {
+"desc": "X-TREME (formerly CBZ X-TREME - Apr, 2011)",
+"year": 2011,
+"modelCC": "150CC",
+"base": "X-TREME"
+},
+"CD_DAWN_AAJB": {
+"desc": "HF Dawn (Aug, 2012)",
+"year": 2012,
+"modelCC": "100CC",
+"base": "HF DAWN"
+},
+"CD_DAWN_KSTK": {
+"desc": "HF Dawn (formerly CD Dawn - Mar, 2010)",
+"year": 2010,
+"modelCC": "100CC",
+"base": "HF DAWN"
+},
+"CD_DAWN_STD": {
+"desc": "HF Dawn (formerly CD Dawn - Nov, 2006)",
+"year": 2006,
+"modelCC": "100CC",
+"base": "HF DAWN"
+},
+"CD_DELUXE": {
+"desc": "HF Deluxe (formerly CD Deluxe - Nov, 2006)",
+"year": 2006,
+"modelCC": "100CC",
+"base": "HF DELUXE"
+},
+"CD_DELUXE_MMC": {
+"desc": "HF Deluxe (formerly CD Deluxe - Jul, 2007)",
+"year": 2007,
+"modelCC": "100CC",
+"base": "HF DELUXE"
+},
+"CD_DELUXE_KSTJ": {
+"desc": "HF Deluxe (formerly CD Deluxe - Nov, 2008)",
+"year": 2008,
+"modelCC": "100CC",
+"base": "HF DELUXE"
+},
+"CD_DELUXE_KSTK": {
+"desc": "HF Deluxe (formerly CD Deluxe - Mar, 2010)",
+"year": 2010,
+"modelCC": "100CC",
+"base": "HF DELUXE"
+},
+"CD_DELUXE_AAHA": {
+"desc": "HF Deluxe (Aug, 2012)",
+"year": 2012,
+"modelCC": "100CC",
+"base": "HF DELUXE"
+},
+"DASH_AAWE": {
+"desc": "Dash (Oct, 2015) EURO III VX",
+"year": 2015,
+"modelCC": "110CC",
+"base": "DASH"
+},
+"DASH_AAWB": {
+"desc": "Dash (Sep, 2015) EURO III LX",
+"year": 2015,
+"modelCC": "110CC",
+"base": "DASH"
+},
+"DASH_AAWF": {
+"desc": "Dash FI 110 EURO IV (Aug, 2018)",
+"year": 2018,
+"modelCC": "110CC",
+"base": "DASH"
+},
+"DASH_AAWH": {
+"desc": "Dash (July, 2017)",
+"year": 2017,
+"modelCC": "110CC",
+"base": "DASH"
+},
+"DAWN_125_AAGB": {
+"desc": "Dawn 125 (May, 2014)",
+"year": 2014,
+"modelCC": "125CC",
+"base": "DAWN 125"
+},
+"DAWN_150_AAMG_EXP": {
+"desc": "Dawn 150 (Dec, 2019)",
+"year": 2019,
+"modelCC": "150CC",
+"base": "DAWN 150"
+},
+"DAWN_150_AAME_EXP": {
+"desc": "Dawn 150 (Oct, 2016)",
+"year": 2016,
+"modelCC": "150CC",
+"base": "DAWN 150"
+},
+"DAWN_150_AAMF_EXP": {
+"desc": "Dawn 150 Africa (Feb,2019)",
+"year": 2019,
+"modelCC": "150CC",
+"base": "DAWN 150"
+},
+"DAWN_AAJA": {
+"desc": "Dawn (Apr, 2013)",
+"year": 2013,
+"modelCC": "100CC",
+"base": "DAWN 100"
+},
+"DAWN_125_AAGF_EXP": {
+"desc": "Dawn 125 (Feb, 2016)",
+"year": 2016,
+"modelCC": "125CC",
+"base": "DAWN 125"
+},
+"ECO_150_AAMN": {
+"desc": "ECO 150 (Dec, 2019)",
+"year": 2019,
+"modelCC": "150CC",
+"base": "ECO 150"
+},
+"DAWN_AAJA_EXP": {
+"desc": "Dawn (Dec, 2015)",
+"year": 2015,
+"modelCC": "100CC",
+"base": "DAWN 100"
+},
+"DAWN_AAJG_EXP": {
+"desc": "Dawn Nigeria (Dec, 2015)",
+"year": 2015,
+"modelCC": "100CC",
+"base": "DAWN 100"
+},
+"ECO_100_AAJH": {
+"desc": "ECO 100 (June, 2018)",
+"year": 2018,
+"modelCC": "100CC",
+"base": "ECO 100"
+},
+"ECO_100_AAJR": {
+"desc": "ECO 100 (Sep. 2020)",
+"year": 2020,
+"modelCC": "100CC",
+"base": "ECO 100"
+},
+"DAWN_AAJA_EXP_NIGERIA": {
+"desc": "Dawn 100 (May, 2016)",
+"year": 2016,
+"modelCC": "100CC",
+"base": "DAWN 100"
+},
+"ECO_DELUX_COLOMBIA_AAHR_EXP": {
+"desc": "ECO Deluxe COLOMBIA EXP (Dec, 2018)",
+"year": 2018,
+"modelCC": "100CC",
+"base": "ECO DELUXE"
+},
+"HF_DAWN_AAJC": {
+"desc": "HF Dawn (Nov, 2013)",
+"year": 2013,
+"modelCC": "100CC",
+"base": "HF DAWN"
+},
+"HF_DELUXE_AAHG": {
+"desc": "HF Deluxe Black (Sep, 2014)",
+"year": 2014,
+"modelCC": "100CC",
+"base": "HF DELUXE"
+},
+"HF_DELUXE_AAHD": {
+"desc": "HF Deluxe Eco (Nov, 2013)",
+"year": 2013,
+"modelCC": "100CC",
+"base": "HF DELUXE ECO"
+},
+"HF_DELUXE_FE_AAHE": {
+"desc": "HF Deluxe FE (Aug, 2014)",
+"year": 2014,
+"modelCC": "100CC",
+"base": "HF DELUXE"
+},
+"NEW_SUPER_SPLENDOR_MMC": {
+"desc": "Super Splendor (Jun, 2007)",
+"year": 2007,
+"modelCC": "125CC",
+"base": "SUPER SPLENDOR"
+},
+"PASSION_PLUS_MMC": {
+"desc": "Passion plus (Jun, 2007)",
+"year": 2007,
+"modelCC": "100CC",
+"base": "PASSION PLUS"
+},
+"PASSION_PLUS_KWAA": {
+"desc": "Passion plus (Oct, 2006)",
+"year": 2006,
+"modelCC": "100CC",
+"base": "PASSION PLUS"
+},
+"PASSION_PRO_KWAJ": {
+"desc": "Passion Pro (Spl. Ed.) (Oct, 2010)",
+"year": 2010,
+"modelCC": "100CC",
+"base": "PASSION PRO"
+},
+"PASSION_PRO_AACF": {
+"desc": "Passion Pro (Aug, 2014)",
+"year": 2014,
+"modelCC": "100CC",
+"base": "PASSION PRO"
+},
+"PASSION_PRO_KWAH": {
+"desc": "Passion Pro (Mar, 2010)",
+"year": 2010,
+"modelCC": "100CC",
+"base": "PASSION PRO"
+},
+"PASSION_PRO_AACA": {
+"desc": "Passion Pro (May, 2012)",
+"year": 2012,
+"modelCC": "100CC",
+"base": "PASSION PRO"
+},
+"PASSION_PRO_KWAG": {
+"desc": "Passion Pro (Oct, 2008)",
+"year": 2008,
+"modelCC": "100CC",
+"base": "PASSION PRO"
+},
+"PASSION_PRO_i3S_AACT": {
+"desc": "Passion Pro BSVI",
+"year": 2022,
+"modelCC": "110CC",
+"base": "PASSION PRO"
+},
+"SUPER_SPLENDOR_KTCJ": {
+"desc": "Super Splendor (Jul, 2010)",
+"year": 2010,
+"modelCC": "125CC",
+"base": "SUPER SPLENDOR"
+},
+"SUPER_SPLENDOR_AAGA": {
+"desc": "Super Splendor (May, 2012)",
+"year": 2012,
+"modelCC": "125CC",
+"base": "SUPER SPLENDOR"
+},
+"SUPER_SPLENDOR": {
+"desc": "Super Splendor (Feb, 2005)",
+"year": 2005,
+"modelCC": "125CC",
+"base": "SUPER SPLENDOR"
+},
+"PASSION_PRO_TR_AACE": {
+"desc": "Passion Pro TR (Aug, 2014)",
+"year": 2014,
+"modelCC": "100CC",
+"base": "PASSION PRO"
+},
+"XTREME_AABB": {
+"desc": "Xtreme (Oct, 2012)",
+"year": 2012,
+"modelCC": "150CC",
+"base": "X-TREME"
+},
+"SPLENDOR_NXG": {
+"desc": "Splendor NXG (May, 2007)",
+"year": 2007,
+"modelCC": "100CC",
+"base": "SPLENDOR NXG"
+},
+"SPLENDOR_NXG_MMC": {
+"desc": "Splendor NXG (Feb, 2008)",
+"year": 2008,
+"modelCC": "100CC",
+"base": "SPLENDOR NXG"
+},
+"SPLENDOR_NXG_KVHG": {
+"desc": "Splendor NXG (Sep, 2008)",
+"year": 2008,
+"modelCC": "100CC",
+"base": "SPLENDOR NXG"
+},
+"SPLENDOR_NXG_AAFA": {
+"desc": "Splendor NXG (Apr, 2012)",
+"year": 2012,
+"modelCC": "100CC",
+"base": "SPLENDOR NXG"
+},
+"SPLENDOR_NXG_KVHH": {
+"desc": "Splendor NXG (Mar, 2010)",
+"year": 2010,
+"modelCC": "100CC",
+"base": "SPLENDOR NXG"
+},
+"SPLENDOR_NXG_AAFD": {
+"desc": "Splendor NXG (July, 2014)",
+"year": 2014,
+"modelCC": "100CC",
+"base": "SPLENDOR NXG"
+},
+"SPLENDOR_PRO_FE_AADH": {
+"desc": "Splendor Pro FE (Aug, 2014)",
+"year": 2014,
+"modelCC": "100CC",
+"base": "SPLENDOR PRO"
+},
+"SPLENDOR_PRO_AADE": {
+"desc": "Splendor Pro (Nov, 2013)",
+"year": 2013,
+"modelCC": "100CC",
+"base": "SPLENDOR PRO"
+},
+"SPLENDOR_PLUS_KCCT": {
+"desc": "Splendor+ (Ltd. Ed.)",
+"year": 2006,
+"modelCC": "100CC",
+"base": "SPLENDOR+"
+},
+"SPLENDOR_PLUS": {
+"desc": "Splendor+ (Sep, 2003)",
+"year": 2003,
+"modelCC": "100CC",
+"base": "SPLENDOR+"
+},
+"SPLENDOR_PRO_KWHF": {
+"desc": "Splendor Pro (Sep, 2010)",
+"year": 2010,
+"modelCC": "100CC",
+"base": "SPLENDOR PRO"
+},
+"SPLENDOR_PLUS_KWHF": {
+"desc": "Splendor+ (May, 2010)",
+"year": 2010,
+"modelCC": "100CC",
+"base": "SPLENDOR+"
+},
+"SPLENDOR_PLUS_CAST": {
+"desc": "Splendor+ (Sep, 2007)",
+"year": 2007,
+"modelCC": "100CC",
+"base": "SPLENDOR+"
+},
+"SPLENDOR_PLUS_CAST_CELEB": {
+"desc": "Splendor+ (Celebration) (Jan, 2008)",
+"year": 2008,
+"modelCC": "100CC",
+"base": "SPLENDOR+"
+},
+"SPLENDOR_PLUS_AAEA": {
+"desc": "Splendor+ (Mar, 2012)",
+"year": 2012,
+"modelCC": "100CC",
+"base": "SPLENDOR+"
+},
+"SPLENDOR_PRO_FE_AADG": {
+"desc": "Splendor Pro FE (Aug, 2014)",
+"year": 2014,
+"modelCC": "100CC",
+"base": "SPLENDOR PRO"
+},
+"SPLENDOR_PLUS_KWHG": {
+"desc": "Splendor+ (Celebration) (Sep, 2009)",
+"year": 2009,
+"modelCC": "100CC",
+"base": "SPLENDOR+"
+},
+"SPLENDOR_PRO_AADA": {
+"desc": "Splendor Pro (Mar, 2012)",
+"year": 2012,
+"modelCC": "100CC",
+"base": "SPLENDOR PRO"
+},
+"SPLENDOR_PRO_AADC": {
+"desc": "Splendor Pro Spl. Edn.(Mar, 2013)",
+"year": 2013,
+"modelCC": "100CC",
+"base": "SPLENDOR PRO"
+},
+"PLEASURE_KTPH": {
+"desc": "Pleasure (Mar, 2008)",
+"year": 2008,
+"modelCC": "100CC",
+"base": "PLEASURE"
+},
+"PLEASURE_MMC": {
+"desc": "Pleasure (Apr, 2007)",
+"year": 2007,
+"modelCC": "100CC",
+"base": "PLEASURE"
+},
+"GLAMOUR_AAND": {
+"desc": "Glamour (Nov, 2013)",
+"year": 2013,
+"modelCC": "125CC",
+"base": "GLAMOUR"
+},
+"GLAMOUR_AANA": {
+"desc": "Glamour (May, 2012)",
+"year": 2012,
+"modelCC": "125CC",
+"base": "GLAMOUR"
+},
+"GLAMOUR_CAST": {
+"desc": "Glamour (Jan, 2007)",
+"year": 2007,
+"modelCC": "125CC",
+"base": "GLAMOUR"
+},
+"PLEASURE_AALC": {
+"desc": "Pleasure Spl. Edn. (Nov, 2013)",
+"year": 2013,
+"modelCC": "100CC",
+"base": "PLEASURE"
+},
+"PLEASURE_AALB": {
+"desc": "Pleasure (Mar, 2014)",
+"year": 2014,
+"modelCC": "100CC",
+"base": "PLEASURE"
+},
+"GLAMOUR_FI_AANA": {
+"desc": "Glamour FI (July, 2012)",
+"year": 2012,
+"modelCC": "125CC",
+"base": "GLAMOUR FI"
+},
+"GLAMOUR_FI_KTRM": {
+"desc": "Glamour Fuel Injection (formerly Glamour PGM - FI - Apr, 2011)",
+"year": 2011,
+"modelCC": "125CC",
+"base": "GLAMOUR FI"
+},
+"PLEASURE_75": {
+"desc": "Pleasure (Ltd. Ed.) (Mar, 2010)",
+"year": 2010,
+"modelCC": "100CC",
+"base": "PLEASURE"
+},
+"GLAMOUR_FI": {
+"desc": "Glamour Fuel Injection (formerly Glamour PGM - FI - Jun, 2006)",
+"year": 2006,
+"modelCC": "125CC",
+"base": "GLAMOUR FI"
+},
+"PLEASURE_71": {
+"desc": "Pleasure (Mar, 2010)",
+"year": 2010,
+"modelCC": "100CC",
+"base": "PLEASURE"
+},
+"PLEASURE_AALA": {
+"desc": "Pleasure (July, 2012)",
+"year": 2012,
+"modelCC": "100CC",
+"base": "PLEASURE"
+},
+"GLAMOUR_FI_AANE": {
+"desc": "Glamour FI (Nov, 2013)",
+"year": 2013,
+"modelCC": "125CC",
+"base": "GLAMOUR FI"
+},
+"GLAMOUR_FI_CAST": {
+"desc": "Glamour Fuel Injection (formerly Glamour PGM - FI - Jan, 2007)",
+"year": 2007,
+"modelCC": "125CC",
+"base": "GLAMOUR FI"
+},
+"GLAMOUR_KTRM": {
+"desc": "Glamour (Apr, 2011)",
+"year": 2011,
+"modelCC": "125CC",
+"base": "GLAMOUR"
+},
+"GLAMOUR_KTRJ": {
+"desc": "Glamour (Nov, 2008)",
+"year": 2008,
+"modelCC": "125CC",
+"base": "GLAMOUR"
+},
+"GLAMOUR_PGM_FI_KTRN": {
+"desc": "Glamour Fuel Injection (formerly Glamour PGM - FI - May, 2010)",
+"year": 2010,
+"modelCC": "125CC",
+"base": "GLAMOUR FI"
+},
+"GLAMOUR_KTRK": {
+"desc": "Glamour (Mar, 2010)",
+"year": 2010,
+"modelCC": "125CC",
+"base": "GLAMOUR"
+},
+"GLAMOUR_PGM_FI_KTRH": {
+"desc": "Glamour Fuel Injection (formerly Glamour PGM - FI - Nov, 2008)",
+"year": 2008,
+"modelCC": "125CC",
+"base": "GLAMOUR FI"
+},
+"MAESTRO_ABLA": {
+"desc": "Maestro (Oct, 2014)",
+"year": 2014,
+"modelCC": "110CC",
+"base": "MAESTRO"
+},
+"MAESTRO_KZNA": {
+"desc": "Maestro (Feb, 2012)",
+"year": 2012,
+"modelCC": "110CC",
+"base": "MAESTRO"
+},
+"KARIZMA_ZMR_KRYJ": {
+"desc": "Karizma ZMR (Mar, 2011)",
+"year": 2011,
+"modelCC": "225CC",
+"base": "KARIZMA ZMR"
+},
+"KARIZMA_ZMR_AARA": {
+"desc": "Karizma ZMR (July, 2012)",
+"year": 2012,
+"modelCC": "225CC",
+"base": "KARIZMA ZMR"
+},
+"HUNK_KVNG": {
+"desc": "Hunk (25th Yr Spl. Ed.) (Jan, 2009)",
+"year": 2009,
+"modelCC": "150CC",
+"base": "HUNK"
+},
+"HUNK_KVNF": {
+"desc": "Hunk (Oct, 2010)",
+"year": 2010,
+"modelCC": "150CC",
+"base": "HUNK"
+},
+"HUNK_KVNH": {
+"desc": "Hunk (Jun, 2009)",
+"year": 2009,
+"modelCC": "150CC",
+"base": "HUNK"
+},
+"HUNK": {
+"desc": "Hunk (Oct, 2007)",
+"year": 2007,
+"modelCC": "150CC",
+"base": "HUNK"
+},
+"KARIZMA_KRYH": {
+"desc": "Karizma ZMR (Sep, 2009)",
+"year": 2009,
+"modelCC": "225CC",
+"base": "KARIZMA ZMR"
+},
+"HUNK_AAKA": {
+"desc": "Hunk (Aug, 2012)",
+"year": 2012,
+"modelCC": "150CC",
+"base": "HUNK"
+},
+"KARIZMA_MMC": {
+"desc": "Karizma (Jan, 2007)",
+"year": 2007,
+"modelCC": "225CC",
+"base": "KARIZMA"
+},
+"KARIZMA_KRYK": {
+"desc": "Karizma (Feb, 2011)",
+"year": 2011,
+"modelCC": "225CC",
+"base": "KARIZMA"
+},
+"KARIZMA_AAPA": {
+"desc": "Karizma (July, 2012)",
+"year": 2012,
+"modelCC": "225CC",
+"base": "KARIZMA"
+},
+"HARLEY_X440_RAAA": {
+"desc": "X440 (Sept.,2023)",
+"year": 2023,
+"modelCC": "440CC",
+"base": "X440"
+},
+"DASH_AAWL": {
+"desc": "Dash FI Euro IV (Aug, 2018)",
+"year": 2018,
+"modelCC": "110CC",
+"base": "DASH"
+},
+"DASH_ACVH": {
+"desc": "Dash FI (Feb, 2022)",
+"year": 2022,
+"modelCC": "110CC",
+"base": "DASH"
+},
+"DASH_AAWJ": {
+"desc": "Dash (July, 2017)",
+"year": 2017,
+"modelCC": "110CC",
+"base": "DASH"
+},
+"IMPULSE_KZJA": {
+"desc": "Impulse (Oct, 2011)",
+"year": 2011,
+"modelCC": "150CC",
+"base": "IMPULSE"
+},
+"DASH_ABGD_EXP_125": {
+"desc": "Dash 125 (Dec, 2018)",
+"year": 2018,
+"modelCC": "125CC",
+"base": "DASH"
+},
+"IGNITOR_K06": {
+"desc": "Ignitor (May, 2012)",
+"year": 2012,
+"modelCC": "125CC",
+"base": "IGNITOR"
+},
+"ECO_DELUXE_AAHR_i3S_EXP": {
+"desc": "ECO Deluxe (Apr, 2017)",
+"year": 2017,
+"modelCC": "100CC",
+"base": "ECO DELUXE"
+},
+"DUET_125-FI_ABTA_EXP": {
+"desc": "Duet 125 FI EXP (Aug, 2018)",
+"year": 2018,
+"modelCC": "125CC",
+"base": "DUET"
+},
+"DUET_AAYB": {
+"desc": "Duet (Dec, 2015) EURO III",
+"year": 2015,
+"modelCC": "110CC",
+"base": "DUET"
+},
+"DUET_FI_EXP_AAYE": {
+"desc": "DUET FI EURO IV (June, 2018)",
+"year": 2018,
+"modelCC": "110CC",
+"base": "DUET"
+},
+"GLAMOUR_AAND_EXP": {
+"desc": "Glamour (Sep, 2014)",
+"year": 2014,
+"modelCC": "125CC",
+"base": "GLAMOUR"
+},
+"ECO_DELUXE_AAHS_i3S_EXP": {
+"desc": "ECO Deluxe i3S (Oct,2016)",
+"year": 2016,
+"modelCC": "100CC",
+"base": "HF DELUXE"
+},
+"GLAMOUR_AANH": {
+"desc": "Glamour (Mar, 2014) EURO III",
+"year": 2014,
+"modelCC": "125CC",
+"base": "GLAMOUR"
+},
+"ECO_DELUXE_COLUMBIA_AAHB": {
+"desc": "ECO Deluxe Columbia (Aug, 2014)",
+"year": 2014,
+"modelCC": "100CC",
+"base": "ECO DELUXE"
+},
+"ECO_DELUXE_COLUMBIA_AAHK": {
+"desc": "ECO Deluxe Columbia (May, 2015)",
+"year": 2015,
+"modelCC": "100CC",
+"base": "ECO DELUXE"
+},
+"GLAMOUR_AANH_EXP": {
+"desc": "Glamour (May, 2016)",
+"year": 2016,
+"modelCC": "125CC",
+"base": "GLAMOUR"
+},
+"GLAMOUR_FI_AANE_EXP": {
+"desc": "Glamour FI (Sep, 2014)",
+"year": 2014,
+"modelCC": "125CC",
+"base": "GLAMOUR FI"
+},
+"HF_DELUXE_AAHC_FE": {
+"desc": "ECO Deluxe Colombia (Nov, 2015)",
+"year": 2015,
+"modelCC": "100CC",
+"base": "HF DELUXE"
+},
+"GLAMOUR_ACLB": {
+"desc": "Glamour (Mar, 2020)",
+"year": 2020,
+"modelCC": "125CC",
+"base": "GLAMOUR"
+},
+"GLAMOUR_EXP_ACLG": {
+"desc": "Glamour (Dec, 2019)",
+"year": 2019,
+"modelCC": "125CC",
+"base": "GLAMOUR"
+},
+"HF_DELUXE_AAHC_BAN": {
+"desc": "HF Deluxe (Apr, 2020)",
+"year": 2020,
+"modelCC": "100CC",
+"base": "HF DELUXE"
+},
+"HF_DELUXE_ECO_AAHF": {
+"desc": "HF Deluxe ECO (Aug, 2014)",
+"year": 2014,
+"modelCC": "100CC",
+"base": "HF DELUXE ECO"
+},
+"HF_DELUXE_TAXI_AAHL": {
+"desc": "HF Deluxe (Nov, 2015)",
+"year": 2015,
+"modelCC": "100CC",
+"base": "HF DELUXE"
+},
+"HUNK_190R_ABFD": {
+"desc": "Hunk 190R (Mar, 2020)",
+"year": 2020,
+"modelCC": "190CC",
+"base": "HUNK"
+},
+"HUNK_200R_ABFB": {
+"desc": "Hunk 200R (Aug, 2018)",
+"year": 2018,
+"modelCC": "200CC",
+"base": "HUNK"
+},
+"HUNK_200R_ABFC": {
+"desc": "Hunk 200R",
+"year": 2019,
+"modelCC": "200CC",
+"base": "HUNTER"
+},
+"HUNK_160R_FI_ABZC": {
+"desc": "Hunk 160R FI BSVI (Apr, 2020)",
+"year": 2020,
+"modelCC": "160CC",
+"base": "HUNK"
+},
+"HUNK_200S_AABY": {
+"desc": "Hunk 200S (Dec, 2019)",
+"year": 2019,
+"modelCC": "200CC",
+"base": "HUNK"
+},
+"HUNK_AABK_EXP": {
+"desc": "Hunk Sports (Nov, 2016)",
+"year": 2016,
+"modelCC": "150CC",
+"base": "HUNK"
+},
+"HUNK_AABP": {
+"desc": "Hunk 200 (Nov, 2019)",
+"year": 2019,
+"modelCC": "200CC",
+"base": "HUNK"
+},
+"HUNK_200R_ACTD": {
+"desc": "Hunk 190R FI (Jan, 2020)",
+"year": 2020,
+"modelCC": "200CC",
+"base": "HUNK"
+},
+"HUNK_200T_ABWE": {
+"desc": "Hunk 200T",
+"year": 2019,
+"modelCC": "200CC",
+"base": "HUNK"
+},
+"HUNK_AAKA_EXP": {
+"desc": "Hunk (Sep, 2014)",
+"year": 2014,
+"modelCC": "150CC",
+"base": "HUNK"
+},
+"HUNK_AAKM_EXP_SLB": {
+"desc": "Hunk (Mar,2019)",
+"year": 2019,
+"modelCC": "150CC",
+"base": "HUNK"
+},
+"HUNK_AAKD": {
+"desc": "Hunk (Feb, 2016) EURO III",
+"year": 2016,
+"modelCC": "150CC",
+"base": "HUNK"
+},
+"HUNK_AAKM_EXP": {
+"desc": "Hunk BSIV (Feb,2019)",
+"year": 2019,
+"modelCC": "150CC",
+"base": "HUNK"
+},
+"HUNK_AAKK": {
+"desc": "Hunk (Aug, 2018)",
+"year": 2018,
+"modelCC": "150CC",
+"base": "HUNK"
+},
+"IGNITOR_AANH_EXP_AR": {
+"desc": "Ignitor ARGENTINA (Aug, 2018)",
+"year": 2018,
+"modelCC": "125CC",
+"base": "IGNITOR"
+},
+"IGNITOR_AANT": {
+"desc": "Ignitor 125 (May, 2017)",
+"year": 2017,
+"modelCC": "125CC",
+"base": "IGNITOR"
+},
+"IGNITOR_AANH_EXP": {
+"desc": "Ignitor (Oct,2016)",
+"year": 2016,
+"modelCC": "125CC",
+"base": "IGNITOR"
+},
+"IGNITOR_AANT_CO": {
+"desc": "Ignitor COLOMBIA (Aug, 2018)",
+"year": 2018,
+"modelCC": "125CC",
+"base": "IGNITOR"
+},
+"IGNITOR_125_i3S_ACLN": {
+"desc": "Ignitor 125 i3S (Jan, 2021)",
+"year": 2021,
+"modelCC": "125CC",
+"base": "IGNITOR"
+},
+"KARIZMA_AAPD_EXP": {
+"desc": "Karizma (Feb, 2016)",
+"year": 2016,
+"modelCC": "225CC",
+"base": "KARIZMA"
+},
+"MAESTRO_EDGE_AAWT": {
+"desc": "Maestro_EDGE (May, 2018)",
+"year": 2018,
+"modelCC": "110CC",
+"base": "MAESTRO EDGE"
+},
+"KARIZMA_ZMR_AARE": {
+"desc": "Karizma ZMR (Jan, 2017)",
+"year": 2017,
+"modelCC": "225CC",
+"base": "KARIZMA ZMR"
+},
+"IGNITOR_FI_EURO_AANV": {
+"desc": "Ignitor FI-EUROI IV (Aug,2018)",
+"year": 2018,
+"modelCC": "125CC",
+"base": "IGNITOR"
+},
+"PLEASURE_AALE": {
+"desc": "Pleasure (Mar, 2014) EURO III",
+"year": 2014,
+"modelCC": "100CC",
+"base": "PLEASURE"
+},
+"PLEASURE_AALE_EXP": {
+"desc": "Pleasure (May, 2016)",
+"year": 2016,
+"modelCC": "100CC",
+"base": "PLEASURE"
+},
+"PASSION_PRO_AACH": {
+"desc": "Passion Pro (Aug, 2015)",
+"year": 2015,
+"modelCC": "100CC",
+"base": "PASSION PRO"
+},
+"PLEASURE_AALK_EXP": {
+"desc": "Pleasure (Feb, 2017)",
+"year": 2017,
+"modelCC": "110CC",
+"base": "PLEASURE"
+},
+"PLEASURE_AALH": {
+"desc": "Pleasure + (Oct,2019)",
+"year": 2019,
+"modelCC": "100CC",
+"base": "PLEASURE"
+},
+"SPLENDOR_i3S_iSMART_110 ABAF": {
+"desc": "Splendor i3S ismart 110 (JUNE, 2021)",
+"year": 2021,
+"modelCC": "110CC",
+"base": "SPLENDOR iSMART"
+},
+"THRILLER_200R_EXP_ACTB": {
+"desc": "Thriller 200R",
+"year": 2019,
+"modelCC": "200CC",
+"base": "THRILLER"
+},
+"SPLENDOR_PLUS_AAEJ_i3S": {
+"desc": "Splendor+ iBS BSVI (SEPT, 2021)",
+"year": 2021,
+"modelCC": "100CC",
+"base": "SPLENDOR+"
+},
+"THRILLER_AABD": {
+"desc": "Thriller (April, 2013)",
+"year": 2013,
+"modelCC": "150CC",
+"base": "THRILLER"
+},
+"THRILLER_AABF": {
+"desc": "Thriller (Mar, 2014 EURO III",
+"year": 2014,
+"modelCC": "150CC",
+"base": "THRILLER"
+},
+"THRILLER_AABH": {
+"desc": "Thriller (Sep, 2014)",
+"year": 2014,
+"modelCC": "150CC",
+"base": "THRILLER"
+},
+"THRILLER_AABW_EXP": {
+"desc": "Thriller 200 R Euro II (Dec, 2019)",
+"year": 2019,
+"modelCC": "200CC",
+"base": "THRILLER"
+},
+"THRILLER_AABK": {
+"desc": "Thriller sports Euro III (Feb, 2016)",
+"year": 2016,
+"modelCC": "150CC",
+"base": "THRILLER"
+},
+"THRILLER_AABJ": {
+"desc": "Thriller Sports (Mar, 2015)",
+"year": 2015,
+"modelCC": "150CC",
+"base": "X-TREME"
+},
+"THRILLER_AAKE": {
+"desc": "Thriller (May, 2015)",
+"year": 2015,
+"modelCC": "150CC",
+"base": "THRILLER"
+},
+"THRILLER_ABWG_200X_EXP": {
+"desc": "Thriller 200T EXP",
+"year": 2019,
+"modelCC": "200CC",
+"base": "THRILLER"
+},
+"THRILLER_AAKF": {
+"desc": "Thriller (Feb, 2016)",
+"year": 2016,
+"modelCC": "150CC",
+"base": "THRILLER"
+},
+"XPULSE_200_ABS_ABWB": {
+"desc": "Xpulse 200 ABS",
+"year": 2021,
+"modelCC": "200CC",
+"base": "XPULSE"
+},
+"XPULSE_200_ABWY": {
+"desc": "Xpulse 200 4V (Mar,2022)",
+"year": 2022,
+"modelCC": "200CC",
+"base": "XPULSE"
+},
+"XPULSE_200_ADPA": {
+"desc": "XPULSE 200 ENDURO EURO 2-DAKAR EDITION(Feb, 2023)",
+"year": 2023,
+"modelCC": "200CC",
+"base": "XPULSE"
+},
+"XPULSE_200FI_ABWD_TURKEY": {
+"desc": "Xpulse 200FI Turkey",
+"year": 2021,
+"modelCC": "200CC",
+"base": "XPULSE"
+},
+"XPULSE_200_ENDURO_ADPB": {
+"desc": "XPULSE 200 ENDURO EURO 4-DAKAR EDITION(Feb, 2023)",
+"year": 2023,
+"modelCC": "200CC",
+"base": "XPULSE"
+},
+"XPULSE_200T_FI_ABWC": {
+"desc": "Xpulse 200T FI (Jan, 2020)",
+"year": 2020,
+"modelCC": "200CC",
+"base": "XPULSE"
+},
+"XTREME_200R_ACTC": {
+"desc": "Xtreme 200R (Apr, 2020)",
+"year": 2020,
+"modelCC": "200CC",
+"base": "X-TREME"
+},
+"THRILLER_160R_FI_ABZD": {
+"desc": "Thriller 160R FI BSVI (Apr, 2020)",
+"year": 2020,
+"modelCC": "160CC",
+"base": ""
+},
+"HUNK_AAKS": {
+"desc": "HUNK 150 REFRESH LATAM(Aug,2023)",
+"year": 2023,
+"modelCC": "150CC",
+"base": ""
+},
+"THRILLER_AAKH_i3S": {
+"desc": "Thriller (Feb, 2017)",
+"year": 2017,
+"modelCC": "150CC",
+"base": ""
+},
+"HUNK_AAKG": {
+"desc": "Hunk (Feb, 2016)",
+"year": 2016,
+"modelCC": "150CC",
+"base": ""
+},
+"IGNITOR_125_i3S_EURO_III_ACLE": {
+"desc": "Ignitor 125 i3S EURO III (JUL, 2020)",
+"year": 2020,
+"modelCC": "125CC",
+"base": ""
+},
+"HARLEY_X440_RAAB": {
+"desc": "X440 OBDII(May,2025)",
+"year": 2025,
+"modelCC": "440CC",
+"base": ""
+},
+"XPULSE_200ABS_ABWR": {
+"desc": "XPULSE 200 ABS (Mar,2022)",
+"year": 2022,
+"modelCC": "200CC",
+"base": ""
+},
+"SPLENDOR_i3SMART_ABAB_EXP": {
+"desc": "Splendor iSMART Euro III (Apr, 2017)",
+"year": 2017,
+"modelCC": "110CC",
+"base": ""
+},
+"IGNITOR_125_i3S_ACLC": {
+"desc": "Ignitor 125 i3S (Mar, 2020)",
+"year": 2020,
+"modelCC": "125CC",
+"base": ""
+},
+"XPULSE_200_FI_ABWT": {
+"desc": "XPULSE 200 FI (Mar,2022)",
+"year": 2022,
+"modelCC": "200CC",
+"base": ""
+},
+"XPULSE_200T_ADPE": {
+"desc": "XPULSE 200T FI EU4 (DEC.2023)",
+"year": 2024,
+"modelCC": "200CC",
+"base": ""
+},
+"HF_DELUXE_ADKC": {
+"desc": "HF DELUXE-22 (Dec,2022)",
+"year": 2022,
+"modelCC": "100CC",
+"base": ""
+},
+"DASH_125_ABHD": {
+"desc": "Dash 125 (Mar,2019)",
+"year": 2019,
+"modelCC": "125CC",
+"base": ""
+},
+"HF_DELUXE_ECO_AAHV": {
+"desc": "HF Deluxe ECO",
+"year": 2018,
+"modelCC": "100CC",
+"base": ""
+},
+"HF_DELUXE_AAHM_BANGLADESH": {
+"desc": "HF Deluxe Bangladesh",
+"year": 2022,
+"modelCC": "100CC",
+"base": ""
+},
+"KARIZMA_XMR_A2AF": {
+"desc": "XMR 210(Feb.,2025)",
+"year": 2025,
+"modelCC": "210CC",
+"base": ""
+},
+"HUNK_160R_ACRB": {
+"desc": "HUNK 160 4V ACRB(Pre-Release)",
+"year": 2024,
+"modelCC": "160CC",
+"base": ""
+},
+"HUNK_160R_ABZN": {
+"desc": "HUNK 160R (Jan, 2024)",
+"year": 2024,
+"modelCC": "160CC",
+"base": ""
+},
+"THRILLER_160R_FI_ABZF": {
+"desc": "Thriller 160R FI BSVI",
+"year": 2021,
+"modelCC": "160CC",
+"base": ""
+},
+"SPLENDOR_PLUS_AAEW_i3S": {
+"desc": "Splendor+ iBS (Aug, 2021)",
+"year": 2021,
+"modelCC": "100CC",
+"base": ""
+},
+"SPLENDOR_PLUS_AAEV_i3S": {
+"desc": "Splendor+ (SEPT, 2021)",
+"year": 2021,
+"modelCC": "100CC",
+"base": ""
+},
+"XTREME_200S_ACNA": {
+"desc": "Xtreme 200S",
+"year": 2022,
+"modelCC": "200CC",
+"base": ""
+},
+"SPLENDOR_PLUS_I3S_AAEZ": {
+"desc": "SPLENDOUR+",
+"year": 2023,
+"modelCC": "110CC",
+"base": ""
+},
+"GLAMOUR_125_i3S_ACLC": {
+"desc": "Glamour 125 i3S (Feb, 2021)",
+"year": 2021,
+"modelCC": "125CC",
+"base": ""
+},
+"HUNK_AAKH_i3S": {
+"desc": "Hunk (Feb, 2017)",
+"year": 2017,
+"modelCC": "150CC",
+"base": ""
+},
+"HF_DELUXE_AAHW_BANGLADESH": {
+"desc": "HF-Deluxe BSVI Bangladesh (OCT, 2021)",
+"year": 2021,
+"modelCC": "100CC",
+"base": ""
+},
+"XPULSE_200T_FI_ABWS": {
+"desc": "XPULSE 200T FI (Mar,2022)",
+"year": 2022,
+"modelCC": "200CC",
+"base": ""
+},
+"XPULSE_200T_ABWP": {
+"desc": "XPULSE 200T (Mar,2022)",
+"year": 2022,
+"modelCC": "200CC",
+"base": ""
+}
+}

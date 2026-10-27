@@ -70,12 +70,17 @@ const TVS_DIR = path.join(FILES_DIR, 'catalogues', 'tvs');
 // 13c: KTM + Husqvarna, from All Catalogues > KTM > KTM_PDF_HD_All_Years (FILES_DIR/catalogues/ktm)
 const KTM_DIR = path.join(FILES_DIR, 'catalogues', 'ktm');
 let heroBusy = false;
+// 14z: brand_sync (brand_sync/ in this folder, run weekly by cron) writes the Hero e-catalogue and Hero DMS data here
+const HERO_SYNC_DIR = path.join(FILES_DIR, 'catalogues', 'hero-sync');
+const HERO_SYNC_SRC = ['hero/state.json', 'hero/old_new.json', 'output/Hero DMS/Hero_DMS_Parts.csv'].map(f => path.join(HERO_SYNC_DIR, f));
 const mtime = f => { try { return fs.statSync(f).mtimeMs; } catch { return 0; } };
 function heroBuild(why) {
   if (!HERO_RAW.every(f => fs.existsSync(path.join(HERO_RAW_DIR, f)))) return false;
   const src = [...HERO_RAW.map(f => path.join(HERO_RAW_DIR, f)), ...HERO_OPT.map(f => path.join(HERO_RAW_DIR, f)), ...HERO_XL.map(f => path.join(HERO_XL_DIR, f)), ...['cat/hero.json', 'cat/hero-dg.json', 'app.html'].map(f => path.join(PUBLIC_DIR, f)), path.join(ROOT, 'lib', 'herobuild.mjs'), path.join(HERO_PDF_DIR, 'hero_pdf_index.json')];
-  if (why === 'start' && mtime(path.join(HERO_OUT, 'hero.json')) > Math.max(...src.map(mtime))) return false;
-  catBuild('hero', why, [path.join(ROOT, 'lib', 'herobuild.mjs'), PUBLIC_DIR, HERO_RAW_DIR, HERO_OUT, HERO_PDF_DIR, HERO_XL_DIR]);
+  if (why === 'sync' && catQ.some(q => q[0] === 'hero')) return false;
+  src.push(...HERO_SYNC_SRC); const needHave = fs.existsSync(HERO_SYNC_DIR) && !fs.existsSync(path.join(HERO_SYNC_DIR, 'hero', 'hero_have.json'));
+  if ((why === 'start' || why === 'sync') && !needHave && mtime(path.join(HERO_OUT, 'hero.json')) > Math.max(...src.map(mtime))) return false;
+  catBuild('hero', why, [path.join(ROOT, 'lib', 'herobuild.mjs'), PUBLIC_DIR, HERO_RAW_DIR, HERO_OUT, HERO_PDF_DIR, HERO_XL_DIR, HERO_SYNC_DIR]);
   return true;
 }
 function hondaBuild(why) {
@@ -131,6 +136,7 @@ function catRun() {
   const c = spawn(process.execPath, ['--max-old-space-size=3072', ...q[2]], { stdio: ['ignore', 'inherit', 'inherit'] });
   c.on('exit', code => { console.log(new Date().toISOString(), q[0] + ' build (' + q[1] + ') ended', code); heroBusy = false; catQ.shift(); catRun(); });
 }
+setInterval(() => { try { heroBuild('sync'); } catch (e) { console.log('hero sync check:', e.message); } }, 3600e3).unref();   // 14z: the weekly Hero sync's new files make a new Hero build within the hour
 heroBuild('start'); hondaBuild('start'); bajajBuild('start'); yamahaBuild('start'); reBuild('start'); tvsBuild('start'); ktmBuild('start');
 const BACKUP = backups({ store, dataDir: DATA_DIR, env });   // 11u: every night + Admin > More > Backups
 // 11v: Hero goes to phones as a head + the part lines they need (lib/catsplit.mjs); CAT_SPLIT=off sends the whole file as before
@@ -208,6 +214,13 @@ async function api(req, res, url, user) {
   if (p === '/api/photo/status') return photoStatus(req, res, url, user);
   if (p === '/api/photo/wrong') return photoWrong(req, res, url, user);
   if (p === '/api/photo') return photoUpload(req, res, user, url);
+  if (p === '/api/hero-sync') {   // 14z: Admin: when the weekly Hero syncs last ran, and the newest report
+    drain(req); if (!user || user.role !== 'admin') return json(res, user ? 403 : 401, { error: 'Only Admin' });
+    const rj = f => { try { return JSON.parse(fs.readFileSync(path.join(HERO_SYNC_DIR, f), 'utf8')); } catch { return null; } };
+    let rep = null; try { const f = fs.readdirSync(path.join(HERO_SYNC_DIR, 'reports')).filter(x => /^report_[\d-]+\.md$/.test(x)).sort().pop(); if (f) rep = { name: f, text: fs.readFileSync(path.join(HERO_SYNC_DIR, 'reports', f), 'utf8').slice(0, 60000) }; } catch {}
+    const b = (() => { try { return JSON.parse(fs.readFileSync(path.join(HERO_OUT, 'hero-build.json'), 'utf8')); } catch { return {}; } })();
+    return json(res, 200, { setup: fs.existsSync(HERO_SYNC_DIR), hero: (rj('hero/state.json') || {}).last_run || '', dms: (rj('hero_dms/state.json') || {}).last_run || '', report: rep, build: { at: b.at || '', sync: b.sync || null, dms: b.dms || null, dmsSrc: b.dmsSrc || '' } });
+  }
   if (p === '/api/hero-dms-mrp') {   // 14w: Hero's dealer list MRPs (number without dashes / end S -> MRP), for Admin's shop price check
     drain(req); if (!user || user.role !== 'admin') return json(res, user ? 403 : 401, { error: 'Only Admin' });
     try { const b = fs.readFileSync(path.join(HERO_OUT, 'hero-dms-mrp.json')); res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); return res.end(b); }

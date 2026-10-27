@@ -167,6 +167,18 @@ try {
     ok(q3.mrp['44444TST201S'] === 330 && q3.mrp['33333-TST-300'] === 120 && q3.mrp['77777TST700S'] === 510 && q3.mrp['44444TST200S'] === 90, 'dealer list MRP wins; a part it has no MRP for keeps its own: ' + JSON.stringify(i3.dms));
     ok(r3('77777TST700S').length === 1 && q3.vars[r3('77777TST700S')[0][11][0]] === 'Hero DMS parts (not in catalogue)' && /Fits SPLENDOR\+ \(2020\), PASSION/.test(r3('77777TST700S')[0][8]), 'a number only the dealer list has comes in with its bikes');
     ok(r3('44444TST200S').every(r => /New no\. 44444TST201S/.test(r[8])) && r3('44444TST201S').every(r => /Old no\. 44444TST200S/.test(r[8])) && i3.dms.mrpChanged === 1 && i3.dms.added === 1, 'old and new numbers show under each other');
+    // 14z: brand_sync's weekly files (hero-sync): a new model with its diagram, new photo, the dealer CSV newer than the Excel
+    const SY = T + '/hero-sync'; fs.mkdirSync(SY + '/hero/groups', { recursive: true }); fs.mkdirSync(SY + '/hero/diagrams'); fs.mkdirSync(SY + '/hero/photos'); fs.mkdirSync(SY + '/output/Hero DMS', { recursive: true });
+    fs.writeFileSync(SY + '/hero/state.json', JSON.stringify({ last_run: '2026-11-01', models: { NEWBIKE_X: { desc: 'Newbike 125 (Nov, 2026)', year: 2026, modelCC: '125CC', groups: ['G-NEW-1'] } }, mrp: { '88888-TST-800': '640' } }));
+    fs.writeFileSync(SY + '/hero/groups/G-NEW-1.json', JSON.stringify({ group: { groupNo: 'G-NEW-1', map: 'E-1', desc: 'CYLINDER HEAD' }, rows: [{ sn: '1', pn: '88888-TST-800', desc: 'HEAD COMP', qty: '1', mrp: '640' }] }));
+    fs.writeFileSync(SY + '/hero/diagrams/G-NEW-1.jpg', jpg('fignew')); fs.writeFileSync(SY + '/hero/photos/88888-TST-800.jpg', jpg('phnew'));
+    fs.writeFileSync(SY + '/hero/old_new.json', JSON.stringify({ '88888-TST-799': { new: '88888-TST-800' } }));
+    const fut = new Date(Date.now() + 60000); fs.writeFileSync(SY + '/output/Hero DMS/Hero_DMS_Parts.csv', 'part_no,name,mrp,mrp_from,hsn,group,active,superseded_by,models\n88888-TST-800,HEAD COMP,655,,,,Y,,NEWBIKE\n44444TST201S,CABLE TEST,345,,,,Y,,\n'); fs.utimesSync(SY + '/output/Hero DMS/Hero_DMS_Parts.csv', fut, fut);
+    const i4 = writeHero(T + '/pub', R2, T + '/sync', null, X, SY), q4 = JSON.parse(fs.readFileSync(T + '/sync/hero.json', 'utf8')), g4 = JSON.parse(fs.readFileSync(T + '/sync/hero-dg.json', 'utf8')), r4 = q4.d.filter(r => r[5] === '88888-TST-800'), nv = q4.vars.indexOf('Newbike 125 (Nov, 2026)');
+    ok(nv >= 0 && r4.length === 1 && r4[0][11].includes(nv) && g4.f[g4.p[nv]['E-1']] === 'pf:catalogues/hero-sync/hero/diagrams/G-NEW-1.jpg:0:' + jpg('fignew').length && i4.sync.models === 1, 'weekly sync: a new model comes in with its diagram: ' + JSON.stringify(i4.sync));
+    ok(q4.mrp['88888-TST-800'] === 655 && q4.mrp['44444TST201S'] === 345 && i4.dmsSrc.startsWith('brand_sync'), 'weekly dealer CSV (newer than the Excel) gives the MRP');
+    ok(/Old no\. 88888-TST-799/.test(r4[0][8]) && q4.phz[q4.phf['88888-TST-800'][0]] === 'catalogues/hero-sync/hero/photos/88888-TST-800.jpg', 'weekly sync: old number and new photo');
+    const hv = JSON.parse(fs.readFileSync(SY + '/hero/hero_have.json', 'utf8')); ok(hv.groups.includes('E-1_SPLENDOR_TST1') && hv.photos.includes('99999TST001'), 'the sync is told which diagrams and photos the server already has');
   }
 } catch (e) { ok(false, 'error ' + e.stack); }
 srv.kill(); if (fails) console.log(log.slice(-2000)); console.log(fails ? fails + ' FAILED' : 'ALL PASS'); process.exit(fails ? 1 : 0);

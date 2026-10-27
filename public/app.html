@@ -854,7 +854,7 @@ function acBook(iso){const R=[];const add=(dir,m,amt,t,s)=>{if(+amt>0)R.push({di
  (DB.exp||[]).filter(x=>!x.nb&&acIso(x)===iso).forEach(x=>add('out',x.pm||'Cash',x.a,'Expense · '+x.c,x.n));
  (DB.salAdv||[]).filter(x=>x.d===iso).forEach(x=>add('out',x.mode,x.amt,'Salary advance',(ACC()[x.k]||{}).name||x.k));
  (DB.salPay||[]).filter(x=>x.d===iso).forEach(x=>add('out',x.mode,x.net,'Salary · '+acMonName(x.mo),((ACC()[x.k]||{}).name||x.k)+(x.adv?' · advance '+inr(x.adv)+' cut':'')));
- (DB.returns||[]).filter(x=>x.mode&&!['Wallet','Exchange','Dues'].includes(x.mode)&&(String(x.id).startsWith('C-')||(c=>!c||c.cin)(((DB.bills||[]).find(b=>b.id===x.bill)||{}).cancel))&&(x.given?x.given.d:acIso(x))===iso).forEach(x=>add('out',x.given?x.given.mode:x.mode,x.amt,'Refund '+(x.id||''),'bill '+(x.bill||'')));
+ (DB.returns||[]).filter(x=>x.mode&&!['Wallet','Exchange','Dues'].includes(x.mode)&&(String(x.id).startsWith('C-')||/-X$/.test(String(x.id))||(c=>!c||c.cin)(((DB.bills||[]).find(b=>b.id===x.bill)||{}).cancel))&&(x.given?x.given.d:acIso(x))===iso).forEach(x=>add('out',x.given?x.given.mode:x.mode,x.amt,'Refund '+(x.id||''),'bill '+(x.bill||'')));
  (DB.cbook||[]).filter(x=>x.d===iso).forEach(x=>add(x.dir,x.m,x.amt,x.t,x.n));
  return R;}
 SCREENS.accash=()=>{const iso=S.ui.cbd||isoToday(),R=acBook(iso),sum=(dir,b)=>r2(R.filter(x=>x.dir===dir&&acBank(x.m)===b).reduce((a,x)=>a+x.amt,0));
@@ -974,7 +974,7 @@ function acSalPayOk(k){const mo=acMon(isoToday());if(salPaid(k,mo))return closeS
  audit('Salary paid',a.sid||k,'—',inr(sal-cut)+(cut?' (advance '+inr(cut)+' cut)':''));save();closeSheet();toast('Salary paid');refresh();}
 
 /* 10. refunds: a return is approved first (Manager / Admin, update 8n); the Accountant marks the money given back */
-const acRefunds=()=>(DB.returns||[]).filter(r=>r.mode&&!['Wallet','Exchange','Dues'].includes(r.mode)&&+r.amt>0&&(String(r.id).startsWith('C-')||!r.given||(c=>!c||c.cin)(((DB.bills||[]).find(b=>b.id===r.bill)||{}).cancel)));   /* not paid yet: still to pay */   /* 13o: a cancelled bill's refunds are in its cancel */
+const acRefunds=()=>(DB.returns||[]).filter(r=>r.mode&&!['Wallet','Exchange','Dues'].includes(r.mode)&&+r.amt>0&&(String(r.id).startsWith('C-')||/-X$/.test(String(r.id))||!r.given||(c=>!c||c.cin)(((DB.bills||[]).find(b=>b.id===r.bill)||{}).cancel)));   /* not paid yet: still to pay */   /* 13o: a cancelled bill's refunds are in its cancel */
 SCREENS.acref=()=>{const L=acRefunds(),w=(DB.approvals||[]).filter(a=>a.ret&&a.st==='pending'),due=L.filter(r=>!r.given);
  return bar('Refunds')+`<div class="scroll"><div class="pad">
  ${w.length?`${sec('Waiting for approval ('+w.length+')')}<div class="card flush">${w.map(a=>li(esc(deEsc(a.t)),esc(deEsc(a.d)),'<span class="pill a">Pending</span>','history','')).join('')}</div>`:''}
@@ -1787,7 +1787,7 @@ SCREENS.mearn=()=>{const mo=MON[new Date().getMonth()],nw=new Date();const jobs=
 /* ===== BILLING: day closing, counter returns, hold bill, estimate ===== */
 const DENOMS=[500,200,100,50,20,10,5,2,1];
 SCREENS.dayclose=()=>{const c=collected('Cash'),u=collected('UPI');const card=collected('Card');const fc=(DB.fcol||[]).filter(x=>x.st==='To deposit');const fcT=fc.filter(x=>x.pm==='Cash'&&x.d===today()).reduce((a,x)=>a+x.amt,0);
- const refunds=(DB.returns||[]).filter(x=>x.given&&x.given.d===isoToday()&&x.given.mode==='Cash'&&(String(x.id).startsWith('C-')||(bb=>!(bb&&bb.cancel&&(bb.iso||'')===x.given.d))((DB.bills||[]).find(b=>b.id===x.bill)))).reduce((a,x)=>a+x.amt,0);const open=S.ui.dcOpen??2000;const fcIn=(DB.fcol||[]).filter(x=>x.pm==='Cash'&&x.st==='Deposited'&&x.dep===isoToday()&&x.d!==today()).reduce((a,x)=>a+x.amt,0);const exp=open+c.total-fcT-refunds+fcIn;   /* 13q: field cash of an earlier day handed in today */
+ const refunds=(DB.returns||[]).filter(x=>x.given&&x.given.d===isoToday()&&x.given.mode==='Cash'&&(String(x.id).startsWith('C-')||/-X$/.test(String(x.id))||(bb=>!(bb&&bb.cancel&&!bb.cancel.cin&&(bb.iso||'')===x.given.d))((DB.bills||[]).find(b=>b.id===x.bill)))).reduce((a,x)=>a+x.amt,0);const open=S.ui.dcOpen??2000;const fcIn=(DB.fcol||[]).filter(x=>x.pm==='Cash'&&x.st==='Deposited'&&x.dep===isoToday()&&x.d!==today()).reduce((a,x)=>a+x.amt,0);const exp=open+c.total-fcT-refunds+fcIn;   /* 13q: field cash of an earlier day handed in today */
  const n=S.ui.dcN||(S.ui.dcN={});const counted=DENOMS.reduce((a,d)=>a+d*(+n[d]||0),0);const diff=counted-exp;const done=(DB.closings||[]).find(x=>x.iso?x.iso===isoToday():x.d===today());
  return bar('Day closing')+`<div class="scroll"><div class="pad">
  ${done?`<div class="row" style="background:var(--g-soft);border-radius:14px;padding:12px;color:var(--g)">${ic('checkC','s18')}<span class="cap grow" style="color:var(--g)"><b>Day closed at ${done.t}</b> by ${esc(done.by)} · difference ${done.diff===0?'nil':inr(done.diff)}</span></div>`:''}
@@ -6688,7 +6688,7 @@ function bpDueOf(g){const s=sups().find(x=>x.n===g.supplier),days=s&&isFinite(+s
 function bpStat(g){const bal=bpBal(g);if(bal<=0)return ['Paid','g'];const d=bpDueOf(g),pp=bpPaid(g)>0?'Part paid · ':'';
  if(d.left<0)return [pp+(-d.left)+' day'+(d.left===-1?'':'s')+' late','r'];if(d.left===0)return [pp+'Due today','r'];
  if(d.left<=3)return [pp+'Due in '+d.left+' day'+(d.left===1?'':'s'),'a'];return [pp+'Due '+fmtD(d.iso),''];}
-const supBills=n=>(DB.grns||[]).filter(g=>g.status==='posted'&&g.supplier===n);
+const supBills=n=>(DB.grns||[]).filter(g=>g.status==='posted'&&g.supplier===n).slice().sort((a,b)=>String(a.bdate||a.iso||ddmmm2iso(a.date)).localeCompare(String(b.bdate||b.iso||ddmmm2iso(b.date))));   /* 14g: oldest bill first */
 const supOut=s=>r2(supBills(s.n).reduce((a,g)=>a+bpBalR(g),0)+(+s.pay||0)-supCr(s.n));
 function supAlerts(){const out=[];(DB.grns||[]).forEach(g=>{if(g.status!=='posted')return;const bal=bpBal(g);if(!(bal>0))return;const d=bpDueOf(g);if(d.left<=3)out.push({g,bal,left:d.left,iso:d.iso});});return out.sort((a,b)=>a.left-b.left);}
 function supBellOn(){if(S.user&&finRole()&&supAlerts().length){go('supdue');return;}toast('No new notifications');}
@@ -7115,7 +7115,8 @@ function invWaitSave(id){const L=DB.waitParts||[],w=L.find(x=>x.id===id);if(!w)r
  const q=parseInt(w.q);let p=PRODUCTS.find(x=>catPk(x.pn)===w.pk);if(!p)p=invMkProduct(w,0);else if(!(p.photos||[]).length){p.photos=w.photos.slice(0,4);}
  if(w.bin&&!DB.bins[p.id])DB.bins[p.id]=String(w.bin).trim().toUpperCase();
  DB.stock[p.id]=(+DB.stock[p.id]||0)+q;logMove('in',p.id,q,w.grn||'—','Stock in · photos done'+(w.sup?' · '+String(w.sup).split(' – ')[0]:''));
- const g=DB.grns.find(x=>x.id===w.grn);if(g){g.wait=(g.wait||[]).filter(x=>x.wid!==w.id);const it={pid:p.id,wid:w.id,exp:null,q,rate:w.rate,...bpEx(w)};g.items.push(it);if(g.status==='posted')bpApplyItem(it,g);}
+ const g=DB.grns.find(x=>x.id===w.grn);if(g){const gw=(g.wait||[]).find(x=>x.wid===w.id)||{},wr={...w};for(const k of ['rate','lr','disc','bmrp','hsn','gst'])if(gw[k]!=null&&gw[k]!=='')wr[k]=gw[k];g.wait=(g.wait||[]).filter(x=>x.wid!==w.id);const it={pid:p.id,wid:w.id,exp:null,q,rate:wr.rate,...bpEx(wr)};   /* 14g: rates Admin entered on the GRN's wait line are kept */
+ g.items.push(it);if(g.status==='posted')bpApplyItem(it,g);}
  DB.waitParts=L.filter(x=>x.id!==id);audit('Photos done · into stock',p.pn,'—',q+' pcs'+(w.grn?' · '+w.grn:''));save();
  S.ui.iwErr=null;S.ui.iwMrp=null;const nx=DB.waitParts[0];S.ui.iw=nx&&isWv()?nx.id:null;toast(p.name+' · '+q+' pcs in stock');refresh();}
 function invWaitDel(id){const w=invW(id);sheet(`<h3 class="h2">Remove ${esc(w.name||w.pn)}?</h3><p class="cap">It will not go into stock. The bill ${esc(w.inv||w.grn||'')} keeps it as not received.</p><div class="grid2"><button class="btn line" onclick="closeSheet()">Cancel</button><button class="btn" style="background:var(--r);color:#fff" onclick="invWaitDel2('${id}')">Remove</button></div>`);}

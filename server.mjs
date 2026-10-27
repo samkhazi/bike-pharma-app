@@ -341,7 +341,8 @@ async function api(req, res, url, user) {
     const writes = {}, changed = {}, refused = [];
     const staff = roleClass(user) === 'staff', scoped = !staff;
     // update 8o (Sam 2026-10-12): the Billing rules are checked here, not trusted from the app (lib/billguard.mjs)
-    const gget = reader(); const RN = staff ? renumBills(changes, gget) : { renamed: [], keys: new Set() };   // 13l
+    const gget = reader(); let bIds = null; if (staff && Array.isArray(changes.bills)) { try { const bj = base ? store.versionAt('bills', base) : undefined; bIds = new Set((bj ? JSON.parse(bj) : []).filter(x => x && typeof x === 'object').map(x => String(x.id))); } catch (e) {} }
+    const RN = staff ? renumBills(changes, gget, bIds) : { renamed: [], keys: new Set() };   // 13l
     const gnotes = staff ? checkNewBills(changes, user, gget) : [];
     const gblock = gnotes.length ? new Set(BILL_KEYS) : null;
     // orders first: the wallet and warranty checks of a customer look at the orders of this same sync

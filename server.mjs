@@ -50,7 +50,7 @@ const SESSION_DAYS = +env.SESSION_DAYS || 30;
 const PROTECTED = (env.PROTECTED_DIRS || 'cat,bj,ph,phh,figs').split(',').map(s => s.trim()).filter(Boolean);
 const OTP = otpConfig(env);
 const store = openStore(DATA_DIR);
-const SYNC_SEEN = new Map();   // 13f: each login's last push id and its answer
+const SYNC_SEEN = new Map();   // 13f: each login's last push ids and their answers
 const MIRROR = startMirror(store, process.env);   // MySQL copy for phpMyAdmin (10m), off unless MYSQL_* are in .env
 const CATG = catGuard(store, DATA_DIR, env); CATG.tidy(); setInterval(() => CATG.tidy(), 86400e3).unref();   // catalogue limits + log (11h)
 // Hero made on the server from Sam's Raw Data upload (11k) and the PDF > Models index (11m: hero_pdf_index.json, its parts + diagram pages): DATA_DIR/cat/hero.json, hero-dg.json and app.html (its Hero part number line)
@@ -335,8 +335,8 @@ async function api(req, res, url, user) {
       return json(res, 200, { rev: store.rev(), changed: viewOf(store.stateSince(since).map(r => r.key), reader(), user, since === 0) });
     }
     // 13f: a push the app sends again (its answer was lost) gets the first answer back, so nothing is merged twice
-    const pid = typeof body.pid === 'string' ? body.pid.slice(0, 40) : '', seen = pid && SYNC_SEEN.get(user.id);
-    if (seen && seen.pid === pid) return json(res, 200, seen.resp);
+    const pid = typeof body.pid === 'string' ? body.pid.slice(0, 40) : '', seen = pid && (SYNC_SEEN.get(user.id) || []).find(x => x.pid === pid);
+    if (seen) return json(res, 200, seen.resp);
     const base = Math.max(0, +body.base || 0); const changes = (body.changes && typeof body.changes === 'object') ? body.changes : {};
     const writes = {}, changed = {}, refused = [];
     const staff = roleClass(user) === 'staff', scoped = !staff;
@@ -392,7 +392,7 @@ async function api(req, res, url, user) {
       for (const k of refused) if (k in now && !deepEqual(now[k], changes[k])) changed[k] = now[k];
     }
     const resp = { rev, changed, ...(gnotes.length ? { why: gnotes[0] } : {}) };
-    if (pid) { SYNC_SEEN.delete(user.id); SYNC_SEEN.set(user.id, { pid, resp }); if (SYNC_SEEN.size > 2000) SYNC_SEEN.delete(SYNC_SEEN.keys().next().value); }
+    if (pid) { const L = (SYNC_SEEN.get(user.id) || []).slice(-7); L.push({ pid, resp }); SYNC_SEEN.delete(user.id); SYNC_SEEN.set(user.id, L); if (SYNC_SEEN.size > 2000) SYNC_SEEN.delete(SYNC_SEEN.keys().next().value); }   // the last 8 pushes of a login (two devices on one login)
     return json(res, 200, resp);
   }
 

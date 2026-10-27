@@ -35,12 +35,6 @@ import { backups } from './lib/backup.mjs';
 import { catSplit } from './lib/catsplit.mjs';
 import { monitor } from './lib/monitor.mjs';
 
-function cleanCodes(v, d = 0) {
-  if (d > 20 || v === null || typeof v !== 'object') return v;
-  if (Array.isArray(v)) { let ch = false; const o = v.map(x => { const y = cleanCodes(x, d + 1); if (y !== x) ch = true; return y; }); return ch ? o : v; }
-  let o = v; for (const [k, x] of Object.entries(v)) { const y = (k === 'pn' || k === 'inv') && typeof x === 'string' ? safeText(x) : cleanCodes(x, d + 1); if (y !== x) { if (o === v) o = { ...v }; o[k] = y; } }
-  return o;
-}
 const EPOCH = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);   // 14k: new at every start (a backup is put back only with the site stopped), so apps from before load again
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 export function loadEnv(file) {
@@ -360,7 +354,7 @@ async function api(req, res, url, user) {
     const ctx = { stock: null };
     for (const [k, cv0] of Object.entries(changes).sort(([a], [b]) => (b === 'orders') - (a === 'orders'))) {
       if (!/^[A-Za-z_][\w]{0,40}$/.test(k) || k in Object.prototype || k === '__proto__' || cv0 === null || cv0 === undefined) continue;   // 14b
-      const cv = scoped ? cleanStrings(cv0) : cleanCodes(cv0);   // 14t: part / bill numbers staff type are shown in many lists
+      const cv = scoped ? cleanStrings(cv0) : cv0;
       const mode = canWrite(k, user); if (!mode || (gblock && gblock.has(k))) { refused.push(k); continue; }
       if (mode === 'mine') { // a mechanic's own job cards / customers, stored per mechanic
         const sk = MECH_OWN[k] || CUST_OWN[k]; const sv = stateVal(sk); const merged = applyMine(sv, cv, user, !MECH_OWN[k]);
@@ -372,7 +366,7 @@ async function api(req, res, url, user) {
       let merged;
       if (mode === 'own') merged = applyOwn(k, sv, cv, user);
       else if (!row || row.rev <= base) merged = cv;
-      else { const bj = store.versionAt(k, base); merged = (k === 'stock' ? mergeCounts : k === 'lots' ? mergeLots : k === 'sups' ? mergeSups : merge3)(bj === undefined ? undefined : JSON.parse(bj), sv, cv); }
+      else { const bj = store.versionAt(k, base); merged = (k === 'stock' || k === 'damaged' ? mergeCounts : k === 'lots' ? mergeLots : k === 'sups' ? mergeSups : merge3)(bj === undefined ? undefined : JSON.parse(bj), sv, cv); }
       // 13t: an offer's _base saved by an older app: the row goes back to its normal prices (or keeps the price the writer just set) and _base goes
       if (k === 'newProducts' && Array.isArray(merged) && merged.some(p => p && typeof p === 'object' && p._base)) {
         const C = new Map((Array.isArray(cv) ? cv : []).filter(p => p && typeof p === 'object').map(p => [String(p.id), p])), S0 = new Map((Array.isArray(sv) ? sv : []).filter(p => p && typeof p === 'object').map(p => [String(p.id), p]));

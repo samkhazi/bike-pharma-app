@@ -9,7 +9,7 @@ import zlib from 'node:zlib';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { openStore, HAS_SQLITE } from './lib/store.mjs';
-import { roleClass, viewOf, scopeValue, canWrite, merge3, applyOwn, applyMine, mechLogins, moveCodes, deepEqual, cleanStrings, safeText, STAFF_ROLES, MECH_OWN, CUST_OWN } from './lib/merge.mjs';
+import { roleClass, viewOf, scopeValue, canWrite, merge3, mergeCounts, applyOwn, applyMine, mechLogins, moveCodes, deepEqual, cleanStrings, safeText, STAFF_ROLES, MECH_OWN, CUST_OWN } from './lib/merge.mjs';
 import { guardScoped } from './lib/custguard.mjs';
 import { vinLook, vinSetup } from './lib/vinlook.mjs';
 import { rcLook } from './lib/rclook.mjs';
@@ -355,7 +355,7 @@ async function api(req, res, url, user) {
       let merged;
       if (mode === 'own') merged = applyOwn(k, sv, cv, user);
       else if (!row || row.rev <= base) merged = cv;
-      else { const bj = store.versionAt(k, base); merged = merge3(bj === undefined ? undefined : JSON.parse(bj), sv, cv); }
+      else { const bj = store.versionAt(k, base); merged = (k === 'stock' ? mergeCounts : merge3)(bj === undefined ? undefined : JSON.parse(bj), sv, cv); }
       if (staff) { const [gv, gn] = guardValue(k, sv, merged, user, gget); merged = gv; gnotes.push(...gn); }
       if (staff) merged = stampWho(k, sv, merged, user);   // update 9z: who added a product / stock entry
       if (staff) try { MON.write(k, sv, merged, user, ipOf(req)); } catch (e) { console.log('monitor write', e.message); }   // 11w: report + mass delete alert
@@ -366,6 +366,8 @@ async function api(req, res, url, user) {
     }
     // a customer's new online order takes its parts out of the shop's stock here (the app may not write stock)
     if (ctx.stock) { writes.stock = JSON.stringify(ctx.stock); changed.stock = scopeValue('stock', ctx.stock, user); }
+    // 13e: an order that spent wallet money when the app sent no wallet change: the debit is written here
+    if (ctx.walletUsed && !ctx.cwlDone) { const cw = { ...(stateVal('cwl') || {}) }; cw[user.id] = [...(Array.isArray(cw[user.id]) ? cw[user.id] : []), ...ctx.walletUsed]; writes.cwl = JSON.stringify(cw); changed.cwl = scopeValue('cwl', cw, user); }
     // the shop's bills: a new mechanic's first bill makes their login (and fixes the code on their later bills)
     if (staff && writes.bills) {
       const ml = mechLogins(JSON.parse(writes.bills), writes.accounts ? JSON.parse(writes.accounts) : accounts(), today());

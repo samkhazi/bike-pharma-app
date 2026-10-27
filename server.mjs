@@ -372,7 +372,7 @@ async function api(req, res, url, user) {
       if (staff) { const [gv, gn] = guardValue(k, sv, merged, user, gget, changes); merged = gv; gnotes.push(...gn); }
       if (staff) merged = stampWho(k, sv, merged, user);   // update 9z: who added a product / stock entry
       if (staff) try { MON.write(k, sv, merged, user, ipOf(req)); } catch (e) { console.log('monitor write', e.message); }   // 11w: report + mass delete alert
-      else { const [gv, gn] = guardScoped(k, sv, merged, user, gget, ctx); merged = gv; if (gn.length) { cnotes.push(...gn); console.log(new Date().toISOString(), 'refused for', user.id, gn.join(' | ')); } }
+      else { const [gv, gn] = guardScoped(k, sv, merged, user, gget, ctx); merged = gv; if (gn.length) { cnotes.push(...gn.filter(n => !/^(change |remove wallet rows)/.test(n)));   /* 13x: only refusals of what they just made, not the server keeping its newer row */ console.log(new Date().toISOString(), 'refused for', user.id, gn.join(' | ')); } }
       if (!deepEqual(merged, sv)) writes[k] = JSON.stringify(merged);
       const back = scopeValue(k, merged, user);
       if (!deepEqual(back, cv0) || RN.keys.has(k)) changed[k] = back === undefined ? null : back; // cleaned text goes back to the writer too

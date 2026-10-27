@@ -332,11 +332,13 @@ async function api(req, res, url, user) {
     if (!user) return json(res, 401, { error: 'Please log in again.' });
     if (m === 'GET') {
       const since = +url.searchParams.get('since') || 0;
+      if (since > store.rev()) return json(res, 200, { rev: store.rev(), reload: true });   // 14j: the server went back (backup restored): the app loads again
       return json(res, 200, { rev: store.rev(), changed: viewOf(store.stateSince(since).map(r => r.key), reader(), user, since === 0) });
     }
     // 13f: a push the app sends again (its answer was lost) gets the first answer back, so nothing is merged twice
     const pid = typeof body.pid === 'string' ? body.pid.slice(0, 40) : '', seen = pid && (SYNC_SEEN.get(user.id) || []).find(x => x.pid === pid);
     if (seen) return json(res, 200, seen.resp);
+    if (Math.max(0, +body.base || 0) > store.rev()) return json(res, 200, { rev: store.rev(), reload: true });   // 14j: pushed from a newer state than the server has; the app merges it again after loading
     const base = Math.max(0, +body.base || 0); const changes = (body.changes && typeof body.changes === 'object') ? body.changes : {};
     const writes = {}, changed = {}, refused = [];
     const staff = roleClass(user) === 'staff', scoped = !staff;

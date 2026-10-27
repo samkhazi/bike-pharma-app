@@ -74,7 +74,7 @@ def main():
             logging.exception('%s failed', n)
             md.append(f'## {n}\n\nERROR: {e}\n')
     if md:
-        p = os.path.join(data_dir('reports'), f'report_{datetime.date.today()}.md')
+        p = os.path.join(data_dir('reports'), f'report_{datetime.date.today()}_{a.brand}.md')   # one file per run: the DMS and e-catalogue reports of one night both stay
         open(p, 'w', encoding='utf-8').write('\n'.join(md))
         print(open(p, encoding='utf-8').read())
         from notify import send

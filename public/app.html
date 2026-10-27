@@ -2341,13 +2341,13 @@ function lotsOf(pid,stk){const x=P(pid)||{};const cur=r2(+x.mrp||0);const n=Math
  if(s<n){const l=L.find(l=>l.m===cur);if(l)l.q+=n-s;else L.push({m:cur,q:n-s,at:isoToday()});}
  return L;}
 function lotsSet(pid,L){DB.lots=DB.lots||{};L=L.filter(l=>l.q>0);if(!L.length||(L.length===1&&L[0].m===r2(+(P(pid)||{}).mrp||0)))delete DB.lots[pid];else DB.lots[pid]=L;}
-const lotsMany=pid=>!!(DB.lots&&DB.lots[pid])&&lotsOf(pid).length>1;
+const lotsMany=pid=>{if(!(DB.lots&&DB.lots[pid]))return false;const L=lotsOf(pid);return L.length>1||(L.length===1&&L[0].m!==r2(+(P(pid)||{}).mrp||0));};   /* 14y: one old lot after an MRP change (Hero MRP check) counts too */
 function lotAdd(L,m,q){const l=L.find(l=>l.m===m);if(l)l.q+=q;else L.push({m,q,at:isoToday()});return L;}
 // a lot's selling prices: the part's own prices at its MRP, the Admin rule on any other MRP
 function lotPr(pid,m){const x=P(pid)||{};return !(m>0)||m===r2(+x.mrp||0)?{price:x.price,mp:x.mp}:invPrices(m);}
 // the bill lines of one part: the lot picked with Change lot first, then the oldest lots
 function lotLines(pid,q,mech,pick){const x=P(pid)||{};const cur=r2(+x.mrp||0);const L=lotsMany(pid)?lotsOf(pid):[];
- if(L.length<2)return [{m:cur,q,r:mech?x.mp:x.price}];
+ if(!L.length)return [{m:cur,q,r:mech?x.mp:x.price}];
  const o=pick!=null&&L.some(l=>l.m===+pick)?[...L.filter(l=>l.m===+pick),...L.filter(l=>l.m!==+pick)]:L;const out=[];let left=q;
  for(const l of o){if(left<=0)break;const n=Math.min(l.q,left);left-=n;const p=lotPr(pid,l.m);out.push({m:l.m,q:n,r:mech?p.mp:p.price});}
  if(left>0){const p=lotPr(pid,cur);out.push({m:cur,q:left,r:mech?p.mp:p.price});}
@@ -4009,16 +4009,17 @@ SCREENS.catup=()=>{cupLoad();const s=CUP.sets;
 const hdPk=s=>{const k=catPk(s);return k.length>=10&&k.endsWith('S')?k.slice(0,-1):k;};
 const heroDmsCard=()=>!S.user||S.user.role!=='admin'?'':`<button class="row card" style="flex-direction:row;text-align:left;gap:12px;align-items:center" onclick="heroDmsCheck()"><div class="tile g">${ic('sliders','s20')}</div><div class="grow" style="min-width:0"><div class="h3">Hero MRP check</div><div class="cap">Compare your Hero parts with Hero's dealer list MRP and update the ones that differ.</div></div></button>`;
 function heroDmsCheck(){if(S.ui.hdBusy)return;S.ui.hdBusy=1;toast('Checking Hero MRPs…');api('GET','/api/hero-dms-mrp').then(M=>{S.ui.hdBusy=0;if(!M||M.error){toast(M&&M.error||'Could not read the Hero list');return;}
- const L=PRODUCTS.filter(p=>!p.brand||/hero/i.test(p.brand)).map(p=>{const m=+M[hdPk(p.pn)];return m>0&&r2(+p.mrp||0)!==r2(m)?{id:p.id,pn:p.pn,name:p.name,old:+p.mrp||0,m}:null;}).filter(Boolean);
- const F=Object.entries(DB.mrpFix||{}).filter(([k,f])=>{const m=+M[hdPk(k)];return m>0&&r2(+f.m)!==r2(m);}).map(([k])=>k);
- S.ui.hd={L,F};
- sheet(`<h3 class="h2">Hero MRP check</h3>${L.length||F.length?`<p class="cap">${L.length} of your Hero parts have a different MRP from Hero's dealer list${F.length?', and '+F.length+' Find Part MRPs from supplier bills differ':''}. Update takes the dealer list MRP; the customer and mechanic prices follow your price rule. Stock already on the shelf keeps the MRP printed on it.</p>
+ const A=PRODUCTS.filter(p=>!p.brand||/hero/i.test(p.brand)).map(p=>{const m=+M[hdPk(p.pn)];return m>0&&r2(+p.mrp||0)!==r2(m)?{id:p.id,pn:p.pn,name:p.name,old:+p.mrp||0,m}:null;}).filter(Boolean);
+ const L=A.filter(x=>!(+DB.stock[x.id]>0)),W=A.length-L.length;   /* 14y: a part with stock keeps its printed MRP; its next supplier bill brings the new one */
+ const F=Object.entries(DB.mrpFix||{}).filter(([k,f])=>{const m=+M[hdPk(k)];return m>0&&r2(+f.m)!==r2(m);}).map(([k])=>[k,+M[hdPk(k)]]);
+ S.ui.hd={L,F,W};
+ sheet(`<h3 class="h2">Hero MRP check</h3>${L.length||F.length?`<p class="cap">${L.length} of your Hero parts with no stock have a different MRP from Hero's dealer list${F.length?', and '+F.length+' Find Part MRPs from supplier bills differ':''}. Update takes the dealer list MRP for parts with no stock; the customer and mechanic prices follow your price rule. ${W?' '+W+' more parts differ but have stock printed at the old MRP: they keep it, and change when a supplier bill brings the new MRP.':''}</p>
   <div class="card flush" style="max-height:40vh;overflow:auto">${L.slice(0,60).map(x=>li(esc(x.name),esc(x.pn)+' · '+inr(x.old)+' → '+inr(x.m),'','tag')).join('')}${L.length>60?`<div class="cap" style="padding:10px">and ${L.length-60} more</div>`:''}</div>
-  <button class="btn" onclick="heroDmsApply()">Update ${L.length+F.length} MRPs</button>`:`<p class="cap">Every Hero part in your list already has the dealer list MRP.</p>`}<button class="btn line" onclick="closeSheet()">Close</button>`);
+  <button class="btn" onclick="heroDmsApply()">Update ${L.length+F.length} MRPs</button>`:`<p class="cap">${W?W+' Hero parts differ but have stock printed at the old MRP: they keep it, and change when a supplier bill brings the new MRP.':'Every Hero part in your list already has the dealer list MRP.'}</p>`}<button class="btn line" onclick="closeSheet()">Close</button>`);
 },()=>{S.ui.hdBusy=0;toast('Could not read the Hero list');});}
 function heroDmsApply(){if(S.user.role!=='admin')return;const h=S.ui.hd;if(!h)return;let n=0;
  h.L.forEach(x=>{const p=P(x.id);if(!p||r2(+p.mrp||0)===r2(x.m))return;const pr=invPrices(x.m),L0=lotsOf(p.id);audit('MRP changed from Hero dealer list',p.pn,invInr(p.mrp||0),invInr(x.m));bpSetP(p,{mrp:x.m,price:pr.price,mp:pr.mp});lotsSet(p.id,L0);n++;   /* shelf stock keeps its printed MRP */});
- h.F.forEach(k=>{if(DB.mrpFix&&DB.mrpFix[k]){delete DB.mrpFix[k];INV_LK.delete(k);n++;}});
+ h.F.forEach(([k,m])=>{if(DB.mrpFix&&DB.mrpFix[k]){delete DB.mrpFix[k];catMrpLive(k,m);n++;}});   /* Find Part shows the dealer list MRP at once */
  S.ui.hd=null;save();closeSheet();toast(n+' MRPs updated from the Hero list');refresh();}
 const cupHome=()=>{if(!S.user||S.user.role!=='admin'||typeof SRV==='undefined')return '';cupLoad();const s=CUP.sets;if(!s||!Object.keys(s).length)return '';const r=cupLive();
  const miss=Object.values(s).filter(o=>{const t=cupStat(o);return t.n<t.all;});

@@ -362,7 +362,13 @@ async function api(req, res, url, user) {
       if (mode === 'own') merged = applyOwn(k, sv, cv, user);
       else if (!row || row.rev <= base) merged = cv;
       else { const bj = store.versionAt(k, base); merged = (k === 'stock' ? mergeCounts : k === 'lots' ? mergeLots : merge3)(bj === undefined ? undefined : JSON.parse(bj), sv, cv); }
-      if (staff) { const [gv, gn] = guardValue(k, sv, merged, user, gget); merged = gv; gnotes.push(...gn); }
+      // 13t: an offer's _base saved by an older app: the row goes back to its normal prices (or keeps the price the writer just set) and _base goes
+      if (k === 'newProducts' && Array.isArray(merged) && merged.some(p => p && typeof p === 'object' && p._base)) {
+        const C = new Map((Array.isArray(cv) ? cv : []).filter(p => p && typeof p === 'object').map(p => [String(p.id), p])), S0 = new Map((Array.isArray(sv) ? sv : []).filter(p => p && typeof p === 'object').map(p => [String(p.id), p]));
+        merged = merged.map(p => { if (!p || typeof p !== 'object' || !p._base || typeof p._base !== 'object') return p; const { _base, ...r } = p, c = C.get(String(p.id)), o = S0.get(String(p.id)) || {};
+          const out = { ...r }; for (const f of ['price', 'mp']) if (!(c && !c._base && JSON.stringify(c[f]) !== JSON.stringify(o[f])) && _base[f] != null) out[f] = _base[f]; return out; });
+      }
+      if (staff) { const [gv, gn] = guardValue(k, sv, merged, user, gget, changes); merged = gv; gnotes.push(...gn); }
       if (staff) merged = stampWho(k, sv, merged, user);   // update 9z: who added a product / stock entry
       if (staff) try { MON.write(k, sv, merged, user, ipOf(req)); } catch (e) { console.log('monitor write', e.message); }   // 11w: report + mass delete alert
       else { const [gv, gn] = guardScoped(k, sv, merged, user, gget, ctx); merged = gv; if (gn.length) console.log(new Date().toISOString(), 'refused for', user.id, gn.join(' | ')); }

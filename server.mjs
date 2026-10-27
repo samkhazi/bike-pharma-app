@@ -9,7 +9,7 @@ import zlib from 'node:zlib';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { openStore, HAS_SQLITE } from './lib/store.mjs';
-import { roleClass, viewOf, scopeValue, canWrite, merge3, mergeCounts, mergeLots, applyOwn, applyMine, mechLogins, moveCodes, deepEqual, cleanStrings, safeText, STAFF_ROLES, MECH_OWN, CUST_OWN } from './lib/merge.mjs';
+import { roleClass, viewOf, scopeValue, canWrite, merge3, mergeCounts, mergeLots, mergeSups, applyOwn, applyMine, mechLogins, moveCodes, deepEqual, cleanStrings, safeText, STAFF_ROLES, MECH_OWN, CUST_OWN } from './lib/merge.mjs';
 import { guardScoped } from './lib/custguard.mjs';
 import { vinLook, vinSetup } from './lib/vinlook.mjs';
 import { rcLook } from './lib/rclook.mjs';
@@ -362,7 +362,7 @@ async function api(req, res, url, user) {
       let merged;
       if (mode === 'own') merged = applyOwn(k, sv, cv, user);
       else if (!row || row.rev <= base) merged = cv;
-      else { const bj = store.versionAt(k, base); merged = (k === 'stock' ? mergeCounts : k === 'lots' ? mergeLots : merge3)(bj === undefined ? undefined : JSON.parse(bj), sv, cv); }
+      else { const bj = store.versionAt(k, base); merged = (k === 'stock' ? mergeCounts : k === 'lots' ? mergeLots : k === 'sups' ? mergeSups : merge3)(bj === undefined ? undefined : JSON.parse(bj), sv, cv); }
       // 13t: an offer's _base saved by an older app: the row goes back to its normal prices (or keeps the price the writer just set) and _base goes
       if (k === 'newProducts' && Array.isArray(merged) && merged.some(p => p && typeof p === 'object' && p._base)) {
         const C = new Map((Array.isArray(cv) ? cv : []).filter(p => p && typeof p === 'object').map(p => [String(p.id), p])), S0 = new Map((Array.isArray(sv) ? sv : []).filter(p => p && typeof p === 'object').map(p => [String(p.id), p]));

@@ -208,6 +208,11 @@ async function api(req, res, url, user) {
   if (p === '/api/photo/status') return photoStatus(req, res, url, user);
   if (p === '/api/photo/wrong') return photoWrong(req, res, url, user);
   if (p === '/api/photo') return photoUpload(req, res, user, url);
+  if (p === '/api/hero-dms-mrp') {   // 14w: Hero's dealer list MRPs (number without dashes / end S -> MRP), for Admin's shop price check
+    drain(req); if (!user || user.role !== 'admin') return json(res, user ? 403 : 401, { error: 'Only Admin' });
+    try { const b = fs.readFileSync(path.join(HERO_OUT, 'hero-dms-mrp.json')); res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); return res.end(b); }
+    catch (e) { return json(res, 404, { error: 'Hero dealer list not uploaded yet' }); }
+  }
   if (p === '/api/backups' || p === '/api/backups/file') {
     if (!user || user.role !== 'admin') { drain(req); return json(res, user ? 403 : 401, { error: 'Only Admin' }); }
     if (p === '/api/backups' && m === 'GET') return json(res, 200, { list: BACKUP.list(), copyTo: BACKUP.copyTo, keep: BACKUP.keep, at: BACKUP.at, busy: BACKUP.busy() });

@@ -159,6 +159,14 @@ try {
     ok(i2.lists && i2.lists.parts === 4 && i2.lists.files.join() === 'Hero_All_Parts_A-Z.xlsx,HERO PARTS ;IST.xlsx,Hero_Parts_MRP_Filled.xlsx,Hero_MRP_Extra_From_Catalogue.xlsx', 'build report counts the list parts: ' + JSON.stringify(i2.lists));
     ok(q.mrp['44444TST201S'] === 315 && q.mrp['33333-TST-300'] === 120 && q.mrp['44444TST200S'] == null && q.mrp['17910-TST-940'] == null && i2.lists.mrpFound === 2 && i2.lists.mrpNotOwn === 2,
       "MRP lists: a part's own MRP is used; a look-alike or new number's MRP is not");
+    // 14w: Hero's dealer list: its MRP wins, unknown numbers come in, old -> new pairs both ways
+    const H = ['Part No (DMS)', 'Part Naam', 'MRP (Rs)', 'MRP kab se', 'HSN', 'Naya Part No (Superseded By)', 'Humare catalogue me?', 'Model'];
+    xlsx(X + '/Hero_DMS_All_Parts_MRP.xlsx', [[['x', 'y']], [H], [H, ['*44444TST201S*', 'CABLE TEST', '330', '', '', '', 'Haan', ''], ['77777TST700S', 'DMS ONLY PART', '510', '', '', '', 'Nahi', 'SPLENDOR+ (2020) | PASSION'], ['33333-TST-300', 'GRIP TEST', '', '', '', '', 'Haan', '']],
+      [['Purana Part No', 'Purana Naam', 'Purana MRP', 'Naya Part No', 'Naya Naam', 'Naya MRP'], ['44444TST200S', 'X', '90', '44444TST201S', 'CABLE TEST', '330']]]);
+    const i3 = writeHero(T + '/pub', R2, T + '/dms', null, X), q3 = JSON.parse(fs.readFileSync(T + '/dms/hero.json', 'utf8')), r3 = n => q3.d.filter(r => r[5] === n);
+    ok(q3.mrp['44444TST201S'] === 330 && q3.mrp['33333-TST-300'] === 120 && q3.mrp['77777TST700S'] === 510 && q3.mrp['44444TST200S'] === 90, 'dealer list MRP wins; a part it has no MRP for keeps its own: ' + JSON.stringify(i3.dms));
+    ok(r3('77777TST700S').length === 1 && q3.vars[r3('77777TST700S')[0][11][0]] === 'Hero DMS parts (not in catalogue)' && /Fits SPLENDOR\+ \(2020\), PASSION/.test(r3('77777TST700S')[0][8]), 'a number only the dealer list has comes in with its bikes');
+    ok(r3('44444TST200S').every(r => /New no\. 44444TST201S/.test(r[8])) && r3('44444TST201S').every(r => /Old no\. 44444TST200S/.test(r[8])) && i3.dms.mrpChanged === 1 && i3.dms.added === 1, 'old and new numbers show under each other');
   }
 } catch (e) { ok(false, 'error ' + e.stack); }
 srv.kill(); if (fails) console.log(log.slice(-2000)); console.log(fails ? fails + ' FAILED' : 'ALL PASS'); process.exit(fails ? 1 : 0);

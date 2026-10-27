@@ -357,7 +357,9 @@ async function api(req, res, url, user) {
       const cv = scoped ? cleanStrings(cv0) : cv0;
       const mode = canWrite(k, user); if (!mode || (gblock && gblock.has(k))) { refused.push(k); continue; }
       if (mode === 'mine') { // a mechanic's own job cards / customers, stored per mechanic
-        const sk = MECH_OWN[k] || CUST_OWN[k]; const sv = stateVal(sk); const merged = applyMine(sv, cv, user, !MECH_OWN[k]);
+        const sk = MECH_OWN[k] || CUST_OWN[k]; const sv = stateVal(sk); let cm = cv;
+        if (MECH_OWN[k] && Array.isArray(cv)) { const r0 = store.stateGet(sk); if (r0 && r0.rev > base) { const bj = store.versionAt(sk, base); const bo = bj === undefined ? undefined : JSON.parse(bj); const sr = sv && typeof sv === 'object' ? sv[user.id] : undefined; if (Array.isArray(sr)) cm = merge3(bo && typeof bo === 'object' && Array.isArray(bo[user.id]) ? bo[user.id] : [], sr, cv); } }   // 14v: another device's new job card stays
+        const merged = applyMine(sv, cm, user, !MECH_OWN[k]);
         if (!deepEqual(merged, sv)) writes[sk] = JSON.stringify(merged);
         if (!deepEqual(merged[user.id], cv0)) changed[k] = merged[user.id];
         continue;

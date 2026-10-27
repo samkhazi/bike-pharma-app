@@ -1753,7 +1753,7 @@ SCREENS.jobcard=()=>{const j=S.ui.jc||(S.ui.jc={});j.parts=j.parts||[];j.labour=
 </div></div><div class="foot"><button class="btn" onclick="jcSave()">Open job card</button></div>`;};
 function jcAddPart(){sheet(`<h3 class="h2">Add part</h3><div class="card flush">${PRODUCTS.map(x=>li(esc(x.name),esc(x.pn)+' · your price '+inr(x.mp)+' · stock '+(+DB.stock[x.id]||0),'',x.ic,`jcPart('${x.id}')`)).join('')}</div>`);}
 function jcPart(id){const j=S.ui.jc;const e=j.parts.find(x=>x.pid===id);if(e)e.q++;else j.parts.push({pid:id,q:1});closeSheet();refresh();}
-function jcSave(){const j=S.ui.jc;if(!j.cust||!String(j.cust).trim()){toast('Enter the customer name');return;}if(j.ph&&!/^[6-9]\d{9}$/.test(String(j.ph).replace(/\D/g,'').slice(-10))){toastWarn('Enter a 10-digit mobile number');return;}j.labour=Math.max(0,+j.labour||0);DB.jobs=DB.jobs||[];const id='JC-'+(301+DB.jobs.length);const parts=j.parts.reduce((a,x)=>a+x.q*P(x.pid).price,0),cost=j.parts.reduce((a,x)=>a+x.q*P(x.pid).mp,0);
+function jcSave(){const j=S.ui.jc;if(!j.cust||!String(j.cust).trim()){toast('Enter the customer name');return;}if(j.ph&&!/^[6-9]\d{9}$/.test(String(j.ph).replace(/\D/g,'').slice(-10))){toastWarn('Enter a 10-digit mobile number');return;}j.labour=Math.max(0,+j.labour||0);DB.jobs=DB.jobs||[];const id='JC-'+(301+DB.jobs.length)+'-'+Date.now().toString(36).slice(-3);const parts=j.parts.reduce((a,x)=>a+x.q*P(x.pid).price,0),cost=j.parts.reduce((a,x)=>a+x.q*P(x.pid).mp,0);
  DB.jobs.unshift({id,cust:j.cust,ph:j.ph||'',bike:j.bike||'',issues:j.issues,parts:j.parts,labour:j.labour,total:parts+j.labour,cost,st:0,d:today()});
  
  save();S.ui.jc=null;S.stack=[{s:'mhome',p:{}},{s:'jobs',p:{}}];render('push');sheet(`${okBadge(72)}<h3 class="h2">${id} opened</h3><p class="cap">${j.parts.length?'Order the parts from Bike Pharma at the counter or on WhatsApp. ':''}Update the status as you work. The customer gets the bill on WhatsApp when it’s delivered.</p><button class="btn" onclick="closeSheet()">Done</button>`);}
@@ -4566,7 +4566,7 @@ function saveMove(t){const f=S.ui.mv;const x=P(f.pid);const sys=+DB.stock[f.pid]
  if(t==='count'&&(f.counted===''||isNaN(+f.counted)||+f.counted<0||!Number.isInteger(+f.counted))){S.ui.mvErr='Enter the counted quantity (0 or more, whole pieces).';return refresh();}
  if(t==='transfer'&&!String(f.to||'').trim()){S.ui.mvErr='Only one branch is set up: nothing to transfer to.';return refresh();}
  S.ui.mvErr=null;let msg;
- if(t==='count'&&!['admin','manager'].includes(S.user.role)&&+f.counted!==sys&&cntWait(f.pid)){toastWarn('A count of this part is already waiting for approval');return;}
+ if(t==='count'&&+f.counted!==sys&&cntWait(f.pid)){toastWarn('A count of this part is already waiting for approval. Approve or reject it first.');return;}   /* 14v: Manager too */
  if(t==='count'&&!['admin','manager'].includes(S.user.role)&&+f.counted!==sys){DB.approvals.unshift({id:Date.now(),t:m[0],d:`${S.user.sid} · ${x.name} · counted ${+f.counted}, system ${sys}`,ic:m[1],st:'pending',move:{pid:f.pid,q:+f.counted-sys}});msg='Sent to Manager for approval';}
  else if(['damaged','adjust'].includes(t)){DB.approvals.unshift({id:Date.now(),t:m[0],d:`${S.user.sid} · ${x.name} · ${t==='damaged'||f.dir!=='add'?'−':'+'}${f.q}${f.reason?' · '+f.reason:''}`,ic:m[1],st:'pending',move:{pid:f.pid,q:t==='adjust'&&f.dir==='add'?f.q:-f.q}});msg='Sent to Manager for approval';}
  else{const before=sys;if(t==='transfer'){DB.stock[f.pid]=(+DB.stock[f.pid]||0)-f.q;logMove('out',f.pid,f.q,f.ref||'TRF','Transfer → '+f.to);}if(t==='returned'){DB.stock[f.pid]=(+DB.stock[f.pid]||0)+f.q;logMove('in',f.pid,f.q,f.ref||'RET','Returned'+(f.reason?' · '+f.reason:''));}if(t==='count')DB.stock[f.pid]=+f.counted;
@@ -6640,9 +6640,9 @@ function invPasteAdd(all){const st=S.ui.ip;if(!st)return;bpInit(st);BP_BG=bpBill
   if(T.tax>0&&g.tax==null)g.tax=T.tax;if(T.round&&g.round==null)g.round=T.round;if(T.taxable>0&&g.taxable==null)g.taxable=T.taxable;
   if(tc.ud&&T.disc>0&&g.bdisc==null)g.bdisc=T.disc;
   bpLearn(st);}
- rows.forEach(r=>{const l=r.l,ex=bpLx(l),rate=l.rate?(l.disc>0?String(bpNet(l)):l.rate):'';
-  if(r.kind==='ready'){const it=g.items.find(i=>i.pid===r.x.id);if(it){it.q=(+it.q||0)+l.q;if(rate){it.rate=rate;Object.assign(it,ex);}}else g.items.push({pid:r.x.id,exp:null,q:l.q,rate,...ex});n++;return;}
-  if(!all||r.kind==='look')return;const e0=g.nw.find(x=>x.pk===l.pk);if(e0){e0.q=(+e0.q||0)+l.q;if(rate){e0.rate=rate;Object.assign(e0,ex);}n++;return;}
+ rows.forEach(r=>{const l=r.l,ex=bpLx(l),rate=l.rate?(l.disc>0?String(bpNet(l)):l.rate):'';const sm=i=>String(i.rate||'')===String(rate)&&String(i.bmrp??'')===String(ex.bmrp??'');   /* 14v: same part at another rate or MRP is its own line */
+  if(r.kind==='ready'){const it=g.items.find(i=>i.pid===r.x.id&&sm(i));if(it){it.q=(+it.q||0)+l.q;if(rate){it.rate=rate;Object.assign(it,ex);}}else g.items.push({pid:r.x.id,exp:null,q:l.q,rate,...ex});n++;return;}
+  if(!all||r.kind==='look')return;const e0=g.nw.find(x=>x.pk===l.pk&&sm(x));if(e0){e0.q=(+e0.q||0)+l.q;if(rate){e0.rate=rate;Object.assign(e0,ex);}n++;return;}
   const h=r.kind==='new'?r.hits[0]:r.kind==='pick'?r.hits.find(x=>x.vb===st.pick[l.pk]):null;const line=invNwLine(h||{pn:l.pn},!h);line.q=l.q;line.rate=rate;Object.assign(line,ex);
   if(l.mrp>0){line.mrp=String(r2(l.mrp));line.mrpCat=false;}
   if(!h&&st.names[l.pk])line.name=String(st.names[l.pk]).slice(0,80);

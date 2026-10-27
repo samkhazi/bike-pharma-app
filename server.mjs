@@ -383,6 +383,7 @@ async function api(req, res, url, user) {
     }
     // a customer's new online order takes its parts out of the shop's stock here (the app may not write stock)
     if (ctx.stock) { writes.stock = JSON.stringify(ctx.stock); changed.stock = scopeValue('stock', ctx.stock, user); }
+    if (ctx.movesOut && ctx.movesOut.length) { const mv = stateVal('moves'); writes.moves = JSON.stringify([...(Array.isArray(mv) ? mv : []), ...ctx.movesOut]); }   // 14p: an app order's parts in the stock history
     // 13e: an order that spent wallet money when the app sent no wallet change: the debit is written here
     if (ctx.walletUsed && !ctx.cwlDone) { const cw = { ...(stateVal('cwl') || {}) }; cw[user.id] = [...(Array.isArray(cw[user.id]) ? cw[user.id] : []), ...ctx.walletUsed]; writes.cwl = JSON.stringify(cw); changed.cwl = scopeValue('cwl', cw, user); }
     // the shop's bills: a new mechanic's first bill makes their login (and fixes the code on their later bills)

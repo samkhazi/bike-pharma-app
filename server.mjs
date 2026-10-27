@@ -349,7 +349,7 @@ async function api(req, res, url, user) {
     // orders first: the wallet and warranty checks of a customer look at the orders of this same sync
     const ctx = { stock: null };
     for (const [k, cv0] of Object.entries(changes).sort(([a], [b]) => (b === 'orders') - (a === 'orders'))) {
-      if (!/^[A-Za-z_][\w]{0,40}$/.test(k) || cv0 === null || cv0 === undefined) continue;
+      if (!/^[A-Za-z_][\w]{0,40}$/.test(k) || k in Object.prototype || k === '__proto__' || cv0 === null || cv0 === undefined) continue;   // 14b
       const cv = scoped ? cleanStrings(cv0) : cv0;
       const mode = canWrite(k, user); if (!mode || (gblock && gblock.has(k))) { refused.push(k); continue; }
       if (mode === 'mine') { // a mechanic's own job cards / customers, stored per mechanic

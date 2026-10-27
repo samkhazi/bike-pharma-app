@@ -344,6 +344,7 @@ async function api(req, res, url, user) {
     const gget = reader(); let bIds = null; if (staff && Array.isArray(changes.bills)) { try { const bj = base ? store.versionAt('bills', base) : undefined; bIds = new Map((bj ? JSON.parse(bj) : []).filter(x => x && typeof x === 'object').map(x => [String(x.id), x])); } catch (e) {} }
     const RN = staff ? renumBills(changes, gget, bIds) : { renamed: [], keys: new Set() };   // 13l
     const gnotes = staff ? checkNewBills(changes, user, gget) : [];
+    const cnotes = [];
     const gblock = gnotes.length ? new Set(BILL_KEYS) : null;
     // orders first: the wallet and warranty checks of a customer look at the orders of this same sync
     const ctx = { stock: null };
@@ -371,7 +372,7 @@ async function api(req, res, url, user) {
       if (staff) { const [gv, gn] = guardValue(k, sv, merged, user, gget, changes); merged = gv; gnotes.push(...gn); }
       if (staff) merged = stampWho(k, sv, merged, user);   // update 9z: who added a product / stock entry
       if (staff) try { MON.write(k, sv, merged, user, ipOf(req)); } catch (e) { console.log('monitor write', e.message); }   // 11w: report + mass delete alert
-      else { const [gv, gn] = guardScoped(k, sv, merged, user, gget, ctx); merged = gv; if (gn.length) console.log(new Date().toISOString(), 'refused for', user.id, gn.join(' | ')); }
+      else { const [gv, gn] = guardScoped(k, sv, merged, user, gget, ctx); merged = gv; if (gn.length) { cnotes.push(...gn); console.log(new Date().toISOString(), 'refused for', user.id, gn.join(' | ')); } }
       if (!deepEqual(merged, sv)) writes[k] = JSON.stringify(merged);
       const back = scopeValue(k, merged, user);
       if (!deepEqual(back, cv0) || RN.keys.has(k)) changed[k] = back === undefined ? null : back; // cleaned text goes back to the writer too
@@ -399,7 +400,7 @@ async function api(req, res, url, user) {
       const now = viewOf(store.stateAll().map(r => r.key), get, user, true);
       for (const k of refused) if (k in now && !deepEqual(now[k], changes[k])) changed[k] = now[k];
     }
-    const resp = { rev, changed, ...(gnotes.length ? { why: gnotes[0] } : {}), ...(RN.renamed.length ? { renum: RN.renamed } : {}) };
+    const resp = { rev, changed, ...(gnotes.length ? { why: gnotes[0] } : cnotes.length ? { why: cnotes[0] } : {})   /* 13w: a customer / mechanic hears it too */, ...(RN.renamed.length ? { renum: RN.renamed } : {}) };
     if (pid) { const L = (SYNC_SEEN.get(user.id) || []).slice(-7); L.push({ pid, resp }); SYNC_SEEN.delete(user.id); SYNC_SEEN.set(user.id, L); if (SYNC_SEEN.size > 2000) SYNC_SEEN.delete(SYNC_SEEN.keys().next().value); }   // the last 8 pushes of a login (two devices on one login)
     return json(res, 200, resp);
   }

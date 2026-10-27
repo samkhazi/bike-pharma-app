@@ -35,6 +35,7 @@ import { backups } from './lib/backup.mjs';
 import { catSplit } from './lib/catsplit.mjs';
 import { monitor } from './lib/monitor.mjs';
 
+const EPOCH = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);   // 14k: new at every start (a backup is put back only with the site stopped), so apps from before load again
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 export function loadEnv(file) {
   try { for (const line of fs.readFileSync(file, 'utf8').split('\n')) { const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/.exec(line); if (m && !(m[1] in process.env)) process.env[m[1]] = m[2].replace(/^"(.*)"$/, '$1'); } } catch (e) {}
@@ -243,7 +244,7 @@ async function api(req, res, url, user) {
   if (m === 'POST') { try { const b = await readBody(req); body = b.length ? JSON.parse(b.toString('utf8')) : {}; } catch (e) { return json(res, 400, { error: 'Bad request body' }); } }
   const catList = () => { const l = new Set(); for (const d of [path.join(PUBLIC_DIR, 'cat'), HERO_OUT]) { try { for (const f of fs.readdirSync(d)) if (f.endsWith('.json') && !/-(build|app)\.json$/.test(f)) l.add(f); } catch {} } return [...l].sort(); };
   const cfg = () => ({ otpHint: OTP.mode === 'fixed' ? OTP.fixed : null, otpMode: OTP.mode, version: VERSION, cat: catList() });
-  const full = u => ({ user: u ? u : null, db: viewOf(store.stateAll().map(r => r.key), reader(), u, true), rev: store.rev(), cfg: cfg() });
+  const full = u => ({ user: u ? u : null, db: viewOf(store.stateAll().map(r => r.key), reader(), u, true), rev: store.rev(), ep: EPOCH, cfg: cfg() });
 
   if (p === '/api/cat/rows' && m === 'POST') {   // 11v: the part lines of a split catalogue the phone needs now (staff only, counted like cat/ files)
     if (roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: user ? 'Staff login needed' : 'Please log in again' });
@@ -332,13 +333,14 @@ async function api(req, res, url, user) {
     if (!user) return json(res, 401, { error: 'Please log in again.' });
     if (m === 'GET') {
       const since = +url.searchParams.get('since') || 0;
-      if (since > store.rev()) return json(res, 200, { rev: store.rev(), reload: true });   // 14j: the server went back (backup restored): the app loads again
+      const cep = url.searchParams.get('ep');
+      if (since > store.rev() || (cep && cep !== EPOCH)) return json(res, 200, { rev: store.rev(), reload: true });   // 14j: the server went back (backup restored): the app loads again
       return json(res, 200, { rev: store.rev(), changed: viewOf(store.stateSince(since).map(r => r.key), reader(), user, since === 0) });
     }
     // 13f: a push the app sends again (its answer was lost) gets the first answer back, so nothing is merged twice
     const pid = typeof body.pid === 'string' ? body.pid.slice(0, 40) : '', seen = pid && (SYNC_SEEN.get(user.id) || []).find(x => x.pid === pid);
     if (seen) return json(res, 200, seen.resp);
-    if (Math.max(0, +body.base || 0) > store.rev()) return json(res, 200, { rev: store.rev(), reload: true });   // 14j: pushed from a newer state than the server has; the app merges it again after loading
+    if (Math.max(0, +body.base || 0) > store.rev() || (typeof body.ep === 'string' && body.ep && body.ep !== EPOCH)) return json(res, 200, { rev: store.rev(), reload: true });   // 14j: pushed from a newer state than the server has; the app merges it again after loading
     const base = Math.max(0, +body.base || 0); const changes = (body.changes && typeof body.changes === 'object') ? body.changes : {};
     const writes = {}, changed = {}, refused = [];
     const staff = roleClass(user) === 'staff', scoped = !staff;

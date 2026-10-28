@@ -202,6 +202,9 @@ class Honda:
             self._errs_page, self.errs = page, []
             page.on('pageerror', lambda e: self.errs.append(str(e)[:150]))
             page.on('console', lambda m: m.type == 'error' and self.errs.append(m.text[:150]))
+            self.scripts = {}
+            page.on('response', lambda r: r.request.resource_type == 'script' and self.scripts.__setitem__(r.url[:120], r.status))
+            page.on('requestfailed', lambda r: r.resource_type == 'script' and self.scripts.__setitem__(r.url[:120], 'failed ' + str(r.failure)[:60]))
         errs = self.errs
         for t in range(3):
             try:
@@ -279,6 +282,11 @@ class Honda:
                     except Exception as e:
                         pre = f'check failed: {e}'
                     log.info('Honda: before Enter: %s', pre)
+                    try:   # SubmitLogin needs the page's encryptAES (from one of its script files): give it time to load
+                        page.wait_for_function("() => typeof encryptAES === 'function'", timeout=30000)
+                    except Exception:
+                        log.warning('Honda: encryptAES never loaded. Scripts: %s',
+                                    ' ; '.join(f'{u} {st}' for u, st in self.scripts.items()) or 'none seen')
                     page.click('#btnEnter')
                     try: page.wait_for_load_state('networkidle', timeout=60000)
                     except Exception: pass

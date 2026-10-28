@@ -2,7 +2,7 @@
 // as the chassis search names it, diagram = its page in the model PDF, parts merged across variants, MRP, loose part photos
 // usage: node tools/test_rebuild.mjs   (own server on 3030, fresh database, a small made-up RE folder)
 import { spawn } from 'node:child_process'; import fs from 'node:fs';
-import { reModel, reVar } from '../lib/rebuild.mjs';
+import { reModel, reVar, buildRE } from '../lib/rebuild.mjs';
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 const T = '/tmp/claude-0/bptest-re'; fs.rmSync(T, { recursive: true, force: true });
 const D = T + '/pf/catalogues/royal-enfield'; fs.mkdirSync(D, { recursive: true });
@@ -51,6 +51,21 @@ try {
   const mf = JSON.parse(fs.readFileSync('public/cat/more-files.json', 'utf8')).sets.find(s => s.dir === 'catalogues/royal-enfield');
   ok(mf && mf.pick === 'Downloads > Royal Enfield Catalogue' && mf.files[0][0] === 're_build.json' && mf.files[1][0] === 're_vin_index.json' && mf.files.filter(f => /\.pdf$/.test(f[0])).length === 140
     && mf.files.filter(f => /\.jpg$/.test(f[0])).length > 13000 && new Set(mf.files.map(f => f[0])).size === mf.files.length, 'upload card: re_build.json, chassis index, 140 model PDFs, the part photos, every file once');
+  // 16j: the weekly RE EPC sync: a changed list replaces the upload's, a new list, variant and model join (diagram = the EPC's SVG), its MRP wins
+  const SY = T + '/pf/catalogues/hero-sync'; fs.mkdirSync(SY + '/royal_enfield/svg', { recursive: true });
+  fs.writeFileSync(SY + '/royal_enfield/svg/COL_PARTSLIST_IL9_x.svg', '<svg xmlns="http://www.w3.org/2000/svg"/>');
+  fs.writeFileSync(SY + '/royal_enfield/state.json', JSON.stringify({ last_run: '2026-11-01', mrp: { '888456/A': { name: 'HEAD', mrp: 4300 }, 'NEW1/A': { name: 'BOLT', mrp: 12 } },
+    models: { 'ALL NEW CLASSIC 350 - CHROME RED': { variants: { 'DUAL CHANNEL': [], 'SINGLE CHANNEL': [], 'NEW VARIANT': [] }, tree: [['ENGINE', 'k1', 'CYLINDER HEAD', ''], ['FRAME', 'k9', 'STAND', 'COL_PARTSLIST_IL9_x.svg']] },
+      'SCRAM 440 - TRAIL': { variants: { 'BS6 - X1': [] }, tree: [['FRAME', 'k9', 'STAND', 'COL_PARTSLIST_IL9_x.svg']] } },
+    pl: { k1: { n: 'CYLINDER HEAD', th: '', rows: [['1', '888456/A', 'CYLINDER HEAD ASSY', '1', 'NOS', '', '', '', ''], ['3', 'NEW2/A', 'NEW STUD', '2', 'NOS', '', '', '', '']] },
+      k9: { n: 'STAND', th: 'COL_PARTSLIST_IL9_x.svg', rows: [['1', 'NEW1/A', 'BOLT', '1', 'NOS', '', '', '', '']] } } }));
+  const Z = buildRE(D, 'catalogues/royal-enfield', { sync: SY }), zd = Z.cat, zg = Z.dg, zi = v => zd.vars.indexOf(v);
+  const st = zd.d.find(r => r[5] === 'NEW2/A'), bolt = zd.d.find(r => r[5] === 'NEW1/A'), NV = reVar('ALL NEW CLASSIC 350 - CHROME RED', 'NEW VARIANT'), SC = reVar('SCRAM 440 - TRAIL', 'BS6 - X1');
+  ok(st && /weekly sync/.test(st[8]) && zd.mrp['888456/A'] === 4300 && bolt && zd.mrp['NEW1/A'] === 12 && zi(NV) >= 0 && zi(SC) >= 0 && zd.vmod[SC] === 'Scram 440'
+    && bolt[11].includes(zi(SC)) && bolt[11].includes(zi(V1)) && st[11].includes(zi(NV))
+    && zg.f[zg.p[String(zi(SC))]['FRAME — STAND']] === 'pf:catalogues/hero-sync/royal_enfield/svg/COL_PARTSLIST_IL9_x.svg:0:41' && Z.info.sync.models.join() === 'SCRAM 440 - TRAIL',
+    'sync: changed list, new list, new variant and new model are searchable; diagram = the EPC SVG; MRP from the sync');
+  ok(!buildRE(D).info.sync, 'no sync data: nothing changes');
 } catch (e) { ok(false, 'error ' + e.stack); }
 finally { srv.kill(); }
 if (fails) console.log(log.slice(-3000));

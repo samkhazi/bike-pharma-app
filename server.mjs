@@ -108,9 +108,10 @@ function yamahaBuild(why) {
 }
 function reBuild(why) {
   if (!RE_RAW.every(f => fs.existsSync(path.join(RE_DIR, f)))) return false;
-  const src = [...RE_RAW.map(f => path.join(RE_DIR, f)), path.join(PUBLIC_DIR, 'app.html'), path.join(ROOT, 'lib', 'rebuild.mjs'), path.join(ROOT, 'lib', 'herobuild.mjs')];
-  if (why === 'start' && mtime(path.join(HERO_OUT, 'royal-enfield.json')) > Math.max(...src.map(mtime))) return false;
-  catBuild('royal-enfield', why, [path.join(ROOT, 'lib', 'rebuild.mjs'), PUBLIC_DIR, RE_DIR, HERO_OUT]);
+  const src = [...RE_RAW.map(f => path.join(RE_DIR, f)), path.join(PUBLIC_DIR, 'app.html'), path.join(ROOT, 'lib', 'rebuild.mjs'), path.join(ROOT, 'lib', 'herobuild.mjs'), path.join(HERO_SYNC_DIR, 'royal_enfield', 'state.json')];
+  if (why === 'sync' && catQ.some(q => q[0] === 'royal-enfield')) return false;
+  if ((why === 'start' || why === 'sync') && mtime(path.join(HERO_OUT, 'royal-enfield.json')) > Math.max(...src.map(mtime))) return false;
+  catBuild('royal-enfield', why, [path.join(ROOT, 'lib', 'rebuild.mjs'), PUBLIC_DIR, RE_DIR, HERO_OUT, HERO_SYNC_DIR]);   // 16j: + the weekly RE EPC sync
   return true;
 }
 function tvsBuild(why) {
@@ -139,7 +140,7 @@ function catRun() {
   const c = spawn(process.execPath, ['--max-old-space-size=3072', ...q[2]], { stdio: ['ignore', 'inherit', 'inherit'] });
   c.on('exit', code => { console.log(new Date().toISOString(), q[0] + ' build (' + q[1] + ') ended', code); heroBusy = false; catQ.shift(); catRun(); });
 }
-setInterval(() => { for (const [n, f] of [['hero', heroBuild], ['honda', hondaBuild], ['tvs', tvsBuild], ['yamaha', yamahaBuild]]) try { f('sync'); } catch (e) { console.log(n + ' sync check:', e.message); } }, 3600e3).unref();   // 15d: Honda and TVS too   // 14z: the weekly Hero sync's new files make a new Hero build within the hour
+setInterval(() => { for (const [n, f] of [['hero', heroBuild], ['honda', hondaBuild], ['tvs', tvsBuild], ['yamaha', yamahaBuild], ['royal-enfield', reBuild]]) try { f('sync'); } catch (e) { console.log(n + ' sync check:', e.message); } }, 3600e3).unref();   // 15d: Honda and TVS too   // 14z: the weekly Hero sync's new files make a new Hero build within the hour
 heroBuild('start'); hondaBuild('start'); bajajBuild('start'); yamahaBuild('start'); reBuild('start'); tvsBuild('start'); ktmBuild('start');
 const BACKUP = backups({ store, dataDir: DATA_DIR, env });   // 11u: every night + Admin > More > Backups
 // 11v: Hero goes to phones as a head + the part lines they need (lib/catsplit.mjs); CAT_SPLIT=off sends the whole file as before
@@ -221,9 +222,9 @@ async function api(req, res, url, user) {
     drain(req); if (!user || user.role !== 'admin') return json(res, user ? 403 : 401, { error: 'Only Admin' });
     const rj = f => { try { return JSON.parse(fs.readFileSync(path.join(HERO_SYNC_DIR, f), 'utf8')); } catch { return null; } };
     let rep = null; try { const L = fs.readdirSync(path.join(HERO_SYNC_DIR, 'reports')), pick = b => L.filter(x => new RegExp('^report_[\\d-]+_' + b + '\\.md$').test(x)).sort().pop();
-      const fs2 = [pick('hero_dms'), pick('hero'), pick('honda'), pick('tvs')].filter(Boolean); if (fs2.length) rep = { name: fs2.join(', '), text: fs2.map(f => fs.readFileSync(path.join(HERO_SYNC_DIR, 'reports', f), 'utf8').slice(0, 30000)).join('\n') }; } catch {}   // the newest dealer system and e-catalogue reports
+      const fs2 = [pick('hero_dms'), pick('hero'), pick('honda'), pick('tvs'), pick('yamaha'), pick('royal_enfield')].filter(Boolean); if (fs2.length) rep = { name: fs2.join(', '), text: fs2.map(f => fs.readFileSync(path.join(HERO_SYNC_DIR, 'reports', f), 'utf8').slice(0, 30000)).join('\n') }; } catch {}   // the newest dealer system and e-catalogue reports
     const b = (() => { try { return JSON.parse(fs.readFileSync(path.join(HERO_OUT, 'hero-build.json'), 'utf8')); } catch { return {}; } })();
-    return json(res, 200, { setup: fs.existsSync(HERO_SYNC_DIR), hero: (rj('hero/state.json') || {}).last_run || '', dms: (rj('hero_dms/state.json') || {}).last_run || '', honda: (rj('honda/state.json') || {}).last_run || '', tvs: (rj('tvs/state.json') || {}).last_run || '', report: rep, build: { at: b.at || '', sync: b.sync || null, dms: b.dms || null, dmsSrc: b.dmsSrc || '' } });
+    return json(res, 200, { setup: fs.existsSync(HERO_SYNC_DIR), hero: (rj('hero/state.json') || {}).last_run || '', dms: (rj('hero_dms/state.json') || {}).last_run || '', honda: (rj('honda/state.json') || {}).last_run || '', tvs: (rj('tvs/state.json') || {}).last_run || '', yamaha: (rj('yamaha/state.json') || {}).last_run || '', royal_enfield: (rj('royal_enfield/state.json') || {}).last_run || '', report: rep, build: { at: b.at || '', sync: b.sync || null, dms: b.dms || null, dmsSrc: b.dmsSrc || '' } });
   }
   if (p === '/api/hero-dms-mrp') {   // 14w: Hero's dealer list MRPs (number without dashes / end S -> MRP), for Admin's shop price check
     drain(req); if (!user || user.role !== 'admin') return json(res, user ? 403 : 401, { error: 'Only Admin' });

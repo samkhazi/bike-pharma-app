@@ -335,6 +335,8 @@ class TVS:
                                                        headless=env('TVS_HEADFUL', '') == '',
                                                        accept_downloads=True, viewport={'width': 1500, 'height': 900})
             page = ctx.pages[0] if ctx.pages else ctx.new_page()
+            if env('TVS_FRESH_LOGIN'):                       # test: forget the saved login, do the full login + OTP
+                ctx.clear_cookies(); log.info('TVS: saved login cleared (TVS_FRESH_LOGIN)')
             page.set_default_timeout(120000)
             try:
                 self.login(page)

@@ -198,9 +198,11 @@ class Honda:
         # on the server the code picture is drawn without a real src (src = Login.aspx#), so wait for the box
         # to be on screen instead of naturalWidth; the screenshot below takes it exactly as the page shows it
         ok = "() => { const i = document.querySelector('#imgCode'); return i && i.getBoundingClientRect().width > 0 && document.readyState === 'complete' }"
-        errs = []
-        page.on('pageerror', lambda e: errs.append(str(e)[:150]))
-        page.on('console', lambda m: m.type == 'error' and errs.append(m.text[:150]))
+        if getattr(self, '_errs_page', None) is not page:     # listen once per page (open_login runs again after each try)
+            self._errs_page, self.errs = page, []
+            page.on('pageerror', lambda e: self.errs.append(str(e)[:150]))
+            page.on('console', lambda m: m.type == 'error' and self.errs.append(m.text[:150]))
+        errs = self.errs
         for t in range(3):
             try:
                 page.goto(BASE + '/Login.aspx', wait_until='domcontentloaded', timeout=90000)
@@ -275,7 +277,12 @@ class Honda:
                     except Exception: pass
                     page.wait_for_timeout(4000)
                     page.remove_listener('response', seen)
-                    log.info('Honda: after Enter: %s | requests: %s', page.url, ' ; '.join(net[:8]) or 'none')
+                    try:
+                        lbl = page.evaluate("() => { const e = document.querySelector('#lblmessage'); return e ? e.innerText.trim() : '' }")
+                    except Exception:
+                        lbl = ''
+                    log.info('Honda: after Enter: %s | requests: %s | message: %s | page errors: %s', page.url,
+                             ' ; '.join(net[:8]) or 'none', lbl or 'none', ' ; '.join(self.errs[-3:]) or 'none')
                     if 'home' not in page.url.lower():
                         page.goto(BASE + '/Home.aspx', wait_until='domcontentloaded'); page.wait_for_timeout(3000)
                     if self.logged_in(page):

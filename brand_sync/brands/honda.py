@@ -460,6 +460,8 @@ class Honda:
                                                        headless=env('HONDA_HEADFUL', '') == '',
                                                        viewport={'width': 1500, 'height': 900})
             page = ctx.pages[0] if ctx.pages else ctx.new_page()
+            if env('HONDA_FRESH_LOGIN'):                     # test: forget the saved login, do the full login (code + OTP)
+                ctx.clear_cookies(); log.info('Honda: saved login cleared (HONDA_FRESH_LOGIN)')
             page.set_default_timeout(120000)
             try:
                 self.login(page)

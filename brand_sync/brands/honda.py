@@ -193,11 +193,26 @@ class Honda:
         # on the server the code picture is drawn without a real src (src = Login.aspx#), so wait for the box
         # to be on screen instead of naturalWidth; the screenshot below takes it exactly as the page shows it
         ok = "() => { const i = document.querySelector('#imgCode'); return i && i.getBoundingClientRect().width > 0 && document.readyState === 'complete' }"
+        errs = []
+        page.on('pageerror', lambda e: errs.append(str(e)[:150]))
+        page.on('console', lambda m: m.type == 'error' and errs.append(m.text[:150]))
         for t in range(3):
             try:
                 page.goto(BASE + '/Login.aspx', wait_until='domcontentloaded', timeout=90000)
                 page.wait_for_function(ok, timeout=60000)
-                page.wait_for_timeout(2000)
+                # the page draws the code with its own imageShow() (the same as its refresh); if the picture is
+                # still empty, ask the page to draw it, then wait for a real picture
+                drawn = "() => { const i = document.querySelector('#imgCode'); return i && i.complete && i.naturalWidth > 0 }"
+                try:
+                    page.wait_for_function(drawn, timeout=10000)
+                except Exception:
+                    page.evaluate("() => { if (typeof imageShow === 'function') imageShow(); 0; }")
+                    try:
+                        page.wait_for_function(drawn, timeout=20000)
+                    except Exception:
+                        src = page.evaluate("() => (document.querySelector('#imgCode').getAttribute('src') || '').slice(0, 60)")
+                        raise RuntimeError(f'code picture empty (src {src!r}, page errors: {"; ".join(errs[-3:]) or "none"})')
+                page.wait_for_timeout(1000)
                 break
             except Exception as e:
                 # the code picture did not load: keep a screenshot + what the page was, then try again

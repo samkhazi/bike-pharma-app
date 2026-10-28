@@ -85,9 +85,10 @@ function heroBuild(why) {
 }
 function hondaBuild(why) {
   if (!HONDA_RAW.every(f => fs.existsSync(path.join(HONDA_DIR, f)))) return false;
-  const src = [...HONDA_RAW.map(f => path.join(HONDA_DIR, f)), path.join(PUBLIC_DIR, 'app.html'), path.join(ROOT, 'lib', 'hondabuild.mjs'), path.join(ROOT, 'lib', 'herobuild.mjs')];
-  if (why === 'start' && mtime(path.join(HERO_OUT, 'honda.json')) > Math.max(...src.map(mtime))) return false;
-  catBuild('honda', why, [path.join(ROOT, 'lib', 'hondabuild.mjs'), PUBLIC_DIR, HONDA_DIR, HERO_OUT]);
+  const src = [...HONDA_RAW.map(f => path.join(HONDA_DIR, f)), path.join(PUBLIC_DIR, 'app.html'), path.join(ROOT, 'lib', 'hondabuild.mjs'), path.join(ROOT, 'lib', 'herobuild.mjs'), path.join(HERO_SYNC_DIR, 'honda', 'state.json')];
+  if (why === 'sync' && catQ.some(q => q[0] === 'honda')) return false;
+  if ((why === 'start' || why === 'sync') && mtime(path.join(HERO_OUT, 'honda.json')) > Math.max(...src.map(mtime))) return false;
+  catBuild('honda', why, [path.join(ROOT, 'lib', 'hondabuild.mjs'), PUBLIC_DIR, HONDA_DIR, HERO_OUT, HERO_SYNC_DIR]);
   return true;
 }
 function bajajBuild(why) {
@@ -113,9 +114,10 @@ function reBuild(why) {
 }
 function tvsBuild(why) {
   if (!TVS_RAW.every(f => fs.existsSync(path.join(TVS_DIR, f)))) return false;
-  const src = [...TVS_RAW.map(f => path.join(TVS_DIR, f)), path.join(TVS_DIR, TVS_ZIP), ...TVS_MORE.map(f => path.join(TVS_DIR, f)), path.join(PUBLIC_DIR, 'app.html'), path.join(ROOT, 'lib', 'tvsbuild.mjs'), path.join(ROOT, 'lib', 'herobuild.mjs')];
-  if (why === 'start' && mtime(path.join(HERO_OUT, 'tvs.json')) > Math.max(...src.map(mtime))) return false;
-  catBuild('tvs', why, [path.join(ROOT, 'lib', 'tvsbuild.mjs'), PUBLIC_DIR, TVS_DIR, HERO_OUT]);
+  const src = [...TVS_RAW.map(f => path.join(TVS_DIR, f)), path.join(TVS_DIR, TVS_ZIP), ...TVS_MORE.map(f => path.join(TVS_DIR, f)), path.join(PUBLIC_DIR, 'app.html'), path.join(ROOT, 'lib', 'tvsbuild.mjs'), path.join(ROOT, 'lib', 'herobuild.mjs'), path.join(HERO_SYNC_DIR, 'tvs', 'state.json')];
+  if (why === 'sync' && catQ.some(q => q[0] === 'tvs')) return false;
+  if ((why === 'start' || why === 'sync') && mtime(path.join(HERO_OUT, 'tvs.json')) > Math.max(...src.map(mtime))) return false;
+  catBuild('tvs', why, [path.join(ROOT, 'lib', 'tvsbuild.mjs'), PUBLIC_DIR, TVS_DIR, HERO_OUT, HERO_SYNC_DIR]);
   return true;
 }
 function ktmBuild(why) {
@@ -136,7 +138,7 @@ function catRun() {
   const c = spawn(process.execPath, ['--max-old-space-size=3072', ...q[2]], { stdio: ['ignore', 'inherit', 'inherit'] });
   c.on('exit', code => { console.log(new Date().toISOString(), q[0] + ' build (' + q[1] + ') ended', code); heroBusy = false; catQ.shift(); catRun(); });
 }
-setInterval(() => { try { heroBuild('sync'); } catch (e) { console.log('hero sync check:', e.message); } }, 3600e3).unref();   // 14z: the weekly Hero sync's new files make a new Hero build within the hour
+setInterval(() => { for (const [n, f] of [['hero', heroBuild], ['honda', hondaBuild], ['tvs', tvsBuild]]) try { f('sync'); } catch (e) { console.log(n + ' sync check:', e.message); } }, 3600e3).unref();   // 15d: Honda and TVS too   // 14z: the weekly Hero sync's new files make a new Hero build within the hour
 heroBuild('start'); hondaBuild('start'); bajajBuild('start'); yamahaBuild('start'); reBuild('start'); tvsBuild('start'); ktmBuild('start');
 const BACKUP = backups({ store, dataDir: DATA_DIR, env });   // 11u: every night + Admin > More > Backups
 // 11v: Hero goes to phones as a head + the part lines they need (lib/catsplit.mjs); CAT_SPLIT=off sends the whole file as before
@@ -218,9 +220,9 @@ async function api(req, res, url, user) {
     drain(req); if (!user || user.role !== 'admin') return json(res, user ? 403 : 401, { error: 'Only Admin' });
     const rj = f => { try { return JSON.parse(fs.readFileSync(path.join(HERO_SYNC_DIR, f), 'utf8')); } catch { return null; } };
     let rep = null; try { const L = fs.readdirSync(path.join(HERO_SYNC_DIR, 'reports')), pick = b => L.filter(x => new RegExp('^report_[\\d-]+_' + b + '\\.md$').test(x)).sort().pop();
-      const fs2 = [pick('hero_dms'), pick('hero')].filter(Boolean); if (fs2.length) rep = { name: fs2.join(', '), text: fs2.map(f => fs.readFileSync(path.join(HERO_SYNC_DIR, 'reports', f), 'utf8').slice(0, 30000)).join('\n') }; } catch {}   // the newest dealer system and e-catalogue reports
+      const fs2 = [pick('hero_dms'), pick('hero'), pick('honda'), pick('tvs')].filter(Boolean); if (fs2.length) rep = { name: fs2.join(', '), text: fs2.map(f => fs.readFileSync(path.join(HERO_SYNC_DIR, 'reports', f), 'utf8').slice(0, 30000)).join('\n') }; } catch {}   // the newest dealer system and e-catalogue reports
     const b = (() => { try { return JSON.parse(fs.readFileSync(path.join(HERO_OUT, 'hero-build.json'), 'utf8')); } catch { return {}; } })();
-    return json(res, 200, { setup: fs.existsSync(HERO_SYNC_DIR), hero: (rj('hero/state.json') || {}).last_run || '', dms: (rj('hero_dms/state.json') || {}).last_run || '', report: rep, build: { at: b.at || '', sync: b.sync || null, dms: b.dms || null, dmsSrc: b.dmsSrc || '' } });
+    return json(res, 200, { setup: fs.existsSync(HERO_SYNC_DIR), hero: (rj('hero/state.json') || {}).last_run || '', dms: (rj('hero_dms/state.json') || {}).last_run || '', honda: (rj('honda/state.json') || {}).last_run || '', tvs: (rj('tvs/state.json') || {}).last_run || '', report: rep, build: { at: b.at || '', sync: b.sync || null, dms: b.dms || null, dmsSrc: b.dmsSrc || '' } });
   }
   if (p === '/api/hero-dms-mrp') {   // 14w: Hero's dealer list MRPs (number without dashes / end S -> MRP), for Admin's shop price check
     drain(req); if (!user || user.role !== 'admin') return json(res, user ? 403 : 401, { error: 'Only Admin' });
@@ -838,12 +840,28 @@ function serveStatic(req, res, url, user) {
 }
 
 // ---------- server ----------
+// 15d: the Honda login code page and the TVS OTP page of brand_sync run only on this machine (CODE_BIND=127.0.0.1); the link in Sam's
+// email (https://<site>/honda-code/<secret>) reaches them through here, over the site's https. Only those two paths, small bodies.
+const SYNC_PAGE = /^\/(honda-code|tvs-otp)\/[A-Za-z0-9_-]{8,40}(\/img\.png)?\/?$/;
+function syncPage(req, res, sp) {
+  if (req.method !== 'GET' && req.method !== 'POST') return json(res, 405, { error: 'Method not allowed' });
+  const port = sp[1] === 'honda-code' ? +(env.HONDA_CODE_PORT || 8766) : +(env.TVS_OTP_PORT || 8765);
+  const off = () => { if (!res.headersSent) { res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); res.end('<p style="font-family:sans-serif;padding:24px">Ye link ab band ho chuka hai (sync abhi code / OTP nahi maang raha).</p>'); } else res.end(); };
+  const up = http.request({ host: '127.0.0.1', port, method: req.method, path: req.url, headers: { 'content-type': req.headers['content-type'] || 'application/x-www-form-urlencoded' }, timeout: 30e3 }, r => {
+    res.writeHead(r.statusCode === 404 ? 404 : r.statusCode, { 'Content-Type': r.headers['content-type'] || 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
+    r.pipe(res);
+  });
+  up.on('error', off); up.on('timeout', () => up.destroy(new Error('timeout')));
+  if (req.method === 'POST') { let n = 0; req.on('data', c => { n += c.length; if (n > 4096) { up.destroy(); req.destroy(); } else up.write(c); }); req.on('end', () => up.end()); }
+  else up.end();
+}
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://x');
     MON.probe(ipOf(req), url.pathname + url.search, req.method);   // 11w: requests only hacking tools send
     const user = userOf(req);
     if (url.pathname.startsWith('/api/')) return await api(req, res, url, user);
+    const sp = SYNC_PAGE.exec(url.pathname); if (sp) return syncPage(req, res, sp);
     if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'Method not allowed' });
     const ph = PHOTO_URL.exec(url.pathname); if (ph) return servePhoto(req, res, ph, user);
     return serveStatic(req, res, url, user);

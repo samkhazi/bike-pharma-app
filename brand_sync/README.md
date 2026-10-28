@@ -16,6 +16,13 @@ Sync ka data `data/project-files/catalogues/hero-sync` me jata hai. Website ka s
 Hero catalogue khud dobara banta hai (naye models, diagrams, photos, MRP, purana -> naya). Jo diagram/photo Raw Data me pehle se hai
 wo dobara download nahi hota (hero_have.json). Shop ke parts ka MRP sirf Admin > Catalogue files > Hero MRP check se badalta hai.
 
+**Honda + TVS (15d):** Honda e-catalogue har Sunday subah 10 baje, TVS dealer DMS har Sunday dopahar 2 baje (server time).
+Honda login pe code (captcha) aur TVS login pe OTP aap khud daalte ho: samkhazi25@gmail.com pe email aata hai ek link ke saath
+(`https://bikepharma.com/honda-code/...` / `https://bikepharma.com/tvs-otp/...`), link kholo, code/OTP type karo. Tool code kabhi khud
+nahi padhta. Code/OTP page sirf server ke andar chalta hai (CODE_BIND=127.0.0.1), website use https pe aage deti hai, koi port nahi kholna.
+Email website ke apne SMTP (.env ka SMTP_*) se jata hai. Honda/TVS ka naya data (MRP, naye model, diagram, kits, purana -> naya) bhi
+har ghante wale check se Honda/TVS catalogue me aa jata hai. TVS ka NDP kabhi app me nahi jata, sirf MRP.
+
 ## Setup (server pe ek baar)
 
 ```bash

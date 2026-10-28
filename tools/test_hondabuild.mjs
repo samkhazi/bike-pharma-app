@@ -90,6 +90,30 @@ try {
   ok(writeApp('public', T + '/two') === 2, 'both brand files used');
   const two = fs.readFileSync(T + '/two/app.html', 'utf8');
   ok(two.includes("'Hero':['d5:1:99','AAAA']") && hl(two) === hl(app) && patchApp(pa, ['x', 'y'], null, null, 'Nobrand') === null, "Hero's and Honda's lines both in the app; an unknown brand changes nothing");
+  // 15d: the weekly Honda sync's data (brand_sync on this server) goes into the build: newest MRP, new models, new assemblies, added parts, old numbers
+  const SY = T + '/pf/catalogues/hero-sync', SH = SY + '/honda'; fs.mkdirSync(SH + '/asm', { recursive: true }); fs.mkdirSync(SH + '/img', { recursive: true });
+  const jpg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 7, 7, 7, 0xff, 0xd9]); fs.writeFileSync(SH + '/img/abc.jpg', jpg);
+  fs.writeFileSync(SH + '/state.json', JSON.stringify({ last_run: '2026-11-01',
+    mrp: { '12200-K0P-D00': { desc: 'HEAD COMP., CYLINDER', mrp: 4700, ns: '' }, 'NEWP1-K0P-000': { desc: 'NEW PART', mrp: 50, ns: '' } },
+    acc: { 5: { pn: '08P99-K0P-D00', desc: 'GUARD, NEW', mrp: 999, sec: 'ACCESSORIES', models: ['ACTIVA'] } }, kits: { 5: [['08P99-K0P-D01', 'BOLT', 2]] },
+    hist: { '12200-K0P-D00': [['12200-K0P-C00', 'HEAD OLD', 4000, '', '', false]] },
+    crawled: { SCV110T: { mid: 9, series: 'Activa', asms: [['ENGINE', 'E-3', 'CYLINDER HEAD', 65, ''], ['ENGINE', 'E-30', 'NEW ASSY', 77, 'abc']] },
+      SCV110V9: { mid: 12, series: 'Activa125', asms: [['ENGINE', 'E-3', 'CYLINDER HEAD', 65, 'abc']] } } }));
+  const ar = (pn, ref, desc) => ({ ref, pn, desc, qty: 1, mrp: 10, ns: '' });
+  fs.writeFileSync(SH + '/asm/9_65.json', JSON.stringify({ rows: [ar('12200-K0P-D00', '1', 'HEAD COMP., CYLINDER'), ar('ADD11-K0P-000', '7', 'NEW BOLT')] }));
+  fs.writeFileSync(SH + '/asm/9_77.json', JSON.stringify({ rows: [ar('NEW11-K0P-000', '1', 'NEW COVER')] }));
+  fs.writeFileSync(SH + '/asm/12_65.json', JSON.stringify({ rows: [ar('12200-K0P-D00', '1', 'HEAD COMP., CYLINDER')] }));
+  const { buildHonda } = await import('../lib/hondabuild.mjs');
+  const Y = buildHonda(H, 'catalogues/honda', { sync: SY, syncRel: 'catalogues/hero-sync' }), yd = Y.cat, yg = Y.dg;
+  const YV = n => yd.vars.findIndex(v => v.endsWith(' · ' + n)), yb = pn => yd.d.filter(r => r[5] === pn);
+  ok(yd.mrp['12200-K0P-D00'] === 4700 && Y.info.sync.models === 1 && Y.info.sync.figs === 2, 'sync: its MRP wins; one new model, its assembly and one new assembly');
+  ok(yb('ADD11-K0P-000').some(r => r[2] === 'E-3' && r[11].includes(YV('SCV110T'))) && yb('12200-K0P-D00').filter(r => r[0] === 0 && r[11].includes(YV('SCV110T'))).length === 1, 'sync: a part added to an assembly joins it, a part already there is not doubled');
+  const nf = yg.p[String(YV('SCV110T'))]['E-30'];
+  ok(nf >= 0 && yg.f[nf] === 'pf:catalogues/hero-sync/honda/img/abc.jpg:0:' + jpg.length && yb('NEW11-K0P-000')[0][2] === 'E-30', "sync: a new assembly with the sync's own diagram");
+  ok(YV('SCV110V9') >= 0 && yd.vmod[yd.vars[YV('SCV110V9')]] === 'Activa 125' && yb('12200-K0P-D00').some(r => r[11].includes(YV('SCV110V9'))), 'sync: a new model code becomes an edition of its bike');
+  ok(/Old no\. 12200-K0P-C00/.test(yb('12200-K0P-D00')[0][8]) && /New no\. 12200-K0P-D00/.test(yb('12200-K0P-C00')[0][8]), 'sync: old numbers both ways');
+  ok(yd.vmod[yd.vars[yb('NEWP1-K0P-000')[0][11][0]]] === 'Other parts (site search)' && /Kit has: 08P99-K0P-D01/.test(yb('08P99-K0P-D00')[0][8]) && yd.mrp['08P99-K0P-D00'] === 999, 'sync: new part numbers and accessories (with kit contents) findable');
+  ok(!buildHonda(H).info.sync, 'no sync data: nothing changes');
 } catch (e) { ok(false, 'error ' + e.stack); }
 finally { srv.kill(); }
 if (fails) console.log(log.slice(-3000));

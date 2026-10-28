@@ -50,6 +50,25 @@ try {
   ok(hd.split === 1 && hd.d.length === 0 && hd.n === d.d.length, 'cat/tvs.json sends the head only');
   const mf = JSON.parse(fs.readFileSync('public/cat/more-files.json', 'utf8')).sets.find(s => s.dir === 'catalogues/tvs');
   ok(mf && mf.pick === 'All Catalogues > TVS Catalogue2' && mf.files.length === 13 && mf.files[0][0] === 'tvs_build.json', 'upload card: the old 2 files + the 11 new ones');
+  // 15d: the weekly TVS sync's data (brand_sync on this server): dealer MRP list (MRP only), parts added to a diagram, new diagrams, kits
+  const SY = T + '/pf/catalogues/hero-sync', ST = SY + '/tvs'; fs.mkdirSync(ST + '/asm', { recursive: true }); fs.mkdirSync(ST + '/img', { recursive: true });
+  const crypto = await import('node:crypto'), url = 'https://tvs.example/img/NEW01.png', hf = crypto.createHash('sha1').update(url).digest('hex').slice(0, 16) + '.png';
+  fs.writeFileSync(ST + '/img/' + hf, PNG);
+  fs.writeFileSync(ST + '/state.json', JSON.stringify({ last_run: '2026-11-01',
+    mrp: { K6020030: { desc: 'CRANKSHAFT', ndp: 3999, mrp: 4800, eff: '2026-11-01' }, Z9000001: { desc: 'ONLY IN LIST', ndp: 1, mrp: 20, eff: '' } },
+    kits: { K9000009: { desc: 'NEW KIT', model: 'WEGO', appl: 'WEGO 110', ndp: 5, mrp: 300, parts: [['Z9000002', 'RING', 2]] } },
+    series: { S1: { name: 'WEGO 110', cat: 'SCOOTER', asms: { A1: { name: 'ENGINE ASSY', fig: 'FIG01', img: '' }, A2: { name: 'NEW COVER ASSY', fig: '000040000100000999C09', img: url } } } } }));
+  fs.writeFileSync(ST + '/asm/S1_A1.json', JSON.stringify({ rows: [{ sn: '1', pn: 'K6020030', desc: 'CRANKSHAFT ASSY WEGO', qty: '1', remarks: '' }, { sn: '3', pn: 'Z9000003', desc: 'NEW WASHER', qty: '2', remarks: '' }] }));
+  fs.writeFileSync(ST + '/asm/S1_A2.json', JSON.stringify({ rows: [{ sn: '1', pn: 'Z9000004', desc: 'COVER', qty: '1', remarks: '' }] }));
+  const { buildTvs } = await import('../lib/tvsbuild.mjs');
+  const Y = buildTvs(D, 'catalogues/tvs', { sync: SY, syncRel: 'catalogues/hero-sync' }), yd = Y.cat, yg = Y.dg, yb = pn => yd.d.filter(r => r[5] === pn), vn = r => r[11].map(i => yd.vars[i]).join();
+  ok(yd.mrp.K6020030 === 4800 && !/3999|ndp/i.test(JSON.stringify(yd)), "sync: the dealer list's MRP wins, its dealer price never in the catalogue");
+  ok(vn(yb('Z9000003')[0]) === 'Wego 110 · DRUM,Wego 110 · DISC' && yb('K6020030').length === 1, 'sync: a part TVS added to a diagram joins every variant with that diagram, no doubles');
+  const nr = yb('Z9000004')[0], nf = yg.p[String(nr[11][0])][nr[2]];
+  ok(vn(nr) === 'Wego 110 · New in e-catalogue (weekly sync)' && yg.f[nf] === 'pf:catalogues/hero-sync/tvs/img/' + hf + ':0:' + PNG.length, "sync: a new diagram with the sync's own picture, under its bike");
+  ok(yd.vmod[yd.vars[yb('K9000009')[0][11][0]]] === 'Kits (TVS)' && /In kit K9000009/.test(yb('Z9000002')[0][8]) && yd.mrp.K9000009 === 300, 'sync: a new kit with what is inside');
+  ok(yd.vmod[yd.vars[yb('Z9000001')[0][11][0]]] === 'Other parts (price list)' && yd.mrp.Z9000001 === 20, 'sync: a part only in the MRP list is findable');
+  ok(!buildTvs(D).info.sync, 'no sync data: nothing changes');
 } catch (e) { ok(false, 'error ' + e.stack); }
 finally { srv.kill(); }
 if (fails) console.log(log.slice(-3000));

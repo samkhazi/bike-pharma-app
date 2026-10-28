@@ -4,6 +4,8 @@ usage:  python sync.py hero             # Hero e-catalogue (weekly): new models 
         python sync.py hero_dms         # Hero Connect DMS (monthly): all part numbers, MRP changes, superseded, models
         python sync.py hero_dms --part 12310AAM000S   # live MRP of one part from the DMS
         python sync.py bajaj            # check Bajaj (incl. KTM/Husqvarna), update PDFs/Excel for changed BOMs
+        python sync.py tvs              # TVS dealer DMS (weekly, OTP typed by Sam): NDP-MRP list, kits, e-catalogue
+        python sync.py honda            # Honda e-catalogue (weekly, login code typed by Sam): new/changed models, MRP, kits, old<->new
         python sync.py all              # every brand enabled in .env (BRANDS=bajaj,...)
         python sync.py bajaj --full     # re-download everything (first run does this anyway)
         python sync.py bajaj --rebuild  # rebuild all PDFs/Excel from saved data, no download
@@ -17,6 +19,10 @@ BRANDS = {}
 def brand_cls(name):
     if name == 'bajaj':
         from brands.bajaj import Bajaj; return Bajaj
+    if name == 'tvs':
+        from brands.tvs import TVS; return TVS
+    if name == 'honda':
+        from brands.honda import Honda; return Honda
     if name == 'hero':
         from brands.hero import Hero; return Hero
     if name == 'hero_dms':
@@ -28,6 +34,8 @@ def run_brand(name, full=False, rebuild=False):
     b = brand_cls(name)()
     out = data_dir('output', b.name)
     prices = builders.load_prices(env(f'{name.upper()}_PRICES_CSV'))
+    if getattr(b, 'pdfs', True) is False and rebuild and hasattr(b, 'rebuild'):   # Honda makes its own PDFs
+        return b.rebuild()
     if getattr(b, 'pdfs', True) is False or (env('SKIP_PDFS') == '1' and not rebuild):   # data-only (Hero DMS), or the Bike Pharma server, which builds its own catalogue
         return b.run(full=full)[0]
     if rebuild:

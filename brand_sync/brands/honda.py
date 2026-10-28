@@ -180,7 +180,8 @@ class Honda:
 
     @staticmethod
     def logged_in(page):
-        if 'login' in page.url.lower() or page.locator('#txtloginName').count():
+        u = page.url.lower()
+        if 'login' in u or 'signin' in u or page.locator('#txt_EmailAdd, #txtloginName').count():
             log.info('Honda: login form still on the page (%s)', page.url)
             return False
         try:
@@ -208,7 +209,8 @@ class Honda:
         errs = self.errs
         for t in range(3):
             try:
-                page.goto(BASE + '/Login.aspx', wait_until='domcontentloaded', timeout=90000)
+                # 15r: Honda's real login page is SignInNew.aspx (Login.aspx is the old one: no Retailer choice, no encryptAES)
+                page.goto(BASE + env('HONDA_LOGIN_PAGE', '/SignInNew.aspx'), wait_until='domcontentloaded', timeout=90000)
                 page.wait_for_function(ok, timeout=60000)
                 # the page draws the code with its own imageShow() (the same as its refresh); if the picture is
                 # still empty, ask the page to draw it, then wait for a real picture
@@ -250,11 +252,45 @@ class Honda:
           return '';
         }""", kind)
         log.info('Honda: login type %s: %s', kind, picked or 'not found on the page')
-        page.fill('#txtloginName', env('HONDA_USER', required=True))
-        page.fill('#txtPassword', env('HONDA_PASS', required=True))
+        page.fill(self.first(page, '#txt_EmailAdd', '#txtloginName'), env('HONDA_USER', required=True))
+        page.fill(self.first(page, '#txt_Password', '#txtPassword'), env('HONDA_PASS', required=True))
         if page.locator('#chkRemember').count() and not page.is_checked('#chkRemember'):
             page.check('#chkRemember')
         return page.locator('#imgCode').screenshot()      # the picture exactly as the login page shows it
+
+    @staticmethod
+    def first(page, *sels):
+        for x in sels:
+            if page.locator(x).count():
+                return x
+        return sels[0]
+
+    def otp_step(self, page, cp, end):
+        """After the code, Honda may ask for an OTP (boxes txtotp1..). Sam types it on the same link page."""
+        boxes = page.locator('[id^=txtotp]')
+        try:
+            if not boxes.count() or not boxes.first.is_visible():
+                return
+        except Exception:
+            return
+        cp.msg = 'Honda ne OTP bheja hai (phone / email pe). Wo OTP yahan type karke Bhejo dabao.'
+        log.warning('Honda: OTP maang raha hai. Usi link pe OTP type karo.')
+        from notify import send
+        send('Honda login ke liye OTP chahiye. Usi link pe OTP type karo (pichhle mail wala link).', subject='Honda OTP chahiye')
+        while time.time() < end:
+            if cp.answer:
+                otp, cp.answer = re.sub(r'\D', '', cp.answer), None
+                n = boxes.count()
+                for k in range(n):
+                    boxes.nth(k).fill(otp[k] if k < len(otp) else '')
+                log.info('Honda: OTP mila (%d digit), verify kar raha hai', len(otp))
+                page.click('#btnVerify')
+                try: page.wait_for_load_state('networkidle', timeout=60000)
+                except Exception: pass
+                page.wait_for_timeout(4000)
+                cp.msg = 'OTP bhej diya, login ho raha hai. 30 second baad refresh karke dekho.'
+                return
+            time.sleep(2)
 
     def login(self, page):
         page.goto(BASE + '/Home.aspx', wait_until='domcontentloaded')
@@ -293,8 +329,7 @@ class Honda:
                     page.on('response', seen)
                     try:   # what the page's own checks say before Enter (CheckLoginText decides if SubmitLogin runs)
                         pre = page.evaluate("() => { let c; try { c = typeof CheckLoginText === 'function' ? CheckLoginText() : 'none'; } catch (e) { c = 'error: ' + e; }"
-                                            " return 'CheckLoginText=' + c + ', SubmitLogin=' + typeof SubmitLogin + ', user filled=' + !!document.querySelector('#txtloginName').value"
-                                            " + ', pass filled=' + !!document.querySelector('#txtPassword').value }")
+                                            " return 'CheckLoginText=' + c + ', SubmitLogin=' + typeof SubmitLogin + ', encryptAES=' + typeof encryptAES }")
                     except Exception as e:
                         pre = f'check failed: {e}'
                     log.info('Honda: before Enter: %s', pre)
@@ -303,10 +338,11 @@ class Honda:
                     except Exception:
                         log.warning('Honda: encryptAES never loaded. Scripts: %s',
                                     ' ; '.join(f'{u} {st}' for u, st in self.scripts.items()) or 'none seen')
-                    page.click('#btnEnter')
+                    page.click(self.first(page, '#btn_Login', '#btnEnter'))
                     try: page.wait_for_load_state('networkidle', timeout=60000)
                     except Exception: pass
                     page.wait_for_timeout(4000)
+                    self.otp_step(page, cp, end)
                     page.remove_listener('response', seen)
                     try:
                         lbl = page.evaluate("() => { const e = document.querySelector('#lblmessage'); return e ? e.innerText.trim() : '' }")

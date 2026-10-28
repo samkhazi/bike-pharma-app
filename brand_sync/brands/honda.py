@@ -256,6 +256,7 @@ class Honda:
                 if cp.answer:
                     code, cp.answer = cp.answer, None
                     said.clear()
+                    log.info('Honda: code mila (%d akshar), login kar raha hai', len(code))
                     page.fill('#txtVerification', code)
                     page.click('#btnEnter')
                     try: page.wait_for_load_state('networkidle', timeout=60000)
@@ -271,6 +272,7 @@ class Honda:
                     if re.search(r'password|user|email|invalid user|not exist|blocked|lock', why, re.I) and not re.search(r'code|verification|captcha', why, re.I):
                         cp.msg = f'Honda ne bola: {why}. .env me HONDA_USER / HONDA_PASS check karo.'
                         raise SystemExit(f'Honda login failed: {why}. HONDA_USER / HONDA_PASS check karo.')
+                    log.warning('Honda: login nahi hua (%s). Naya code link pe hai.', why)
                     cp.img = self.open_login(page)
                     cp.msg = f'Code sahi nahi laga ({why}). Naya code dekh ke dobara type karo.'
                 time.sleep(2)

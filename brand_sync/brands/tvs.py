@@ -21,6 +21,19 @@ from common import env, data_dir, load_json, save_json, today, Report
 
 log = logging.getLogger('brand_sync.tvs')
 BASE = 'https://advantagetvs.in'
+
+# select the option whose text contains `want` (case-insensitive) in whichever <select> has it
+PICK_JS = """want => {
+  const w = want.toLowerCase();
+  for (const s of document.querySelectorAll('select')) {
+    const o = [...s.options].find(o => o.text.trim().toLowerCase() === w) || [...s.options].find(o => o.text.toLowerCase().includes(w));
+    if (!o) continue;
+    if (s.value === o.value) return 'already ' + (s.id || s.name) + ' = ' + o.text.trim();
+    s.value = o.value; s.dispatchEvent(new Event('change', {bubbles: true}));
+    return 'changed ' + (s.id || s.name) + ' = ' + o.text.trim();
+  }
+  return '';
+}"""
 SEED = env('TVS_SEED') or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'seed', 'tvs', 'seed.json.gz')
 
 JS = r"""
@@ -199,9 +212,13 @@ class TVS:
                              f"URL {page.url} | boxes: {ids}")
 
         def fill():
-            for sel, key in (('#ddlRoles', 'TVS_ROLE'), ('#ddlBranch', 'TVS_BRANCH')):
-                if env(key) and page.locator(sel).count():
-                    page.select_option(sel, label=env(key)); self.settle(page)
+            # Role, Branch, Language: find the dropdown that has the wanted option, in order (each can reload the page)
+            for key, want in (('TVS_ROLE', 'Admin'), ('TVS_BRANCH', 'RANEBENNUR'), ('TVS_LANG', 'ENGLISH')):
+                want = env(key) or want
+                hit = page.evaluate(PICK_JS, want)
+                log.info(f'TVS: {key} -> {hit or "dropdown nahi mila"}')
+                if hit and hit.startswith('changed'):
+                    self.settle(page)
             page.fill('#txtUserID', user)
             page.fill('#txtPassword', pw)
         fill()

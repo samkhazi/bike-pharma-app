@@ -252,11 +252,11 @@ class TVS:
         out = {}
         for r in rows:
             k = {re.sub(r'[^a-z]', '', (a or '').lower()): v for a, v in r.items()}
-            pn = str(k.get('partno') or k.get('partnumber') or '').strip().upper()
+            pn = str(k.get('partno') or k.get('partnumber') or '').strip().lstrip("'").strip().upper()   # TVS writes 'G2010170
             if not pn:
                 continue
             out[pn] = {'desc': str(k.get('partdesc') or k.get('partdescription') or '').strip(),
-                       'ndp': num(k.get('ndp')), 'mrp': num(k.get('mrp')),
+                       'ndp': num(k.get('ndp') or k.get('rolndp')), 'mrp': num(k.get('mrp')),
                        'eff': str(k.get('effectivefrom') or '').strip()[:10], 'region': str(k.get('region') or '').strip()}
         log.info('NDP-MRP: %d parts (%s)', len(out), os.path.basename(f))
         return out
@@ -300,7 +300,9 @@ class TVS:
             grid = [g for g in grid if any(g)]
             hi = next(i for i, g in enumerate(grid) if any(re.sub(r'\W', '', x).lower() == 'partno' for x in g))
             return [dict(zip(grid[hi], g)) for g in grid[hi + 1:]]
-        return list(csv.DictReader(io.StringIO(t)))          # csv
+        t = t.lstrip('\ufeff')
+        first = t.split('\n', 1)[0]
+        return list(csv.DictReader(io.StringIO(t), delimiter='\t' if '\t' in first else ','))   # tab text (TVS export, 15z+) or csv
 
     # ---------- e-catalogue ----------
     def open_ecat(self, page):

@@ -272,6 +272,13 @@ class Honda:
                                 net.append(f'{r.request.method} {r.url.split("?")[0][-60:]} {r.status}')
                         except Exception: pass
                     page.on('response', seen)
+                    try:   # what the page's own checks say before Enter (CheckLoginText decides if SubmitLogin runs)
+                        pre = page.evaluate("() => { let c; try { c = typeof CheckLoginText === 'function' ? CheckLoginText() : 'none'; } catch (e) { c = 'error: ' + e; }"
+                                            " return 'CheckLoginText=' + c + ', SubmitLogin=' + typeof SubmitLogin + ', user filled=' + !!document.querySelector('#txtloginName').value"
+                                            " + ', pass filled=' + !!document.querySelector('#txtPassword').value }")
+                    except Exception as e:
+                        pre = f'check failed: {e}'
+                    log.info('Honda: before Enter: %s', pre)
                     page.click('#btnEnter')
                     try: page.wait_for_load_state('networkidle', timeout=60000)
                     except Exception: pass

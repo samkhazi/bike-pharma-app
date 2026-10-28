@@ -106,3 +106,27 @@ python sync.py bajaj            # Bajaj
 - DMS login me kabhi OTP ya captcha aa gaya to sync ruk jayega. `data/logs/` me screenshot milega.
 - Agar export adhoora aaye (90% se kam parts) to sync kuch bhi update nahi karta aur report me error aata hai.
 - 3-wheeler, KTM aur Husqvarna Bajaj me skip hote hain.
+
+## Royal Enfield (16n)
+
+Do sync, dono har Sunday, Mac ki zaroorat nahi:
+- `python sync.py re_spares` (subah 4 baje): spares.royalenfield.com se saare parts, MRP aur kaun se model me. Login nahi.
+  robots.txt allow na kare to kuch nahi leta aur report me likhta he.
+- `python sync.py royal_enfield` (subah 5 baje): dealer EPC (login `.env` me RE_EPC_USER / RE_EPC_PASS): naye model, variant,
+  diagram (SVG), parts lists.
+
+**EPC is server se seedha nahi khulta**: RE ka Akamai firewall data-centre IP ko 0.04 sec me "Access Denied" deta he
+(IPv4/IPv6, browser header ke saath bhi). Isliye sirf EPC wala browser `RE_EPC_PROXY` se jata he, baaki server apne IP se.
+
+Phone wala tarika (free):
+1. Dukaan pe ek purana Android, Jio/Airtel SIM ke saath (WiFi nahi, mobile data), hamesha charging pe.
+2. Phone pe **Tailscale** app (same account) aur **Every Proxy** app: HTTP proxy ON, port 8080.
+3. Server pe Tailscale (sirf jodne ke liye, exit node NAHI):
+   `curl -fsSL https://tailscale.com/install.sh | sh && tailscale up`
+4. `tailscale status` me phone ka 100.x.y.z IP dekho. `brand_sync/.env` me: `RE_EPC_PROXY=http://100.x.y.z:8080`
+5. Check: `curl -x http://100.x.y.z:8080 -s -o /dev/null -w "%{http_code}\n" https://epc.royalenfield.com/ACD/delivery` -> 200
+
+Paid proxy (koi device nahi): Indian residential proxy lo aur `RE_EPC_PROXY=http://user:pass@host:port`.
+
+Proxy band ho ya block ho to RE EPC sync ruk jata he aur report me saaf likha aata he; re_spares phir bhi chalta he.
+

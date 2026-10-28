@@ -257,7 +257,7 @@ class TVS:
                 continue
             out[pn] = {'desc': str(k.get('partdesc') or k.get('partdescription') or '').strip(),
                        'ndp': num(k.get('ndp') or k.get('rolndp')), 'mrp': num(k.get('mrp')),
-                       'eff': str(k.get('effectivefrom') or '').strip()[:10], 'region': str(k.get('region') or '').strip()}
+                       'eff': str(k.get('effectivefrom') or k.get('effectivefromdate') or '').strip()[:10], 'region': str(k.get('region') or '').strip()}
         log.info('NDP-MRP: %d parts (%s)', len(out), os.path.basename(f))
         return out
 

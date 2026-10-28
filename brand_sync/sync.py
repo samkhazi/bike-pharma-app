@@ -61,9 +61,17 @@ def main():
     ap.add_argument('brand')
     ap.add_argument('--full', action='store_true')
     ap.add_argument('--rebuild', action='store_true')
+    ap.add_argument('--compare-old', action='store_true', help='tvs only: compare the saved NDP-MRP list with the old MRP on the server')
     ap.add_argument('--part', help='hero_dms only: live MRP of one part, e.g. 12310AAM000S')
     a = ap.parse_args()
     load_env()
+    if a.compare_old:                                   # TVS: this NDP-MRP list vs the MRP of the catalogue on the server
+        from brands.tvs import TVS
+        from common import Report
+        r = Report('TVS MRP vs purani list'); TVS().compare_old(r)
+        md = r.markdown(); print(md)
+        from notify import send
+        send(md); return
     if a.part:
         import json
         from brands.hero_dms import HeroDMS

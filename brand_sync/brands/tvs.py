@@ -438,6 +438,41 @@ class TVS:
         self.state['series'], self.state['all'] = new_series, sorted(allp)
         return sorted(series) if first_run else sorted(changed)
 
+    def compare_old(self, rep, mrp=None):
+        """MRP of the NDP-MRP list vs the MRP in the TVS catalogue already on the server (tvs_build.json + tvs_extra.json
+        from Sam's TVS_NDP_MRP_List upload). MRP only in the report; the full list goes to a CSV in reports/."""
+        mrp = mrp if mrp is not None else self.state.get('mrp') or {}
+        d = env('TVS_OLD_DIR') or os.path.join(data_dir(), '..', 'tvs')
+        old = {}
+        for fn in ('tvs_build.json', 'tvs_extra.json'):
+            try:
+                for pn, m in (json.load(open(os.path.join(d, fn), encoding='utf-8')).get('mrp') or {}).items():
+                    m = m.get('mrp') if isinstance(m, dict) else m
+                    k = str(pn).strip().lstrip("'").upper()
+                    if k and k not in old and num(m):
+                        old[k] = num(m)
+            except FileNotFoundError:
+                pass
+        if not old:
+            rep.add('Purani list se milan', f'server pe purani TVS MRP nahi mili ({os.path.abspath(d)})'); return
+        rows, new_pn = [], []
+        for pn, v in sorted(mrp.items()):
+            if v.get('mrp') is None: continue
+            if pn not in old: new_pn.append(pn); continue
+            if abs(v['mrp'] - old[pn]) >= 0.01:
+                rows.append((pn, v['desc'], old[pn], v['mrp'], v['eff']))
+        gone = sorted(set(old) - set(mrp))
+        f = os.path.join(data_dir('reports'), f'tvs_mrp_vs_old_{today()}.csv')
+        with open(f, 'w', newline='', encoding='utf-8') as fh:
+            w = csv.writer(fh); w.writerow(['part_no', 'name', 'old_mrp', 'new_mrp', 'effective_from'])
+            w.writerows(rows)
+        up = sum(1 for r in rows if r[3] > r[2])
+        rep.add('Purani list se milan', f'{len(old)} purane MRP vs {len(mrp)} naye: {len(rows)} MRP badle ({up} badhe, {len(rows) - up} ghate), '
+                                        f'{len(new_pn)} naye parts, {len(gone)} purani list me the par nayi me nahi. Poori list: {f}')
+        for r in rows[:300]:
+            rep.add('MRP badla (purani list se)', f'{r[0]} {r[1]}: Rs {r[2]:g} -> Rs {r[3]:g} ({r[4]})')
+        log.info('TVS: compared with the old MRP list: %d changed, %d new, %d gone', len(rows), len(new_pn), len(gone))
+
     def merge_rest(self, rep, mrp, kits, cluster):
         old = self.state['mrp']
         changes = []
@@ -457,6 +492,7 @@ class TVS:
         else:
             gone = []
             rep.add('Pehli baar', f'NDP-MRP list ke {len(mrp)} parts save hue; agle hafte se MRP badlav dikhenge')
+            self.compare_old(rep, mrp)
         # kits
         dt = {}
         for d in kits.get('kPartsDtls') or []:

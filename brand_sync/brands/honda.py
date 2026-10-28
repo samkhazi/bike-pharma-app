@@ -181,6 +181,7 @@ class Honda:
     @staticmethod
     def logged_in(page):
         if 'login' in page.url.lower() or page.locator('#txtloginName').count():
+            log.info('Honda: login form still on the page (%s)', page.url)
             return False
         try:
             page.wait_for_function("() => typeof encryptAES === 'function' && typeof secretkye !== 'undefined'", timeout=20000)
@@ -262,10 +263,19 @@ class Honda:
                     said.clear()
                     log.info('Honda: code mila (%d akshar), login kar raha hai', len(code))
                     page.fill('#txtVerification', code)
+                    net = []
+                    def seen(r):
+                        try:
+                            if r.request.method == 'POST' or r.status >= 300:
+                                net.append(f'{r.request.method} {r.url.split("?")[0][-60:]} {r.status}')
+                        except Exception: pass
+                    page.on('response', seen)
                     page.click('#btnEnter')
                     try: page.wait_for_load_state('networkidle', timeout=60000)
                     except Exception: pass
                     page.wait_for_timeout(4000)
+                    page.remove_listener('response', seen)
+                    log.info('Honda: after Enter: %s | requests: %s', page.url, ' ; '.join(net[:8]) or 'none')
                     if 'home' not in page.url.lower():
                         page.goto(BASE + '/Home.aspx', wait_until='domcontentloaded'); page.wait_for_timeout(3000)
                     if self.logged_in(page):

@@ -842,10 +842,10 @@ function serveStatic(req, res, url, user) {
 // ---------- server ----------
 // 15d: the Honda login code page and the TVS OTP page of brand_sync run only on this machine (CODE_BIND=127.0.0.1); the link in Sam's
 // email (https://<site>/honda-code/<secret>) reaches them through here, over the site's https. Only those two paths, small bodies.
-const SYNC_PAGE = /^\/(honda-code|tvs-otp)\/[A-Za-z0-9_-]{8,40}(\/img\.png)?\/?$/;
+const SYNC_PAGE = /^\/(honda-code|tvs-otp|yamaha-otp)\/[A-Za-z0-9_-]{8,40}(\/img\.png)?\/?$/;
 function syncPage(req, res, sp) {
   if (req.method !== 'GET' && req.method !== 'POST') return json(res, 405, { error: 'Method not allowed' });
-  const port = sp[1] === 'honda-code' ? +(env.HONDA_CODE_PORT || 8766) : +(env.TVS_OTP_PORT || 8765);
+  const port = sp[1] === 'honda-code' ? +(env.HONDA_CODE_PORT || 8766) : sp[1] === 'yamaha-otp' ? +(env.YAMAHA_OTP_PORT || 8767) : +(env.TVS_OTP_PORT || 8765);
   const off = () => { if (!res.headersSent) { res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); res.end('<p style="font-family:sans-serif;padding:24px">Ye link ab band ho chuka hai (sync abhi code / OTP nahi maang raha).</p>'); } else res.end(); };
   // 15h: the body goes on with its Content-Length (Python's page reads exactly that many bytes; a chunked body read as empty)
   const send = body => {

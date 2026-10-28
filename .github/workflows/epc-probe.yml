@@ -1,0 +1,14 @@
+name: epc-probe
+on:
+  push:
+    branches: [claude/epc-probe]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -s https://ipinfo.io/json | grep -E '"ip"|"org"|"country"' || true
+          for i in 1 2 3; do curl -4 -s -o /dev/null -w "EPC v4: %{http_code}\n" -m 30 https://epc.royalenfield.com/ACD/delivery; done
+          curl -6 -s -o /dev/null -w "EPC v6: %{http_code}\n" -m 30 https://epc.royalenfield.com/ACD/delivery || true
+          curl -s -o /dev/null -w "spares: %{http_code}\n" -m 30 https://spares.royalenfield.com/
+          curl -s -m 20 https://spares.royalenfield.com/robots.txt | head -20

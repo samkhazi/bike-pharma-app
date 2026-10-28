@@ -133,7 +133,10 @@ class TVS:
 
     @staticmethod
     def logged_in(page):
-        return 'login.aspx' not in page.url.lower() and page.locator('text=Signout').count() > 0
+        # strict: a login form on screen means not logged in, whatever other text the page has
+        if 'login' in page.url.lower() or page.locator('#txtDealerId, #txtUserID, #txtPassword').count():
+            return False
+        return page.locator('text=Signout').count() > 0
 
     def get_otp(self, page):
         f = os.path.join(self.dir, 'otp.txt')
@@ -177,7 +180,8 @@ class TVS:
                 page.wait_for_timeout(10000)
         page.wait_for_timeout(3000)
         if self.logged_in(page):
-            log.info('TVS: still logged in (saved browser profile)'); return
+            log.info(f'TVS: still logged in (saved browser profile) at {page.url} | {page.title()}'); return
+        log.info(f'TVS: login page {page.url} | {page.title()}')
         page.fill('#txtDealerId', dealer)
         page.click('#btnGo'); page.wait_for_load_state('networkidle'); page.wait_for_timeout(1500)
 

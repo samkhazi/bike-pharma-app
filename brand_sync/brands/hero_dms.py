@@ -145,11 +145,27 @@ class HeroDMS:
         page.wait_for_timeout(3000)
         page.evaluate(JS)
 
+    def known(self, value, prefix):
+        """How many parts last time's data has for a simple 'AB*' chunk (0 when the chunk is not a plain prefix)."""
+        m = re.fullmatch(r'([0-9A-Z]+)\*', value)
+        if not m: return 0
+        key = 'active' if prefix == 'Products List' else 'mrp'
+        return sum(1 for pn, d in self.parts.items() if pn.startswith(m.group(1)) and d.get(key) not in (None, ''))
+
+    def reload(self, page, prefix):
+        page.wait_for_timeout(15000)
+        if prefix == 'Products List': self.goto(page, PRODUCT_VIEW)
+        else: self.open_mrp(page)
+
     def export(self, page, prefix, field, value, tries=3):
         """Query, then export all rows to CSV. Returns list of dict rows ([] when no records)."""
         for t in range(tries):
             rc = page.evaluate('([p,f,v]) => sQuery(p,f,v)', [prefix, field, value])
             if 'No Records' in rc:
+                # the DMS sometimes answers "No Records" for a chunk that has parts: trust it only if last time had none too
+                if t < tries - 1 and self.known(value, prefix):
+                    log.warning('export %s %s: DMS said no records, last time %d - reload and retry', prefix, value, self.known(value, prefix))
+                    self.reload(page, prefix); continue
                 return []
             if not page.evaluate('m => sExportStart(m)', MENU[prefix]):
                 page.evaluate('sExportClose()'); page.wait_for_timeout(4000); continue
@@ -203,8 +219,9 @@ class HeroDMS:
                             prod[pn] = {'name': (r.get('Part Description') or r.get('Name') or '').strip(), 'hsn': (r.get('HSN') or '').strip(),
                                         'group': (r.get(' Part Group') or r.get('Part Group') or '').strip(),
                                         'active': (r.get('Active Flag') or '').strip(), 'sup': (r.get('Superceeded By') or '').strip()}
-                if len(prod) < 0.9 * len(self.parts):
-                    raise RuntimeError(f'only {len(prod)} products exported (last time {len(self.parts)}) - stopping, nothing changed')
+                had = sum(1 for d in self.parts.values() if d.get('active')) or len(self.parts)   # parts that came from the product list
+                if len(prod) < 0.9 * had:
+                    raise RuntimeError(f'only {len(prod)} products exported (last time {had}) - stopping, nothing changed')
                 # 2) every MRP line (the DMS list can't be filtered by date, so all of it, in chunks)
                 self.open_mrp(page)
                 mrp_rows = []

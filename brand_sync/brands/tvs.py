@@ -165,11 +165,19 @@ class TVS:
 
     def login(self, page):
         dealer = env('TVS_DEALER_ID', required=True); user = env('TVS_USER', required=True); pw = env('TVS_PASS', required=True)
-        page.goto(BASE + '/Home.aspx', wait_until='domcontentloaded')
+        # open the real login page first (Home.aspx timed out from the server); 3 tries
+        for i in range(3):
+            try:
+                page.goto(BASE + env('TVS_LOGIN_PAGE', '/Login.aspx'), wait_until='domcontentloaded', timeout=90000)
+                break
+            except Exception as e:
+                log.warning(f'TVS: login page try {i + 1} failed: {e}')
+                if i == 2:
+                    raise SystemExit(f'TVS: {BASE} server se nahi khul raha (3 baar timeout).')
+                page.wait_for_timeout(10000)
         page.wait_for_timeout(3000)
         if self.logged_in(page):
             log.info('TVS: still logged in (saved browser profile)'); return
-        page.goto(BASE + '/login.aspx', wait_until='domcontentloaded')
         page.fill('#txtDealerId', dealer)
         page.click('#btnGo'); page.wait_for_load_state('networkidle'); page.wait_for_timeout(1500)
 

@@ -429,6 +429,8 @@ class Honda:
         if aggs and not asms:
             raise RuntimeError(f'Honda {code}: assemblies list empty (session issue) - will retry next run')
         out, allrows = [], []
+        before = {a[3]: a[4] for a in (self.state['crawled'].get(code) or {}).get('asms', [])}
+        newpic = set((self.state['crawled'].get(code) or {}).get('newpic', []))
         for agg, fig, name, aid in asms:
             rows = page.evaluate('([a, m]) => hParts(a, m)', [aid, mid])      # also tells the server which diagram to serve
             r = page.request.get(f'{BASE}/ImageHandler.ashx?Type=Part&PartId=-1,&Factor=3.00&time={aid}_{int(time.time() * 1000)}', timeout=120000)
@@ -440,10 +442,12 @@ class Honda:
             for x in rows: x['mid'] = mid
             save_json(self.asm_path(mid, aid), {'rows': rows, 'fetched': today()})
             out.append([agg, fig, name, aid, h])
+            if h and before.get(aid) and before[aid] != h:      # 16d: Honda changed this diagram's picture
+                newpic.add(aid); log.info('Honda %s: new picture for %s %s', code, fig, name)
             allrows += rows
             time.sleep(float(env('HONDA_DELAY', '0.2')))
         self.history(ctx, allrows)
-        self.state['crawled'][code] = {**meta, 'mid': mid, 'asms': out, 'date': today()}
+        self.state['crawled'][code] = {**meta, 'mid': mid, 'asms': out, 'date': today(), 'newpic': sorted(newpic)}
 
     # ---------- sync ----------
     def run(self, full=False, report=None):

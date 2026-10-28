@@ -412,8 +412,12 @@ class TVS:
                 continue
             sg = sig(rows)
             img = rec.get('IMAGE_LINK') or ''
-            new_series[sid]['asms'][aid] = {'name': name, 'fig': fig or rec.get('FIG_NO') or '', 'sig': sg, 'img': img}
             prev = (old.get(sid) or {}).get('asms', {}).get(aid)
+            # 16d: TVS put a new picture on this diagram -> the app shows the downloaded one instead of the uploaded zip's
+            newpic = (prev or {}).get('newpic') or ''
+            if prev and prev.get('img') and img and img != prev['img']:
+                newpic = today(); rep.add('Diagram picture badli', f"{series[sid]['name']} - {name}")
+            new_series[sid]['asms'][aid] = {'name': name, 'fig': fig or rec.get('FIG_NO') or '', 'sig': sg, 'img': img, 'newpic': newpic}
             path = self.asm_path(sid, aid)
             prev_rows = load_json(path, {}).get('rows')
             prev_set = {r['pn'] for r in prev_rows if r['pn']} if prev_rows else set(self.seed_parts.get(f'{sid}:{aid}', []))

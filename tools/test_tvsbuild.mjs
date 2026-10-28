@@ -68,6 +68,13 @@ try {
   ok(vn(nr) === 'Wego 110 · New in e-catalogue (weekly sync)' && yg.f[nf] === 'pf:catalogues/hero-sync/tvs/img/' + hf + ':0:' + PNG.length, "sync: a new diagram with the sync's own picture, under its bike");
   ok(yd.vmod[yd.vars[yb('K9000009')[0][11][0]]] === 'Kits (TVS)' && /In kit K9000009/.test(yb('Z9000002')[0][8]) && yd.mrp.K9000009 === 300, 'sync: a new kit with what is inside');
   ok(yd.vmod[yd.vars[yb('Z9000001')[0][11][0]]] === 'Other parts (price list)' && yd.mrp.Z9000001 === 20, 'sync: a part only in the MRP list is findable');
+  // 16d: TVS added a part to an uploaded diagram (or changed its picture) -> that diagram shows the sync's picture, others keep the zip's
+  const url2 = 'https://tvs.example/img/FIG01v2.png', hf2 = crypto.createHash('sha1').update(url2).digest('hex').slice(0, 16) + '.png';
+  fs.writeFileSync(ST + '/img/' + hf2, PNG);
+  const st = JSON.parse(fs.readFileSync(ST + '/state.json', 'utf8')); st.series.S1.asms.A1.img = url2; fs.writeFileSync(ST + '/state.json', JSON.stringify(st));
+  const Y2 = buildTvs(D, 'catalogues/tvs', { sync: SY, syncRel: 'catalogues/hero-sync' }), r2 = Y2.cat.d.find(r => r[5] === 'Z9000003'), f2 = Y2.dg.p[String(r2[11][0])][r2[2]];
+  ok(Y2.dg.f[f2] === 'pf:catalogues/hero-sync/tvs/img/' + hf2 + ':0:' + PNG.length && Y2.info.sync.newpics === 2, "sync: a diagram TVS added parts to shows TVS's new picture");
+  st.series.S1.asms.A1.img = ''; fs.writeFileSync(ST + '/state.json', JSON.stringify(st));
   ok(!buildTvs(D).info.sync, 'no sync data: nothing changes');
 } catch (e) { ok(false, 'error ' + e.stack); }
 finally { srv.kill(); }

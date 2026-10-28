@@ -1,4 +1,4 @@
-"""Bajaj EPC (epc.gladminds.co). KTM and Husqvarna are in this EPC too but are skipped (Sam takes KTM from pymidol).
+"""Bajaj EPC (epc.gladminds.co). KTM, Husqvarna and 3-wheelers are in this EPC too but are skipped (Sam takes KTM from pymidol).
 
 Login: plain form POST to / with username + password (no OTP/captcha as of Oct 2026).
 Data:  Tastypie JSON API under /v1/ (only after login):
@@ -6,23 +6,36 @@ Data:  Tastypie JSON API under /v1/ (only after login):
   bom-headers         BOM per SKU (id, sku_code, bom_number, valid_from, modified_date, revision_number)
   bom-plate-parts     ?bom=<id>  every part line of a BOM with its plate (diagram) and image links
 Change check: a BOM is re-downloaded when it is new, its header changed, or its part-line count changed.
+Also: hidden BOMs (BOM without a SKU in the site tree) are included. EPC has no MRP, so no price column.
+old <-> new part numbers -> output/Bajaj/Bajaj_Purana_Naya.xlsx (EPC: same diagram, old line ends the day the new one starts).
 """
-import os, re, hashlib, logging
+import os, re, hashlib, logging, datetime
 from common import Http, env, data_dir, load_json, save_json, today, Report
 
 log = logging.getLogger('brand_sync.bajaj')
 BASE = 'https://epc.gladminds.co'
 SKIP_VERTICALS = {'Commercial Vehicle', 'KTM', 'Husqvarna'}   # no 3-wheelers; KTM/Husqvarna come from another source
+# BOM-only SKUs (not in sku-details) with these prefixes are KTM or 3-wheeler BOMs (checked 23 Oct 2026)
+SKIP_SKU_PREFIX = ('00JG', '00JP', '00JU', '00JY', '00A', '00B', '00RA')
 
 
 class Bajaj:
     name = 'Bajaj'
+    price_label = 'Bajaj EPC me MRP nahi hota'
 
     def __init__(self):
         self.dir = data_dir('bajaj')
         self.http = Http(env('BAJAJ_EPC_URL', BASE))
         self.state_path = os.path.join(self.dir, 'state.json')
         self.state = load_json(self.state_path, {'skus': {}, 'boms': {}})
+        self.seed_cur, self.seed_all = {}, set()
+        seed = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'seed', 'bajaj', 'seed.json.gz')
+        if not os.path.exists(self.state_path) and os.path.exists(seed):
+            # 23 Oct 2026 full EPC download: the first run downloads everything again (for PDFs and diagrams)
+            # but reports only what changed after 23 Oct
+            import gzip, json
+            sd = json.load(gzip.open(seed, 'rt', encoding='utf-8'))
+            self.state, self.seed_cur, self.seed_all = sd['state'], sd['cur'], set(sd['all'])
 
     # ---------- login + API ----------
     def login(self):
@@ -31,8 +44,9 @@ class Bajaj:
         self.http.get('/')
         self.http.post('/', data={'username': user, 'password': pw, 'signIn': ''},
                        headers={'Referer': self.http.url('/')}, allow_redirects=True)
-        r = self.http.get('/v1/sku-details-custom/?limit=1&format=json')
-        if r.status_code != 200 or not r.headers.get('content-type', '').startswith('application/json'):
+        # logged out, the catalogue pages redirect to /?next=... (the login form); logged in they open
+        r = self.http.get('/verticals/1/models/', allow_redirects=True)
+        if 'next=' in r.url or 'name="password"' in r.text:
             raise SystemExit('Bajaj EPC login failed: check BAJAJ_EPC_USER / BAJAJ_EPC_PASS in .env')
         log.info('Bajaj EPC login ok')
 
@@ -78,6 +92,12 @@ class Bajaj:
                          'kit': bool(pt.get('kit_part_tag'))})
         return rows
 
+    @staticmethod
+    def skip(sku_code, s):
+        if s:
+            return s['vertical'] in SKIP_VERTICALS
+        return sku_code.startswith(SKIP_SKU_PREFIX)
+
     def run(self, full=False, report=None):
         rep = report or Report(self.name)
         self.login()
@@ -97,7 +117,7 @@ class Bajaj:
         changed = []
         for h in headers:
             s = skus.get(h['sku_code'].strip())
-            if s and s['vertical'] in SKIP_VERTICALS:
+            if self.skip(h['sku_code'].strip(), s):
                 continue
             bid = str(h['id'])
             sig = f"{h.get('modified_date')}|{h.get('revision_number')}|{h.get('valid_to')}"
@@ -106,6 +126,7 @@ class Bajaj:
             if full or not old or old['sig'] != sig or old['n'] != n or not os.path.exists(self.bom_path(bid)):
                 changed.append((h, sig, n, old))
         log.info('%d BOMs to download', len(changed))
+        known = self.all_part_numbers() or self.seed_all
 
         for h, sig, n, old in changed:
             bid = str(h['id'])
@@ -118,12 +139,30 @@ class Bajaj:
                 if self.state['skus']:
                     rep.add('Naye BOM', f'{label}: {len(rows)} part lines')
             else:
-                a, b = self.current_set(prev), self.current_set(rows)
+                a = self.current_set(prev) if prev else set(self.seed_cur.get(bid, []))
+                b = self.current_set(rows)
                 added, gone = sorted(b - a), sorted(a - b)
                 if added or gone:
                     rep.add('Parts badle', f"{label}: +{len(added)} naye, -{len(gone)} hataye"
                             + (f" (naye: {', '.join(added[:8])}{'...' if len(added) > 8 else ''})" if added else ''))
             self.download_images(rows)
+        if known:
+            for pn in sorted(self.all_part_numbers() - known)[:500]:
+                rep.add('Naye part number (EPC)', pn)
+        pairs = self.oldnew()
+        seen = set(map(tuple, self.state.get('pairs', [])))
+        if self.state.get('pairs') is not None:
+            for o, n, how in pairs:
+                if (o, n) not in seen:
+                    rep.add('Naya purana -> naya', f'{o} -> {n} ({how})')
+        self.state['pairs'] = [[o, n] for o, n, _ in pairs]
+        desc = {}
+        for _, _, d in self.saved_boms():
+            for r in d['rows']:
+                if r['pn'] and r['desc']:
+                    desc[r['pn']] = r['desc']
+        n = self.write_oldnew_xlsx(os.path.join(data_dir('output', 'Bajaj'), 'Bajaj_Purana_Naya.xlsx'), desc)
+        log.info('old <-> new pairs: %d', n)
         self.state['skus'] = {k: {'desc': v['desc'], 'brand': v['brand'], 'vertical': v['vertical']} for k, v in skus.items()}
         self.state['last_run'] = today()
         save_json(self.state_path, self.state)
@@ -170,6 +209,74 @@ class Bajaj:
             except Exception as e:
                 log.warning('image %s: %s', url, e)
 
+    # ---------- old <-> new ----------
+    def saved_boms(self):
+        for bid, st in self.state['boms'].items():
+            d = load_json(self.bom_path(bid), None)
+            if d:
+                yield bid, st, d
+
+    def all_part_numbers(self):
+        skus = load_json(os.path.join(self.dir, 'skus.json'), {})
+        return {r['pn'] for bid, st, d in self.saved_boms() if not self.skip(st['sku'], skus.get(st['sku']))
+                for r in d['rows'] if r['pn']}
+
+    def oldnew(self):
+        """[(old, new, how)]: same BOM + diagram, the old line ends the day the new line starts and the
+        names share a word. EPC has no official supersession list, so check before relying on it."""
+        skus = load_json(os.path.join(self.dir, 'skus.json'), {})
+        out = {}
+        def nxt(x):
+            try: return (datetime.date.fromisoformat(x[:10]) + datetime.timedelta(days=1)).isoformat()
+            except ValueError: return None
+        def words(t): return set(re.findall(r'[A-Z]{3,}', (t or '').upper()))
+        t = today()
+        for bid, st, d in self.saved_boms():
+            if self.skip(st['sku'], skus.get(st['sku'])):
+                continue
+            by_plate = {}
+            for r in d['rows']:
+                by_plate.setdefault(r['plate_id'], []).append(r)
+            for rows in by_plate.values():
+                for r in rows:
+                    vt = (r['valid_to'] or '')[:10]
+                    if not r['pn'] or vt >= t or vt < '1990':
+                        continue
+                    for r2 in rows:
+                        if r2['pn'] and r2['pn'] != r['pn'] and (r2['valid_from'] or '')[:10] in (vt, nxt(vt)) \
+                                and words(r['desc']) & words(r2['desc']):
+                            out.setdefault((r['pn'], r2['pn']), 'Achha (EPC: same diagram, same din)')
+        return sorted((o, n, how) for (o, n), how in out.items())
+
+    def write_oldnew_xlsx(self, path, desc):
+        import openpyxl
+        pairs = self.oldnew()
+        new_of = {}
+        for o, n, how in pairs:
+            new_of.setdefault(o, []).append(n)
+        def final(p, seen=()):
+            nx = new_of.get(p)
+            if not nx or p in seen or len(seen) > 10:
+                return p
+            return final(sorted(nx)[0], seen + (p,))
+        wb = openpyxl.Workbook(); ws = wb.active; ws.title = 'Purana -> Naya'
+        ws.append(['Purana Part No', 'Naam', 'Naya Part No', 'Naam', 'Final (aakhri) Part No', 'Kaise pata chala'])
+        for o, n, how in pairs:
+            ws.append([o, desc.get(o, ''), n, desc.get(n, ''), final(n), how])
+        ws2 = wb.create_sheet('Naya -> Purane')
+        ws2.append(['Naya Part No', 'Naam', 'Purane Part Nos'])
+        old_of = {}
+        for o, n, _ in pairs:
+            old_of.setdefault(n, set()).add(o)
+        for n in sorted(old_of):
+            ws2.append([n, desc.get(n, ''), ', '.join(sorted(old_of[n]))])
+        for w in (ws, ws2):
+            w.freeze_panes = 'A2'
+            for col, wd in zip('ABCDEF', (14, 34, 14, 34, 16, 34)):
+                w.column_dimensions[col].width = wd
+        wb.save(path)
+        return len(pairs)
+
     # ---------- data for the PDF / Excel builders ----------
     def variants(self):
         """Yield one dict per BOM in the generic shape used by builders.py."""
@@ -179,7 +286,7 @@ class Bajaj:
             if not d:
                 continue
             h, s = d['header'], skus.get(st['sku'], {})
-            if s.get('vertical') in SKIP_VERTICALS:
+            if self.skip(st['sku'], s or None):
                 continue
             rows = self.current(d['rows'])
             if not rows:

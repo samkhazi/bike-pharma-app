@@ -80,6 +80,21 @@ try {
   ok((await get('/api/catup?path=' + encodeURIComponent('catalogues/bajaj/SKU HHDT07ZZ - parts PULSAR RS 200 ABS - BS IV se 20% milte hain (Jan, 2017) [HHDT07ZZ].pdf') + '&size=10')).status === 200 && (await get('/api/catup?path=' + encodeURIComponent('catalogues/bajaj/../x.pdf') + '&size=10')).status !== 200, "12d: a name with % in it can be uploaded (Sam's Bajaj book), a '..' still cannot");
   const mf = JSON.parse(fs.readFileSync('public/cat/more-files.json', 'utf8')).sets.find(s => s.dir === 'catalogues/bajaj');
   ok(mf && mf.pick === 'Downloads > Bajaj Catalogue' && mf.files[0][0] === 'bajaj_build.json' && mf.files.slice(1).every(f => /\.pdf$/.test(f[0])) && mf.files.length > 200 && !mf.files.some(f => /Viewer_im|\.jpg$|^~\$|DS_Store/.test(f[0])) && new Set(mf.files.map(f => f[0])).size === mf.files.length, 'upload card: bajaj_build.json + the model PDFs with diagrams, every file once (no viewer zips or loose pictures)');
+  // 16k: the weekly Bajaj EPC sync: a SKU only it has becomes an edition (diagram = its downloaded plate picture), a known SKU gets the parts its BOM has now
+  const { buildBajaj } = await import('../lib/bajajbuild.mjs'), crypto = await import('node:crypto');
+  const SY = T + '/pf/catalogues/hero-sync', SB = SY + '/bajaj'; fs.mkdirSync(SB + '/boms', { recursive: true }); fs.mkdirSync(SB + '/img', { recursive: true });
+  const U = 'https://epc.example/media/plate1.jpg', IF = crypto.createHash('sha1').update(U).digest('hex').slice(0, 16) + '.jpg'; fs.writeFileSync(SB + '/img/' + IF, jpg('plate'));
+  const R = (plate_id, plate, item, pn, desc, extra = {}) => ({ plate_id, plate, img: plate_id === '1' ? U : '', item, pn, desc, qty: '1', valid_from: '2026-10-01', valid_to: '9999-12-31', status: '', kit: false, ...extra });
+  fs.writeFileSync(SB + '/state.json', JSON.stringify({ last_run: '2026-11-01', skus: {}, boms: { 9001: { sig: 'x', n: 2, sku: '00JR99ZZ' }, 9002: { sig: 'x', n: 2, sku: '00DH60ZZ' }, 9003: { sig: 'x', n: 1, sku: '00JG11ZZ' } } }));
+  fs.writeFileSync(SB + '/skus.json', JSON.stringify({ '00JR99ZZ': { desc: 'Pulsar N160 USD', brand: 'Pulsar N160', vertical: 'Motorcycle' }, '00DH60ZZ': { desc: 'Pulsar 150', brand: 'PULSAR 150', vertical: 'Motorcycle' } }));
+  fs.writeFileSync(SB + '/boms/9001.json', JSON.stringify({ header: { valid_from: '2026-10-05' }, rows: [R('1', 'FORK', '0010', 'JR991111', 'USD FORK ASSY'), R('2', 'SEAT', '0020', 'JR992222', 'SEAT', { valid_to: '2020-01-01' })] }));
+  fs.writeFileSync(SB + '/boms/9002.json', JSON.stringify({ header: { valid_from: '2023-04-01' }, rows: [R('1', 'COVER CYLINDER HEAD', '0003', 'PD519999', 'NEW GASKET'), R('1', 'COVER CYLINDER HEAD', '0001', 'PD511536', 'COVER')] }));
+  fs.writeFileSync(SB + '/boms/9003.json', JSON.stringify({ header: {}, rows: [R('1', 'KTM', '0001', 'KTM0001', 'KTM PART')] }));
+  const Z = buildBajaj(D, 'catalogues/bajaj', { zipIndex: undefined, sync: SY }), zd = Z.cat, zg = Z.dg, nv = zd.vars.findIndex(v => v.endsWith('· 00JR99ZZ')), fk = zd.d.find(r => r[5] === 'JR991111'), ng = zd.d.find(r => r[5] === 'PD519999');
+  ok(nv >= 0 && zd.vmod[zd.vars[nv]] === 'Pulsar N160' && fk && fk[11].join() === String(nv) && /weekly sync/.test(fk[8]) && zg.f[zg.p[String(nv)]['1']] === `pf:catalogues/hero-sync/bajaj/img/${IF}:0:${jpg('plate').length}`
+    && !zd.d.some(r => r[5] === 'JR992222' || r[5] === 'KTM0001') && ng && ng[2] === '1' && zd.d.filter(r => r[5] === 'PD511536' && r[11].includes(zd.vars.findIndex(v => v.endsWith('· 00DH60ZZ')))).length === 1 && Z.info.sync.parts === 1,
+    'sync: a new Bajaj SKU is an edition with its plate picture; a known SKU gets only its new part, under its plate; ended lines and KTM are left out');
+  ok(!buildBajaj(D).info.sync, 'no sync data: nothing changes');
 } catch (e) { ok(false, 'error ' + e.stack); }
 finally { srv.kill(); }
 if (fails) console.log(log.slice(-3000));

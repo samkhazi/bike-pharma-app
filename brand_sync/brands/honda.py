@@ -234,6 +234,22 @@ class Honda:
                 if t == 2:
                     raise SystemExit(f'Honda login page ka code picture nahi khula (3 baar). Page: {where}. Screenshot: {shot}')
                 page.wait_for_timeout(20000)
+        # 15q: the login page asks who is logging in (Retailer / ...): pick HONDA_LOGIN_TYPE (default Retailer), as Sam does
+        kind = env('HONDA_LOGIN_TYPE', 'Retailer')
+        picked = page.evaluate("""k => {
+          const re = new RegExp(k, 'i');
+          for (const s of document.querySelectorAll('select')) {
+            const o = [...s.options].find(o => re.test(o.text));
+            if (o) { s.value = o.value; s.dispatchEvent(new Event('change', {bubbles: true}));
+                     if (window.$) $(s).val(o.value).trigger('change'); return 'select ' + (s.id || s.name) + ' = ' + o.text.trim(); }
+          }
+          for (const i of document.querySelectorAll('input[type=radio]')) {
+            const l = (i.labels && i.labels[0] && i.labels[0].innerText) || i.value || '';
+            if (re.test(l)) { i.click(); return 'radio ' + (i.id || i.name) + ' = ' + l.trim(); }
+          }
+          return '';
+        }""", kind)
+        log.info('Honda: login type %s: %s', kind, picked or 'not found on the page')
         page.fill('#txtloginName', env('HONDA_USER', required=True))
         page.fill('#txtPassword', env('HONDA_PASS', required=True))
         if page.locator('#chkRemember').count() and not page.is_checked('#chkRemember'):

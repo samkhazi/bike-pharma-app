@@ -301,7 +301,8 @@ class TVS:
         rep = report or Report(self.name)
         from playwright.sync_api import sync_playwright
         with sync_playwright() as p:
-            ctx = p.chromium.launch_persistent_context(data_dir('tvs', 'browser'), headless=env('TVS_HEADFUL', '') == '',
+            ctx = p.chromium.launch_persistent_context(data_dir('tvs', 'browser'), args=['--disable-dev-shm-usage', '--js-flags=--max-old-space-size=4096'],   # 15s: big part list crashed the tab (small /dev/shm, JS heap)
+                                                       headless=env('TVS_HEADFUL', '') == '',
                                                        accept_downloads=True, viewport={'width': 1500, 'height': 900})
             page = ctx.pages[0] if ctx.pages else ctx.new_page()
             page.set_default_timeout(120000)

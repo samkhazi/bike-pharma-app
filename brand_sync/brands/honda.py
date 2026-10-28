@@ -448,7 +448,8 @@ class Honda:
         from playwright.sync_api import sync_playwright
         built = []
         with sync_playwright() as p:
-            ctx = p.chromium.launch_persistent_context(data_dir('honda', 'browser'), headless=env('HONDA_HEADFUL', '') == '',
+            ctx = p.chromium.launch_persistent_context(data_dir('honda', 'browser'), args=['--disable-dev-shm-usage', '--js-flags=--max-old-space-size=4096'],   # 15s: big part list crashed the tab (small /dev/shm, JS heap)
+                                                       headless=env('HONDA_HEADFUL', '') == '',
                                                        viewport={'width': 1500, 'height': 900})
             page = ctx.pages[0] if ctx.pages else ctx.new_page()
             page.set_default_timeout(120000)

@@ -61,6 +61,16 @@ try {
     "book names with – and ' in them can be uploaded (Sam's Yamaha books)");
   const mf = JSON.parse(fs.readFileSync('public/cat/more-files.json', 'utf8')).sets.find(s => s.dir === 'catalogues/yamaha');
   ok(mf && mf.pick === 'Downloads > Yamaha Catalogue' && mf.files[0][0] === 'yamaha_build.json' && mf.files.slice(1).every(f => /\.pdf$/i.test(f[0])) && mf.files.length > 400 && new Set(mf.files.map(f => f[0])).size === mf.files.length, 'upload card: yamaha_build.json + the parts books, every file once');
+  // 16h: the weekly pymidol sync (brand_sync on this server): its MRP wins, new old/new pairs and kits join, parts only in its list are findable
+  const SY = T + '/pf/catalogues/hero-sync'; fs.mkdirSync(SY + '/yamaha', { recursive: true });
+  fs.writeFileSync(SY + '/yamaha/state.json', JSON.stringify({ last_run: '2026-11-01',
+    mrp: { B0TE11021000: { name: 'CYLINDER HEAD', mrp: 5400 }, BX9F00010000: { name: 'NEW MIRROR', mrp: 450 } },
+    sup: [['BX9F00000000', 'BX9F00010000']], kits: { 'NEW KIT 1': { name: 'NEW KIT', parts: [['BX9F00010000', 'MIRROR', 1]] } } }));
+  const { buildYamaha } = await import('../lib/yamahabuild.mjs');
+  const Y = buildYamaha(D, 'catalogues/yamaha', { sync: SY }), yd = Y.cat, nr = yd.d.find(r => r[5] === 'BX9F00010000');
+  ok(yd.mrp['B0T-E1102-10'] === 5400 && nr && yd.mrp.BX9F00010000 === 450 && /Old no\. BX9F00000000/.test(nr[8]) && /In kit: NEW KIT 1/.test(nr[8])
+    && yd.vars[nr[11][0]] === 'Other Yamaha (no model name) · Yamaha MRP list (weekly sync)', "sync: pymidol's MRP wins; a part only in its list is findable with old no. and kit");
+  ok(!buildYamaha(D).info.sync, 'no sync data: nothing changes');
 } catch (e) { ok(false, 'error ' + e.stack); }
 finally { srv.kill(); }
 if (fails) console.log(log.slice(-3000));

@@ -100,9 +100,10 @@ function bajajBuild(why) {
 }
 function yamahaBuild(why) {
   if (!YAMAHA_RAW.every(f => fs.existsSync(path.join(YAMAHA_DIR, f)))) return false;
-  const src = [...YAMAHA_RAW.map(f => path.join(YAMAHA_DIR, f)), path.join(PUBLIC_DIR, 'app.html'), path.join(ROOT, 'lib', 'yamahabuild.mjs'), path.join(ROOT, 'lib', 'herobuild.mjs')];
-  if (why === 'start' && mtime(path.join(HERO_OUT, 'yamaha.json')) > Math.max(...src.map(mtime))) return false;
-  catBuild('yamaha', why, [path.join(ROOT, 'lib', 'yamahabuild.mjs'), PUBLIC_DIR, YAMAHA_DIR, HERO_OUT]);
+  const src = [...YAMAHA_RAW.map(f => path.join(YAMAHA_DIR, f)), path.join(PUBLIC_DIR, 'app.html'), path.join(ROOT, 'lib', 'yamahabuild.mjs'), path.join(ROOT, 'lib', 'herobuild.mjs'), path.join(HERO_SYNC_DIR, 'yamaha', 'state.json')];
+  if (why === 'sync' && catQ.some(q => q[0] === 'yamaha')) return false;
+  if ((why === 'start' || why === 'sync') && mtime(path.join(HERO_OUT, 'yamaha.json')) > Math.max(...src.map(mtime))) return false;
+  catBuild('yamaha', why, [path.join(ROOT, 'lib', 'yamahabuild.mjs'), PUBLIC_DIR, YAMAHA_DIR, HERO_OUT, HERO_SYNC_DIR]);
   return true;
 }
 function reBuild(why) {
@@ -138,7 +139,7 @@ function catRun() {
   const c = spawn(process.execPath, ['--max-old-space-size=3072', ...q[2]], { stdio: ['ignore', 'inherit', 'inherit'] });
   c.on('exit', code => { console.log(new Date().toISOString(), q[0] + ' build (' + q[1] + ') ended', code); heroBusy = false; catQ.shift(); catRun(); });
 }
-setInterval(() => { for (const [n, f] of [['hero', heroBuild], ['honda', hondaBuild], ['tvs', tvsBuild]]) try { f('sync'); } catch (e) { console.log(n + ' sync check:', e.message); } }, 3600e3).unref();   // 15d: Honda and TVS too   // 14z: the weekly Hero sync's new files make a new Hero build within the hour
+setInterval(() => { for (const [n, f] of [['hero', heroBuild], ['honda', hondaBuild], ['tvs', tvsBuild], ['yamaha', yamahaBuild]]) try { f('sync'); } catch (e) { console.log(n + ' sync check:', e.message); } }, 3600e3).unref();   // 15d: Honda and TVS too   // 14z: the weekly Hero sync's new files make a new Hero build within the hour
 heroBuild('start'); hondaBuild('start'); bajajBuild('start'); yamahaBuild('start'); reBuild('start'); tvsBuild('start'); ktmBuild('start');
 const BACKUP = backups({ store, dataDir: DATA_DIR, env });   // 11u: every night + Admin > More > Backups
 // 11v: Hero goes to phones as a head + the part lines they need (lib/catsplit.mjs); CAT_SPLIT=off sends the whole file as before

@@ -155,7 +155,7 @@ class TVS:
                 if op.resend:
                     op.resend = False
                     if page.locator('#btnResendOtp').count():
-                        page.click('#btnResendOtp'); page.wait_for_load_state('networkidle'); log.info('TVS: resend OTP clicked')
+                        page.click('#btnResendOtp'); self.settle(page); log.info('TVS: resend OTP clicked')
                 if os.path.exists(f):
                     op.otp = re.sub(r'\D', '', open(f).read()) or None
                     os.remove(f)
@@ -165,6 +165,13 @@ class TVS:
         finally:
             op.close()
         raise SystemExit(f'TVS: {env("TVS_OTP_WAIT", "180")} minute me OTP nahi mila, sync nahi chala.')
+
+    @staticmethod
+    def settle(page):
+        # TVS pages keep polling, so 'networkidle' never comes: wait for load, then a short pause
+        try: page.wait_for_load_state('load', timeout=30000)
+        except Exception: pass
+        page.wait_for_timeout(2000)
 
     def login(self, page):
         dealer = env('TVS_DEALER_ID', required=True); user = env('TVS_USER', required=True); pw = env('TVS_PASS', required=True)
@@ -183,23 +190,29 @@ class TVS:
             log.info(f'TVS: still logged in (saved browser profile) at {page.url} | {page.title()}'); return
         log.info(f'TVS: login page {page.url} | {page.title()}')
         page.fill('#txtDealerId', dealer)
-        page.click('#btnGo'); page.wait_for_load_state('networkidle'); page.wait_for_timeout(1500)
+        page.click('#btnGo'); self.settle(page)
+        try:
+            page.wait_for_selector('#txtUserID', state='visible', timeout=60000)
+        except Exception:
+            ids = page.evaluate("[...document.querySelectorAll('input,select,button')].map(e => e.id || e.name).filter(Boolean).join(' ')")
+            raise SystemExit(f"TVS: Dealer ID ke baad user/password box nahi aaya (screenshot: {self.shot(page, 'after_go')}). "
+                             f"URL {page.url} | boxes: {ids}")
 
         def fill():
             for sel, key in (('#ddlRoles', 'TVS_ROLE'), ('#ddlBranch', 'TVS_BRANCH')):
                 if env(key) and page.locator(sel).count():
-                    page.select_option(sel, label=env(key)); page.wait_for_load_state('networkidle')
+                    page.select_option(sel, label=env(key)); self.settle(page)
             page.fill('#txtUserID', user)
             page.fill('#txtPassword', pw)
         fill()
-        page.click('#btnOk'); page.wait_for_load_state('networkidle'); page.wait_for_timeout(3000)
+        page.click('#btnOk'); self.settle(page); page.wait_for_timeout(3000)
         if not self.logged_in(page) and page.locator('#txtOTP').count():
             self.shot(page, 'otp_asked')
             otp = self.get_otp(page)
             if not page.locator('#txtPassword').input_value():
                 fill()
             page.fill('#txtOTP', otp)
-            page.click('#btnOk'); page.wait_for_load_state('networkidle'); page.wait_for_timeout(4000)
+            page.click('#btnOk'); self.settle(page); page.wait_for_timeout(4000)
         if not self.logged_in(page):
             raise SystemExit(f"TVS login failed (screenshot: {self.shot(page, 'login_failed')}). "
                              'TVS_DEALER_ID / TVS_USER / TVS_PASS / OTP check karo; role/branch alag ho to TVS_ROLE / TVS_BRANCH do.')

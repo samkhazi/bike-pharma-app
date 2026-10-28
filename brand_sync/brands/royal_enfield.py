@@ -192,8 +192,12 @@ class RoyalEnfield:
         if self.logged_in(page):
             log.info('RE EPC: still logged in (saved browser profile)'); return
         if not page.locator('#username:visible').count():
-            page.locator('text=LOGIN').first.click()
-            page.wait_for_selector('#username:visible', timeout=30000)
+            try:
+                page.locator('text=LOGIN').first.click(timeout=60000)
+                page.wait_for_selector('#username:visible', timeout=30000)
+            except Exception:
+                body = ' '.join((page.locator('body').inner_text(timeout=5000) or '').split())[:300] if page.locator('body').count() else ''
+                raise SystemExit(f"RE EPC: login page nahi khula. URL {page.url} | title '{page.title()}' | page: {body} | screenshot {self.shot(page, 'no_login')}")
         page.fill('#username', env('RE_EPC_USER', required=True))
         page.fill('#password', env('RE_EPC_PASS', required=True))
         page.click('#ok')

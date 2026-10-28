@@ -190,11 +190,14 @@ class Honda:
             return False
 
     def open_login(self, page):
-        ok = "() => { const i = document.querySelector('#imgCode'); return i && i.complete && i.naturalWidth > 0 }"
+        # on the server the code picture is drawn without a real src (src = Login.aspx#), so wait for the box
+        # to be on screen instead of naturalWidth; the screenshot below takes it exactly as the page shows it
+        ok = "() => { const i = document.querySelector('#imgCode'); return i && i.getBoundingClientRect().width > 0 && document.readyState === 'complete' }"
         for t in range(3):
             try:
                 page.goto(BASE + '/Login.aspx', wait_until='domcontentloaded', timeout=90000)
                 page.wait_for_function(ok, timeout=60000)
+                page.wait_for_timeout(2000)
                 break
             except Exception as e:
                 # the code picture did not load: keep a screenshot + what the page was, then try again

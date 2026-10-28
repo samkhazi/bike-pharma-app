@@ -190,8 +190,22 @@ class Honda:
             return False
 
     def open_login(self, page):
-        page.goto(BASE + '/Login.aspx', wait_until='domcontentloaded')
-        page.wait_for_function("() => { const i = document.querySelector('#imgCode'); return i && i.complete && i.naturalWidth > 0 }", timeout=60000)
+        ok = "() => { const i = document.querySelector('#imgCode'); return i && i.complete && i.naturalWidth > 0 }"
+        for t in range(3):
+            try:
+                page.goto(BASE + '/Login.aspx', wait_until='domcontentloaded', timeout=90000)
+                page.wait_for_function(ok, timeout=60000)
+                break
+            except Exception as e:
+                # the code picture did not load: keep a screenshot + what the page was, then try again
+                shot = self.shot(page, f'login_page_{t + 1}')
+                try: where = f'{page.url} | {page.title()}'
+                except Exception: where = '?'
+                log.warning('Honda login page: code picture did not load (try %d/3, %s). Page: %s. Screenshot: %s',
+                            t + 1, str(e).split('\n')[0], where, shot)
+                if t == 2:
+                    raise SystemExit(f'Honda login page ka code picture nahi khula (3 baar). Page: {where}. Screenshot: {shot}')
+                page.wait_for_timeout(20000)
         page.fill('#txtloginName', env('HONDA_USER', required=True))
         page.fill('#txtPassword', env('HONDA_PASS', required=True))
         if page.locator('#chkRemember').count() and not page.is_checked('#chkRemember'):

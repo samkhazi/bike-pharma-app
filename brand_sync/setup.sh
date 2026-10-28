@@ -46,14 +46,19 @@ grep -q '^# Bike Pharma server' .env || printf '\n# Bike Pharma server\n' >> .en
 setkey SKIP_PDFS 1; setkey HERO_DMS_SEED "$SYNC/seed"; setkey HONDA_SEED "$SYNC/seed/honda/seed.json.gz"; setkey TVS_SEED "$SYNC/seed/tvs/seed.json.gz"
 SITE_URL=$(val SITE_URL); SITE_URL=${SITE_URL:-https://bikepharma.com}
 setkey CODE_BIND 127.0.0.1; setkey HONDA_CODE_LINK_BASE "$SITE_URL"; setkey TVS_OTP_LINK_BASE "$SITE_URL"; setkey REPORT_TO samkhazi25@gmail.com
-for k in HERO_DMS_USER HERO_DMS_PASS HONDA_USER HONDA_PASS TVS_DEALER_ID TVS_USER TVS_PASS; do grep -qE "^$k=" .env || printf '%s=\n' "$k" >> .env; done
+for k in HERO_DMS_USER HERO_DMS_PASS HONDA_USER HONDA_PASS TVS_DEALER_ID TVS_USER TVS_PASS RE_EPC_USER RE_EPC_PASS RE_EPC_PROXY; do grep -qE "^$k=" .env || printf '%s=\n' "$k" >> .env; done
 chown "$U" .env; chmod 600 .env
-for k in HERO_DMS_USER HERO_DMS_PASS HONDA_USER HONDA_PASS TVS_DEALER_ID TVS_USER TVS_PASS; do grep -qE "^$k=.+" .env || echo "  $k khali hai: nano $BS/.env"; done
+for k in HERO_DMS_USER HERO_DMS_PASS HONDA_USER HONDA_PASS TVS_DEALER_ID TVS_USER TVS_PASS RE_EPC_USER RE_EPC_PASS RE_EPC_PROXY; do grep -qE "^$k=.+" .env || echo "  $k khali hai: nano $BS/.env"; done
 
 echo; echo "Hero e-catalogue from this server:"
 curl -s -m 30 -X POST https://ecatalogue.heromotocorp.biz:8080/HeroeCat/getGeneralUserDetails | grep -q authToken && echo "  OK" || echo "  NOT reachable (the site answers only Indian IPs)"
+echo; echo "Royal Enfield EPC from this server:"
+c=$(curl -s -o /dev/null -w "%{http_code}" -m 30 https://epc.royalenfield.com/ACD/delivery || true)
+[ "$c" = "403" ] && echo "  BLOCKED (RE Akamai: data-centre IP) -> RE_EPC_PROXY bharo (README: Royal Enfield)" || echo "  HTTP $c"
 echo; echo "Done. Weekly runs (crontab -u $U -e), server time ($(date +%Z)):"
 echo "0 21 * * 6  cd $BS && .venv/bin/python sync.py hero_dms >> $SYNC/logs/cron.log 2>&1"
 echo "0 1 * * 0  cd $BS && .venv/bin/python sync.py hero >> $SYNC/logs/cron.log 2>&1"
 echo "0 10 * * 0  cd $BS && .venv/bin/python sync.py honda >> $SYNC/logs/cron.log 2>&1   # login code: link comes by email"
 echo "0 14 * * 0  cd $BS && .venv/bin/python sync.py tvs >> $SYNC/logs/cron.log 2>&1   # OTP: link comes by email"
+echo "0 4 * * 0  cd $BS && .venv/bin/python sync.py re_spares >> $SYNC/logs/cron.log 2>&1   # RE spares store: MRP + models"
+echo "0 5 * * 0  cd $BS && .venv/bin/python sync.py royal_enfield >> $SYNC/logs/cron.log 2>&1   # RE EPC: needs RE_EPC_PROXY (RE blocks this server IP)"

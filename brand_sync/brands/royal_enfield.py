@@ -13,8 +13,12 @@ EPC has no real MRP (its cart shows a dummy $5.99 for every part). MRP comes fro
   put the newest list (CSV or XLSX with a "Part No" and an "MRP" column) in data/royal_enfield/mrp/. Changes go to
   RE_MRP_WEBHOOK (+ RE_MRP_WEBHOOK_TOKEN) as JSON, like HERO_MRP_WEBHOOK. spares.royalenfield.com is not used.
 Only reads: no cart, order or save button is ever touched. Other regions are never opened.
+RE's Akamai answers data-centre IPs (this server too) 'Access Denied', so RE_EPC_PROXY sends only this browser through an
+Indian home/mobile connection, e.g. http://100.x.y.z:8080 (proxy app on a phone at the shop, over Tailscale) or a paid
+Indian residential proxy http://user:pass@host:port. Everything else on the server keeps its own connection.
 """
 import os, re, csv, json, gzip, glob, html, time, hashlib, logging, collections
+from urllib.parse import unquote
 from common import env, data_dir, load_json, save_json, today, Report
 
 log = logging.getLogger('brand_sync.royal_enfield')
@@ -145,6 +149,19 @@ def split_rev(pn):
 def revkey(r): return (len(r), r)
 
 
+def proxy_opt():
+    """RE_EPC_PROXY -> Playwright proxy (only the EPC browser uses it); None when not set"""
+    v = env('RE_EPC_PROXY', '').strip()
+    if not v:
+        return None
+    from urllib.parse import urlsplit
+    u = urlsplit(v if '://' in v else 'http://' + v)
+    o = {'server': f'{u.scheme}://{u.hostname}' + (f':{u.port}' if u.port else '')}
+    if u.username: o['username'] = unquote(u.username)
+    if u.password: o['password'] = unquote(u.password)
+    return o
+
+
 class RoyalEnfield:
     name = 'Royal Enfield'
     pdfs = False                 # builds its own PDFs (vector SVG diagrams kept as vectors)
@@ -184,7 +201,16 @@ class RoyalEnfield:
     def login(self, page):
         dealer = env('RE_EPC_DEALER', '')
         url = BASE + '/ACD/delivery/index.jsp' + (f'?dealer={dealer}' if dealer else '')
-        page.goto(url, wait_until='load')
+        try:
+            page.goto(url, wait_until='load')
+        except Exception as e:
+            if env('RE_EPC_PROXY') and ('ERR_PROXY' in str(e) or 'ERR_TUNNEL' in str(e)):
+                raise SystemExit(f"RE EPC: RE_EPC_PROXY se connect nahi hua ({str(e)[:120]}). Dukaan wala phone/proxy on he? Tailscale chal raha he?")
+            raise
+        if page.title().strip().lower() == 'access denied':
+            raise SystemExit('RE EPC: Royal Enfield (Akamai) ne is IP ko "Access Denied" diya. '
+                             + ('RE_EPC_PROXY wala IP bhi block he, dusra proxy lo.' if env('RE_EPC_PROXY') else
+                                'Server ka IP data-centre ka he: brand_sync/.env me RE_EPC_PROXY set karo (README dekho).'))
         for _ in range(20):                                    # the app sets the selected dealer after it starts
             page.wait_for_timeout(1500)
             if page.locator('#username').count() or page.evaluate("() => !!sessionStorage.getItem('SELECTED_DEALER')"):
@@ -234,7 +260,9 @@ class RoyalEnfield:
         affected, new_variants = set(st.get('pending_pdf') or []), []
         with sync_playwright() as p:
             ctx = p.chromium.launch_persistent_context(data_dir('royal_enfield', 'browser'), args=['--disable-dev-shm-usage', '--js-flags=--max-old-space-size=4096'],
-                                                       headless=env('RE_HEADFUL', '') == '', viewport={'width': 1500, 'height': 900})
+                                                       headless=env('RE_HEADFUL', '') == '', viewport={'width': 1500, 'height': 900},
+                                                       proxy=proxy_opt())
+            if proxy_opt(): log.info('RE EPC: via RE_EPC_PROXY %s', proxy_opt()['server'])
             page = ctx.pages[0] if ctx.pages else ctx.new_page()
             if env('RE_FRESH_LOGIN'):                        # test: forget the saved login, do the full login
                 ctx.clear_cookies(); page.goto(BASE + '/ACD/delivery/index.jsp', wait_until='load'); page.evaluate('() => { localStorage.clear(); sessionStorage.clear(); }')

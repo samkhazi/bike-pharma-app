@@ -213,8 +213,9 @@ class TVS:
                 break
         else:
             raise RuntimeError(f"NDP-MRP page did not open ({self.shot(page, 'ndp_page')})")
+        self.clear_overlay(page)
         with page.expect_download(timeout=30 * 60 * 1000) as dl:
-            page.click('#MainContent_btnExptExcel')
+            page.click('#MainContent_btnExptExcel', timeout=60000)
         f = os.path.join(self.dir, f'ndp_mrp_{today()}' + (os.path.splitext(dl.value.suggested_filename)[1] or '.xls'))
         dl.value.save_as(f)
         rows = self.read_table(f)
@@ -229,6 +230,23 @@ class TVS:
                        'eff': str(k.get('effectivefrom') or '').strip()[:10], 'region': str(k.get('region') or '').strip()}
         log.info('NDP-MRP: %d parts (%s)', len(out), os.path.basename(f))
         return out
+
+    def clear_overlay(self, page):
+        # a Telerik popup (notice window or loading cover) can sit over the page and block clicks
+        ov = page.locator('.TelerikModalOverlay')
+        for _ in range(30):
+            if not ov.count() or not ov.first.is_visible():
+                return
+            page.wait_for_timeout(2000)
+        shot = self.shot(page, 'telerik_popup')
+        txt = page.evaluate("(() => [...document.querySelectorAll('.RadWindow, .rwContent, iframe[name^=Rad]')].map(e => (e.innerText || e.src || '').trim().slice(0, 200)).join(' | '))()")
+        log.warning(f'TVS: popup over the page ({shot}): {txt}')
+        for sel in ('.rwCloseButton', '.RadWindow a[title=Close]'):
+            if page.locator(sel).count() and page.locator(sel).first.is_visible():
+                page.locator(sel).first.click(); page.wait_for_timeout(2000); log.info('TVS: popup closed')
+                break
+        if ov.count() and ov.first.is_visible():
+            raise RuntimeError(f'TVS: popup page pe atka hua he, band nahi hua (screenshot: {shot}). Text: {txt}')
 
     @staticmethod
     def read_table(path):

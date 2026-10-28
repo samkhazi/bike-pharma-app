@@ -71,6 +71,16 @@ try {
   ok(yd.mrp['B0T-E1102-10'] === 5400 && nr && yd.mrp.BX9F00010000 === 450 && /Old no\. BX9F00000000/.test(nr[8]) && /In kit: NEW KIT 1/.test(nr[8])
     && yd.vars[nr[11][0]] === 'Other Yamaha (no model name) · Yamaha MRP list (weekly sync)', "sync: pymidol's MRP wins; a part only in its list is findable with old no. and kit");
   ok(!buildYamaha(D).info.sync, 'no sync data: nothing changes');
+  // 16i: a model catalogue the sync downloaded and read: a new model code becomes an edition, its diagram is the downloaded PDF's page
+  const st = JSON.parse(fs.readFileSync(SY + '/yamaha/state.json', 'utf8')), NB = 'DM4C YZF155D-B (2026-10-25).pdf';
+  st.books = { [NB]: { file: NB, size: 9, date: '2026-10-25', title: 'YZF155D-B', codes: ['DM4C'], name: 'YZF155D-B', rows: 1,
+    figs: [fig('1', 'CYLINDER HEAD', 4, ['DM4C'], [['1', 'B0T-E1102-10', 'CYLINDER HEAD ASSY', { DM4C: '1' }, ''], ['2', 'BX9-E1199-00', 'NEW GASKET', { DM4C: '1' }, '']])] },
+    'XXXX scan (2026-10-25).pdf': { file: 'XXXX scan (2026-10-25).pdf', size: 5, codes: ['XX11'], rows: 0, figs: [] } };
+  fs.writeFileSync(SY + '/yamaha/state.json', JSON.stringify(st));
+  const Z = buildYamaha(D, 'catalogues/yamaha', { sync: SY }), zd = Z.cat, zg = Z.dg, zv = zd.vars.findIndex(v => v.includes(' · DM4C ')), gk = zd.d.find(r => r[5] === 'BX9-E1199-00');
+  ok(zv >= 0 && zd.vars[zv] === 'R15 V4 · DM4C YZF155D-B (2026-10-25)' && gk && gk[11].join() === String(zv) && zd.d.find(r => r[5] === 'B0T-E1102-10' && r[2] === '1')[11].includes(zv)
+    && zg.f[zg.p[String(zv)]['1']] === `pdf:catalogues/hero-sync/output/Yamaha/PDF/Models/${NB}:0:9:4:0,0,0.48,1` && Z.info.sync.books === 1 && Z.info.sync.newModels[0] === 'DM4C R15 V4'
+    && !zd.vars.some(v => v.includes('XX11')), 'sync: a downloaded new model book is an edition (name from its code family), parts searchable, diagram from the PDF; a scan with no rows is left out');
 } catch (e) { ok(false, 'error ' + e.stack); }
 finally { srv.kill(); }
 if (fails) console.log(log.slice(-3000));

@@ -335,6 +335,7 @@ class Yamaha:
         self.state['last_run'] = today()
         self.state.pop('seed', None)
         save_json(self.state_path, self.state)
+        self.read_books(rep)
         self.write_files(rep)
         return rep, []
 
@@ -510,6 +511,31 @@ class Yamaha:
         if n: rep.add('Files download hui', f'{n} (output/Yamaha/PDF)')
         for b in bad: rep.add('Download nahi hua', b)
 
+    def read_books(self, rep):
+        """16i: every downloaded model catalogue PDF not read yet -> its parts tables in state['books'] (the app build adds them)"""
+        from brands import yamaha_books as yb
+        st = self.state; books = st.setdefault('books', {})
+        d = self.out('PDF', 'Models')
+        todo = [f for f in sorted(os.listdir(d)) if f.lower().endswith('.pdf') and (books.get(f) or {}).get('size') != os.path.getsize(os.path.join(d, f))]
+        if not todo: return
+        if not yb.have_tool():
+            rep.add('Naya model app me nahi gaya', f'{len(todo)} catalogue PDF padhne ke liye server pe pdftotext chahiye: apt-get install -y poppler-utils')
+            return
+        names = {}
+        for r in st['pi'].values():
+            if r.get('cat'): names[safe(f"{r['model']} {r['name']} ({r['date']})")] = r.get('name') or ''
+        for f in todo:
+            try:
+                b = yb.book(os.path.join(d, f), names.get(os.path.splitext(f)[0], ''))
+            except Exception as e:
+                log.warning('Yamaha book %s: %s', f, e); b = None
+            if not b:
+                rep.add('Naya model app me nahi gaya', f'{f}: PDF padh nahi paya'); continue
+            books[f] = b
+            if b['rows']: rep.add('Naya model app me aaya', f"{f}: {len(b['figs'])} diagram, {b['rows']} parts ({', '.join(b['codes'])})")
+            else: rep.add('Naya model app me nahi gaya', f'{f}: PDF me text nahi (scan), parts nahi padh paye')
+        save_json(self.state_path, st)
+
     # ---------- files ----------
     def write_files(self, rep):
         import openpyxl
@@ -594,6 +620,7 @@ class Yamaha:
         """python sync.py yamaha --rebuild: Excel files again from saved data, no login"""
         rep = Report(self.name)
         self.changes, self.new_parts, self.gone, self.new_sup, self.sup_names = [], [], [], [], {}
+        self.read_books(rep)
         self.write_files(rep)
         rep.add('Files update hui', 'Yamaha_All_Parts.xlsx, Yamaha_Purana_Naya.xlsx, Yamaha_Documents_Index.xlsx dobara bane')
         return rep

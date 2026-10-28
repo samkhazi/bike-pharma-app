@@ -15,6 +15,7 @@ echo "site $SITE (user $U)"; echo "sync data $SYNC"
 
 command -v python3 >/dev/null || { echo "python3 missing: apt-get install -y python3 python3-venv"; exit 1; }
 python3 -m venv --help >/dev/null 2>&1 || apt-get install -y python3-venv
+command -v pdftotext >/dev/null || apt-get install -y poppler-utils   # 16i: reads the Yamaha model catalogue PDFs the sync downloads
 [ -d .venv ] || sudo -u "$U" python3 -m venv .venv || { apt-get install -y python3-venv && sudo -u "$U" python3 -m venv .venv; }
 sudo -u "$U" .venv/bin/pip install -q --upgrade pip
 sudo -u "$U" .venv/bin/pip install -q -r requirements.txt

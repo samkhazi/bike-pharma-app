@@ -44,6 +44,7 @@ window.tvMany = async (jobs, dealer) => {        // [[series, assembly], ...] ->
   await Promise.all([w(), w(), w()]);
   return out;
 };
+0;   // end on a value: Playwright calls a script whose last value is a function
 """
 
 

@@ -64,6 +64,7 @@ window.hParts = async (asm, mid) => {
 };
 window.hKit = async id => { const d = await hC('BindAccKitPartList', {iPartID: id});
   return (d && d.BindControlData || []).map(k => [k.PARTNO, k.DESCRIPTION, k.QUANTITY]); };
+0;   // end on a value: Playwright calls a script whose last value is a function (same fix as Hero 15b)
 """
 
 HIST_JS = r"""
@@ -182,11 +183,14 @@ class Honda:
         if 'login' in page.url.lower() or page.locator('#txtloginName').count():
             return False
         try:
-            if not page.evaluate("() => typeof encryptAES === 'function' && typeof secretkye !== 'undefined'"):
-                return False
+            page.wait_for_function("() => typeof encryptAES === 'function' && typeof secretkye !== 'undefined'", timeout=20000)
+        except Exception:
+            log.info('Honda: page has no encryptAES (%s)', page.url); return False
+        try:
             page.evaluate(JS)
             return len(page.evaluate('() => hModels()')) > 0
-        except Exception:
+        except Exception as e:
+            log.warning('Honda: logged-in check failed: %s', str(e).split('\n')[0][:200])
             return False
 
     def open_login(self, page):

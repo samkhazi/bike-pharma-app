@@ -847,13 +847,19 @@ function syncPage(req, res, sp) {
   if (req.method !== 'GET' && req.method !== 'POST') return json(res, 405, { error: 'Method not allowed' });
   const port = sp[1] === 'honda-code' ? +(env.HONDA_CODE_PORT || 8766) : +(env.TVS_OTP_PORT || 8765);
   const off = () => { if (!res.headersSent) { res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); res.end('<p style="font-family:sans-serif;padding:24px">Ye link ab band ho chuka hai (sync abhi code / OTP nahi maang raha).</p>'); } else res.end(); };
-  const up = http.request({ host: '127.0.0.1', port, method: req.method, path: req.url, headers: { 'content-type': req.headers['content-type'] || 'application/x-www-form-urlencoded' }, timeout: 30e3 }, r => {
-    res.writeHead(r.statusCode === 404 ? 404 : r.statusCode, { 'Content-Type': r.headers['content-type'] || 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
-    r.pipe(res);
-  });
-  up.on('error', off); up.on('timeout', () => up.destroy(new Error('timeout')));
-  if (req.method === 'POST') { let n = 0; req.on('data', c => { n += c.length; if (n > 4096) { up.destroy(); req.destroy(); } else up.write(c); }); req.on('end', () => up.end()); }
-  else up.end();
+  // 15h: the body goes on with its Content-Length (Python's page reads exactly that many bytes; a chunked body read as empty)
+  const send = body => {
+    const headers = { 'content-type': req.headers['content-type'] || 'application/x-www-form-urlencoded' };
+    if (body) headers['content-length'] = body.length;
+    const up = http.request({ host: '127.0.0.1', port, method: req.method, path: req.url, headers, timeout: 30e3 }, r => {
+      res.writeHead(r.statusCode === 404 ? 404 : r.statusCode, { 'Content-Type': r.headers['content-type'] || 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
+      r.pipe(res);
+    });
+    up.on('error', off); up.on('timeout', () => up.destroy(new Error('timeout')));
+    up.end(body || undefined);
+  };
+  if (req.method === 'POST') readBody(req, 4096).then(send, () => json(res, 413, { error: 'Too large' }));
+  else send(null);
 }
 const server = http.createServer(async (req, res) => {
   try {

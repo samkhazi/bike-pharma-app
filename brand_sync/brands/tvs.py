@@ -17,6 +17,7 @@ Only reads: no cart, order or save buttons are ever clicked.
 Server update: TVS_MRP_WEBHOOK (+ TVS_MRP_WEBHOOK_TOKEN) gets MRP changes as JSON, like HERO_MRP_WEBHOOK.
 """
 import os, io, re, csv, json, gzip, time, html, hashlib, secrets, logging, threading
+from notify import send_code_link
 from common import env, data_dir, load_json, save_json, today, Report
 
 log = logging.getLogger('brand_sync.tvs')
@@ -94,24 +95,24 @@ class OtpPage:
             def log_message(self, *a): pass
             def page(self, msg=''):
                 b = (f'<html><head><meta name="viewport" content="width=device-width"></head><body style="font-family:sans-serif;padding:24px">'
-                     f'<h3>TVS DMS OTP</h3><p>{html.escape(msg)}</p><form method="post"><input name="otp" inputmode="numeric" autofocus '
-                     f'style="font-size:24px;width:180px"> <button style="font-size:20px">Bhejo</button></form><br>'
-                     f'<form method="post"><input type="hidden" name="resend" value="1"><button>OTP nahi aaya, dobara bhejo</button></form>'
+                     f'<h3>Enter code</h3><p>{html.escape(msg)}</p><form method="post"><input name="otp" inputmode="numeric" autofocus '
+                     f'style="font-size:24px;width:180px"> <button style="font-size:20px">Submit</button></form><br>'
+                     f'<form method="post"><input type="hidden" name="resend" value="1"><button>No OTP? Send it again</button></form>'
                      f'</body></html>').encode()
                 self.send_response(200); self.send_header('Content-Type', 'text/html; charset=utf-8'); self.end_headers(); self.wfile.write(b)
             def do_GET(self):
                 if self.path.rstrip('/') != f'/tvs-otp/{me.code}':
                     self.send_response(404); self.end_headers(); return
-                self.page('Phone pe aaya OTP yahan daalo.' if not me.otp else 'OTP mil gaya, login ho raha hai.')
+                self.page('Enter the OTP sent to your phone.' if not me.otp else 'OTP received, logging in.')
             def do_POST(self):
                 if self.path.rstrip('/') != f'/tvs-otp/{me.code}':
                     self.send_response(404); self.end_headers(); return
                 q = parse_qs(self.rfile.read(int(self.headers.get('Content-Length') or 0)).decode())
                 if q.get('resend'):
-                    me.resend = True; self.page('Naya OTP bheja ja raha hai, phone check karo.')
+                    me.resend = True; self.page('Sending a new OTP. Check your phone.')
                 else:
                     me.otp = re.sub(r'\D', '', (q.get('otp') or [''])[0]) or None
-                    self.page('OTP mil gaya, login ho raha hai. Ye page band kar sakte ho.' if me.otp else 'OTP khali tha, dobara daalo.')
+                    self.page('OTP received, logging in. You can close this page.' if me.otp else 'The box was empty. Enter the OTP again.')
         self.srv = ThreadingHTTPServer((env('CODE_BIND', '0.0.0.0'), port), H)   # Bike Pharma server: 127.0.0.1, the website passes /tvs-otp/ on
         threading.Thread(target=self.srv.serve_forever, daemon=True).start()
 
@@ -157,11 +158,10 @@ class TVS:
         port = int(env('TVS_OTP_PORT', '8765'))
         op = OtpPage(port)
         link = f"{env('TVS_OTP_LINK_BASE', f'http://SERVER-IP:{port}').rstrip('/')}/tvs-otp/{op.code}"
-        msg = (f'TVS DMS ne aapke phone pe OTP bheja hai. Ye link kholo aur OTP daalo:\n{link}\n\n'
-               f'(ya server pe {f} file me OTP likh do). {env("TVS_OTP_WAIT", "180")} minute tak wait karega.')
+        msg = (f'TVS sent an OTP to your phone. Open this link and enter it:\n{link}\n\n'
+               f'(or write the OTP into {f} on the server). Waiting up to {env("TVS_OTP_WAIT", "180")} minutes.')
         log.warning(msg)
-        from notify import send
-        send(msg, subject='TVS DMS OTP chahiye')
+        send_code_link(link)
         end = time.time() + 60 * int(env('TVS_OTP_WAIT', '180'))
         try:
             while time.time() < end:

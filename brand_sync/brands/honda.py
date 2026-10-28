@@ -19,6 +19,7 @@ Only reads: no basket, order or save buttons are ever clicked.
 Server update: HONDA_MRP_WEBHOOK (+ HONDA_MRP_WEBHOOK_TOKEN) gets MRP changes as JSON, like HERO_MRP_WEBHOOK.
 """
 import os, re, csv, json, gzip, time, html, hashlib, secrets, logging, threading, datetime, collections
+from notify import send_code_link
 from common import env, data_dir, load_json, save_json, today, Report
 
 log = logging.getLogger('brand_sync.honda')
@@ -112,18 +113,18 @@ class CodePage:
         from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
         from urllib.parse import parse_qs
         self.code = secrets.token_urlsafe(12)
-        self.img, self.msg, self.answer, self.fresh = b'', 'Login page pe ye code dikh raha hai. Dekh ke type karo.', None, False
+        self.img, self.msg, self.answer, self.fresh = b'', 'Type the code shown below.', None, False
         me = self
 
         class H(BaseHTTPRequestHandler):
             def log_message(self, *a): pass
             def page(self):
                 b = (f'<html><head><meta name="viewport" content="width=device-width"></head>'
-                     f'<body style="font-family:sans-serif;padding:24px"><h3>Honda login code</h3><p>{html.escape(me.msg)}</p>'
+                     f'<body style="font-family:sans-serif;padding:24px"><h3>Enter code</h3><p>{html.escape(me.msg)}</p>'
                      f'<img src="/honda-code/{me.code}/img.png?t={time.time()}" style="border:1px solid #999;min-width:180px;image-rendering:pixelated"><br><br>'
                      f'<form method="post"><input name="code" autocomplete="off" autofocus style="font-size:24px;width:180px"> '
-                     f'<button style="font-size:20px">Bhejo</button></form><br>'
-                     f'<form method="post"><input type="hidden" name="fresh" value="1"><button>Code samajh nahi aaya, naya code dikhao</button></form>'
+                     f'<button style="font-size:20px">Submit</button></form><br>'
+                     f'<form method="post"><input type="hidden" name="fresh" value="1"><button>Can\'t read it, show a new code</button></form>'
                      f'</body></html>').encode()
                 self.send_response(200); self.send_header('Content-Type', 'text/html; charset=utf-8')
                 self.send_header('Cache-Control', 'no-store'); self.end_headers(); self.wfile.write(b)
@@ -140,10 +141,10 @@ class CodePage:
                     self.send_response(404); self.end_headers(); return
                 q = parse_qs(self.rfile.read(int(self.headers.get('Content-Length') or 0)).decode())
                 if q.get('fresh'):
-                    me.fresh = True; me.msg = 'Naya code aa raha hai, 10 second baad page refresh karo.'
+                    me.fresh = True; me.msg = 'A new code is coming. Refresh this page in 10 seconds.'
                 else:
                     me.answer = (q.get('code') or [''])[0].strip() or None
-                    me.msg = 'Code mil gaya, login ho raha hai. 30 second baad page refresh karke dekho.' if me.answer else 'Code khali tha, dobara daalo.'
+                    me.msg = 'Code received, logging in. Refresh this page in 30 seconds.' if me.answer else 'The box was empty. Enter the code again.'
                 self.page()
         self.srv = ThreadingHTTPServer((env('CODE_BIND', '0.0.0.0'), port), H)   # Bike Pharma server: 127.0.0.1, the website passes /honda-code/ on
         threading.Thread(target=self.srv.serve_forever, daemon=True).start()
@@ -273,10 +274,10 @@ class Honda:
                 return
         except Exception:
             return
-        cp.msg = 'Honda ne OTP bheja hai (phone / email pe). Wo OTP yahan type karke Bhejo dabao.'
-        log.warning('Honda: OTP maang raha hai. Usi link pe OTP type karo.')
+        cp.msg = 'Honda sent an OTP to your phone / email. Enter it here and tap Submit.'
+        log.warning('Honda asks for an OTP. Enter it on the same link.')
         from notify import send
-        send('Honda login ke liye OTP chahiye. Usi link pe OTP type karo (pichhle mail wala link).', subject='Honda OTP chahiye')
+        send_code_link(cp.link)
         while time.time() < end:
             if cp.answer:
                 otp, cp.answer = re.sub(r'\D', '', cp.answer), None
@@ -288,7 +289,7 @@ class Honda:
                 try: page.wait_for_load_state('networkidle', timeout=60000)
                 except Exception: pass
                 page.wait_for_timeout(4000)
-                cp.msg = 'OTP bhej diya, login ho raha hai. 30 second baad refresh karke dekho.'
+                cp.msg = 'OTP sent, logging in. Refresh this page in 30 seconds.'
                 return
             time.sleep(2)
 
@@ -304,17 +305,17 @@ class Honda:
         cp.img = self.open_login(page)
         link = f"{env('HONDA_CODE_LINK_BASE', f'http://SERVER-IP:{port}').rstrip('/')}/honda-code/{cp.code}"
         wait = int(env('HONDA_CODE_WAIT', '180'))
-        msg = (f'Honda login ke liye code chahiye. Ye link kholo, jo code dikhe wo type karo:\n{link}\n\n'
-               f'{wait} minute tak wait karega.')
+        cp.link = link
+        msg = (f'Honda needs the login code. Open this link and type the code shown:\n{link}\n\n'
+               f'Waiting up to {wait} minutes.')
         log.warning(msg)
-        from notify import send
-        send(msg, subject='Honda login code chahiye')
+        send_code_link(link)
         end = time.time() + 60 * wait
         try:
             while time.time() < end:
                 if cp.fresh:
                     cp.fresh = False
-                    cp.img = self.open_login(page); cp.msg = 'Naya code. Dekh ke type karo.'
+                    cp.img = self.open_login(page); cp.msg = 'New code. Type the code shown below.'
                 if cp.answer:
                     code, cp.answer = cp.answer, None
                     said.clear()
@@ -353,7 +354,7 @@ class Honda:
                     if 'home' not in page.url.lower():
                         page.goto(BASE + '/Home.aspx', wait_until='domcontentloaded'); page.wait_for_timeout(3000)
                     if self.logged_in(page):
-                        cp.msg = 'Login ho gaya. Ye page band kar sakte ho.'
+                        cp.msg = 'Logged in. You can close this page.'
                         log.info('Honda login ok'); return
                     why = ' / '.join(said)
                     if not why:
@@ -365,11 +366,11 @@ class Honda:
                             why = f'login nahi hua ({e})'
                     self.shot(page, 'login_try')
                     if re.search(r'password|user|email|invalid user|not exist|blocked|lock', why, re.I) and not re.search(r'code|verification|captcha', why, re.I):
-                        cp.msg = f'Honda ne bola: {why}. .env me HONDA_USER / HONDA_PASS check karo.'
+                        cp.msg = f'Honda said: {why}. Check HONDA_USER / HONDA_PASS in .env.'
                         raise SystemExit(f'Honda login failed: {why}. HONDA_USER / HONDA_PASS check karo.')
                     log.warning('Honda: login nahi hua (%s). Naya code link pe hai.', why)
                     cp.img = self.open_login(page)
-                    cp.msg = f'Code sahi nahi laga ({why}). Naya code dekh ke dobara type karo.'
+                    cp.msg = f'Wrong code ({why}). Type the new code below.'
                 time.sleep(2)
         finally:
             cp.close()

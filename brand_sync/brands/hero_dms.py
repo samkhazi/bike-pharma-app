@@ -79,6 +79,7 @@ window.sModels=async(parts)=>{         // models of each part (clicks each row, 
   }
   return out;
 };
+0;   // end on a value: Playwright calls a script whose last value is a function
 """
 
 

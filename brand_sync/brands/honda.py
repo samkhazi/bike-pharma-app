@@ -267,7 +267,14 @@ class Honda:
                     if self.logged_in(page):
                         cp.msg = 'Login ho gaya. Ye page band kar sakte ho.'
                         log.info('Honda login ok'); return
-                    why = ' / '.join(said) or 'login nahi hua'
+                    why = ' / '.join(said)
+                    if not why:
+                        # no alert: say what the page shows (its own message label, address, title)
+                        try:
+                            lbl = page.evaluate("() => [...document.querySelectorAll('#lblmessage, .error, .alert, [id*=lblMsg], [id*=lblError]')].map(e => e.innerText.trim()).filter(Boolean).join(' / ')")
+                            why = f"{lbl or 'koi message nahi'} | page: {page.url} | {page.title()}"
+                        except Exception as e:
+                            why = f'login nahi hua ({e})'
                     self.shot(page, 'login_try')
                     if re.search(r'password|user|email|invalid user|not exist|blocked|lock', why, re.I) and not re.search(r'code|verification|captcha', why, re.I):
                         cp.msg = f'Honda ne bola: {why}. .env me HONDA_USER / HONDA_PASS check karo.'

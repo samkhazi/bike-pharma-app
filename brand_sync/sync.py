@@ -7,6 +7,7 @@ usage:  python sync.py hero             # Hero e-catalogue (weekly): new models 
         python sync.py tvs              # TVS dealer DMS (weekly, OTP typed by Sam): NDP-MRP list, kits, e-catalogue
         python sync.py yamaha           # Yamaha pymidol (weekly, login from .env, OTP only if pymidol asks): MRP, old<->new, kits, new PDFs
         python sync.py honda            # Honda e-catalogue (weekly, login code typed by Sam): new/changed models, MRP, kits, old<->new
+        python sync.py re_spares        # Royal Enfield spares store (weekly, public, robots.txt checked first): models, parts, MRP
         python sync.py royal_enfield    # Royal Enfield EPC, India & SAARC (weekly, login from .env): new models/variants/diagrams/parts, MRP list
         python sync.py all              # every brand enabled in .env (BRANDS=bajaj,...)
         python sync.py bajaj --full     # re-download everything (first run does this anyway)
@@ -27,6 +28,8 @@ def brand_cls(name):
         from brands.honda import Honda; return Honda
     if name == 'yamaha':
         from brands.yamaha import Yamaha; return Yamaha
+    if name == 're_spares':
+        from brands.re_spares import RESpares; return RESpares
     if name == 'royal_enfield':
         from brands.royal_enfield import RoyalEnfield; return RoyalEnfield
     if name == 'hero':

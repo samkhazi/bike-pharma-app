@@ -66,6 +66,15 @@ try {
     && zg.f[zg.p[String(zi(SC))]['FRAME — STAND']] === 'pf:catalogues/hero-sync/royal_enfield/svg/COL_PARTSLIST_IL9_x.svg:0:41' && Z.info.sync.models.join() === 'SCRAM 440 - TRAIL',
     'sync: changed list, new list, new variant and new model are searchable; diagram = the EPC SVG; MRP from the sync');
   ok(!buildRE(D).info.sync, 'no sync data: nothing changes');
+  // 16m: RE's public spares store: a part it sells for a model the model lacks is added there, a new category is a new model, the rest under Other; its MRP wins
+  fs.mkdirSync(SY + '/re_spares', { recursive: true });
+  fs.writeFileSync(SY + '/re_spares/state.json', JSON.stringify({ last_run: '2026-11-02', cats: { 'ALL NEW CLASSIC 350 - CHROME RED': ['888456/A', 'SP1/A'], 'GOAN CLASSIC 350 - SHACK BLACK': ['SP2/A'] },
+    parts: { '888456/A': { name: 'HEAD', mrp: 4400 }, 'SP1/A': { name: 'MIRROR', mrp: 300 }, 'SP2/A': { name: 'SEAT', mrp: 900 }, 'SP3/A': { name: 'STICKER', mrp: 50 } } }));
+  const P = buildRE(D, 'catalogues/royal-enfield', { sync: SY }), pd = P.cat, pv = v => pd.vars.indexOf(v), pr = pn => pd.d.find(r => r[5] === pn);
+  const goan = pd.vars.find(v => v.startsWith('GOAN CLASSIC 350'));
+  ok(pd.mrp['888456/A'] === 4400 && pr('SP1/A') && pr('SP1/A')[11].includes(pv(V1)) && pr('SP1/A')[11].includes(pv(V2)) && pr('SP1/A')[2] === 'More parts (RE spares store)'
+    && goan && pd.vmod[goan] === 'Goan Classic 350' && pr('SP2/A')[11].join() === String(pv(goan)) && pd.vmod[pd.vars[pr('SP3/A')[11][0]]] === 'Other Royal Enfield (no model)'
+    && pd.d.filter(r => r[5] === '888456/A').length === 1 && P.info.spares.models.length === 1 && P.info.spares.other === 1, 'spares store: missing parts under their model, new model, rest under Other, its MRP wins');
 } catch (e) { ok(false, 'error ' + e.stack); }
 finally { srv.kill(); }
 if (fails) console.log(log.slice(-3000));

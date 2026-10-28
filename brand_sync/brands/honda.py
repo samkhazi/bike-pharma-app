@@ -416,8 +416,11 @@ class Honda:
         asms = []
         for a in aggs:
             lst = page.evaluate('a => hAsms(a)', a['ID'])
-            if not lst:                                        # session lost its place (e.g. after accessories) - reopen once
-                page.goto(BASE + '/Home.aspx', wait_until='domcontentloaded'); page.wait_for_timeout(2000); page.evaluate(JS)
+            for k in range(2):
+                if lst:
+                    break
+                # session lost its place (e.g. after the big part list) - reopen and ask again
+                page.goto(BASE + '/Home.aspx', wait_until='domcontentloaded'); page.wait_for_timeout(3000 + 4000 * k); page.evaluate(JS)
                 page.evaluate('m => hAggs(m)', mid)
                 lst = page.evaluate('a => hAsms(a)', a['ID'])
             for s in lst:
@@ -463,10 +466,23 @@ class Honda:
                 if len({r[6] for r in search}) < 0.9 * len(self.state['mrp'] or {}):
                     raise RuntimeError(f'Honda part list gave only {len(search)} rows - stopping, nothing changed')
                 todo = self.merge_search(rep, models, search, full)
+                save_json(self.state_path, self.state)                     # 15t: MRP / where-used kept even if a model fails below
+                fails = 0
                 for i, code in enumerate(todo):
                     m = self.state['models'][code]
                     log.info('Honda: downloading %s (%d/%d)', code, i + 1, len(todo))
-                    self.crawl_model(page, ctx, code, m['mid'], m)
+                    try:
+                        self.crawl_model(page, ctx, code, m['mid'], m)
+                    except Exception as e:
+                        # 15t: one model failing does not stop the run; it stays in todo for the next run
+                        fails += 1
+                        log.warning('Honda %s skipped: %s', code, str(e).split('\n')[0][:200])
+                        rep.add('Agli baar', f'{code}: {str(e).split(chr(10))[0][:120]}')
+                        if fails >= 5:
+                            log.warning('Honda: 5 models failed, rest wait for the next run'); break
+                        page.goto(BASE + '/Home.aspx', wait_until='domcontentloaded'); page.wait_for_timeout(3000)
+                        continue
+                    fails = 0
                     self.state['todo'] = [c for c in self.state['todo'] if c != code]
                     save_json(self.state_path, self.state)                 # resume here if the run stops
                     built.append(code)

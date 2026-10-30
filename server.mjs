@@ -26,7 +26,7 @@ import { catGuard } from './lib/catguard.mjs';
 import { spawn } from 'node:child_process';
 import { HERO_RAW, HERO_OPT, HERO_XL } from './lib/herobuild.mjs';
 import { HONDA_RAW } from './lib/hondabuild.mjs';
-import { BAJAJ_RAW } from './lib/bajajbuild.mjs';
+import { BAJAJ_RAW, BAJAJ_ALT } from './lib/bajajbuild.mjs';
 import { YAMAHA_RAW } from './lib/yamahabuild.mjs';
 import { RE_RAW } from './lib/rebuild.mjs';
 import { TVS_RAW, TVS_ZIP, TVS_MORE } from './lib/tvsbuild.mjs';
@@ -93,7 +93,7 @@ function hondaBuild(why) {
 }
 function bajajBuild(why) {
   if (!BAJAJ_RAW.every(f => fs.existsSync(path.join(BAJAJ_DIR, f)))) return false;
-  const src = [...BAJAJ_RAW.map(f => path.join(BAJAJ_DIR, f)), path.join(PUBLIC_DIR, 'app.html'), path.join(ROOT, 'lib', 'bajajbuild.mjs'), path.join(ROOT, 'lib', 'herobuild.mjs'), path.join(HERO_SYNC_DIR, 'bajaj', 'state.json')];
+  const src = [...[...BAJAJ_RAW, BAJAJ_ALT].map(f => path.join(BAJAJ_DIR, f)), path.join(PUBLIC_DIR, 'app.html'), path.join(ROOT, 'lib', 'bajajbuild.mjs'), path.join(ROOT, 'lib', 'herobuild.mjs'), path.join(HERO_SYNC_DIR, 'bajaj', 'state.json')];
   if (why === 'sync' && catQ.some(q => q[0] === 'bajaj')) return false;
   if ((why === 'start' || why === 'sync') && mtime(path.join(HERO_OUT, 'bajaj.json')) > Math.max(...src.map(mtime))) return false;
   catBuild('bajaj', why, [path.join(ROOT, 'lib', 'bajajbuild.mjs'), PUBLIC_DIR, BAJAJ_DIR, HERO_OUT, HERO_SYNC_DIR]);   // 16k: + the weekly Bajaj EPC sync
@@ -582,7 +582,7 @@ async function catUpload(req, res, url, user) {
   catBusy.delete(abs);
   let have = sizeOf(part);
   if (have !== off + len) { try { fs.truncateSync(part, off); } catch (x) {} return json(res, 400, { error: 'The piece did not arrive whole, sending it again', have: off }); }
-  if (have === size) { fs.renameSync(part, abs); console.log(new Date().toISOString(), 'catalogue file uploaded', rel, size, 'by', user.id); if (abs.startsWith(HERO_RAW_DIR + path.sep) || abs.startsWith(HERO_XL_DIR + path.sep) || abs === path.join(HERO_PDF_DIR, 'hero_pdf_index.json')) heroBuild('upload'); if (path.dirname(abs) === HONDA_DIR && HONDA_RAW.includes(path.basename(abs))) hondaBuild('upload'); if (path.dirname(abs) === BAJAJ_DIR && BAJAJ_RAW.includes(path.basename(abs))) bajajBuild('upload'); if (path.dirname(abs) === YAMAHA_DIR && YAMAHA_RAW.includes(path.basename(abs))) yamahaBuild('upload'); if (path.dirname(abs) === RE_DIR && RE_RAW.includes(path.basename(abs))) reBuild('upload'); if (path.dirname(abs) === TVS_DIR && [...TVS_RAW, TVS_ZIP, ...TVS_MORE].includes(path.basename(abs))) tvsBuild('upload'); if (path.dirname(abs) === KTM_DIR && KTM_RAW.includes(path.basename(abs))) ktmBuild('upload'); return json(res, 200, { have, done: true }); }
+  if (have === size) { fs.renameSync(part, abs); console.log(new Date().toISOString(), 'catalogue file uploaded', rel, size, 'by', user.id); if (abs.startsWith(HERO_RAW_DIR + path.sep) || abs.startsWith(HERO_XL_DIR + path.sep) || abs === path.join(HERO_PDF_DIR, 'hero_pdf_index.json')) heroBuild('upload'); if (path.dirname(abs) === HONDA_DIR && HONDA_RAW.includes(path.basename(abs))) hondaBuild('upload'); if (path.dirname(abs) === BAJAJ_DIR && [...BAJAJ_RAW, BAJAJ_ALT].includes(path.basename(abs))) bajajBuild('upload'); if (path.dirname(abs) === YAMAHA_DIR && YAMAHA_RAW.includes(path.basename(abs))) yamahaBuild('upload'); if (path.dirname(abs) === RE_DIR && RE_RAW.includes(path.basename(abs))) reBuild('upload'); if (path.dirname(abs) === TVS_DIR && [...TVS_RAW, TVS_ZIP, ...TVS_MORE].includes(path.basename(abs))) tvsBuild('upload'); if (path.dirname(abs) === KTM_DIR && KTM_RAW.includes(path.basename(abs))) ktmBuild('upload'); return json(res, 200, { have, done: true }); }
   return json(res, 200, { have, done: false });
 }
 

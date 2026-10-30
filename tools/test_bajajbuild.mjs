@@ -30,6 +30,7 @@ fs.writeFileSync(D + '/bajaj_build.json', JSON.stringify({ v: 1, eds: [
     ['All parts (EPC me is BOM ka diagram nahi)', null, [['5', '14151033', 'BOLT', '4']]]], 'pdf'),
   ed('00JL34ZZ', 'SKU 00JL34ZZ', 'Jan', 2024, 'Unnamed SKU (EPC me model naam nahi)', [['All parts', null, [['1', 'XX900001', 'TEST PART', '1']]]], 'pdf'),
 ], oldnew: [['14151033', 'KPAA6200'], ['JG511000', 'JG511021']] }));
+fs.writeFileSync(D + '/bajaj_alt.json', JSON.stringify({ v: 1, pairs: [['DK101010', 'DK101099', 'n', 'DMS alternate'], ['PD511536', '36PD0001', 'a', 'DMS alternate (kit)'], ['14151033', 'KPAA6200', 'n', 'x']] }));   // 16n
 
 await new Promise(r => { const a = spawn('node', ['--no-warnings', 'admin.mjs', 'add-admin', 'sam@bikepharma.com', 'Sam', '--password', 'Test@1234'], { env: { ...process.env, DATA_DIR: T + '/data' } }); a.on('exit', r); });
 const srv = spawn('node', ['--no-warnings', 'server.mjs'], { env: { ...process.env, PORT: '3027', DATA_DIR: T + '/data', FILES_DIR: T + '/pf', PHOTO_AI: 'off' }, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -57,6 +58,7 @@ try {
   const head = byPn('PD511536');
   ok(head.length === 1 && head[0][11].join() === [V('00DH70ZZ'), V('00DH60ZZ'), V('00JR67ZZ')].sort((a, b) => a - b).join() && head[0][2] === '1' && d.asm[head[0][3]] === 'COVER CYLINDER HEAD', 'compatible: one line lists every edition with the same part (fig 1, its assembly)');
   ok(head[0][4] === '1' && byPn('JG511021')[0][7] === '2' && /Old no\. JG511000/.test(byPn('JG511021')[0][8]) && /New no\. KPAA6200/.test(byPn('14151033')[0][8]), 'ref no. and qty kept; old and new numbers from the Excel');
+  ok(/New no\. DK101099/.test(byPn('DK101010')[0][8]) && /Alternate no\. 36PD0001/.test(byPn('PD511536')[0][8]) && (byPn('14151033')[0][8].match(/KPAA6200/g) || []).length === 1, '16n: DMS alternates + circular: new no. and alternate no. like Hero, a pair the Excel has already shown once');
   ok(Object.keys(d.mrp).length === 0 && !JSON.stringify(d).includes('KTM'), 'no prices at all (Sam), nothing of KTM');
   const bom1 = byPn('PD511999')[0], bom2 = byPn('DJ201201')[0];
   ok(bom1 && bom1[2] === '1' && bom1[1] === -1 && bom1[4] === '' && /Bajaj BOM list/.test(bom1[8]) && bom2 && bom2[2] === '48' && d.asm[bom2[3]] === 'ELECTRICAL EQUIPMENTS' && bom2[1] === -2 && /used till 2012-05-01/.test(bom2[8]),
@@ -79,7 +81,7 @@ try {
   ok((await get('/api/catup?path=' + encodeURIComponent('catalogues/bajaj/Pulsar 150 Single Seat, TFT, Twin Disc, ISG (Aug, 2026) [00JR68ZZ].pdf') + '&size=10')).status === 200, 'a model PDF with commas in its name can be uploaded');
   ok((await get('/api/catup?path=' + encodeURIComponent('catalogues/bajaj/SKU HHDT07ZZ - parts PULSAR RS 200 ABS - BS IV se 20% milte hain (Jan, 2017) [HHDT07ZZ].pdf') + '&size=10')).status === 200 && (await get('/api/catup?path=' + encodeURIComponent('catalogues/bajaj/../x.pdf') + '&size=10')).status !== 200, "12d: a name with % in it can be uploaded (Sam's Bajaj book), a '..' still cannot");
   const mf = JSON.parse(fs.readFileSync('public/cat/more-files.json', 'utf8')).sets.find(s => s.dir === 'catalogues/bajaj');
-  ok(mf && mf.pick === 'Downloads > Bajaj Catalogue' && mf.files[0][0] === 'bajaj_build.json' && mf.files.slice(1).every(f => /\.pdf$/.test(f[0])) && mf.files.length > 200 && !mf.files.some(f => /Viewer_im|\.jpg$|^~\$|DS_Store/.test(f[0])) && new Set(mf.files.map(f => f[0])).size === mf.files.length, 'upload card: bajaj_build.json + the model PDFs with diagrams, every file once (no viewer zips or loose pictures)');
+  ok(mf && mf.pick === 'Downloads > Bajaj Catalogue' && mf.files[0][0] === 'bajaj_build.json' && mf.files[1][0] === 'bajaj_alt.json' && mf.files.slice(2).every(f => /\.pdf$/.test(f[0])) && mf.files.length > 200 && !mf.files.some(f => /Viewer_im|\.jpg$|^~\$|DS_Store/.test(f[0])) && new Set(mf.files.map(f => f[0])).size === mf.files.length, 'upload card: bajaj_build.json + the model PDFs with diagrams, every file once (no viewer zips or loose pictures)');
   // 16k: the weekly Bajaj EPC sync: a SKU only it has becomes an edition (diagram = its downloaded plate picture), a known SKU gets the parts its BOM has now
   const { buildBajaj } = await import('../lib/bajajbuild.mjs'), crypto = await import('node:crypto');
   const SY = T + '/pf/catalogues/hero-sync', SB = SY + '/bajaj'; fs.mkdirSync(SB + '/boms', { recursive: true }); fs.mkdirSync(SB + '/img', { recursive: true });

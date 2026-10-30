@@ -125,9 +125,9 @@ function tvsBuild(why) {
 }
 function ktmBuild(why) {
   if (!KTM_RAW.every(f => fs.existsSync(path.join(KTM_DIR, f)))) return false;
-  const src = [...[...KTM_RAW, KTM_MRP].map(f => path.join(KTM_DIR, f)), path.join(PUBLIC_DIR, 'app.html'), path.join(ROOT, 'lib', 'ktmbuild.mjs'), path.join(ROOT, 'lib', 'herobuild.mjs')];
+  const src = [...[...KTM_RAW, KTM_MRP].map(f => path.join(KTM_DIR, f)), path.join(BAJAJ_DIR, BAJAJ_ALT), path.join(PUBLIC_DIR, 'app.html'), path.join(ROOT, 'lib', 'ktmbuild.mjs'), path.join(ROOT, 'lib', 'herobuild.mjs')];
   if (why === 'start' && mtime(path.join(HERO_OUT, 'ktm.json')) > Math.max(...src.map(mtime))) return false;
-  catBuild('ktm', why, [path.join(ROOT, 'lib', 'ktmbuild.mjs'), PUBLIC_DIR, KTM_DIR, HERO_OUT]);
+  catBuild('ktm', why, [path.join(ROOT, 'lib', 'ktmbuild.mjs'), PUBLIC_DIR, KTM_DIR, HERO_OUT, path.join(BAJAJ_DIR, BAJAJ_ALT)]);
   return true;
 }
 const catQ = [];   // [slug, why, args]: the builds waiting, run one after another
@@ -585,7 +585,7 @@ async function catUpload(req, res, url, user) {
   catBusy.delete(abs);
   let have = sizeOf(part);
   if (have !== off + len) { try { fs.truncateSync(part, off); } catch (x) {} return json(res, 400, { error: 'The piece did not arrive whole, sending it again', have: off }); }
-  if (have === size) { fs.renameSync(part, abs); console.log(new Date().toISOString(), 'catalogue file uploaded', rel, size, 'by', user.id); if (abs.startsWith(HERO_RAW_DIR + path.sep) || abs.startsWith(HERO_XL_DIR + path.sep) || abs === path.join(HERO_PDF_DIR, 'hero_pdf_index.json')) heroBuild('upload'); if (path.dirname(abs) === HONDA_DIR && HONDA_RAW.includes(path.basename(abs))) hondaBuild('upload'); if (path.dirname(abs) === BAJAJ_DIR && [...BAJAJ_RAW, BAJAJ_ALT].includes(path.basename(abs))) bajajBuild('upload'); if (path.dirname(abs) === YAMAHA_DIR && YAMAHA_RAW.includes(path.basename(abs))) yamahaBuild('upload'); if (path.dirname(abs) === RE_DIR && RE_RAW.includes(path.basename(abs))) reBuild('upload'); if (path.dirname(abs) === TVS_DIR && [...TVS_RAW, TVS_ZIP, ...TVS_MORE].includes(path.basename(abs))) tvsBuild('upload'); if (path.dirname(abs) === KTM_DIR && [...KTM_RAW, KTM_MRP].includes(path.basename(abs))) ktmBuild('upload'); return json(res, 200, { have, done: true }); }
+  if (have === size) { fs.renameSync(part, abs); console.log(new Date().toISOString(), 'catalogue file uploaded', rel, size, 'by', user.id); if (abs.startsWith(HERO_RAW_DIR + path.sep) || abs.startsWith(HERO_XL_DIR + path.sep) || abs === path.join(HERO_PDF_DIR, 'hero_pdf_index.json')) heroBuild('upload'); if (path.dirname(abs) === HONDA_DIR && HONDA_RAW.includes(path.basename(abs))) hondaBuild('upload'); if (path.dirname(abs) === BAJAJ_DIR && [...BAJAJ_RAW, BAJAJ_ALT].includes(path.basename(abs))) bajajBuild('upload'); if (path.dirname(abs) === BAJAJ_DIR && path.basename(abs) === BAJAJ_ALT) ktmBuild('upload'); if (path.dirname(abs) === YAMAHA_DIR && YAMAHA_RAW.includes(path.basename(abs))) yamahaBuild('upload'); if (path.dirname(abs) === RE_DIR && RE_RAW.includes(path.basename(abs))) reBuild('upload'); if (path.dirname(abs) === TVS_DIR && [...TVS_RAW, TVS_ZIP, ...TVS_MORE].includes(path.basename(abs))) tvsBuild('upload'); if (path.dirname(abs) === KTM_DIR && [...KTM_RAW, KTM_MRP].includes(path.basename(abs))) ktmBuild('upload'); return json(res, 200, { have, done: true }); }
   return json(res, 200, { have, done: false });
 }
 

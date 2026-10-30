@@ -24,5 +24,7 @@ fs.writeFileSync(T + '/hero.json', JSON.stringify(cat('Hero', ['Glamour'], {}, [
 fs.writeFileSync(T + '/honda.json', JSON.stringify(cat('Honda', ['Activa'], {}, [[0, -1, '1', 0, '', '22201-GF6-000', 'PLATE, CLUTCH', '1', '', 0, 0, [0]]])));
 const Z = buildXref(T, T + '/bajaj_alt.json'), H = Z.b.indexOf('Honda');
 ok(Z.n['22201GF6000S'] && Z.n['22201GF6000S'][H] === '22201GF6000' && /with S/.test(Z.r['22201GF6000S'][H]), "16u: Hero number + S finds the Honda number");
+{ const { altRemarks } = await import('../lib/ktmbuild.mjs'), f = altRemarks({ pairs: [['DT402404', 'JR403608', 'n'], ['JU402400', 'DT402404', 'n'], ['JR403606', 'JR403608', 'n']] });
+  const r = f('JR403608'); ok(r.includes('Old no. DT402404') && r.includes('Old no. JR403606') && r.includes('Alternate no. JU402400') && !f('AB123456').length, '16w: a KTM part with a Bajaj number gets the Bajaj DMS family'); }
 fs.rmSync(T, { recursive: true, force: true });
 console.log(bad ? bad + ' FAILED' : 'all passed'); process.exit(bad ? 1 : 0);

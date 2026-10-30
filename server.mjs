@@ -144,7 +144,7 @@ function catRun() {
     catRun(); });
 }
 setInterval(() => { for (const [n, f] of [['hero', heroBuild], ['honda', hondaBuild], ['tvs', tvsBuild], ['yamaha', yamahaBuild], ['royal-enfield', reBuild], ['bajaj', bajajBuild]]) try { f('sync'); } catch (e) { console.log(n + ' sync check:', e.message); } }, 3600e3).unref();   // 15d: Honda and TVS too   // 14z: the weekly Hero sync's new files make a new Hero build within the hour
-function xrefBuild(why) { catBuild('xref', why, [path.join(ROOT, 'lib', 'xrefbuild.mjs'), HERO_OUT, path.join(BAJAJ_DIR, 'bajaj_alt.json')]); }
+function xrefBuild(why) { catBuild('xref', why, [path.join(ROOT, 'lib', 'xrefbuild.mjs'), HERO_OUT, path.join(BAJAJ_DIR, 'bajaj_alt.json'), path.join(FILES_DIR, 'catalogues', 'aftermarket', 'am_build.json')]); }
 heroBuild('start'); hondaBuild('start'); bajajBuild('start'); yamahaBuild('start'); reBuild('start'); tvsBuild('start'); ktmBuild('start'); xrefBuild('start');
 const BACKUP = backups({ store, dataDir: DATA_DIR, env });   // 11u: every night + Admin > More > Backups
 // 11v: Hero goes to phones as a head + the part lines they need (lib/catsplit.mjs); CAT_SPLIT=off sends the whole file as before

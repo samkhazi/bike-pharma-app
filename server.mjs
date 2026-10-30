@@ -56,7 +56,7 @@ const MIRROR = startMirror(store, process.env);   // MySQL copy for phpMyAdmin (
 const CATG = catGuard(store, DATA_DIR, env); CATG.tidy(); setInterval(() => CATG.tidy(), 86400e3).unref();   // catalogue limits + log (11h)
 // Hero made on the server from Sam's Raw Data upload (11k) and the PDF > Models index (11m: hero_pdf_index.json, its parts + diagram pages): DATA_DIR/cat/hero.json, hero-dg.json and app.html (its Hero part number line)
 // are served instead of the public ones; made again when the Raw Data or the app's own Hero files are newer
-const HERO_OUT = path.join(DATA_DIR, 'cat'), HERO_RAW_DIR = path.join(FILES_DIR, 'catalogues', 'hero-raw'), HERO_PDF_DIR = path.join(FILES_DIR, 'catalogues', 'hero-pdf'), HERO_XL_DIR = path.join(FILES_DIR, 'catalogues', 'hero-excel'), HERO_SERVED = new Set(['cat/hero.json', 'cat/hero-dg.json', 'cat/honda.json', 'cat/honda-dg.json', 'cat/bajaj.json', 'cat/bajaj-dg.json', 'cat/yamaha.json', 'cat/yamaha-dg.json', 'cat/royal-enfield.json', 'cat/royal-enfield-dg.json', 'cat/tvs.json', 'cat/tvs-dg.json', 'cat/ktm.json', 'cat/ktm-dg.json', 'cat/husqvarna.json', 'cat/husqvarna-dg.json', 'app.html']);
+const HERO_OUT = path.join(DATA_DIR, 'cat'), HERO_RAW_DIR = path.join(FILES_DIR, 'catalogues', 'hero-raw'), HERO_PDF_DIR = path.join(FILES_DIR, 'catalogues', 'hero-pdf'), HERO_XL_DIR = path.join(FILES_DIR, 'catalogues', 'hero-excel'), HERO_SERVED = new Set(['cat/hero.json', 'cat/hero-dg.json', 'cat/honda.json', 'cat/honda-dg.json', 'cat/bajaj.json', 'cat/bajaj-dg.json', 'cat/yamaha.json', 'cat/yamaha-dg.json', 'cat/royal-enfield.json', 'cat/royal-enfield-dg.json', 'cat/tvs.json', 'cat/tvs-dg.json', 'cat/ktm.json', 'cat/ktm-dg.json', 'cat/husqvarna.json', 'cat/husqvarna-dg.json', 'cat/xref.json', 'app.html']);
 // 11z: Honda the same way, from the whole Downloads > Honda Catalogue folder (FILES_DIR/catalogues/honda); one build at a time, as both write app.html
 const HONDA_DIR = path.join(FILES_DIR, 'catalogues', 'honda');
 // 12b: Bajaj too, from Downloads > Bajaj Catalogue (FILES_DIR/catalogues/bajaj)
@@ -139,10 +139,13 @@ function catRun() {
   const q = catQ[0]; if (!q) return;
   heroBusy = q[0] === 'hero';
   const c = spawn(process.execPath, ['--max-old-space-size=3072', ...q[2]], { stdio: ['ignore', 'inherit', 'inherit'] });
-  c.on('exit', code => { console.log(new Date().toISOString(), q[0] + ' build (' + q[1] + ') ended', code); heroBusy = false; catQ.shift(); catRun(); });
+  c.on('exit', code => { console.log(new Date().toISOString(), q[0] + ' build (' + q[1] + ') ended', code); heroBusy = false; catQ.shift();
+    if (q[0] !== 'xref' && code === 0) xrefBuild(q[0]);   // 16r: other brands with the same part, made again after any brand's build
+    catRun(); });
 }
 setInterval(() => { for (const [n, f] of [['hero', heroBuild], ['honda', hondaBuild], ['tvs', tvsBuild], ['yamaha', yamahaBuild], ['royal-enfield', reBuild], ['bajaj', bajajBuild]]) try { f('sync'); } catch (e) { console.log(n + ' sync check:', e.message); } }, 3600e3).unref();   // 15d: Honda and TVS too   // 14z: the weekly Hero sync's new files make a new Hero build within the hour
-heroBuild('start'); hondaBuild('start'); bajajBuild('start'); yamahaBuild('start'); reBuild('start'); tvsBuild('start'); ktmBuild('start');
+function xrefBuild(why) { catBuild('xref', why, [path.join(ROOT, 'lib', 'xrefbuild.mjs'), HERO_OUT, path.join(BAJAJ_DIR, 'bajaj_alt.json')]); }
+heroBuild('start'); hondaBuild('start'); bajajBuild('start'); yamahaBuild('start'); reBuild('start'); tvsBuild('start'); ktmBuild('start'); xrefBuild('start');
 const BACKUP = backups({ store, dataDir: DATA_DIR, env });   // 11u: every night + Admin > More > Backups
 // 11v: Hero goes to phones as a head + the part lines they need (lib/catsplit.mjs); CAT_SPLIT=off sends the whole file as before
 const heroFile = (slug = 'hero') => { for (const d of slug === 'hero' ? [HERO_OUT, path.join(PUBLIC_DIR, 'cat')] : [HERO_OUT]) { const f = path.join(d, slug + '.json'); if (fs.existsSync(f)) return f; } return null; };

@@ -23,6 +23,7 @@ node tools/test_herobuild.mjs || r=1   # update 11k: Hero made on the server fro
 node tools/test_hondabuild.mjs || r=1   # update 11z: Honda made on the server from the whole Honda Catalogue folder (own server on 3026)
 node tools/test_bajajbuild.mjs || r=1   # update 12b: Bajaj made on the server from the Bajaj Catalogue folder (own server on 3027)
 node tools/test_xref.mjs || r=1   # 16r: other brands with the same part (server xref.json)
+node tools/test_partnames.mjs || r=1   # 17f: Sam's part-names list (server only)
 node tools/test_yamahabuild.mjs || r=1   # update 12e: Yamaha made on the server from the Yamaha Catalogue folder (own server on 3028)
 node tools/test_rebuild.mjs || r=1   # update 12g: Royal Enfield made on the server from the RE Catalogue folder (own server on 3030)
 node tools/test_tvsbuild.mjs || r=1   # update 12y: TVS made on the server from the TVS Catalogues folder (own server on 3031)

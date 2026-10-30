@@ -3310,6 +3310,13 @@ const catDrum=rows=>catBrakes(rows).drum,catDisc=rows=>catBrakes(rows).disc;
 const catMoreRow=(c,keys,A0)=>{const A=A0||S.ui.fpA||{},vm=A0?A0.vm:c&&c.vm!=null?c.vm:(A.vm||'Any'),vb=A0?A0.vb:c&&c.vb?c.vb:(A.vb||'Any');   /* 13f: the bike of this screen */return c&&vm==='Any'&&catSplitE(vb).some(e=>e.smore&&(keys?keys.some(k=>e.smore.has(k)):e.smore.size))?`<div class="row cap" style="background:var(--amber-soft);border-radius:10px;padding:10px">${ic('alert','s16')}<span class="grow">Showing part of a big catalogue. Pick the model to see every part.</span></div>`:'';};
 let CAT_EVERY='';function catEvery(){const q=((cur()||{}).p||{}).q||(S.ui.fpA||{}).q||(S.ui.fp||{}).q;if(!q)return;CAT_EVERY=catPk(q);refresh();}
 const CAT_PNX=/^(BEARINGS?|SEALS?|BULBS?|O?RINGS?|BOLTS?|NUTS?|SCREWS?|WASHERS?|SPRINGS?|BUSH|BUSHES|BUSHING|BUSHINGS|GASKETS?|PLUGS?|FUSES?|RELAYS?|CHAINS?|TYRES?|TIRES?|TUBES?|BELTS?|CABLES?|BATTERY|BATTERIES|CIRCLIPS?|CLIPS?|PINS?|HOSES?|SPROCKETS?|FILTERS?|LAMPS?|PADS?|SHOES?|RIVETS?|STUDS?|STARTER|HOLDER)$/;
+/* Sam 2026-10-30: his part-names list (garage / local names, every company's own names) stays on the server (/api/fpname); a search
+   asks it once for the names of that part in this brand, and the lines with those names are shown too */
+const FP_AL=new Map();
+function fpAlias(q,vb){if(typeof SRV==='undefined'||typeof srvStaff!=='function'||!srvStaff())return null;const t=String(q||'').trim();if(t.length<2||t.length>80)return null;
+ const k=vb+'|'+t.toLowerCase();let o=FP_AL.get(k);if(o)return o.st===2?o:null;o={st:1,set:new Set()};FP_AL.set(k,o);
+ fetch('/api/fpname?q='+encodeURIComponent(t)+'&b='+encodeURIComponent(vb||'Any'),{credentials:'same-origin'}).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.names)for(const l of Object.values(j.names))for(const n of l)o.set.add(n);o.st=2;if(o.set.size)catRefresh();},()=>{o.st=2;});return null;}
+function fpAliasAdd(hits,rows,q,vb,out){const al=fpAlias(q,vb);if(!al||!al.set.size)return hits;const have=new Set(hits);const ex=rows.filter(r=>!have.has(r)&&r.desc&&al.set.has(catNorm(r.desc)));if(!ex.length)return hits;if(!hits.length)out.fuzzy=false;out.alias=1;return hits.concat(ex);}
 function catSearch(A){const sc=catScope(A);if(!sc)return null;const q=A.q.trim();const out={...sc,q,hits:[],total:0,fuzzy:false};if(!q||(!sc.rows.length&&!catSplitE(A.vb).length&&!(A.vb==='Any'&&(catPk(q).match(/\d/g)||[]).length>=4)))return out;
  /* a part number: this bike first, then the whole brand, then every catalogue. Old and replacement numbers count too.
     One word with dashes is a number too: Hero and Honda write 06455-KVE-861 */
@@ -3350,7 +3357,7 @@ function catSearch(A){const sc=catScope(A);if(!sc)return null;const q=A.q.trim()
  const [hits,fz]=catFind(sc.rows,g,q);out.fuzzy=fz;
  if(!hits.length&&A.bs!=='Any'){const o=catScope({...A,bs:'Any'});const f=o?catFind(o.rows,g,q)[0]:[];const ns=[...new Set(f.flatMap(r=>r.norms||[]))].filter(n=>n!==A.bs);if(ns.length)out.other=ns.join(' or ');}
  /* a number nobody has is not guessed at */
- let list=hits;const qn=catNorm(q);
+ let list=fpAliasAdd(hits,sc.rows,q,A.vb,out);const qn=catNorm(q);
  /* brake pads: a rubber pad of a pedal or lever, a chain pad or a pad spring is not what "disc pad" means */
  const pad=CAT_PAD.test(qn)&&!/^PADS?$/.test(qn);if(pad)list=list.filter(catPadReal);
  /* a tank at the counter is the petrol tank, not the coolant, expansion, recovery or reservoir tank, and its cap is not the injector's, unless the words say so */

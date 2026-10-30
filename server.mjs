@@ -13,6 +13,7 @@ import { roleClass, viewOf, scopeValue, canWrite, merge3, mergeCounts, mergeLots
 import { guardScoped } from './lib/custguard.mjs';
 import { vinLook, vinSetup } from './lib/vinlook.mjs';
 import { rcLook, rcClean, rcIsReg } from './lib/rclook.mjs';
+import { partNames } from './lib/partnames.mjs';
 import { otpConfig, makeOtp, deliverOtp } from './lib/sms.mjs';
 import { removeDemoData } from './lib/cleanup.mjs';
 import { checkNewBills, renumBills, guardValue, auditRows, BILL_KEYS, setPhotoGone } from './lib/billguard.mjs';
@@ -152,6 +153,7 @@ const heroFile = (slug = 'hero') => { for (const d of slug === 'hero' ? [HERO_OU
 const SPLIT_B = new Set(['hero', 'honda', 'bajaj', 'yamaha', 'royal-enfield', 'tvs']);   // the brands sent as a head + lines (11v, Honda 11z)
 const SPLIT = catSplit({ file: slug => SPLIT_B.has(slug) && String(env.CAT_SPLIT || '').toLowerCase() !== 'off' ? heroFile(slug) : null, pct: +env.CAT_ROWS_DAY_PCT || 60 });
 const PNLOOK = pnLookup(PUBLIC_DIR, [HERO_OUT], { load: f => { if (!SPLIT || String(env.CAT_SPLIT || '').toLowerCase() === 'off') return null; for (const b of SPLIT_B) if (f === heroFile(b)) return SPLIT.data(f); return null; } }); setTimeout(() => { PNLOOK('').catch(() => {}); }, 4000).unref();   // index the brand files soon after start
+const PARTNAMES = partNames(path.join(ROOT, 'lib', 'names', 'part-names.json'));   // Sam's part-names list, server only
 const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 
 // ---------- first run: an empty shop, no accounts ----------
@@ -255,6 +257,11 @@ async function api(req, res, url, user) {
     if (roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: user ? 'Staff login needed' : 'Please log in again' });
     if (limited('vin:' + user.id, 60, 10 * 60 * 1000)) return json(res, 429, { error: 'Too many chassis searches, try again in a few minutes' });
     return json(res, 200, await vinLook(url.searchParams.get('c')));
+  }
+  if (p === '/api/fpname') {   // Sam 2026-10-30: his part-names list (garage + company names) stays here; Find Part asks only for one search's names
+    drain(req);
+    if (roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: user ? 'Staff login needed' : 'Please log in again' });
+    return json(res, 200, PARTNAMES(String(url.searchParams.get('q') || '').slice(0, 80), String(url.searchParams.get('b') || 'Any').slice(0, 40)));
   }
   if (p === '/api/pnlook') {   // update 10r: part number -> its lines in every brand catalogue, so a phone does not load whole catalogues
     drain(req);

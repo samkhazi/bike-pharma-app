@@ -4064,6 +4064,12 @@ async function cupRun(r,o){const wait=ms=>new Promise(w=>setTimeout(w,ms));let c
 let XR=null,XR_ST=0;function xrLoad(){if(XR_ST===0){XR_ST=1;fetch('cat/xref.json').then(r=>r.ok?r.json():Promise.reject(r.status)).then(d=>{XR=d;XR_ST=2;refresh();},()=>{XR_ST=3;});}return XR;}
 /* [brand, model test, sister brand, sister models, why] */
 const XR_PLAT=[
+ ['Hero',/^XPulse 2[01]0/i,'TVS',[/^Apache RTR 1[68]0/i],'Front brake pads match the Apache RTR 160/180 pads (sellers and owners, check before fitting)'],
+ ['TVS',/^Apache RTR 1[68]0/i,'Hero',[/^XPulse 2[01]0/i],'Front brake pads match the XPulse 200/210 pads (check before fitting)'],
+ ['Bajaj',/^(Pulsar 220|Dominar)/i,'Royal Enfield',[/^Classic 500/i,/^Himalayan/i],'Front brake pad shape EBC FA181 is the same (Dominar 2016-18 only; check year)'],
+ ['Royal Enfield',/^(Classic 500|Himalayan)/i,'Bajaj',[/^Pulsar 220/i,/^Dominar/i],'Front brake pad shape EBC FA181 is the same as Pulsar 220 (check year)'],
+ ['Bajaj',/^(Boxer|Caliber|Pulsar 135|CT ?100)/i,'Yamaha',[/^FZ/i],'Oil filter Hiflo HF540 fits both (Bajaj DD121181 = Yamaha 21C-E3440-00)'],
+ ['Yamaha',/^FZ ?16|^FZ-S/i,'Bajaj',[/^Boxer/i,/^Pulsar 135/i,/^Caliber/i],'Oil filter Hiflo HF540 fits both (Yamaha 21C-E3440-00 = Bajaj DD121181)'],
  ['Suzuki',/^Intruder 150/,'Suzuki',['Gixxer','Gixxer SF'],'Same 155 engine as the Gixxer: engine and wheel parts often match (check the number)'],
  ['Bajaj',/^Pulsar (NS|RS|AS)200/,'KTM',['200 Duke','125 Duke','RC 200'],'Same 200 engine family: the KTM 200 Duke is built by Bajaj at Chakan'],
  ['KTM',/^(200 Duke|125 Duke|RC 200|RC 125)/,'Bajaj',['Pulsar NS200','Pulsar RS200'],'Same 200 engine family, built together at Chakan'],

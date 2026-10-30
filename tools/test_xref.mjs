@@ -20,5 +20,9 @@ fs.writeFileSync(T + '/honda.json', JSON.stringify(cat('Honda', ['CD 100'], {}, 
 const Y = buildXref(T, T + '/bajaj_alt.json'), gl = pn => (Y.gk[pn] || []).map(i => Y.g[i]);
 ok(gl('K3200370').some(g => g[0] === 'Ball bearing 6202' && g[1] === 1 && Object.keys(g[2]).length === 2), 'TVS 6202 bearing lists the Hero 6202 bearing (check before fitting)');
 ok(gl('12209GB4680').some(g => /Honda design 12209-GB4/.test(g[0])), 'Hero and Honda: same Honda design, other revision');
+fs.writeFileSync(T + '/hero.json', JSON.stringify(cat('Hero', ['Glamour'], {}, [[0, -1, '1', 0, '', '22201GF6000S', 'CLUTCH PLATE', '1', '', 0, 0, [0]]])));
+fs.writeFileSync(T + '/honda.json', JSON.stringify(cat('Honda', ['Activa'], {}, [[0, -1, '1', 0, '', '22201-GF6-000', 'PLATE, CLUTCH', '1', '', 0, 0, [0]]])));
+const Z = buildXref(T, T + '/bajaj_alt.json'), H = Z.b.indexOf('Honda');
+ok(Z.n['22201GF6000S'] && Z.n['22201GF6000S'][H] === '22201GF6000' && /with S/.test(Z.r['22201GF6000S'][H]), "16u: Hero number + S finds the Honda number");
 fs.rmSync(T, { recursive: true, force: true });
 console.log(bad ? bad + ' FAILED' : 'all passed'); process.exit(bad ? 1 : 0);

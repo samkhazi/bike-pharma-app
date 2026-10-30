@@ -100,5 +100,8 @@ try {
   ok(!buildBajaj(D).info.sync, 'no sync data: nothing changes');
 } catch (e) { ok(false, 'error ' + e.stack); }
 finally { srv.kill(); }
+// 17b: Bajaj's old/new list pointing many different parts at one new number (JL511254) is not used; same-name parts still are
+{ const { sameName } = await import('../lib/bajajbuild.mjs');
+  ok(!sameName('PLATE STOPPER BEARING DRUM', 'PLATE STOPPER ROCKER SHAFT') && !sameName('BOLT STOPPER DRUM', 'PLATE STOPPER ROCKER SHAFT') && sameName('SEAL - OIL', 'OIL SEAL') && sameName('CAP -SWING ARMPIVOT', '') , '17b: part names: different parts told apart, same part with words swapped kept'); }
 if (fails) console.log(log.slice(-3000));
 console.log(fails ? fails + ' FAILED' : 'all passed'); process.exit(fails ? 1 : 0);

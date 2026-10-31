@@ -7066,7 +7066,7 @@ const m3Vg=r=>{const f=(S.ui&&(S.ui.fpA||S.ui.fp))||{},c=cur().p||{},vm=c.vm&&c.
 /* the chosen line: by its index, else by number + ref (another catalogue came and the rows were numbered again), else the searched part */
 const m3Sel=(p,L,r)=>{if(p.si==null)return r;const x=catRows()[p.si],same=q=>q&&(q.pk||'')===(p.spk||'')&&String(q.ref||'')===String(p.sref||'');return same(x)&&L.includes(x)?x:L.find(same)||r;};
 const m3Row=(q,on,sm)=>{const y=q.pk?sm.get(q.pk):null,n=y?DB.stock[y.id]||0:0,v=q.mrp||(y&&y.mrp)||0;
- return `<button class="m3-row${on?' on':''}" data-i="${q.i}" data-ref="${esc(q.ref||'')}" aria-current="${on}" onclick="m3Pick(${q.i})"><span class="m2-num">${esc(q.ref||'·')}</span><span class="m3-rt"><b>${esc(catNice(q.desc))}</b><span class="cap"><span class="num">${esc(q.part||'No part number')}</span>${v?' · '+inr(v):''}${q.qty>1?' · ×'+esc(q.qty):''}${q.ns?' · N.S.':''}${n>0?` · <span class="m3-in">${n} in stock</span>`:''}</span></span></button>`;};
+ return `<button class="m3-row${on?' on':''}" data-i="${q.i}" data-ref="${esc(q.ref||'')}" aria-current="${on}" onclick="m3Pick(${q.i})"><span class="m2-num">${esc(q.ref||'·')}</span><span class="m3-rt"><b>${esc(catNice(q.desc))}</b><span class="cap"><span class="num">${esc(q.part||'No part number')}</span>${v?' · '+inr(v):''}${q.qty>1?' · ×'+esc(q.qty):''}${q.ns?' · N.S.':''}${n>0?` · <span class="m3-in">${n} in stock</span>`:''}</span></span><span class="m3-tc num m3-tp">${esc(q.part||'—')}</span><span class="m3-tc num">${v?inr(v):'—'}</span><span class="m3-tc num">${esc(q.qty||'1')}${n>0?` <span class="m3-in">· ${n} in stock</span>`:''}</span></button>`;};
 /* the chosen part: photo, number, MRP, our stock (Add to bill / Add to stock), facts, the bikes it fits */
 /* 17k (Sam 31 Oct, Figma "Part page clean (31 Oct)"): the chosen part as one small card: number, MRP, New / Old / Alternate / Kit,
    the parts inside an assembly (Yamaha books mark them with a leading dot: ".Case, Speedometer Upper" is inside "Meter ASSY"), stock, fits */
@@ -7158,7 +7158,7 @@ function m2PartV(p){const r=m2Row(p);if(!r)return m2PartV0(p);if(kitHead(r))retu
  const D=m3Dgs(r,v,vm),di=D.findIndex(d=>d.pg===r.page),ttl=catNice(r.asm||r.fig)+(r.asm&&r.fig?' – '+r.fig:'');
  const dh=`<div class="m3-dh">${di>0?`<button class="m3-nb" onclick="m3Go(${D[di-1].i})" aria-label="Previous diagram">${ic('chevL','s18')}</button>`:''}<div class="m3-dt"><b>${esc(ttl)}</b><span class="cap">${di>=0?'Diagram '+(di+1)+' of '+D.length+' · ':''}${L.length} part${L.length===1?'':'s'}</span></div>${di>=0&&di<D.length-1?`<button class="m3-nb" onclick="m3Go(${D[di+1].i})" aria-label="Next diagram">${ic('chevR','s18')}</button>`:''}</div>`;
  return `<div class="m3 m3a" data-k="${k}">${m3Bike(r,vm,yr,v,cc,D.length)}
- <div class="m3-g"><div class="m3-c0">${m3DgList(D,r.page)}</div><div class="m3-c1">${dh}${dia}</div><div class="m3-c3"><div class="card m3-det">${m3Det(x,o)}</div></div><div class="m3-c2"><div class="m3-lh"><b>Parts in this diagram</b><span class="cap">${L.length}</span></div><div class="m3-list">${L.map(q=>m3Row(q,q===x,sm)).join('')}</div></div></div>
+ <div class="m3-g"><div class="m3-c0">${m3DgList(D,r.page)}</div><div class="m3-c1">${dh}${dia}</div><div class="m3-c3"><div class="card m3-det">${m3Det(x,o)}</div></div><div class="m3-c2"><div class="m3-lh"><b>Parts in this diagram</b><span class="cap">${L.length}</span></div><div class="m3-list"><div class="m3-th"><span>Ref</span><span>Part name</span><span>Part no.</span><span>MRP</span><span>Qty</span></div>${L.map(q=>m3Row(q,q===x,sm)).join('')}</div></div></div>
  <div class="m3-more">${m3More(x,o)}</div></div>`;}
 /* CSS decides the columns (by the page's own width), JS follows: the right column hidden (a phone) = the details open under the chosen line */
 const m3Nw=el=>getComputedStyle(el.querySelector('.m3-c3')).display==='none';
@@ -7778,8 +7778,14 @@ html.wv .pad .card:has(>label.opt:nth-of-type(3) select)>label.opt{margin:0}
 .m3-ak{display:flex;gap:8px;align-items:center;text-align:left;background:none;border:0;border-radius:8px;padding:5px 4px;font-size:13px;cursor:pointer;width:100%}
 .m3-ak:hover{background:#FFF6D6}.m3-ak .m2-num{min-width:24px;height:24px;font-size:11px}.m3-par{background:#F7F7F8}
 .m3-bike .fp-plate{font-size:15px}
-@container (min-width:680px){.m3a .m3-c2{grid-column:1/-1}.m3a .m3-list{max-height:none;overflow:visible}.m3a .m3-rt{display:flex;align-items:center;gap:12px;flex:1;min-width:0}.m3a .m3-rt>b{flex:1;min-width:0}.m3a .m3-rt>.cap{white-space:nowrap}.m3a .m3-det{position:static;max-height:none;overflow:visible;border:1px solid var(--y)}}
-@container (min-width:900px){.m3a .m3-c3{grid-column:auto;align-self:start;position:sticky;top:0}}
+.m3-tc,.m3-th{display:none}
+@container (min-width:680px){.m3a .m3-c2{grid-column:1/-1}.m3a .m3-list{max-height:none;overflow:hidden;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+.m3a .m3-th,.m3a .m3-row{display:grid;grid-template-columns:44px minmax(0,1fr) minmax(120px,190px) 90px 110px;gap:12px;align-items:center;text-align:left}
+.m3a .m3-th{background:#111;color:#FFC400;font-weight:700;font-size:13px;padding:10px 14px}
+.m3a .m3-row{padding:9px 14px 9px 11px}.m3a .m3-row .m2-num{min-width:0;width:28px;height:auto;background:none;color:var(--ink);font-weight:600;font-size:14px;justify-content:flex-start}
+.m3a .m3-rt{display:block}.m3a .m3-rt>b{font-weight:500;font-size:14px}.m3a .m3-rt>.cap{display:none}.m3a .m3-tc{display:block;font-size:14px}.m3a .m3-tp{color:#2563EB}.m3a .m3-tc .m3-in{font-size:12px}
+.m3a .m3-det{position:static;max-height:none;overflow:visible;border:1px solid var(--y)}}
+@container (min-width:900px){.m3a .m3-c0,.m3a .m3-c3{position:static;align-self:start}.m3a .m3-c3{grid-column:auto}.m3a .m3-dgs{max-height:420px}}
 .m2v0{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}.m2v0 .m3-det{border:1px solid var(--y)}
 @container (min-width:760px){.m2v0{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)}.m2v0>.m3-det:only-child{grid-column:1/-1;max-width:640px}}
 </style>

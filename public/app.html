@@ -42,7 +42,7 @@
 .fp-c{display:flex;gap:10px;align-items:center;text-align:left;border:1px solid #E5E7EB;border-radius:12px;padding:10px 12px;background:#fff;width:100%}
 .fp-c .grow{display:flex;flex-direction:column;gap:3px;align-items:flex-start}
 .fp-bike{display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:#111;color:#fff;border-radius:14px;padding:12px 16px;margin-bottom:12px}
-.fp-bike .cap{color:#D1D5DB}.fp-plate{background:#fff;color:#111;border:2px solid #FFC400;border-radius:6px;padding:4px 10px;font-weight:800;font-size:16px;letter-spacing:.5px;white-space:nowrap}
+.fp-bike .cap{color:#D1D5DB}@media(max-width:700px){.fp-bike .grow{flex:1 1 100%;order:3;min-width:0}}.fp-plate{background:#fff;color:#111;border:2px solid #FFC400;border-radius:6px;padding:4px 10px;font-weight:800;font-size:16px;letter-spacing:.5px;white-space:nowrap}
 .fp-only{background:#FFF6D6;color:#111;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700}
 .fp-x{background:none;border:0;color:#9CA3AF;font-size:22px;line-height:1;cursor:pointer;padding:0 4px}
 @media (max-width:700px){.fp-pn-top{gap:12px}.fp-pn-top>.grow{flex:1 1 180px;min-width:0}.fp-pn-ph{width:56px}.fp-pn-ph>*{width:56px!important;height:56px!important}.fp-pn-pr{width:100%;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap}.fp-pn-pr>b{font-size:24px}.fp-pn-nm{font-size:16px}.fp-dsk{display:none}.fp-ph{display:flex}.fp-tiles{grid-template-columns:1fr 1fr}.fp-pn-pr{align-items:flex-start;margin-left:0}.fp-pn-no{font-size:24px}.fp-only{display:none}}
@@ -4610,21 +4610,10 @@ function m2PartV0(p){const r=m2Row(p);if(!r)return `<div class="empty">This part
  const need=asm.filter(q=>/\b(GASKET|SEAL|O RING|BOLT|NUT|WASHER|SPRING|BEARING|BUSH|CLIP|PACKING|SCREW)\b/.test(q.dhay)&&q.pk&&q.pk!==r.pk).slice(0,4);
  const mini=q=>`<button class="m2-row" onclick="m2Part(${q.i})"><span class="m2-num">${esc(q.ref||'·')}</span><div class="grow"><div class="h3" style="font-size:14px">${esc(catNice(q.desc))}</div><div class="cap">${esc(q.part||'No part number')}${q.mrp?' · '+inr(q.mrp):''}</div></div>${ic('chevR','s18')}</button>`;
  const secLink=p.vm&&p.vm!=='Any'?`go('findpart',{v:'sec',vb:'${m2Q(r.vb)}',vm:'${m2Q(p.vm)}',yr:'${m2Q(p.yr||'Any')}',pg:'${m2Q(r.page)}'})`:`go('findpart',{v:'sec',vb:'${m2Q(r.vb)}',vm:'${m2Q(vm)}',yr:'Any',pg:'${m2Q(r.page)}'})`;
- return `${m2Head(esc(catNice(r.desc))+(r.part?' – '+esc(r.part):'')+' for '+esc([r.vb,vm,cc?cc+'cc':'',yr].filter(Boolean).join(' ')),'')}
- <div class="card fpc">${pic?`<div class="fpc-pic${php||r.img||ym||full?'':' sm'}">${r.ref?`<span class="fpc-ref">REF ${esc(r.ref)}</span>`:''}${pic}</div>`:''}${php?'':catPhotoLink(r)}${dgb}${catSee(r)}
- ${r.pnNear?`<div class="row cap" style="background:var(--blue-soft);border-radius:10px;padding:8px 10px">${ic('search','s16')}<span class="grow">Same base number, with another colour or revision ending. Check the ending before ordering.</span></div>`:''}
- <div class="stack" style="gap:2px"><div class="micro muted">${r.sia?'Part number of the assembly':'Part number'}</div>${r.part?`<div class="row" style="gap:10px"><b class="fpc-pn num grow" id="pn-${r.i}">${esc(r.part)}</b><button class="btn line sm" onclick="catCopy(${r.i})">Copy</button></div>`:`<div class="cap">No number in the catalogue (ordered by colour or as a kit)</div>`}</div>
- <div class="m2-pr" style="font-size:20px">${m2Price(r)}</div>
- ${kitBox(r)}
- ${r.sup?`<div class="row cap" style="background:var(--amber-soft);border-radius:10px;padding:8px 10px">${ic('alert','s16')}<span class="grow">Replaced by <b class="num">${esc(r.sup)}</b>. Order the new number.</span></div>`:''}
- ${x?`<button class="row" style="gap:8px;background:var(--y-soft);border-radius:12px;padding:10px 12px;text-align:left;width:100%" onclick="S.ui.scanHit='${x.id}';S.ui.scanMiss=null;go('scanfind')"><div class="grow"><div class="micro muted">${n>0?n+' '+(x.unit||'pcs')+' in stock':'Out of stock'} · Rack</div><b style="font-size:18px">${ic('pin','s16')} ${esc(binOf(x.id))}</b></div><div style="text-align:right"><div class="micro muted">Our MRP</div><b class="num" style="font-size:18px">${inr(x.mrp)}</b></div></button>${n>0?`<button class="btn" onclick="S.ui.scanHit='${x.id}';S.ui.scanMiss=null;go('scanfind')">${ic('cart','s18')} Add to bill</button>`:allowed('partorders')?`<button class="btn line" onclick="soNewSheet('${x.id}')">Take order for customer</button>`:''}`:r.part?invFpAdd(r):''}
- <div class="grid2 fpc-facts">${facts.map(([a,b])=>`<div><div class="micro muted">${a}</div><b>${esc(b)}</b></div>`).join('')}</div>
- ${r.ns?`<span class="pill a">${r.xl?'Not sold separately':'N.S. in catalogue (not supplied)'}</span>`:''}
- ${r.old&&!r.sia?`<div class="cap">Old part no. <span class="num">${esc(r.old)}</span></div>`:''}${r.note?`<div class="cap">${esc(r.note)}</div>`:''}
- ${catNewNo(r.rem,r.vb,r.part,r.pk||r.part,r)}${r.rem&&!/^BS(VI|IV)$/i.test(r.rem)?`<div class="cap">Catalogue note: ${esc(r.rem)}</div>`:''}
- ${catFitsAt(r)}
- </div>
- ${xrSection(r)}${amSection(r)}${coNeed(r,asm,q=>`m2Part(${q.i})`)}
+ const det=m3Det(r,{rows:same.concat(r),vm,yr});
+ return `${m2Head(esc(catNice(r.desc).replace(/^\.+\s*/,''))+(r.part?' – '+esc(r.part):'')+' for '+esc([r.vb,vm,cc?cc+'cc':'',yr].filter(Boolean).join(' ')),'')}
+ <div class="m2v0">${!php&&pic?`<div class="card m2v0-pic"><div class="fpc-pic${r.img||ym||full?'':' sm'}">${r.ref?`<span class="fpc-ref">REF ${esc(r.ref)}</span>`:''}${pic}</div>${dgb}${catSee(r)}</div>`:''}<div class="card m3-det">${det}${php?dgb+catSee(r):''}</div></div>
+ ${kitBox(r)}${amSection(r)}${coNeed(r,asm,q=>`m2Part(${q.i})`)}
  ${asm.length?`<div class="sec"><h3 class="h2">Parts in this assembly</h3><span class="cap">${asm.length}</span></div><div class="stack g8">${asm.slice(0,8).map(mini).join('')}</div>${asm.length>8?`<button class="btn line" onclick="${secLink}">See all ${asm.length+1} in this section</button>`:''}`:''}`;}
 /* ----- the screen ----- */
 SCREENS.findpart=()=>{altListLoad();const f=S.ui.fp||(S.ui.fp=FP0());const p=cur().p||{};const v=p.v||'home';
@@ -4634,7 +4623,7 @@ SCREENS.findpart=()=>{altListLoad();const f=S.ui.fp||(S.ui.fp=FP0());const p=cur
   const a=[p.pg?catSplitQ(e,'pg:'+p.pg,{pg:[p.pg],pn:p.pk&&p.pk.length>=3?p.pk:''}):2,p.vm&&p.vm!=='Any'?catSplitM(e,p.vm):2];return a.includes(1)?m2Wait(p.vb):a.includes(3)&&!catRows().some(r=>r.vb===p.vb&&r.page===p.pg&&(r.pk||'')===(p.pk||''))?m2Err(p.vb):'';})(CAT_ALL.find(e=>e.vb===p.vb)):'';
  const body=spw?spw:v==='vin'?vinV(p):v==='brand'?m2Brand(p):v==='fam'?m2FamV(p):v==='year'?m2Year(p):v==='secs'?m2SecsV(p):v==='sec'?m2SecV(p):v==='res'?m2ResView(p):v==='part'?m2PartV(p):m2Home(f);
  const title=v==='vin'?'Chassis number':v==='home'?'Find Part':v==='brand'?p.vb:v==='fam'?p.fam:v==='year'||v==='secs'?p.vm:v==='sec'?'Section':v==='res'?'Results':'Part';
- return bar(esc(title),{back:S.stack.length>1,action:v==='home'?'':`<button class="iconbtn" onclick="fpClear()" aria-label="New search">${ic('search')}</button>`})+`<div class="scroll"><div class="pad m2">${(v==='secs'||v==='year')&&(p.vin||p.rcn)?'':fpBikeBar(p,v)}${body}</div></div>`;};
+ return bar(esc(title),{back:S.stack.length>1,action:v==='home'?'':`<button class="iconbtn" onclick="fpClear()" aria-label="New search">${ic('search')}</button>`})+`<div class="scroll"><div class="pad m2">${(v==='secs'||v==='year')&&(p.vin||p.rcn)||String(body).startsWith('<div class="m3')?'':fpBikeBar(p,v)}${body}</div></div>`;};
 function rackEdit(id){const x=P(id);const cur=binOf(id);const [r,sh,bn]=cur==='Not set'?['A','1','01']:cur.split('-');
  const opt=(arr,v)=>arr.map(a=>`<option ${a===v?'selected':''}>${a}</option>`).join('');
  const ph=x.photos&&x.photos[0],fits=fitsOf(x);   // 11q: photo (tap = full screen), MRP and bikes shown too; only the rack can be changed here
@@ -7079,17 +7068,24 @@ const m3Sel=(p,L,r)=>{if(p.si==null)return r;const x=catRows()[p.si],same=q=>q&&
 const m3Row=(q,on,sm)=>{const y=q.pk?sm.get(q.pk):null,n=y?DB.stock[y.id]||0:0,v=q.mrp||(y&&y.mrp)||0;
  return `<button class="m3-row${on?' on':''}" data-i="${q.i}" data-ref="${esc(q.ref||'')}" aria-current="${on}" onclick="m3Pick(${q.i})"><span class="m2-num">${esc(q.ref||'·')}</span><span class="m3-rt"><b>${esc(catNice(q.desc))}</b><span class="cap"><span class="num">${esc(q.part||'No part number')}</span>${v?' · '+inr(v):''}${q.qty>1?' · ×'+esc(q.qty):''}${q.ns?' · N.S.':''}${n>0?` · <span class="m3-in">${n} in stock</span>`:''}</span></span></button>`;};
 /* the chosen part: photo, number, MRP, our stock (Add to bill / Add to stock), facts, the bikes it fits */
-function m3Det(x,o){const sh=m2Shop(x),n=sh?DB.stock[sh.id]:0,php=catPhoto(x),L=m2FitL(x),li=v=>`<li>${esc(v)}</li>`;
- const facts=[['Brand',x.vb],['Model',o.vm||'—'],['Model year',o.yr||'All years'],['Category',m2CatOf(x)],['Qty per bike',x.qty||'—'],['Book',x.src||'—']];
- return `${php?`<div class="fpc-pic m3-ph">${php}</div>`:''}<div class="stack" style="gap:2px"><div class="h3">${esc(catNice(x.desc))}</div><div class="cap">${x.ref?'Ref '+esc(x.ref)+' on the diagram':'No ref number on the diagram'}</div></div>
- ${x.pnNear?`<div class="row cap" style="background:var(--blue-soft);border-radius:10px;padding:8px 10px">${ic('search','s16')}<span class="grow">Same base number, with another colour or revision ending. Check the ending before ordering.</span></div>`:''}
- <div class="stack" style="gap:2px"><div class="micro muted">${x.sia?'Part number of the assembly':'Part number'}</div>${x.part?`<div class="row m3-pnr"><b class="fpc-pn num grow" id="pn-${x.i}">${esc(x.part)}</b><button class="btn line sm" onclick="catCopy(${x.i})">Copy</button></div>`:`<div class="cap">No number in the catalogue (ordered by colour or as a kit)</div>`}</div>
- <div class="m2-pr" style="font-size:20px">${m2Price(x)}</div>
- ${x.sup?`<div class="row cap" style="background:var(--amber-soft);border-radius:10px;padding:8px 10px">${ic('alert','s16')}<span class="grow">Replaced by <b class="num">${esc(x.sup)}</b>. Order the new number.</span></div>`:''}
- ${x.ns?`<span class="pill a" style="align-self:flex-start">${x.xl?'Not sold separately':'N.S. in catalogue (not supplied)'}</span>`:''}${x.old&&!x.sia?`<div class="cap">Old part no. <span class="num">${esc(x.old)}</span></div>`:''}${x.note?`<div class="cap">${esc(x.note)}</div>`:''}${catNewNo(x.rem,x.vb,x.old,x.pk||x.part,x)}${x.rem&&!/^BS(VI|IV)$/i.test(x.rem)?`<div class="cap">Catalogue note: ${esc(x.rem)}</div>`:''}
- ${sh?`<button class="row" style="gap:8px;background:var(--y-soft);border-radius:12px;padding:10px 12px;text-align:left;width:100%" onclick="S.ui.scanHit='${sh.id}';S.ui.scanMiss=null;go('scanfind')"><div class="grow"><div class="micro muted">${n>0?n+' '+(sh.unit||'pcs')+' in stock':'Out of stock'} · Rack</div><b style="font-size:18px">${ic('pin','s16')} ${esc(binOf(sh.id))}</b></div><div style="text-align:right"><div class="micro muted">Our MRP</div><b class="num" style="font-size:18px">${inr(sh.mrp)}</b></div></button>${n>0?`<button class="btn" onclick="S.ui.scanHit='${sh.id}';S.ui.scanMiss=null;go('scanfind')">${ic('cart','s18')} Add to bill</button>`:allowed('partorders')?`<button class="btn line" onclick="soNewSheet('${sh.id}')">Take order for customer</button>`:''}`:x.part?invFpAdd(x):''}
- <div class="grid2 fpc-facts">${facts.map(([a,b])=>`<div${a==='Book'?' class="m3-wide"':''}><div class="micro muted">${a}</div><b>${esc(b)}</b></div>`).join('')}</div>
- ${catFitsAt(x)}`;}
+/* 17k (Sam 31 Oct, Figma "Part page clean (31 Oct)"): the chosen part as one small card: number, MRP, New / Old / Alternate / Kit,
+   the parts inside an assembly (Yamaha books mark them with a leading dot: ".Case, Speedometer Upper" is inside "Meter ASSY"), stock, fits */
+const m3Dots=q=>(String(q.desc||'').match(/^\s*(\.+)/)||['',''])[1].length;
+function m3Kids(x,rows){const L=(rows||[]).slice().sort(m3By),i=L.indexOf(x);if(i<0)return {kids:[],par:null};const d=m3Dots(x),kids=[];
+ for(let k=i+1;k<L.length;k++){const e=m3Dots(L[k]);if(e<=d)break;if(e===d+1)kids.push(L[k]);}
+ let par=null;if(d)for(let k=i-1;k>=0;k--){if(m3Dots(L[k])<d){par=L[k];break;}}return {kids,par};}
+function m3Det(x,o){const sh=m2Shop(x),n=sh?DB.stock[sh.id]||0:0,php=catPhoto(x),N=fpNos(x),K=kitHead(x)?[]:kitsOf(x),A=m3Kids(x,o.rows);
+ const ln=(l,v,c)=>`<div class="m3-ln ${c||''}"><span>${l}</span><b class="num">${v}</b></div>`,nos=L=>L.slice(0,2).map(n=>esc(n)+fpNoM(x.vb,n)).join(', ');
+ const fits=m2FitL(x).map(v=>v.replace(/ \(.*$/,'')).filter((v,i,a)=>v&&!/^(Kits|Other)/.test(v)&&a.indexOf(v)===i),sis=typeof xrSis==='function'?((xrSis(x)||[]).find(z=>z&&z.sb===x.vb)||null):null;
+ return `${php?`<div class="fpc-pic m3-ph">${php}</div>`:''}<div class="cap" style="font-weight:700">${x.ref?'Ref '+esc(x.ref)+' · ':''}${esc(catNice(x.desc).replace(/^\.+\s*/,''))}</div>
+ ${x.part?`<div class="row m3-pnr"><b class="fpc-pn num grow" id="pn-${x.i}">${esc(x.part)}</b><button class="btn line sm" onclick="catCopy(${x.i})">Copy</button></div>`:`<div class="cap">No number in the catalogue (ordered by colour or as a kit)</div>`}
+ <div class="row" style="gap:8px;align-items:baseline"><b class="num" style="font-size:24px">${x.mrp?inr(x.mrp):sh?inr(sh.mrp):'On request'}</b><span class="cap">MRP${x.qty?' · Qty '+esc(x.qty):''}${x.ns?' · '+(x.xl?'not sold separately':'N.S.'):''}</span></div>
+ <div class="stack" style="gap:6px">${ln('New part no.',N.a.length?nos(N.a):N.stop?'Stopped by the maker':'—',N.a.length?'b':'')}${ln('Old part no.',N.o.length?nos(N.o):'—')}${ln('Alternate',N.al.length?nos(N.al):'—',N.al.length?'g':'')}${kitHead(x)?ln('Kit',kitParts(x).length+' parts','y'):ln('Also in kit',K.length?K.slice(0,2).map(h=>`<button class="fp-lnk" onclick="m2Part(${h.i})">${esc(h.part)}</button>`).join(', '):'—',K.length?'y':'')}</div>
+ ${A.kids.length?`<div class="m3-asm"><b>Parts inside this assembly · ${A.kids.length}</b>${A.kids.map(q=>`<button class="m3-ak" onclick="m3Pick(${q.i})"><span class="m2-num">${esc(q.ref||'·')}</span><span class="grow">${esc(catNice(q.desc).replace(/^\.+\s*/,''))}<span class="cap"> ${esc(q.part||'')}${q.mrp?' · '+inr(q.mrp):''}${q.qty>1?' · ×'+esc(q.qty):''}</span></span></button>`).join('')}</div>`:''}
+ ${A.par?`<button class="m3-ak m3-par" onclick="m3Pick(${A.par.i})">Part of <b>${esc(catNice(A.par.desc).replace(/^\.+\s*/,''))}</b> <span class="num">${esc(A.par.part||'')}</span></button>`:''}
+ <div class="row wrap" style="gap:8px;align-items:center">${sh?(n>0?`<span class="pill g">${n} in stock · ${esc(binOf(sh.id))}</span><button class="btn sm" onclick="S.ui.scanHit='${sh.id}';S.ui.scanMiss=null;go('scanfind')">${ic('cart','s16')} Add to bill</button>`:`<span class="pill r">Out of stock</span>${allowed('partorders')?`<button class="btn line sm" onclick="soNewSheet('${sh.id}')">Take order</button>`:''}`):x.part&&allowed('addproduct')?`<span class="pill a">Not in stock list</span><button class="btn sm" onclick="invFromRow('${esc(m2Q(x.vb))}','${esc(m2Q(x.pk))}','${esc(m2Q(x.part))}')">${ic('plus','s16')} Add to stock</button>`:''}</div>
+ ${fits.length?`<div class="cap">Fits ${esc(fits.slice(0,4).join(', '))}${fits.length>4?' +'+(fits.length-4)+' more':''}${o.yr?' ('+esc(o.yr)+')':''}${(()=>{const ac=sis&&sis.ms?sis.ms.filter(m=>!fits.includes(m)):[];return ac.length?' · also check '+esc(ac.slice(0,3).join(', ')):''})()}</div>`:''}
+ ${typeof catOtherBr==='function'?catOtherBr(x):''}`;}
 /* under the columns: the same number in other brands, and the gaskets, seals, bolts... of this diagram */
 /* 12s (Sam: "isko bhi jod-de"): "Commonly needed with this" puts first the parts sold on the same bills as this part (our own
    bills, cancelled ones left out), then the gaskets, seals, bolts... of the same diagram; 6 at most */
@@ -7103,7 +7099,7 @@ function coNeed(x,rows,pick){const seen=new Set([x.pk]),out=[],tx=n=>`Sold toget
   out.push(q?row(q,tx(n)):`<button class="m2-row" onclick="S.ui.scanHit='${sp.id}';S.ui.scanMiss=null;go('scanfind')"><span class="m2-num">${ic('cart','s16')}</span><div class="grow"><div class="h3" style="font-size:14px">${esc(sp.name)}</div><div class="cap">${esc(sp.pn)}${sp.mrp?' · '+inr(sp.mrp):''} · <b>${tx(n)}</b></div></div>${ic('chevR','s18')}</button>`);});
  rows.forEach(q=>{if(out.length>=6||!q.pk||seen.has(q.pk)||!/\b(GASKET|SEAL|O RING|BOLT|NUT|WASHER|SPRING|BEARING|BUSH|CLIP|PACKING|SCREW)\b/.test(q.dhay))return;seen.add(q.pk);out.push(row(q,''));});
  return out.length?`<div class="sec"><h3 class="h2">Commonly needed with this</h3></div><div class="stack g8">${out.join('')}</div>`:'';}
-function m3More(x,o){return kitBox(x)+xrSection(x)+amSection(x)+coNeed(x,o.rows,q=>`m3Pick(${q.i},'need')`);}
+function m3More(x,o){return kitBox(x)+amSection(x)+coNeed(x,o.rows,q=>`m3Pick(${q.i},'need')`);}
 /* the page; no diagram for the part (and none coming): the old page */
 /* layout A (Sam 2026-10-22, Figma "Catalogue view (23 Oct)" A): the bike on top, all its diagrams on the left, the diagram with the
    chosen part under it, the diagram's parts on the right. Every number on every catalogue's diagram stays clickable (the 8r numbers). */
@@ -7118,7 +7114,8 @@ function m3Go(i){const r=catRows()[i];if(!r)return;const c=cur().p||{};S.stack[S
 /* the list's short name: Royal Enfield's "(1 Of 36 Variants: VXWK60HK)" left out (the full name is the diagram's title) */
 const m3DgName=d=>catNice(d.asm||d.fig||'Section').replace(/\s*\(\s*\d+\s+of\s+\d+\s+variants?\b[^)]*\)?/ig,'').replace(/[\s_–-]+$/,'')||'Section';
 const m3DgList=(D,pg)=>`<div class="m3-lh"><b>Diagrams</b><span class="cap">${D.length}</span></div><div class="m3-dgs">${D.map((d,j)=>{const on=d.pg===pg,f=String(d.fig||'');return `<button class="m3-dg${on?' on':''}" aria-current="${on}" onclick="m3Go(${d.i})"><span class="m3-dgc num">${esc(f&&f.length<=8?f:String(j+1))}</span><span class="m3-dgn">${esc(m3DgName(d))}</span></button>`;}).join('')}</div>`;
-function m3Bike(r,vm,yr,v,cc,nd){return `<div class="m3-bike"><span class="m3-bt">${esc(String(r.vb||'').split(' ')[0].slice(0,7).toUpperCase())}</span><div class="m3-bn"><b>${esc([r.vb,vm,cc?cc+'cc':''].filter(Boolean).join(' '))}</b><span>${esc([yr&&v&&String(v).includes(String(yr))?'':yr,v,r.src,nd>1?nd+' diagrams':''].filter(Boolean).join(' · '))}</span></div><div class="m3-bs">${m2Bar('Part name or no. in this bike','')}</div><button class="m3-cb" onclick="go('findpart',{v:'brand',vb:'${m2Q(r.vb)}'})">Change bike</button></div>`;}
+function m3Bike(r,vm,yr,v,cc,nd){const B=S.ui.fpBike&&S.ui.fpBike.vb===r.vb?S.ui.fpBike:null,rc=B&&B.reg&&RC_SEEN[B.reg]||{},ch=B?rc.chassis||B.vin||'':'';
+ return `<div class="m3-bike">${B&&B.reg?`<span class="fp-plate">${esc(B.reg)}</span>`:`<span class="m3-bt">${esc(String(r.vb||'').split(' ')[0].slice(0,7).toUpperCase())}</span>`}<div class="m3-bn"><b>${esc([r.vb,vm,yr&&!(v&&String(v).includes(String(yr)))?yr:'',cc?cc+'cc':''].filter(Boolean).join(' · '))}</b><span>${esc(ch?'Chassis '+ch+(rc.engine?' · Engine '+rc.engine:''):[v,nd>1?nd+' diagrams':''].filter(Boolean).join(' · '))}</span></div><div class="m3-bs">${m2Bar('Part name or no. in this bike','')}</div><button class="m3-cb" onclick="${B?(B.vin?`vinChange('${m2Q(B.vin)}')`:`S.ui.vin={q:'${m2Q(B.reg||'')}'};go('findpart',{v:'vin'})`):`go('findpart',{v:'brand',vb:'${m2Q(r.vb)}'})`}">Change bike</button></div>`;}
 /* 17h kits (Sam 31 Oct, Figma "Kits (31 Oct)" K-1..K-4): a kit = a catalogue section with a 'Kit' row (any brand); the section's other rows are its parts.
    Kit page = TVS-style table Kit no. | Kit name | Part no. | Part name | Qty | MRP; a part in a kit shows "This part also comes in a kit"; search shows the kit's parts under it. */
 let KIT_I=null;
@@ -7161,7 +7158,7 @@ function m2PartV(p){const r=m2Row(p);if(!r)return m2PartV0(p);if(kitHead(r))retu
  const D=m3Dgs(r,v,vm),di=D.findIndex(d=>d.pg===r.page),ttl=catNice(r.asm||r.fig)+(r.asm&&r.fig?' – '+r.fig:'');
  const dh=`<div class="m3-dh">${di>0?`<button class="m3-nb" onclick="m3Go(${D[di-1].i})" aria-label="Previous diagram">${ic('chevL','s18')}</button>`:''}<div class="m3-dt"><b>${esc(ttl)}</b><span class="cap">${di>=0?'Diagram '+(di+1)+' of '+D.length+' · ':''}${L.length} part${L.length===1?'':'s'}</span></div>${di>=0&&di<D.length-1?`<button class="m3-nb" onclick="m3Go(${D[di+1].i})" aria-label="Next diagram">${ic('chevR','s18')}</button>`:''}</div>`;
  return `<div class="m3 m3a" data-k="${k}">${m3Bike(r,vm,yr,v,cc,D.length)}
- <div class="m3-g"><div class="m3-c0">${m3DgList(D,r.page)}</div><div class="m3-c1">${dh}${dia}<div class="m3-c3"><div class="card m3-det">${m3Det(x,o)}</div></div></div><div class="m3-c2"><div class="m3-lh"><b>Parts in this diagram</b><span class="cap">${L.length}</span></div><div class="m3-list">${L.map(q=>m3Row(q,q===x,sm)).join('')}</div></div></div>
+ <div class="m3-g"><div class="m3-c0">${m3DgList(D,r.page)}</div><div class="m3-c1">${dh}${dia}</div><div class="m3-c3"><div class="card m3-det">${m3Det(x,o)}</div></div><div class="m3-c2"><div class="m3-lh"><b>Parts in this diagram</b><span class="cap">${L.length}</span></div><div class="m3-list">${L.map(q=>m3Row(q,q===x,sm)).join('')}</div></div></div>
  <div class="m3-more">${m3More(x,o)}</div></div>`;}
 /* CSS decides the columns (by the page's own width), JS follows: the right column hidden (a phone) = the details open under the chosen line */
 const m3Nw=el=>getComputedStyle(el.querySelector('.m3-c3')).display==='none';
@@ -7771,6 +7768,20 @@ html.wv-login .wv-lgh em{font-style:normal;color:#FFC20E}
 html.wv .pad .card:has(>label.opt:nth-of-type(3) select){display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
 html.wv .pad .card:has(>label.opt:nth-of-type(3) select)>:not(label.opt){grid-column:1/-1}
 html.wv .pad .card:has(>label.opt:nth-of-type(3) select)>label.opt{margin:0}
+
+/* 17k clean part page */
+.m3-ln{display:flex;align-items:center;gap:8px;background:#F7F7F8;border-radius:8px;padding:7px 10px;font-size:12px}
+.m3-ln>span{flex:1;color:#6B7280;font-weight:700}.m3-ln>b{font-size:13px;text-align:right;overflow-wrap:anywhere}
+.m3-ln.b{background:#EEF2FF}.m3-ln.b>b{color:#1D4ED8}.m3-ln.g{background:#E7F6EC}.m3-ln.g>b{color:#166534}.m3-ln.y{background:#FFF6D6}
+.m3-asm{display:flex;flex-direction:column;gap:4px;border:1px solid #E5E7EB;border-radius:10px;padding:8px}
+.m3-asm>b{font-size:12px;color:#6B7280;padding:2px 4px}
+.m3-ak{display:flex;gap:8px;align-items:center;text-align:left;background:none;border:0;border-radius:8px;padding:5px 4px;font-size:13px;cursor:pointer;width:100%}
+.m3-ak:hover{background:#FFF6D6}.m3-ak .m2-num{min-width:24px;height:24px;font-size:11px}.m3-par{background:#F7F7F8}
+.m3-bike .fp-plate{font-size:15px}
+@container (min-width:680px){.m3a .m3-c2{grid-column:1/-1}.m3a .m3-list{max-height:none;overflow:visible}.m3a .m3-rt{display:flex;align-items:center;gap:12px;flex:1;min-width:0}.m3a .m3-rt>b{flex:1;min-width:0}.m3a .m3-rt>.cap{white-space:nowrap}.m3a .m3-det{position:static;max-height:none;overflow:visible;border:1px solid var(--y)}}
+@container (min-width:900px){.m3a .m3-c3{grid-column:auto;align-self:start;position:sticky;top:0}}
+.m2v0{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}.m2v0 .m3-det{border:1px solid var(--y)}
+@container (min-width:760px){.m2v0{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)}.m2v0>.m3-det:only-child{grid-column:1/-1;max-width:640px}}
 </style>
 <script>
 /* Website layout (Sam, 2 Oct 2026: "mobile screen ko hi stretch mat kar, website ka design website ke jaisa hi kar, thoda animations"):

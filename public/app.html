@@ -7885,7 +7885,8 @@ function pageTitle(){const c=cur().s,r=S.user.role;if(c===HOME[r])return 'Dashbo
 const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const dstr=()=>{const d=new Date();return DAYS[d.getDay()].slice(0,3)+', '+d.getDate()+' '+MON[d.getMonth()].slice(0,3)+' '+d.getFullYear();};
 function buildTop(){const u=S.user,r=u.role,t=pageTitle();const nav=NAVS[r]||[];
- const canQ=r==='customer'||(()=>{try{return allowed('usearch');}catch(e){return false;}})();
+ /* 17r (Sam 1 Nov): Find Part has its own big search bar, so the top search is hidden there */
+ const canQ=cur().s!=='findpart'&&(r==='customer'||(()=>{try{return allowed('usearch');}catch(e){return false;}})());
  const notif=(()=>{try{return allowed('notifs');}catch(e){return false;}})();
  top.innerHTML=`${S.stack.length>1?`<button class="wv-back" onclick="back()" aria-label="Back">${ic('chevL','s18')}</button>`:''}
  <div class="wv-crumb"><span>${esc(u.label||ROLE[r]||r)}</span>${ic('chevR','s16')}<b>${esc(t)}</b></div>

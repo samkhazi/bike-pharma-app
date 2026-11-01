@@ -223,8 +223,12 @@ class TVS:
             page.fill('#txtPassword', pw)
         fill()
         page.click('#btnOk'); self.settle(page); page.wait_for_timeout(3000)
-        if not self.logged_in(page) and page.locator('#txtOTP').count():
-            self.shot(page, 'otp_asked')
+        # a wrong or old OTP does not end the run: a fresh link is emailed, 3 tries in all
+        for k in range(3):
+            if self.logged_in(page) or not page.locator('#txtOTP').count():
+                break
+            self.shot(page, 'otp_asked' if not k else f'otp_wrong_{k}')
+            if k: log.warning(f'TVS: OTP did not work (try {k}), asking again')
             otp = self.get_otp(page)
             if not page.locator('#txtPassword').input_value():
                 fill()

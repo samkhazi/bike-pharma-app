@@ -4369,7 +4369,7 @@ function m2Home(f){const cats=M2_HOME.map(c=>`<button class="chip" onclick="m2Ca
  const isIn=b=>CAT_ALL.some(e=>e.vb===b),BL=Object.keys(BRANDS_V).sort((x,y)=>isIn(y)-isIn(x)),nIn=BL.filter(isIn).length;
  /* 17p (Sam 1 Nov, Figma A1): brand tiles = letter badge, name, models, Ready / Coming soon */
  const brands=BL.map(b=>{const c=M2_CNT[b]||{};const m=(BRANDS_V[b]||[]).length,on=isIn(b);return `<${on?'button':'div'} class="fp-bt${on?'':' off'}"${on?` onclick="go('findpart',{v:'brand',vb:'${m2Q(b)}'})"`:''}><span class="fp-bl">${esc(b[0])}</span><span class="grow"><b>${esc(b)}</b><span class="cap">${m} model${m===1?'':'s'}</span>${c.pn?'<span class="cap">'+m2N(c.pn)+' parts</span>':''}</span><span class="pill ${on?'g':'a'}">${on?'Ready':'Coming soon'}</span></${on?'button':'div'}>`;}).join('');
- const fc=(t,id,ph,btn,nt)=>`<div class="fp-fc"><h4>${t}</h4><p class="cap">${nt}</p><input id="${id}" placeholder="${ph}" autocomplete="off" autocapitalize="characters" spellcheck="false" onkeydown="if(event.key==='Enter')fpGoVin('${id}')"><button class="btn y sm" onclick="fpGoVin('${id}')">${btn}</button></div>`;
+ const fc=(t,id,ph,btn,nt)=>`<div class="fp-fc"><h4>${t}</h4><p class="cap">${nt}</p><div class="fp-in"><input id="${id}" placeholder="${ph}" autocomplete="off" autocapitalize="characters" spellcheck="false" onkeydown="if(event.key==='Enter')fpGoVin('${id}')"><button class="btn y sm" onclick="fpGoVin('${id}')">${btn}</button></div></div>`;
  return `<div class="fp-home"><p class="fp-sub">Search any part by name, part number, registration or chassis number.</p>${m2Bar('Search part name, part no., reg no. or chassis no.',S.ui.fpT!=null?S.ui.fpT:f.q)}<p class="cap m2-hint">Mechanics' names work too: brake liner, cone set, T bracket, bend pipe, self gear, sheesha, tanki…</p>${fpVia()}${cupHome()}
  <div class="fp-lab">Find by bike</div><div class="fp-fb">${VIN_ON?fc('Registration no.','fp-reg','KA 01 AB 1234','Get bike','Brand, model and year come from the RC.')+fc('Chassis no.','fp-vin','17 letters, e.g. ME1RG6826N0022446','Find model','Finds the exact model and year of the bike.'):''}<div class="fp-fc fp-fm"><h4>Brand · Model · Year</h4>${m2Form(f)}</div></div>
  <div class="fp-lab">Brands <span>${nIn<BL.length?nIn+' of '+BL.length+' ready':BL.length}</span></div><div class="fp-bts">${brands}</div>
@@ -7822,7 +7822,8 @@ html.wv .pad .card:has(>label.opt:nth-of-type(3) select)>label.opt{margin:0}
 .fp-bt:hover{border-color:var(--y);transform:translateY(-1px)}.fp-bt.off{opacity:.6}
 .fp-bt b{display:block;font-size:15px}.fp-bt .cap{display:block}
 .fp-bl{width:46px;height:46px;border-radius:12px;background:#111;color:#FFC400;display:grid;place-items:center;font-weight:800;font-size:18px;flex:none}
-@media(min-width:900px){.fp-fb{grid-template-columns:repeat(3,minmax(0,1fr))}
+.fp-in{display:flex;gap:10px;align-items:center}.fp-in input{flex:1}.fp-in .btn{flex:none;height:46px}
+@media(min-width:900px){.fp-fb{grid-template-columns:repeat(2,minmax(0,1fr))}.fp-fb>.fp-fm{grid-column:2;grid-row:1/span 2}
  .m2-cards{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
  .m2-cards>.m2-row{flex-direction:column;align-items:flex-start;gap:8px;min-height:104px;border-radius:16px}.m2-cards>.m2-row>svg:last-child{display:none}}
 .m3-tc,.m3-th{display:none}

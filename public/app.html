@@ -7411,6 +7411,25 @@ html.wv .wv-side::-webkit-scrollbar{display:none}
 .wv-foot{margin-top:auto;padding-top:18px;display:flex;flex-direction:column;gap:6px}
 .wv-out{display:flex;align-items:center;gap:12px;height:44px;padding:0 14px;border-radius:12px;color:#cfcbc0;font-weight:600;font-size:14px;border:1px solid rgba(255,255,255,.08);transition:border-color .2s,color .2s,background .2s}
 .wv-out:hover{border-color:#D1483A;color:#fff;background:rgba(209,72,58,.14)}
+/* 17o (Sam 1 Nov, Figma S2): icon rail - narrow black strip, icon + short name, active = yellow tile, profile + log out at the bottom */
+html.wv .wv-side{flex:0 0 88px;padding:16px 10px 14px;align-items:center}
+.wv-side::before,.wv-side::after{display:none}
+.wv-logo{flex:none;width:46px;height:50px;margin:0 0 14px}
+.wv-lab{display:none}
+.wv-menu{width:100%;gap:2px;align-items:center;flex:none}
+.wv-menu~.wv-menu{margin-top:10px;padding-top:10px;border-top:1px solid #2c2c2c}
+.wv-ind{display:none}
+.wv-menu button{flex-direction:column;justify-content:center;gap:4px;width:68px;height:auto;min-height:54px;padding:5px 2px;border-radius:14px;font-size:10.5px;font-weight:600;color:#a9a59a;text-align:center}
+.wv-menu button span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:66px;line-height:1.15;white-space:normal;overflow:hidden;overflow-wrap:anywhere}
+.wv-menu button svg{color:#d9d6cc}
+.wv-menu button:hover{padding-left:2px;background:rgba(255,255,255,.07);color:#fff}
+.wv-menu button.on{background:#FFC20E;color:#121212;font-weight:800;padding-left:2px}
+.wv-menu button.on svg{color:#121212}
+.wv-foot{align-items:center;gap:10px}
+.wv-user{width:auto;padding:0;background:none;border:0;margin:0;border-radius:50%}
+.wv-user:hover{background:none}
+.wv-out{width:44px;height:44px;padding:0;justify-content:center;border-radius:12px}
+.wv-out span{display:none}
 
 /* ---- top bar ---- */
 html.wv .wv-top{display:flex;flex:none;align-items:center;gap:12px;height:70px;padding:0 28px;background:var(--card);border-bottom:1px solid var(--line);position:relative;z-index:2;animation:wvTopIn .5s .1s cubic-bezier(.2,.8,.2,1) both}
@@ -7818,16 +7837,15 @@ const XTRA={customer:[['cart','Cart','cart',"go('cart')"],['warranty','Warranty'
 const ROLE={customer:'Customer',mechanic:'Mechanic'};
 const initials=n=>String(n||'').split(' ').filter(Boolean).map(x=>x[0]).join('').slice(0,2).toUpperCase();
 window.wvGo=b=>{const c=b.dataset.code;if(b.dataset.x){S.stack=[{s:HOME[S.user.role],p:{}}];}try{(new Function(c))();}catch(e){console.error(e);}};
-const mBtn=(s,l,i,code,x)=>`<button data-s="${s}" data-code="${esc(code)}"${x?' data-x="1"':''} onclick="wvGo(this)">${ic(i,'s20')}<span>${esc(l)}</span></button>`;
+const mBtn=(s,l,i,code,x)=>`<button data-s="${s}" data-code="${esc(code)}"${x?' data-x="1"':''} title="${esc(l)}" onclick="wvGo(this)">${ic(i,'s20')}<span>${esc(l)}</span></button>`;
 let sideKey='';
 function buildSide(){const u=S.user,r=u.role,k=r+'|'+u.name+'|'+LANG;if(sideKey===k)return;sideKey=k;
  const nav=NAVS[r]||[];const x=(XTRA[r]||[]).filter(e=>{try{return allowed(e[0]);}catch(_){return false;}}).filter(e=>!nav.some(n=>n[0]===e[0]));
  const acc=nav[nav.length-1];
- side.innerHTML=`<svg class="wv-logo" viewBox="0 0 370 190" role="img" aria-label="Bike Pharma Automobiles"><use href="#logoMark"/></svg>
- <button class="wv-user" onclick="tab('${acc[0]}')"><span class="wv-av">${esc(initials(u.name))}</span><span class="grow" style="min-width:0"><b>${esc(u.name)}</b><small>${esc(u.label||ROLE[r]||r)}${u.sid?' · '+esc(u.sid):''}</small></span></button>
+ side.innerHTML=`<svg class="wv-logo" viewBox="128 0 114 122" role="img" aria-label="Bike Pharma Automobiles"><use href="#logoMark" width="370" height="190"/></svg>
  <div class="wv-lab">Menu</div><nav class="wv-menu"><i class="wv-ind" aria-hidden="true"></i>${nav.map(n=>mBtn(n[0],n[1],n[2],`tab('${n[0]}')`)).join('')}</nav>
  ${x.length?`<div class="wv-lab">Shortcuts</div><nav class="wv-menu"><i class="wv-ind" aria-hidden="true"></i>${x.map(e=>mBtn(e[0],e[1],e[2],e[3],1)).join('')}</nav>`:''}
- <div class="wv-foot"><button class="wv-out" onclick="logout()">${ic('logout','s20')}<span>Log out</span></button></div>`;
+ <div class="wv-foot"><button class="wv-user" title="${esc(u.name)} · ${esc(u.label||ROLE[r]||r)}${u.sid?' · '+esc(u.sid):''}" onclick="tab('${acc[0]}')"><span class="wv-av">${esc(initials(u.name))}</span></button><button class="wv-out" title="Log out" onclick="logout()">${ic('logout','s20')}<span>Log out</span></button></div>`;
  translateSide();}
 function translateSide(){try{if(LANG==='en')return;const k=LIDX[LANG];side.querySelectorAll('.wv-menu span,.wv-lab,.wv-out span').forEach(e=>{const t=e.textContent.trim();if(TR[t]&&TR[t][k])e.textContent=TR[t][k];});}catch(e){}}
 function markSide(){const c=cur().s,root=S.stack[0].s;const all=[...side.querySelectorAll('.wv-menu button')];all.forEach(b=>b.classList.remove('on'));

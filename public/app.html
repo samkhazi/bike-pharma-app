@@ -4367,20 +4367,25 @@ function fpRecClear(){try{localStorage.removeItem(FP_REC);}catch{}refresh();}
 const fpRecRow=()=>{const a=fpRecGet();if(!a.length)return '';return `<div class="sec"><h3 class="h2">Recent searches</h3><button class="chip" onclick="fpRecClear()">Clear</button></div><div class="row wrap" style="gap:8px">${a.map((it,i)=>`<button class="chip" onclick="fpRecGo(${i})">${ic(it.t==='bike'?'bike':it.t==='reg'?'scan':'search','s16')} ${esc(it.t==='reg'?it.q:it.t==='bike'?it.vb+' '+it.vm+(it.ed&&it.ed!=='Any'?' '+it.ed:it.yr&&it.yr!=='Any'?' '+it.yr:''):it.q+(it.vb&&it.vb!=='Any'?' · '+it.vb+(it.vm&&it.vm!=='Any'?' '+it.vm:''):''))}</button>`).join('')}</div>`;};
 function m2Home(f){const cats=M2_HOME.map(c=>`<button class="chip" onclick="m2Cat('${c}')">${esc(c)}</button>`).join('')+`<button class="chip on" onclick="m2Cat('All')">View all</button>`;
  const isIn=b=>CAT_ALL.some(e=>e.vb===b),BL=Object.keys(BRANDS_V).sort((x,y)=>isIn(y)-isIn(x)),nIn=BL.filter(isIn).length;
- const brands=BL.map(b=>{const c=M2_CNT[b]||{};const m=(BRANDS_V[b]||[]).length;return isIn(b)?`<button class="m2-br" onclick="go('findpart',{v:'brand',vb:'${m2Q(b)}'})"><b>${esc(b)}</b><span class="cap">${m} model${m===1?'':'s'}${c.pn?' · '+m2N(c.pn)+' parts':''}</span></button>`:`<div class="m2-br off"><b>${esc(b)}</b><span class="cap">Catalogue coming soon</span></div>`;}).join('');
- return `${m2Bar('Part no., name, bike or chassis no.',S.ui.fpT!=null?S.ui.fpT:f.q)}<p class="cap m2-hint">Mechanics' names work too: brake liner, cone set, T bracket, bend pipe, self gear, sheesha, tanki…</p>${fpRecRow()}${fpVia()}${cupHome()}${VIN_ON?`<button class="m2-row" style="border:2px solid var(--y);background:var(--y-soft)" onclick="S.ui.vin={q:''};go('findpart',{v:'vin'})"><span class="tile y">${ic('scan','s20')}</span><div class="grow"><div class="h3">Check parts with bike or chassis number</div><div class="cap">Type the bike number or chassis number: the app finds the bike, then search its parts.</div></div>${ic('chevR','s18')}</button>`:''}${m2Form(f)}
- <div class="sec"><h3 class="h2">Shop by category</h3>${f.vb!=='Any'?`<span class="cap">in ${esc(f.vb)}${f.vm!=='Any'?' '+esc(f.vm):''}</span>`:''}</div><div class="row wrap" style="gap:8px">${cats}</div>
- <div class="sec"><h3 class="h2">Shop by brand</h3><span class="cap">${nIn<BL.length?nIn+' of '+BL.length+' brands in':BL.length+' brands'}</span></div><div class="m2-brands">${brands}</div>`;}
+ /* 17p (Sam 1 Nov, Figma A1): brand tiles = letter badge, name, models, Ready / Coming soon */
+ const brands=BL.map(b=>{const c=M2_CNT[b]||{};const m=(BRANDS_V[b]||[]).length,on=isIn(b);return `<${on?'button':'div'} class="fp-bt${on?'':' off'}"${on?` onclick="go('findpart',{v:'brand',vb:'${m2Q(b)}'})"`:''}><span class="fp-bl">${esc(b[0])}</span><span class="grow"><b>${esc(b)}</b><span class="cap">${m} model${m===1?'':'s'}${c.pn?' · '+m2N(c.pn)+' parts':''}</span></span><span class="pill ${on?'g':'a'}">${on?'Ready':'Coming soon'}</span></${on?'button':'div'}>`;}).join('');
+ const fc=(t,id,ph,btn)=>`<div class="fp-fc"><h4>${t}</h4><input id="${id}" placeholder="${ph}" autocomplete="off" autocapitalize="characters" spellcheck="false" onkeydown="if(event.key==='Enter')fpGoVin('${id}')"><button class="btn y sm" onclick="fpGoVin('${id}')">${btn}</button></div>`;
+ return `<div class="fp-home"><p class="fp-sub">Search any part by name, part number, registration or chassis number.</p>${m2Bar('Search part name, part no., reg no. or chassis no.',S.ui.fpT!=null?S.ui.fpT:f.q)}<p class="cap m2-hint">Mechanics' names work too: brake liner, cone set, T bracket, bend pipe, self gear, sheesha, tanki…</p>${fpVia()}${cupHome()}
+ <div class="fp-lab">Find by bike</div><div class="fp-fb">${VIN_ON?fc('Registration no.','fp-reg','KA 01 AB 1234','Get bike')+fc('Chassis no.','fp-vin','17 letters, e.g. ME1RG6826N0022446','Find model'):''}<div class="fp-fc fp-fm"><h4>Brand · Model · Year</h4>${m2Form(f)}</div></div>
+ <div class="fp-lab">Brands <span>${nIn<BL.length?nIn+' of '+BL.length+' ready':BL.length}</span></div><div class="fp-bts">${brands}</div>
+ ${fpRecRow()}
+ <div class="sec"><h3 class="h2">Shop by category</h3>${f.vb!=='Any'?`<span class="cap">in ${esc(f.vb)}${f.vm!=='Any'?' '+esc(f.vm):''}</span>`:''}</div><div class="row wrap" style="gap:8px">${cats}</div></div>`;}
+function fpGoVin(id){const i=document.getElementById(id),q=i?i.value.trim():'';if(!q){if(i)i.focus();return;}S.ui.vin={q};go('findpart',{v:'vin'});setTimeout(()=>{try{const x=document.getElementById('vin-q');if(x)x.value=q;vinFind();}catch(e){console.error(e);}},60);}
 /* ----- brand > model > engine size > year ----- */
 function m2Brand(p){const vb=p.vb;catLoad(vb);const ld=m2Ld(vb);const ms=BRANDS_V[vb]||[];const fams=[],by=new Map();ms.forEach(m=>{const F=m2Fam(m);let a=by.get(F);if(!a){by.set(F,a=[]);fams.push(F);}a.push(m);});
  const row=F=>{const a=by.get(F);const st=ld==='ok'?a.map(m=>m2Stat(vb,m)):null;const ys=st?[...new Set(st.flatMap(s=>s.ys))].sort((x,y)=>x-y):[];const pn=st?st.reduce((t,s)=>t+s.pn,0):0;const ccs=[...new Set(a.map(m=>MODEL_CC[m]).filter(Boolean))].sort((x,y)=>x-y);
   const bits=[a.length>1?a.length+' models':'',ccs.length?ccs.map(c=>c+'cc').join(', '):'',ys.length?catYrsTxt(ys):'',st?m2N(pn)+' parts':ld==='wait'?'counting…':''].filter(Boolean);
   return `<button class="m2-row" data-n="${esc(F.toLowerCase().replace(/[^a-z0-9]/g,''))}" onclick="m2Pick('${m2Q(vb)}','${m2Q(F)}')"><div class="grow"><div class="h3">${esc(F)}</div><div class="cap">${esc(bits.join(' · '))}</div></div>${ic('chevR','s18')}</button>`;};
- return `${m2Head(esc(vb)+' — choose a model',ms.length+' model'+(ms.length===1?'':'s')+'. Pick a model, then engine size and year.')}${ld==='wait'?m2Wait(vb):ld==='err'?m2Err(vb):''}${ms.length>12?`<div class="inp" style="height:44px">${ic('search','s16')}<input placeholder="Type to filter models" aria-label="Filter models" oninput="m2Mf(this.value)" autocomplete="off"></div>`:''}<div class="stack g8">${fams.map(row).join('')}</div>`;}
+ return `${m2Head(esc(vb)+' — choose a model',ms.length+' model'+(ms.length===1?'':'s')+'. Pick a model, then engine size and year.')}${ld==='wait'?m2Wait(vb):ld==='err'?m2Err(vb):''}${ms.length>12?`<div class="inp" style="height:44px">${ic('search','s16')}<input placeholder="Type to filter models" aria-label="Filter models" oninput="m2Mf(this.value)" autocomplete="off"></div>`:''}<div class="stack g8 m2-cards">${fams.map(row).join('')}</div>`;}
 function m2FamV(p){const {vb,fam}=p;catLoad(vb);const ld=m2Ld(vb);const a=(BRANDS_V[vb]||[]).filter(m=>m2Fam(m)===fam);if(!a.length)return m2Brand({...p,v:'brand'});
  const row=m=>{const st=ld==='ok'?m2Stat(vb,m):null;const cc=MODEL_CC[m];const bits=[cc?cc+'cc':'',st&&st.ys.length?catYrsTxt(st.ys):'',st?m2N(st.pn)+' parts':ld==='wait'?'counting…':''].filter(Boolean);
   return `<button class="m2-row" onclick="go('findpart',{v:'year',vb:'${m2Q(vb)}',vm:'${m2Q(m)}',yr:'Any'})"><div class="grow"><div class="h3">${esc(m2Size(fam,m))}</div><div class="cap">${esc(m)}${bits.length?' · '+esc(bits.join(' · ')):''}</div></div>${ic('chevR','s18')}</button>`;};
- return `${m2Head(esc(fam)+' — choose engine size',a.length+' '+esc(vb)+' '+esc(fam)+' models in the catalogue.')}${ld==='wait'?m2Wait(vb):ld==='err'?m2Err(vb):''}<div class="stack g8">${a.map(row).join('')}</div>`;}
+ return `${m2Head(esc(fam)+' — choose engine size',a.length+' '+esc(vb)+' '+esc(fam)+' models in the catalogue.')}${ld==='wait'?m2Wait(vb):ld==='err'?m2Err(vb):''}<div class="stack g8 m2-cards">${a.map(row).join('')}</div>`;}
 function m2Year(p){const {vb,vm}=p;catLoad(vb);const ld=m2Ld(vb,vm);const head=m2Head(esc(vb)+' '+esc(vm)+' Spare Parts — choose model year','');
  if(ld==='wait')return head+m2Wait(vb);if(ld==='err')return head+m2Err(vb);
  const V=fpVers(vb,vm);const ys=V==='wait'||V==='err'?[]:V.map(g=>g.lab);if(ys.length<2){if((p.vin||p.rcn)&&V!=='wait'){Object.assign(p,{v:'secs',yr:'Any',ed:ys[0]||'Any'});return m2SecsV(p);}return m2SecsV({...p,v:'secs',yr:'Any',ed:ys[0]||'Any'});}
@@ -4395,14 +4400,14 @@ function m2Year(p){const {vb,vm}=p;catLoad(vb);const ld=m2Ld(vb,vm);const head=m
  const row=y=>{const sc=catScope(m2A({vb,vm,ed:y}));const rows=sc&&!sc.loading?sc.rows:[];const pn=new Set();rows.forEach(r=>{if(r.pk)pn.add(r.pk);});const n=m2Secs(rows).length;
   return `<button class="m2-row" onclick="go('findpart',{v:'secs',vb:'${m2Q(vb)}',vm:'${m2Q(vm)}',yr:'Any',ed:'${m2Q(y)}'})"><div class="grow"><div class="h3">${esc(y)}</div><div class="cap">${n} section${n===1?'':'s'}, ${m2N(pn.size)} parts</div></div>${ic('chevR','s18')}</button>`;};
  const st=m2Stat(vb,vm);
- return `${m2Head(esc(vb)+' '+esc(vm)+' Spare Parts — choose model year',ys.length+' versions from the parts books, newest first. Year not listed? Pick the nearest older one.')}<div class="stack g8">${ys.map(row).join('')}<button class="m2-row" onclick="go('findpart',{v:'secs',vb:'${m2Q(vb)}',vm:'${m2Q(vm)}',yr:'Any'})"><div class="grow"><div class="h3">All years</div><div class="cap">Every ${esc(vm)} book · ${st.secs} sections, ${m2N(st.pn)} parts</div></div>${ic('chevR','s18')}</button></div>`;}
+ return `${m2Head(esc(vb)+' '+esc(vm)+' Spare Parts — choose model year',ys.length+' versions from the parts books, newest first. Year not listed? Pick the nearest older one.')}<div class="stack g8 m2-cards">${ys.map(row).join('')}<button class="m2-row" onclick="go('findpart',{v:'secs',vb:'${m2Q(vb)}',vm:'${m2Q(vm)}',yr:'Any'})"><div class="grow"><div class="h3">All years</div><div class="cap">Every ${esc(vm)} book · ${st.secs} sections, ${m2N(st.pn)} parts</div></div>${ic('chevR','s18')}</button></div>`;}
 /* ----- the bike's numbered sections, with a lookup bar ----- */
 function m2SecsV(p){const {vb,vm}=p,yr=p.yr||'Any';const A=m2A({...p,yr});const sc=catScope(A);const ttl=m2Bike({vb,vm,yr,ed:p.ed});
  if(!sc)return m2Head(esc(ttl)+' Spare Parts','')+`<div class="empty">No parts catalogue for ${esc(ttl)} in the app yet.</div>`;if(sc.loading)return m2Head(esc(ttl)+' Spare Parts','')+catSection(sc,A);
  const secs=m2Secs(sc.rows);const pn=new Set();sc.rows.forEach(r=>{if(r.pk)pn.add(r.pk);});const books=[...new Set(sc.rows.map(r=>r.src).filter(Boolean))];
  return `${m2Head(esc(ttl)+' Spare Parts',secs.length+' sections · '+m2N(pn.size)+' parts · '+esc(books.length>2?books.slice(0,2).join(', ')+' and '+(books.length-2)+' more books':books.join(', ')))}
  ${p.vin||p.rcn?vinBanner(p):''}<div class="card m2-look"><div class="h3">${p.vin||p.rcn?'Search parts in this bike':'Specific part lookup'}</div><div class="cap">${p.vin||p.rcn?'Part name, part number or the mechanic’s word: only '+esc(ttl)+' parts show.':'Know the exact part number or name? Search it in '+esc(ttl)+'.'}</div>${m2Bar('Part number or name','')}</div>
- <div class="sec"><h3 class="h2">Sections</h3><span class="cap">${secs.length}</span></div><div class="stack g8">${secs.map((s,i)=>`<button class="m2-row" onclick="m2Sec('${m2Q(s.pg)}')"><span class="m2-num">${i+1}</span><div class="grow"><div class="h3">${esc(catNice(s.asm||s.fig||'Section'))}</div><div class="cap">${esc(s.fig)}${s.fig?' · ':''}${s.pk.size} part${s.pk.size===1?'':'s'}</div></div>${ic('chevR','s18')}</button>`).join('')}</div>`;}
+ <div class="sec"><h3 class="h2">Diagrams</h3><span class="cap">${secs.length}</span></div><div class="stack g8 m2-cards">${secs.map((s,i)=>`<button class="m2-row" onclick="m2Sec('${m2Q(s.pg)}')"><span class="m2-num">${i+1}</span><div class="grow"><div class="h3">${esc(catNice(s.asm||s.fig||'Section'))}</div><div class="cap">${esc(s.fig)}${s.fig?' · ':''}${s.pk.size} part${s.pk.size===1?'':'s'}</div></div>${ic('chevR','s18')}</button>`).join('')}</div>`;}
 /* ----- one section: its diagram and parts table ----- */
 function m2SecV(p){const A=m2A(p);const sc=catScope(A);if(!sc)return `<div class="empty">No catalogue for this bike yet.</div>`;if(sc.loading)return catSection(sc,A);
  const rows=sc.rows.filter(r=>r.page===p.pg);if(!rows.length)return `<div class="empty">This section is empty.</div>`;const r0=rows[0];
@@ -4493,7 +4498,9 @@ function fpFilt(list,p){const f=FP_FF.find(x=>x[0]===p.ff);return f&&f[2]?list.f
 function fpFChips(list,p){const c=FP_FF.map(([k,l,fn])=>[k,l,fn?list.filter(fn).length:list.length]).filter(x=>x[0]==='all'||x[2]);if(c.length<2)return '';
  return `<div class="row wrap" style="gap:6px">${c.map(([k,l,n])=>`<button class="chip ${(p.ff||'all')===k?'on':''}" onclick="cur().p.ff='${k}';cur().p.n=30;refresh()">${l} ${n}</button>`).join('')}</div>`;}
 /* the bike found from the bike number / chassis number, on top of every page */
-function fpBikeBar(p,v){const b=S.ui.fpBike;if(!b||v==='home'||v==='vin'||v==='brand')return '';if(p.vb&&p.vb!=='Any'&&p.vb!==b.vb)return '';
+function fpBikeBar(p,v){const b=S.ui.fpBike;if(!b&&['secs','sec','res'].includes(v)&&p.vb&&p.vb!=='Any'&&p.vm&&p.vm!=='Any'){const cc=MODEL_CC[p.vm],ed=p.ed&&p.ed!=='Any'?p.ed:p.yr&&p.yr!=='Any'?p.yr:'';
+  return `<div class="fp-bike"><div class="grow"><b>${esc([p.vb+' '+p.vm,ed,cc?cc+'cc':''].filter(Boolean).join(' · '))}</b><div class="cap">Picked by brand, model and year</div></div><button class="btn y sm" onclick="go('findpart',{v:'brand',vb:'${m2Q(p.vb)}'})">Change bike</button></div>`;}
+ if(!b||v==='home'||v==='vin'||v==='brand')return '';if(p.vb&&p.vb!=='Any'&&p.vb!==b.vb)return '';
  const rc=b.reg&&RC_SEEN[b.reg]||{},cc=rc.cc||MODEL_CC[b.vm]||'',yr=rc.mfg||b.yr||'';
  const l1=[b.vb+' '+b.vm,yr,rc.fuel,cc?String(cc).replace(/\s*cc$/i,'')+'cc':'',rc.colour].filter(Boolean).join(' · '),ch=rc.chassis||b.vin||'',en=rc.engine||'';
  const chg=b.vin?`vinChange('${m2Q(b.vin)}')`:`S.ui.vin={q:'${m2Q(b.reg||'')}'};go('findpart',{v:'vin'})`;
@@ -7799,6 +7806,25 @@ html.wv .pad .card:has(>label.opt:nth-of-type(3) select)>label.opt{margin:0}
 .m3-ak{display:flex;gap:8px;align-items:center;text-align:left;background:none;border:0;border-radius:8px;padding:5px 4px;font-size:13px;cursor:pointer;width:100%}
 .m3-ak:hover{background:#FFF6D6}.m3-ak .m2-num{min-width:24px;height:24px;font-size:11px}.m3-par{background:#F7F7F8}
 .m3-bike .fp-plate{font-size:15px}
+.fp-home{display:flex;flex-direction:column;gap:14px}
+.fp-sub{color:var(--ink5);margin:-4px 0 2px;font-size:14px}
+.fp-home .fp-sb{border:2px solid var(--ink);border-radius:16px;min-height:58px}
+.fp-lab{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink5);margin-top:10px;display:flex;justify-content:space-between}
+.fp-lab span{letter-spacing:0;text-transform:none;font-weight:600}
+.fp-fb{display:grid;gap:14px;align-items:start}
+.fp-fc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.fp-fc h4{font-size:15px;font-weight:800;margin:0}
+.fp-fc input{height:46px;border:1px solid var(--line);border-radius:10px;background:var(--paper);padding:0 14px;font:inherit;font-weight:700;font-size:15px;letter-spacing:.3px;color:var(--ink);min-width:0}
+.fp-fc>.btn{align-self:flex-start}
+.fp-fm .m2-veh{border:0;padding:0;background:none;box-shadow:none;margin:0}.fp-fm .m2-veh>.row{display:none}.fp-fm .m2-grid{grid-template-columns:1fr 1fr}
+.fp-bts{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.fp-bt{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;text-align:left;color:var(--ink);transition:border-color .2s,transform .2s}
+.fp-bt:hover{border-color:var(--y);transform:translateY(-1px)}.fp-bt.off{opacity:.6}
+.fp-bt b{display:block;font-size:15px}.fp-bt .cap{display:block}
+.fp-bl{width:46px;height:46px;border-radius:12px;background:#111;color:#FFC400;display:grid;place-items:center;font-weight:800;font-size:18px;flex:none}
+@media(min-width:900px){.fp-fb{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .m2-cards{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+ .m2-cards>.m2-row{flex-direction:column;align-items:flex-start;gap:8px;min-height:104px;border-radius:16px}.m2-cards>.m2-row>svg:last-child{display:none}}
 .m3-tc,.m3-th{display:none}
 .m3-facts{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;border-top:1px solid var(--line);padding-top:10px}.m3-facts>div{display:flex;flex-direction:column;min-width:0}.m3-facts span{font-size:11px;color:var(--muted)}.m3-facts b{font-size:13px;overflow-wrap:anywhere}.m3-facts .m3-wide{grid-column:1/-1}
 @container (min-width:680px){.m3a .m3-c2{grid-column:1/-1}.m3a .m3-list{max-height:none;overflow:hidden;border:1px solid var(--line);border-radius:14px;background:var(--card)}
@@ -7918,7 +7944,7 @@ function dash(pad,anim){const kids=[...pad.children];if(!kids.length)return [];
  return [hero,...kp,...L.children,...Rc.children,...(tools?tools.children:[])].filter(Boolean);}
 function pageify(pad){if(pad.classList.contains('fpw'))return [];
  const nIn=pad.querySelectorAll('input:not([type=checkbox]):not([type=radio]):not([type=hidden]),select,textarea').length,nLi=pad.querySelectorAll('.li,.pcard,.mcard').length;
- const form=nIn>=2&&nLi<6&&!pad.querySelector('.grid2>:nth-child(4),.grid3>:nth-child(4),.grid4>:nth-child(4)');if(form)pad.classList.add('wv-form');
+ const form=nIn>=2&&nLi<6&&!pad.classList.contains('m2')&&!pad.querySelector('.grid2>:nth-child(4),.grid3>:nth-child(4),.grid4>:nth-child(4)');if(form)pad.classList.add('wv-form');
  if(!form){const kids=[...pad.children];let run=[];const flush=()=>{if(run.length>=2){const g=document.createElement('div');g.className='wv-cards';run[0].before(g);g.append(...run);}run=[];};
   kids.forEach(k=>{if(k.matches('div.card:not(.flush)')&&!k.querySelector('input,select,textarea'))run.push(k);else flush();});flush();}
  return [...pad.children];}

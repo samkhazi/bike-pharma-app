@@ -11,6 +11,8 @@ echo "== bikepharma.com check"
 
 h=$(curl -s --max-time 8 "http://127.0.0.1:$PORT/api/health" 2>/dev/null)
 case "$h" in *'"ok":true'*) ok "app chal raha hai (port $PORT) $h";; *) bad "app port $PORT pe jawab nahi de raha. Logs: npx pm2 logs bikepharma --lines 50";; esac
+dp=$(df -P . 2>/dev/null | awk 'NR==2{gsub("%","",$5); print $5}'); fr=$(df -Ph . 2>/dev/null | awk 'NR==2{print $4}')
+if [ -n "$dp" ] && [ "$dp" -lt 85 ]; then ok "disk ${dp}% bhari (${fr} khaali)"; else bad "disk ${dp}% bhari, sirf ${fr} khaali: disk bhar gayi to site ruk jayegi. Ye line mujhe bhejo"; fi
 pa=$(printf '%s' "$h" | grep -o '"photoAi":{[^}]*}' || true)
 case "$pa" in
   *'"state":"ready"'*|*'"state":"working"'*) ok "photo AI taiyaar (photo ka background white + halka logo)";;

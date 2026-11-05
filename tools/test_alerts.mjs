@@ -27,7 +27,7 @@ const smtp = net.createServer(s => {
 }).listen(3024);
 await new Promise(r => { const a = spawn('node', ['--no-warnings', 'admin.mjs', 'add-admin', 'sam@bikepharma.com', 'Sam', '--password', 'Test@1234'], { env: { ...process.env, DATA_DIR: T + '/data' } }); a.on('exit', r); });
 const env = { ...process.env, PORT: '3023', DATA_DIR: T + '/data', FILES_DIR: T + '/pf', PHOTO_AI: 'off', SMTP_HOST: '127.0.0.1', SMTP_PORT: '3024', SMTP_TLS: 'off', SMTP_USER: 'alerts@test.in', SMTP_PASS: 'abcd efgh ijkl mnop',
-  ALERT_TO: 'one@test.in, two@test.in', MONITOR_TICK_MS: '700', REPORT_AT: '0', ALERT_WATCH_FILES: T + '/nginx.conf' };
+  ALERT_TO: 'one@test.in, two@test.in', MONITOR_TICK_MS: '700', REPORT_AT: '0', ALERT_WATCH_FILES: T + '/nginx.conf', DISK_ALERT_PCT: '1' };
 const srv = spawn('node', ['--no-warnings', 'server.mjs'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
 let log = ''; srv.stdout.on('data', d => log += d); srv.stderr.on('data', d => log += d);
 const BASE = 'http://127.0.0.1:3023', wait = ms => new Promise(r => setTimeout(r, ms));
@@ -41,6 +41,8 @@ try {
   ok(m0.to.join() === 'one@test.in,two@test.in' && auth[0] === 'alerts@test.in' && auth[1] === 'abcdefghijklmnop', 'to both addresses, logged in with the Gmail App Password (spaces taken out)');
   ok(/Products added (today|that day)/.test(m0.text) && /BIKE PHARMA/.test(m0.html) && m0.pdf && m0.pdf.slice(0, 5).toString() === '%PDF-' && /%%EOF\s*$/.test(m0.pdf.toString('latin1')), 'the report: plain text, a designed html email and a PDF attached');
   await wait(1500); ok(!mails.some(m => /server started/i.test(m.subject)), '12z: no email when the server starts');
+  ok(await until(() => mail(/Server disk \d+% full/)) && /Free: [\d.]+ GB of [\d.]+ GB/.test(mail(/Server disk/).text), '2026-11-05: disk over the limit (1% here): an alert with the free space');
+  await wait(2000); ok(mails.filter(m => /Server disk/.test(m.subject)).length === 1, 'the disk alert goes once a day, not every check');
   // first good login from one IP, then wrong passwords from another
   let r = await login('10.0.0.1', 'Test@1234'); const cookie = (r.headers.get('set-cookie') || '').split(';')[0]; await r.json();
   for (let i = 0; i < 10; i++) await (await login('6.6.6.6', 'nope' + i)).json();

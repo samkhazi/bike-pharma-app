@@ -633,7 +633,7 @@ async function photoUpload(req, res, user, url) {
   if (!fs.existsSync(file)) {
     fs.mkdirSync(PHOTO_DIR, { recursive: true });
     const tmp = file + '.' + crypto.randomBytes(6).toString('hex') + '.tmp';
-    fs.writeFileSync(tmp, b); fs.renameSync(tmp, file);
+    try { fs.writeFileSync(tmp, b); fs.renameSync(tmp, file); } catch (e) { fs.rmSync(tmp, { force: true }); throw e; }   // a full disk leaves no half photo behind
     console.log(new Date().toISOString(), 'product photo saved', name, b.length, 'by', user.id);
   }
   const h = name.slice(0, 32);

@@ -57,3 +57,6 @@ echo "0 21 * * 6  cd $BS && .venv/bin/python sync.py hero_dms >> $SYNC/logs/cron
 echo "0 1 * * 0  cd $BS && .venv/bin/python sync.py hero >> $SYNC/logs/cron.log 2>&1"
 echo "0 10 * * 0  cd $BS && .venv/bin/python sync.py honda >> $SYNC/logs/cron.log 2>&1   # login code: link comes by email"
 echo "0 14 * * 0  cd $BS && .venv/bin/python sync.py tvs >> $SYNC/logs/cron.log 2>&1   # OTP: link comes by email"
+echo "0 12 * * 0  cd $BS && .venv/bin/python sync.py yamaha >> $SYNC/logs/cron.log 2>&1   # YAMAHA_USER/PASS in .env; OTP link by email only if asked"
+echo "0 3 * * 0  cd $BS && .venv/bin/python sync.py bajaj >> $SYNC/logs/cron.log 2>&1   # BAJAJ_EPC_USER/PASS in .env"
+echo "0 5 * * 0  cd $BS && .venv/bin/python sync.py re_spares >> $SYNC/logs/cron.log 2>&1   # Royal Enfield spares store, no login"

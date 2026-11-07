@@ -14,6 +14,7 @@ EPC has no real MRP (its cart shows a dummy $5.99 for every part). MRP comes fro
   RE_MRP_WEBHOOK (+ RE_MRP_WEBHOOK_TOKEN) as JSON, like HERO_MRP_WEBHOOK. spares.royalenfield.com is not used.
 Only reads: no cart, order or save button is ever touched. Other regions are never opened.
 """
+from pathlib import Path
 import os, re, csv, json, gzip, glob, html, time, hashlib, logging, collections
 from common import env, data_dir, load_json, save_json, today, Report
 
@@ -128,6 +129,57 @@ window.reSvgMany = async jobs => { const r = await rePool(jobs, 4, j => reSvg(j[
 """
 
 
+import re as _re
+import shutil
+from urllib.parse import unquote
+
+HEADLESS = os.getenv('RE_HEADLESS', '0').strip() == '1'   # Akamai: headless 403 deta hai, isliye default headful + xvfb
+
+
+def _channel():
+    v = os.getenv('RE_CHANNEL', 'auto').strip()
+    if v == 'none':
+        return None
+    if v not in ('', 'auto'):
+        return v
+    for b in ('google-chrome', 'google-chrome-stable', 'chrome', 'chromium', 'chromium-browser'):
+        if shutil.which(b):
+            return 'chrome'
+    return None
+
+
+CHANNEL = _channel()
+
+
+def _sid():
+    import secrets, string
+    return ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10))
+
+
+def _proxy():
+    raw = os.getenv('RE_EPC_PROXY', '').strip()
+    if not raw:
+        return None
+    m = _re.match(r'^(socks5h?|http|https)://(?:([^:@/]+):([^@/]+)@)?([^:/]+):(\d+)/?$', raw)
+    if not m:
+        return {'server': raw}
+    scheme, u, pw, host, port = m.groups()
+    d = {'server': '%s://%s:%s' % (scheme, host, port)}
+    if u:
+        u = unquote(u)
+        if '_session-' in u and os.getenv('RE_EPC_ROTATE', '1') != '0':
+            u = _re.sub(r'session-[A-Za-z0-9]+', 'session-' + _sid(), u)
+        d['username'] = u
+        d['password'] = unquote(pw)
+    return d
+
+
+def _ck():
+    d = Path(data_dir('royal_enfield'))
+    d.mkdir(parents=True, exist_ok=True)
+    return d / 'cookies.json'
+
+
 def num(v):
     try: return float(str(v).replace(',', '').replace('₹', '').strip())
     except (TypeError, ValueError): return None
@@ -181,23 +233,46 @@ class RoyalEnfield:
         except Exception:
             return False
 
+    def save_cookies(self, page):
+        try:
+            import json as _j, pathlib as _p
+            f = Path(data_dir('royal_enfield')) / 'cookies.json'
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text(_j.dumps(page.context.cookies(), indent=1))
+            f.chmod(0o600)
+        except Exception as e:
+            log.warning('RE EPC: cookie save failed: %s', e)
+
     def login(self, page):
         dealer = env('RE_EPC_DEALER', '')
+        try:
+            import json as _j, pathlib as _p
+            _ck = Path(data_dir('royal_enfield')) / 'cookies.json'
+            if _ck.exists():
+                _cl = _j.loads(_ck.read_text())
+                page.context.add_cookies(_cl)
+                log.info('RE EPC: injected %d saved cookies', len(_cl))
+        except Exception as e:
+            log.warning('RE EPC: cookie inject failed: %s', e)
         url = BASE + '/ACD/delivery/index.jsp' + (f'?dealer={dealer}' if dealer else '')
-        page.goto(url, wait_until='load')
+        page.goto(url, wait_until='domcontentloaded', timeout=180000)
         for _ in range(20):                                    # the app sets the selected dealer after it starts
             page.wait_for_timeout(1500)
             if page.locator('#username').count() or page.evaluate("() => !!sessionStorage.getItem('SELECTED_DEALER')"):
                 break
         if self.logged_in(page):
+            self.save_cookies(page)
             log.info('RE EPC: still logged in (saved browser profile)'); return
+        body = page.evaluate("() => (document.title + ' ' + (document.body ? document.body.innerText : '')).slice(0, 300)")
+        if re.search(r'Access Denied|Forbidden|Reference\s*#', body, re.I):
+            raise SystemExit(f"RE EPC ne is machine ko andar nahi aane diya (Akamai 'Access Denied'), login tak pahunche hi nahi. "
+                             f"RE sync aisi machine pe chalao jahan browser me epc.royalenfield.com khulta hai. ({self.shot(page, 'blocked')})")
         if not page.locator('#username:visible').count():
             try:
                 page.locator('text=LOGIN').first.click(timeout=60000)
                 page.wait_for_selector('#username:visible', timeout=30000)
             except Exception:
-                body = ' '.join((page.locator('body').inner_text(timeout=5000) or '').split())[:300] if page.locator('body').count() else ''
-                raise SystemExit(f"RE EPC: login page nahi khula. URL {page.url} | title '{page.title()}' | page: {body} | screenshot {self.shot(page, 'no_login')}")
+                raise SystemExit(f"RE EPC login page nahi khula: {page.url} | {body[:150]} ({self.shot(page, 'no_login')})")
         page.fill('#username', env('RE_EPC_USER', required=True))
         page.fill('#password', env('RE_EPC_PASS', required=True))
         page.click('#ok')
@@ -205,6 +280,7 @@ class RoyalEnfield:
         while time.time() < end:
             page.wait_for_timeout(2000)
             if page.evaluate("() => !!sessionStorage.getItem('SELECTED_DEALER')") and self.logged_in(page):
+                self.save_cookies(page)
                 log.info('RE EPC login ok'); return
             if page.locator('#username:visible').count():
                 msg = ' '.join(t.strip() for t in page.locator('.alert:visible, .error:visible, .text-danger:visible, #errorMsg:visible').all_inner_texts())[:200]
@@ -233,12 +309,25 @@ class RoyalEnfield:
         self.changes, self.new_parts, self.gone, self.swaps_now = [], [], [], []
         affected, new_variants = set(st.get('pending_pdf') or []), []
         with sync_playwright() as p:
-            ctx = p.chromium.launch_persistent_context(data_dir('royal_enfield', 'browser'), args=['--disable-dev-shm-usage', '--js-flags=--max-old-space-size=4096'],
-                                                       headless=env('RE_HEADFUL', '') == '', viewport={'width': 1500, 'height': 900})
+            kw = {}
+            _px = env('RE_EPC_PROXY', '')
+            if _px:
+                from urllib.parse import urlparse, unquote
+                _u = urlparse(_px if '://' in _px else 'http://' + _px)
+                kw['proxy'] = {'server': f'{_u.scheme}://{_u.hostname}:{_u.port or 80}'}
+                if _u.username:
+                    kw['proxy']['username'] = unquote(_u.username)
+                    kw['proxy']['password'] = unquote(_u.password or '')
+            kw.setdefault('args', ['--no-sandbox', '--disable-dev-shm-usage',
+                                   '--disable-blink-features=AutomationControlled',
+                                   '--window-size=1500,900'])
+            kw.setdefault('ignore_default_args', ['--enable-automation'])
+            ctx = p.chromium.launch_persistent_context(
+                data_dir('royal_enfield', 'browser'),
+                headless=HEADLESS,
+                channel=CHANNEL,
+                viewport={'width': 1500, 'height': 900}, **kw)
             page = ctx.pages[0] if ctx.pages else ctx.new_page()
-            if env('RE_FRESH_LOGIN'):                        # test: forget the saved login, do the full login
-                ctx.clear_cookies(); page.goto(BASE + '/ACD/delivery/index.jsp', wait_until='load'); page.evaluate('() => { localStorage.clear(); sessionStorage.clear(); }')
-                log.info('RE EPC: saved login cleared (RE_FRESH_LOGIN)')
             page.set_default_timeout(600000)
             try:
                 self.login(page)
@@ -249,8 +338,12 @@ class RoyalEnfield:
                 if not ind:
                     raise RuntimeError(f"EPC me '{region}' region nahi mila ({', '.join(r['n'] for r in regs)})")
                 models = self.call(page, 'id => reChildren(id)', ind['id'])
+                lim = int(os.getenv('RE_EPC_LIMIT', '0') or 0)
+                if lim:
+                    models = models[:lim]
+                    log.info('RE EPC: sirf %d model (RE_EPC_LIMIT)', lim)
                 log.info('RE EPC: %d models in %s', len(models), region)
-                if len(models) < 0.8 * len(st['models']):
+                if not lim and len(models) < 0.8 * len(st['models']):
                     raise RuntimeError(f'EPC ne sirf {len(models)} models diye (pichli baar {len(st["models"])}) - kuch nahi badla')
                 names = [m['n'] for m in models]
                 for n in sorted(set(names) - set(st['models'])):
@@ -299,7 +392,10 @@ class RoyalEnfield:
                 st['pending_pdf'] = sorted(affected)
                 save_json(self.state_path, st)
                 self.fetch_svgs(page, rep, live, affected)
-                self.build_pdfs(ctx, rep)
+                if os.getenv('SKIP_PDFS') == '1' or os.getenv('RE_PDF', '1') == '0':
+                    log.info('RE EPC: PDF skip (SKIP_PDFS=1 / RE_PDF=0), SVG aur Excel ban gaye')
+                else:
+                    self.build_pdfs(ctx, rep)
             finally:
                 ctx.close()
         self.read_mrp(rep)
@@ -449,7 +545,7 @@ class RoyalEnfield:
         open(tmp, 'w', encoding='utf-8').write(doc)
         pg = ctx.new_page()
         try:
-            pg.goto('file://' + tmp, wait_until='load')
+            pg.goto(Path(tmp).resolve().as_uri(), wait_until='load')
             pg.pdf(path=path, format='A4', print_background=True)
         finally:
             pg.close(); os.remove(tmp)

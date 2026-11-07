@@ -293,12 +293,59 @@ class Honda:
                 return
             time.sleep(2)
 
+    def auto_login(self, page):
+        """captcha login page ke #vercode se khud bharti hai (code wahan plain hai). Password expire ho to naya
+        bana ke .env me likh deti hai. Kuch bhi galat lage to False: phir purana code-page wala raasta chalta hai."""
+        self.open_login(page)
+        code = page.evaluate("() => (document.querySelector('#vercode')||{}).value || ''")
+        if not code:
+            return False
+        page.type('#txtVerification', code, delay=80)
+        page.click(self.first(page, '#btn_Login', '#btnEnter'))
+        try: page.wait_for_load_state('networkidle', timeout=60000)
+        except Exception: pass
+        page.wait_for_timeout(4000)
+        if page.locator('#txtNewPassword').count() and page.locator('#txtNewPassword').is_visible():
+            old = env('HONDA_PASS', required=True)
+            new = old + '1'
+            page.fill('#txtNewPassword', new)
+            page.fill('#txtConfirmPassword', new)
+            page.click('#btnPassword')
+            try: page.wait_for_load_state('networkidle', timeout=60000)
+            except Exception: pass
+            page.wait_for_timeout(4000)
+            if 'home' not in page.url.lower():
+                page.goto(BASE + '/Home.aspx', wait_until='domcontentloaded'); page.wait_for_timeout(3000)
+            if not self.logged_in(page):
+                return False
+            self.save_pass(new)
+            log.warning('Honda: password expire tha, naya bana ke .env me likh diya (%s)', new)
+            return True
+        if 'home' not in page.url.lower():
+            page.goto(BASE + '/Home.aspx', wait_until='domcontentloaded'); page.wait_for_timeout(3000)
+        return self.logged_in(page)
+
+    def save_pass(self, new):
+        """naya password .env me (file ka baaki sab waisa hi)"""
+        try:
+            from common import ROOT
+            p = os.path.join(ROOT, '.env')
+            t = open(p, encoding='utf-8').read()
+            open(p, 'w', encoding='utf-8').write(re.sub(r'(?m)^HONDA_PASS=.*$', 'HONDA_PASS=' + new, t))
+        except Exception as e:
+            log.warning('Honda: .env me naya password likhne me dikkat: %s', e)
+
     def login(self, page):
         page.goto(BASE + '/Home.aspx', wait_until='domcontentloaded')
         page.wait_for_timeout(3000)
         if self.logged_in(page):
             log.info('Honda: still logged in (saved browser profile)'); return
         said = []
+        if env('HONDA_AUTO_CODE', '1') != '0':        # captcha khud bhar ke dekho, mail tabhi jab na ho
+            for t_ in range(2):
+                if self.auto_login(page):
+                    log.info('Honda login ok (captcha khud bhari)'); return
+                log.warning('Honda: auto captcha try %d fail, agli koshish', t_ + 1)
         page.on('dialog', lambda d: (said.append(d.message), d.dismiss()))
         port = int(env('HONDA_CODE_PORT', '8766'))
         cp = CodePage(port)

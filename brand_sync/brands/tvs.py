@@ -19,6 +19,7 @@ Server update: TVS_MRP_WEBHOOK (+ TVS_MRP_WEBHOOK_TOKEN) gets MRP changes as JSO
 import os, io, re, csv, json, gzip, time, html, hashlib, secrets, logging, threading
 from notify import send_code_link
 from common import env, data_dir, load_json, save_json, today, Report
+UA = env('TVS_UA', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36')
 
 log = logging.getLogger('brand_sync.tvs')
 BASE = 'https://advantagetvs.in'
@@ -186,8 +187,103 @@ class TVS:
         except Exception: pass
         page.wait_for_timeout(2000)
 
+    def api_login(self, page):
+        """OTP-free login: LiteApp ka JSON endpoint, cookie browser me daal do."""
+        import json as _j, urllib.request as _u, http.cookiejar as _c
+        B = BASE.rstrip('/')
+        cj = _c.CookieJar(); op = _u.build_opener(_u.HTTPCookieProcessor(cj))
+        UA = env('TVS_UA', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36')
+        body = _j.dumps({'DEALER_ID': env('TVS_DEALER_ID', required=True),
+                         'ROLE_ID': env('TVS_ROLE_ID', '3'), 'BRANCH_ID': env('TVS_BRANCH_ID', '2'),
+                         'lang': 'en', 'LOGIN_ID': env('TVS_USER', required=True),
+                         'PASSWORD': env('TVS_PASS', required=True)}).encode()
+        r = _u.Request(B + '/OnlineSalesWebAPI/Login/CheckLoginValidation', data=body, method='POST')
+        for k, v in {'User-Agent': UA, 'Content-Type': 'application/json',
+                     'Origin': B, 'Referer': B + '/LiteApp/session/signin'}.items(): r.add_header(k, v)
+        try:
+            with op.open(r, timeout=60) as x: res = _j.loads(x.read().decode('utf8', 'replace'))
+        except Exception as e:
+            log.warning('TVS: API login nahi chala: %s', e); return False
+        if res.get('statusCode') != 200:
+            log.warning('TVS: API login reject: %s', res.get('message')); return False
+        ck = [{'name': c.name, 'value': c.value, 'domain': 'www.advantagetvs.in', 'path': '/'} for c in cj]
+        if not ck:
+            log.warning('TVS: API login se cookie nahi mili'); return False
+        page.context.add_cookies(ck)
+        page.goto(BASE + '/Home.aspx', wait_until='domcontentloaded', timeout=90000)
+        page.wait_for_timeout(2500)
+        if not self.logged_in(page):
+            log.warning('TVS: API login ke baad bhi login page'); return False
+        log.info('TVS: API login ok (bina OTP)')
+        if env('TVS_CLASSIC_HTTP', '1') == '0':
+            return True
+        # classic pages ke liye classic session bhi chahiye — woh bhi HTTP se, bina OTP
+        try:
+            self.classic_login_http(page)
+        except Exception as e:
+            log.warning('TVS: classic HTTP login nahi chala (%s) — browser login pe chhod rahe hain', e)
+            return False
+        return True
+
+    def classic_login_http(self, page):
+        """Login.aspx ka 4-step async postback HTTP se (OTP field khali)."""
+        import urllib.request as _u, urllib.parse as _up, http.cookiejar as _c
+        B = BASE.rstrip('/')
+        UA = env('TVS_UA', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36')
+        cj = _c.CookieJar(); op = _u.build_opener(_u.HTTPCookieProcessor(cj))
+
+        def get(p):
+            r = _u.Request(B + p); r.add_header('User-Agent', UA)
+            with op.open(r, timeout=90) as x: return x.read().decode('utf8', 'replace')
+
+        def form_of(h):
+            f = {}
+            for m in re.finditer(r']*>', h):
+                tag = m.group(0); n = re.search(r'name="([^"]+)"', tag)
+                if n and 'submit' not in tag:
+                    v = re.search(r'value="([^"]*)"', tag); f[n.group(1)] = v.group(1) if v else ''
+            return f
+
+        def delta(resp):
+            out = {}; p_ = resp.split('|'); i = 0
+            while i + 3 < len(p_):
+                if p_[i].isdigit():
+                    if p_[i + 1] == 'hiddenField': out[p_[i + 2]] = p_[i + 3]
+                    i += 4
+                else:
+                    i += 1
+            return out
+
+        def apost(st, extra, panel):
+            f = dict(st); f.update(extra)
+            f['__ASYNCPOST'] = 'true'; f['scr1'] = 'UpdatePanel1|' + panel
+            r = _u.Request(B + '/Login.aspx', data=_up.urlencode(f).encode(), method='POST')
+            for k, v in {'User-Agent': UA, 'Content-Type': 'application/x-www-form-urlencoded',
+                         'X-MicrosoftAjax': 'Delta=true', 'X-Requested-With': 'XMLHttpRequest',
+                         'Referer': B + '/Login.aspx', 'Origin': B}.items(): r.add_header(k, v)
+            with op.open(r, timeout=90) as x: resp = x.read().decode('utf8', 'replace')
+            st.update(delta(resp)); return resp
+
+        d = env('TVS_DEALER_ID', required=True)
+        cs = '{"enabled":true,"emptyMessage":"","validationText":"%s","valueAsString":"%s"}' % (d, d)
+        st = form_of(get('/Login.aspx'))
+        apost(st, {'__EVENTTARGET': '', '__EVENTARGUMENT': '', 'txtDealerId': d, 'txtDealerId_ClientState': cs, 'btnGo': '...'}, 'btnGo')
+        apost(st, {'__EVENTTARGET': 'txtDealerId', '__EVENTARGUMENT': '', 'txtDealerId': d, 'txtDealerId_ClientState': cs}, 'txtDealerId')
+        apost(st, {'__EVENTTARGET': 'ddlRoles', '__EVENTARGUMENT': '', 'txtDealerId': d, 'txtDealerId_ClientState': cs,
+                   'ddlRoles': env('TVS_ROLE_ID', '3'), 'ddlBranch': '-1'}, 'ddlRoles')
+        res = apost(st, {'__EVENTTARGET': '', '__EVENTARGUMENT': '', 'txtDealerId': d, 'txtDealerId_ClientState': cs,
+                         'ddlRoles': env('TVS_ROLE_ID', '3'), 'ddlBranch': env('TVS_BRANCH_ID', '2'),
+                         'ddlLanguage': 'ENGLISH', 'txtUserID': env('TVS_USER', required=True),
+                         'txtPassword': env('TVS_PASS', required=True), 'txtOTP': '', 'btnOk': ''}, 'btnOk')
+        if re.search(r'id="lblMsg"[^>]*>\s*[^<\s]', res):
+            raise RuntimeError('classic login reject')
+        ck = [{'name': c.name, 'value': c.value, 'domain': 'www.advantagetvs.in', 'path': '/'} for c in cj]
+        if ck: page.context.add_cookies(ck)
+        log.info('TVS: classic HTTP login ok (OTP ke bagair)')
     def login(self, page):
         dealer = env('TVS_DEALER_ID', required=True); user = env('TVS_USER', required=True); pw = env('TVS_PASS', required=True)
+        if env('TVS_API_LOGIN', '0') != '0' and self.api_login(page):
+            return
         # open the real login page first (Home.aspx timed out from the server); 3 tries
         for i in range(3):
             try:
@@ -240,29 +336,115 @@ class TVS:
         log.info('TVS login ok')
 
     # ---------- NDP-MRP list ----------
-    def ndp_mrp(self, page):
-        for _ in range(3):
-            page.goto(BASE + '/Parts/NewNdpMrp.aspx', wait_until='domcontentloaded'); page.wait_for_timeout(3000)
-            if page.locator('#MainContent_btnExptExcel').count():
-                break
-        else:
-            raise RuntimeError(f"NDP-MRP page did not open ({self.shot(page, 'ndp_page')})")
-        self.clear_overlay(page)
-        with page.expect_download(timeout=30 * 60 * 1000) as dl:
-            page.click('#MainContent_btnExptExcel', timeout=60000)
-        f = os.path.join(self.dir, f'ndp_mrp_{today()}' + (os.path.splitext(dl.value.suggested_filename)[1] or '.xls'))
-        dl.value.save_as(f)
-        rows = self.read_table(f)
+    # 19: the grid page is a plain postback form. Cookies from the live tab are enough to GET it and to fire the
+    # Export-Excel postback over HTTP - no rendering, no download event. MRP wobbles on ~0.5% of rows between
+    # requests (server side), so the export is taken 3x and voted per part.
+    def _ndp_http(self, page, tries=3):
+        import http.cookiejar, urllib.request
+        UA = env('TVS_UA', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36')
+        cj = http.cookiejar.CookieJar()
+        for c in page.context.cookies():
+            cj.set_cookie(http.cookiejar.Cookie(0, c['name'], c['value'], None, False, c['domain'], True, False,
+                                                c['path'], True, False, None, False, None, None, {}))
+        op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+        url = BASE + '/Parts/NewNdpMrp.aspx'
+        last = None
+        for _ in range(tries):
+            q = urllib.request.Request(url)
+            q.add_header('User-Agent', UA); q.add_header('Referer', BASE + '/Home.aspx')
+            try:
+                h = op.open(q, timeout=180).read().decode('utf8', 'replace')
+            except Exception as e:                                            # noqa: BLE001
+                last = e; time.sleep(5); continue
+            if '__VIEWSTATE' in h and 'gvPartDetails' in h:
+                return op, url, h
+            last = 'no viewstate'
+            time.sleep(5)
+        raise RuntimeError(f'NDP-MRP page did not open ({last}) - {self.shot(page, "ndp_page")}')
+
+    def _ndp_post(self, op, url, html):
+        import html as H, urllib.parse, urllib.request
+        m = None
+        for mm in re.finditer(r'<form[^>]*>', html):
+            m = mm
+        body = html[m.end(): html.rindex('</form>')]
+        act = re.search(r'action="([^"]*)"', m.group(0))
+        act = urllib.parse.urljoin(url, H.unescape(act.group(1))) if act else url
+
+        def attrs(s):
+            d = {}
+            for k, v in re.findall(r'([\w:-]+)\s*=\s*"([^"]*)"', s):
+                d[k.lower()] = H.unescape(v)
+            return d
+
+        fields = []
+        for tag in re.finditer(r'<input\b([^>]*)>', body):
+            a = attrs(tag.group(1)); n = a.get('name')
+            if not n:
+                continue
+            if a.get('type', 'text').lower() in ('submit', 'button', 'image', 'reset') and not re.search(r'expt|excel|export', n, re.I):
+                continue
+            fields.append((n, a.get('value', '')))
+        for tag in re.finditer(r'<select\b([^>]*)>(.*?)</select>', body, re.S):
+            a = attrs(tag.group(1)); n = a.get('name')
+            if not n:
+                continue
+            sel = (re.search(r'<option[^>]*selected[^>]*value="([^"]*)"', tag.group(2))
+                   or re.search(r'<option[^>]*value="([^"]*)"', tag.group(2)))
+            fields.append((n, H.unescape(sel.group(1)) if sel else ''))
+        fields.append(('ctl00$MainContent$gvPartDetails$ctl00$SortExpression', 'PartNo'))   # stable paging order
+        fields += [('__EVENTTARGET', ''), ('__EVENTARGUMENT', ''), ('__LASTFOCUS', '')]
+        q = urllib.request.Request(act, data=urllib.parse.urlencode(fields).encode())
+        q.add_header('User-Agent', UA); q.add_header('Referer', url)
+        q.add_header('Content-Type', 'application/x-www-form-urlencoded')
+        return op.open(q, timeout=600).read()
+
+    def _ndp_parse(self, path):
         out = {}
-        for r in rows:
+        for r in self.read_table(path):
             k = {re.sub(r'[^a-z]', '', (a or '').lower()): v for a, v in r.items()}
             pn = str(k.get('partno') or k.get('partnumber') or '').strip().lstrip("'").strip().upper()   # TVS writes 'G2010170
             if not pn:
                 continue
             out[pn] = {'desc': str(k.get('partdesc') or k.get('partdescription') or '').strip(),
                        'ndp': num(k.get('ndp') or k.get('rolndp')), 'mrp': num(k.get('mrp')),
-                       'eff': str(k.get('effectivefrom') or k.get('effectivefromdate') or '').strip()[:10], 'region': str(k.get('region') or '').strip()}
-        log.info('NDP-MRP: %d parts (%s)', len(out), os.path.basename(f))
+                       'eff': str(k.get('effectivefrom') or k.get('effectivefromdate') or '').strip()[:10],
+                       'region': str(k.get('region') or '').strip()}
+        return out
+
+    def ndp_mrp(self, page, passes=3):
+        from collections import Counter
+        self.clear_overlay(page)
+        op, url, html = self._ndp_http(page)
+        got = []
+        for i in range(passes):
+            if i:
+                op, url, html = self._ndp_http(page)
+            raw = self._ndp_post(op, url, html)
+            pf = os.path.join('/tmp', f'ndp_pass_{i}.xls')
+            open(pf, 'wb').write(raw)
+            got.append(self._ndp_parse(pf))
+            log.info('NDP-MRP pass %d/%d: %d parts, %d bytes', i + 1, passes, len(got[-1]), len(raw))
+        parts = set(got[0])
+        for g in got[1:]:
+            parts &= set(g)
+        out = {}
+        for pn in parts:
+            vals = [g[pn] for g in got]
+            rec = {}
+            for k in ('desc', 'eff', 'region'):
+                c = Counter(v[k] for v in vals if v[k])
+                rec[k] = c.most_common(1)[0][0] if c else ''
+            for k in ('ndp', 'mrp'):
+                v = sorted(x[k] for x in vals if x[k] is not None)
+                rec[k] = v[len(v) // 2] if v else None                            # median breaks 3-way ties
+            out[pn] = rec
+        f = os.path.join(self.dir, f'ndp_mrp_{today()}.xls')
+        with open(f, 'w', encoding='utf8') as fh:
+            fh.write('PartNo\tPartDescription\tRol_NDP\tMRP\tRegion\tEffective_From_Date\n')
+            for pn, r in sorted(out.items()):
+                fh.write(f"{pn}\t{r['desc']}\t{r['ndp']}\t{r['mrp']}\t{r['region']}\t{r['eff']}\n")
+        log.info('NDP-MRP: %d parts from %d passes (%s)', len(out), passes, os.path.basename(f))
         return out
 
     def clear_overlay(self, page):

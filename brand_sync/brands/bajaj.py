@@ -71,11 +71,14 @@ class Bajaj:
         out = {}
         for s in self.api_all('sku-details-custom'):
             b = s.get('brand') or {}
+            if not isinstance(b, dict): b = {'brand_name': str(b)}
             v = b.get('brand_vertical') or {}
-            out[s['sku_code'].strip()] = {
-                'desc': (s.get('sku_description') or '').strip(),
-                'brand': (b.get('brand_name') or '').strip(),
-                'vertical': (v.get('name') if isinstance(v, dict) else str(v or '')).strip(),
+            code = str(s.get('sku_code') or '').strip()
+            if not code: continue                          # 17w: the EPC sometimes sends a SKU with no code or empty fields
+            out[code] = {
+                'desc': str(s.get('sku_description') or '').strip(),
+                'brand': str(b.get('brand_name') or '').strip(),
+                'vertical': str((v.get('name') if isinstance(v, dict) else v) or '').strip(),
                 'image': s.get('image_url') or ''}
         return out
 

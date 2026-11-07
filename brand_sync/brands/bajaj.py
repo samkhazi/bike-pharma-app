@@ -131,8 +131,10 @@ class Bajaj:
         log.info('%d BOMs to download', len(changed))
         known = self.all_part_numbers() or self.seed_all
 
-        for h, sig, n, old in changed:
+        for k, (h, sig, n, old) in enumerate(changed, 1):
             bid = str(h['id'])
+            if k == 1 or k % 20 == 0 or k == len(changed):
+                log.info('BOM %d/%d', k, len(changed))   # 17x: show progress on long first runs
             rows = self.bom_parts(bid)
             prev = load_json(self.bom_path(bid), {}).get('rows', [])
             save_json(self.bom_path(bid), {'header': h, 'rows': rows, 'fetched': today()})

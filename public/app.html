@@ -4409,7 +4409,7 @@ function m2SecsV(p){const {vb,vm}=p,yr=p.yr||'Any';const A=m2A({...p,yr});const 
  ${p.vin||p.rcn?vinBanner(p):''}<div class="card m2-look"><div class="h3">${p.vin||p.rcn?'Search parts in this bike':'Specific part lookup'}</div><div class="cap">${p.vin||p.rcn?'Part name, part number or the mechanic’s word: only '+esc(ttl)+' parts show.':'Know the exact part number or name? Search it in '+esc(ttl)+'.'}</div>${m2Bar('Part number or name','')}</div>
  <div class="sec"><h3 class="h2">Diagrams</h3><span class="cap">${secs.length}</span></div><div class="stack g8 m2-cards">${secs.map((s,i)=>`<button class="m2-row" onclick="m2Sec('${m2Q(s.pg)}')"><span class="m2-num">${i+1}</span><div class="grow"><div class="h3">${esc(catNice(s.asm||s.fig||'Section'))}</div><div class="cap">${esc(s.fig)}${s.fig?' · ':''}${s.pk.size} part${s.pk.size===1?'':'s'}</div></div>${ic('chevR','s18')}</button>`).join('')}</div>`;}
 /* ----- one section: its diagram and parts table ----- */
-function m2SecV(p){const A=m2A(p);const sc=catScope(A);if(!sc)return `<div class="empty">No catalogue for this bike yet.</div>`;if(sc.loading)return catSection(sc,A);
+function m2SecV(p){xrLoad();altLoad();const A=m2A(p);const sc=catScope(A);if(!sc)return `<div class="empty">No catalogue for this bike yet.</div>`;if(sc.loading)return catSection(sc,A);
  const rows=sc.rows.filter(r=>r.page===p.pg);if(!rows.length)return `<div class="empty">This section is empty.</div>`;const r0=rows[0];
  const ttl=catNice(r0.asm||r0.fig||'Section')+(r0.fig?' – '+r0.fig:'');const bike=m2Bike(p);
  const dr=rows.find(r=>r.sp||r.figp)||rows.find(r=>catYmSp(r)||r.img);
@@ -4606,7 +4606,7 @@ function amNameRes(q,A){const L=amName(q,A.vb);if(!L.length)return '';const all=
 function pnMisreads(q){const u=String(q||'').trim().toUpperCase(),o=new Set();[[/O/g,'0'],[/I/g,'1']].forEach(([x,y])=>{if(x.test(u))o.add(u.replace(x,y));});if(/O/.test(u)&&/I/.test(u))o.add(u.replace(/O/g,'0').replace(/I/g,'1'));o.delete(u);return [...o];}
 function ocrVia(q,to){return `<div class="row cap fp-via">${ic('search','s16')}<span class="grow" style="overflow-wrap:anywhere">No part number <b class="num">${esc(String(q).trim().toUpperCase())}</b>. Showing <b class="num">${esc(to)}</b> (the letter O read as zero${/1/.test(to)&&/I/i.test(q)?', I as one':''}).</span></div>`;}
 /* ----- the part's own page ----- */
-function m2PartV0(p){const r=m2Row(p);if(!r)return `<div class="empty">This part is not in the loaded catalogues any more. Search it again.</div>`;if(kitHead(r))return kitV(r,p);
+function m2PartV0(p){xrLoad();altLoad();const r=m2Row(p);if(!r)return `<div class="empty">This part is not in the loaded catalogues any more. Search it again.</div>`;if(kitHead(r))return kitV(r,p);
  const key=r.page+'-'+r.i,open=!!(S.ui.fpOpen||{})[key];const x=m2Shop(r),n=x?DB.stock[x.id]:0;const L=m2FitL(r);
  const vm=p.vm&&p.vm!=='Any'?p.vm:(L[0]||r.vm||'').replace(/ \(.*$/,'');const cc=MODEL_CC[vm];const hit=L.find(v=>v===vm||v.startsWith(vm+' ('))||'';const yr=p.yr&&p.yr!=='Any'?String(p.yr):hit.includes('(')&&/^\d/.test(hit.slice(hit.indexOf('(')+1))?hit.slice(hit.indexOf('(')+1,-1):'';
  const php=catPhoto(r),ym=catYmSp(r),full=!!(r.figp||r.sp)&&!ym,g=!full&&!ym?dgFig(r):null;
@@ -6954,7 +6954,7 @@ function altLoad(force){altListLoad();if(typeof SRV==='undefined'||!altStaff()||
  fetch('/api/alt',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(j=>{ALTC.busy=false;ALTC.t=Date.now();
   if(!j||j.error){ALTC.err=(j&&j.error)||'Could not load the list.';return;}
   const sig=JSON.stringify([j.ap,j.st,j.on,j.admin]),ch=sig!==ALTC.sig;ALTC.sig=sig;ALTC.ap=j.ap||{};ALTC.st=j.st||{};ALTC.on=!!j.on;ALTC.adm=j.admin||null;ALTC.err=null;
-  if(ch)try{const s=cur().s;if(s==='altno'||(s==='findpart'&&(cur().p||{}).v==='res'))refresh();}catch(e){}})
+  if(ch)try{const s=cur().s;if(s==='altno'||(s==='findpart'&&['res','part','sec','secs'].includes((cur().p||{}).v)))refresh();}catch(e){}})
  .catch(()=>{ALTC.busy=false;ALTC.t=Date.now()-90e3;ALTC.err='Could not reach the server. Check the internet.';try{if(cur().s==='altno')refresh();}catch(e){}});}
 const altOf=q=>{const k=catPk(q);return k?ALTC.ap[k]||null:null;};
 /* the alternate number lists Sam gave (update 8i, cat/alt/lists.json: [old, its name, new, its name, list, which of the two our catalogues have]) */
@@ -6962,7 +6962,7 @@ const ALTL={st:0,m:null,t:0};
 function altListLoad(){if(ALTL.st===3&&Date.now()-ALTL.t>300e3)ALTL.st=0;if(ALTL.st||typeof SRV==='undefined'||!altStaff())return;ALTL.st=1;
  fetch('cat/alt/lists.json',{credentials:'same-origin'}).then(r=>r.ok?r.json():Promise.reject(new Error('HTTP '+r.status))).then(j=>{const m=new Map(),N=(j.lists||[]).map(l=>l.name||'alternate list'),add=(k,o)=>{const a=m.get(k);if(a)a.push(o);else m.set(k,[o]);};
   (j.p||[]).forEach(([o,od,n,nd,L,f])=>{const ko=catPk(o),kn=catPk(n);if(!ko||!kn||ko===kn)return;add(ko,{pn:n,d:nd,dir:'new',cat:!!(f&2),list:N[L]});add(kn,{pn:o,d:od,dir:'old',cat:!!(f&1),list:N[L]});});
-  ALTL.m=m;ALTL.st=2;try{const s=cur().s;if(s==='altno'||(s==='findpart'&&(cur().p||{}).v==='res'))refresh();else if(['addproduct','grnedit','invpaste'].includes(s))invRefresh();}catch(e){}})
+  ALTL.m=m;ALTL.st=2;try{const s=cur().s;if(s==='altno'||(s==='findpart'&&['res','part','sec','secs'].includes((cur().p||{}).v)))refresh();else if(['addproduct','grnedit','invpaste'].includes(s))invRefresh();}catch(e){}})
  .catch(()=>{ALTL.st=3;ALTL.t=Date.now();});}
 const altListOf=q=>{const k=catPk(q);return k&&ALTL.m&&ALTC.st[k]!=='no'?ALTL.m.get(k)||[]:[];};
 /* the other numbers Find Part tries for a number no catalogue has: the one Admin approved, then the lists' numbers our catalogues have */
@@ -7082,7 +7082,7 @@ function m3Kids(x,rows){const L=(rows||[]).slice().sort(m3By),i=L.indexOf(x);if(
  for(let k=i+1;k<L.length;k++){const e=m3Dots(L[k]);if(e<=d)break;if(e===d+1)kids.push(L[k]);}
  let par=null;if(d)for(let k=i-1;k>=0;k--){if(m3Dots(L[k])<d){par=L[k];break;}}return {kids,par};}
 function m3Det(x,o){const sh=m2Shop(x),n=sh?DB.stock[sh.id]||0:0,php=catPhoto(x),N=fpNos(x),K=kitHead(x)?[]:kitsOf(x),A=m3Kids(x,o.rows),FB=typeof catFitsAt==='function'?catFitsAt(x):'';
- const ln=(l,v,c)=>`<div class="m3-ln ${c||''}"><span>${l}</span><b class="num">${v}</b></div>`,nos=L=>L.slice(0,2).map(n=>esc(n)+fpNoM(x.vb,n)).join(', ');
+ const ln=(l,v,c)=>`<div class="m3-ln ${c||''}"><span>${l}</span><b class="num">${v}</b></div>`,nos=L=>L.slice(0,8).map(n=>esc(n)+fpNoM(x.vb,n)).join(', ');
  const fits=m2FitL(x).map(v=>v.replace(/ \(.*$/,'')).filter((v,i,a)=>v&&!/^(Kits|Other)/.test(v)&&a.indexOf(v)===i),sis=typeof xrSis==='function'?((xrSis(x)||[]).find(z=>z&&z.sb===x.vb)||null):null;
  return `${php?`<div class="fpc-pic m3-ph">${php}</div>`:''}<div class="cap" style="font-weight:700">${x.ref?'Ref '+esc(x.ref)+' · ':''}${esc(catNice(x.desc).replace(/^\.+\s*/,''))}</div>
  ${x.part?`<div class="row m3-pnr"><b class="fpc-pn num grow" id="pn-${x.i}">${esc(x.part)}</b><button class="btn line sm" onclick="catCopy(${x.i})">Copy</button></div>`:`<div class="cap">No number in the catalogue (ordered by colour or as a kit)</div>`}
@@ -7091,7 +7091,7 @@ function m3Det(x,o){const sh=m2Shop(x),n=sh?DB.stock[sh.id]||0:0,php=catPhoto(x)
  ${x.pnNear?`<div class="row cap" style="background:var(--blue-soft);border-radius:10px;padding:8px 10px">${ic('search','s16')}<span class="grow">Same base number, with another colour or revision ending. Check the ending before ordering.</span></div>`:''}${x.note?`<div class="cap">${esc(x.note)}</div>`:''}${x.rem&&!/^BS(VI|IV)$/i.test(x.rem)&&!/^(old|new|alt\w*)\b[^,;]*$/i.test(x.rem.trim())?`<div class="cap">Catalogue note: ${esc(x.rem)}</div>`:''}
  ${A.kids.length?`<div class="m3-asm"><b>Parts inside this assembly · ${A.kids.length}</b>${A.kids.map(q=>`<button class="m3-ak" onclick="m3Pick(${q.i})"><span class="m2-num">${esc(q.ref||'·')}</span><span class="grow">${esc(catNice(q.desc).replace(/^\.+\s*/,''))}<span class="cap"> ${esc(q.part||'')}${q.mrp?' · '+inr(q.mrp):''}${q.qty>1?' · ×'+esc(q.qty):''}</span></span></button>`).join('')}</div>`:''}
  ${A.par?`<button class="m3-ak m3-par" onclick="m3Pick(${A.par.i})">Part of <b>${esc(catNice(A.par.desc).replace(/^\.+\s*/,''))}</b> <span class="num">${esc(A.par.part||'')}</span></button>`:''}
- <div class="row wrap" style="gap:8px;align-items:center">${sh?(n>0?`<span class="pill g">${n} in stock · Rack ${esc(binOf(sh.id))}</span>${sh.mrp&&sh.mrp!==x.mrp?`<span class="cap">Our MRP ${inr(sh.mrp)}</span>`:''}<button class="btn sm" onclick="S.ui.scanHit='${sh.id}';S.ui.scanMiss=null;go('scanfind')">${ic('cart','s16')} Add to bill</button>`:`<span class="pill r">Out of stock</span>${allowed('partorders')?`<button class="btn line sm" onclick="soNewSheet('${sh.id}')">Take order</button>`:''}`):x.part&&allowed('addproduct')?`<span class="pill a">Not in stock list</span><button class="btn sm" onclick="invFromRow('${esc(m2Q(x.vb))}','${esc(m2Q(x.pk))}','${esc(m2Q(x.part))}')">${ic('plus','s16')} Add to stock</button>`:''}</div>
+ <div class="row wrap" style="gap:8px;align-items:center">${sh?(n>0?`<span class="pill g">${n} in stock · Rack ${esc(binOf(sh.id))}</span>${sh.mrp&&sh.mrp!==x.mrp?`<span class="cap">Our MRP ${inr(sh.mrp)}</span>`:''}<button class="btn sm" onclick="S.ui.scanHit='${sh.id}';S.ui.scanMiss=null;go('scanfind')">${ic('cart','s16')} Add to bill</button>`:`<span class="pill r">Out of stock</span>${allowed('partorders')?`<button class="btn line sm" onclick="soNewSheet('${sh.id}')">Take order</button>`:''}`):''}</div>${!sh&&x.part?invFpAdd(x):''}
  <div class="m3-facts">${[['Brand',x.vb],['Model',o.vm||'—'],['Model year',o.yr||'All years'],['Category',m2CatOf(x)],['Qty per bike',x.qty||'—'],['Book',x.src||'—']].map(([k,v])=>`<div${k==='Book'?' class="m3-wide"':''}><span>${k}</span><b>${esc(v)}</b></div>`).join('')}</div>
  ${FB?FB+((()=>{const ac=sis&&sis.ms?sis.ms.filter(m=>!fits.includes(m)):[];return ac.length?`<div class="cap">Also check ${esc(ac.slice(0,3).join(', '))}</div>`:''})()):fits.length?`<div class="cap">Fits ${esc(fits.slice(0,4).join(', '))}${fits.length>4?' +'+(fits.length-4)+' more':''}${o.yr?' ('+esc(o.yr)+')':''}${(()=>{const ac=sis&&sis.ms?sis.ms.filter(m=>!fits.includes(m)):[];return ac.length?' · also check '+esc(ac.slice(0,3).join(', ')):''})()}</div>`:''}
  ${typeof catOtherBr==='function'?catOtherBr(x):''}`;}
@@ -7158,7 +7158,8 @@ function kitBox(r){const K=kitsOf(r);if(!K.length)return'';
  return `<div class="kit-box"><b>This part also comes in a kit</b>${K.slice(0,4).map(h=>{const L=kitParts(h),f=kitFits(h);return `<button class="kit-kr" onclick="m2Part(${h.i})"><div class="grow"><b>${esc(catNice(h.desc))}</b><div class="cap"><span class="num">${esc(h.part)}</span> · ${L.length} parts${f?' · Fits '+esc(f):''}</div><div class="cap">Kit has: ${esc(L.map(q=>catNice(q.desc)+((parseInt(q.qty,10)||1)>1?' ×'+q.qty:'')).join(', '))}</div></div><div style="text-align:right"><b class="num">${h.mrp?inr(h.mrp):''}</b>${(t=>t&&h.mrp&&t>h.mrp?`<div class="cap">Saves ${inr(t-h.mrp)}</div>`:'')(kitSep(L))}</div><span class="kit-pill">KIT</span>${ic('chevR','s18')}</button>`;}).join('')}</div>`;}
 function kitUnder(r){if(!kitHead(r))return kitsOf(r).length?`<div class="cap">Also in kit ${esc(kitsOf(r).map(h=>h.part).join(', '))}</div>`:'';const L=kitParts(r);
  return `<span class="kit-pill">KIT · ${L.length} parts</span><div class="kit-ul">${L.map(q=>`<div>↳ <span class="num">${esc(q.part||'')}</span> ${esc(catNice(q.desc))} ×${esc(q.qty||'1')} · ${q.mrp?inr(q.mrp):'—'}</div>`).join('')}</div>`;}
-function m2PartV(p){const r=m2Row(p);if(!r)return m2PartV0(p);if(kitHead(r))return kitV(r,p);const s=DG_SLUG[r.vb],g=s?dgFig(r):null;if(!g&&!(r.ext&&s&&DG[s]&&DG[s].st===1))return m2PartV0(p);
+function m2PartV(p){xrLoad();altLoad();const r=m2Row(p);   /* 17y: the part page loads the alternate lists too (New / Old / Alternate were empty when the part was opened from a diagram) */
+ if(!r)return m2PartV0(p);if(kitHead(r))return kitV(r,p);const s=DG_SLUG[r.vb],g=s?dgFig(r):null;if(!g&&!(r.ext&&s&&DG[s]&&DG[s].st===1))return m2PartV0(p);
  const v=g?g.v:m3Vg(r),kr=m3K(r);let L=m3Rows(r.vb,r.page,v).map(q=>m3K(q)===kr?r:q);if(!L.includes(r))L=L.concat(r).sort(m3By);
  const x=m3Sel(p,L,r),k='m3'+r.i,vm=p.vm&&p.vm!=='Any'?p.vm:v&&CAT_VMOD[v]||(m2FitL(r)[0]||r.vm||'').replace(/ \(.*$/,''),ys=v?catVyrs(v):[],yr=p.yr&&p.yr!=='Any'?String(p.yr):ys.length?catYrsTxt(ys):'',cc=MODEL_CC[vm];
  if(p.si!=null){p.si=x.i;p.spk=x.pk||'';p.sref=x.ref||'';}const o=M3[k]={rows:L,sel:x.i,vb:r.vb,page:r.page,v,vm,yr},sm=new Map();PRODUCTS.forEach(y=>{const q=catPk(y.pn);if(q&&!sm.has(q))sm.set(q,y);});queueMicrotask(m3Mount);

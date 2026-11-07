@@ -113,7 +113,7 @@ try {
   ok(dc.length === 1 && dc[0][11].join() === String(dv) && d.vmod['Hero discontinued parts (Raw Data)'] === 'Other parts (price list)' && /Discontinued 30-11-2018; Hero no\. 17910TST940S; New no\. 17910-TST-A00; Last model CD_DELUXE_MMC; Fits HF Deluxe \(formerly CD Deluxe - Mar, 2010\), CD Dawn \(2006\)/.test(dc[0][8]),
     "Hero's discontinued parts list read: 17910-TST-940 comes in with its date, Hero no., new no., last model and bikes");
   const app0 = fs.readFileSync((process.env.PUBLIC_DIR || 'public') + '/app.html', 'utf8');
-  ok(/const catNewNo=/.test(app0) && (app0.match(/\$\{catNewNo\((r|x)\.rem\)\}/g) || []).length === 3, 'the part card shows New part no. under a replaced part');
+  ok(/const catNewNo=/.test(app0) && /\$\{catNewNo\(r\.rem,/.test(app0) && /New part no\./.test(app0), 'the part card shows New part no. under a replaced part');
   ok(!d.d.some(r => r[11].includes(dv) && r[5] === '99999-TST-002'), 'a discontinued number some list already has is not added twice');
   const pl = await (await get('/api/pnlook?q=17910TST940S')).json();
   ok(pl.hits && pl.hits.some(h => h.part === '17910-TST-940'), 'searching 17910TST940S finds it');

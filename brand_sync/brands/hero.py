@@ -39,7 +39,7 @@ class Hero:
 
     # ---------- login + API ----------
     def login(self):
-        r = self.http.post('getGeneralUserDetails')
+        r = self.http.post('/getGeneralUserDetails')
         try:
             tok = r.json()['authToken']
         except Exception:
@@ -48,7 +48,7 @@ class Hero:
         log.info('Hero e-catalogue guest login ok')
 
     def models(self):
-        r = self.http.post('fetchModels', data=json.dumps({'userCode': 'general', 'region': '', 'status': '', 'product': '', 'year': '',
+        r = self.http.post('/fetchModels', data=json.dumps({'userCode': 'general', 'region': '', 'status': '', 'product': '', 'year': '',
                                                           'model': '', 'isFilter': 'N', 'language': '1', 'modelCC': '', 'sortFlag': ''}))
         out = {}
         for m in r.json().get('models') or []:
@@ -61,7 +61,7 @@ class Hero:
         return out
 
     def aggregates(self, model):
-        r = self.http.get('fetchAggregates', params={'variant': '', 'model': model, 'userCode': 'general', 'color': '', 'languageCode': '1'})
+        r = self.http.get('/fetchAggregates', params={'variant': '', 'model': model, 'userCode': 'general', 'color': '', 'languageCode': '1'})
         j = r.json()
         groups = []
         for a in j.get('aggregates') or []:
@@ -70,7 +70,7 @@ class Hero:
         return groups, j.get('modelDetails') or {}
 
     def boms(self, model, group):
-        r = self.http.get('fetchBoms', params={'group': group, 'userCode': 'general', 'color': '', 'modelDesc': '', 'modelNo': model,
+        r = self.http.get('/fetchBoms', params={'group': group, 'userCode': 'general', 'color': '', 'modelDesc': '', 'modelNo': model,
                                                'userType': 'general', 'languageCode': '1'})
         rows = []
         for b in r.json().get('boms') or []:
@@ -82,7 +82,7 @@ class Hero:
         """old -> new pairs; 2-character dashed prefixes cover the full list."""
         pairs = {}
         def one(pre):
-            r = self.http.post('partSearch', data=json.dumps({'userCode': 'general', 'partno': '', 'partdesc': '', 'model': '', 'supercedence': pre, 'language': '1'}))
+            r = self.http.post('/partSearch', data=json.dumps({'userCode': 'general', 'partno': '', 'partdesc': '', 'model': '', 'supercedence': pre, 'language': '1'}))
             try: return r.json().get('supercedenceParts') or []
             except ValueError: return []
         pres = [a + b for a, b in itertools.product(CHARS, CHARS)]

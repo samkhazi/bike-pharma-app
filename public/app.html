@@ -59,7 +59,7 @@
 .fp9-sh{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px 24px}.fp9-ls{flex:1 1 300px;min-width:0;max-width:520px}@media(max-width:699px){.fp9-sn{flex-direction:column;gap:2px}}
 .fp9-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}@media(min-width:700px){.fp9-grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px}}
 .fp9-sc{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--card);text-align:left;cursor:pointer;font:inherit;color:var(--ink);min-width:0}.fp9-sc:hover{border-color:var(--ink)}
-.fp9-th{position:relative;border-radius:10px;overflow:hidden;background:#f6f6f4;aspect-ratio:4/3;display:grid;place-items:center}.fp9-th>*{width:100%;height:100%}.fp9-th .fp9-dg{aspect-ratio:auto!important;height:100%;background-color:#fff}.fp9-th img{object-fit:contain}
+.fp9-th{position:relative;border-radius:10px;overflow:hidden;background:#f6f6f4;aspect-ratio:4/3;display:grid;place-items:center}.fp9-th>*{width:100%;max-height:100%}.fp9-th>.fp9-ph{height:100%}.fp9-th .fp9-dg{background-color:#fff}.fp9-th>img{height:100%;object-fit:contain;background:#fff}.fp9-th img{object-fit:contain}
 .fp9-ph{display:grid;place-items:center;color:var(--muted)}.fp9-tag{position:absolute;top:8px;left:8px;width:auto!important;height:auto!important;background:var(--y,#FFCC00);color:#111;font-weight:800;font-size:12px;padding:3px 8px;border-radius:6px}
 .fp9-sn{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.fp9-sn b{font-size:15px;line-height:1.3;min-width:0}.fp9-sn .cap{flex:none}
 .m3b .m3-c0{display:none!important}.m3-all{flex:none}
@@ -4423,7 +4423,8 @@ function m2SecsV(p){const {vb,vm}=p,yr=p.yr||'Any';const A=m2A({...p,yr});const 
  const secs=m2Secs(sc.rows);const pn=new Set();sc.rows.forEach(r=>{if(r.pk)pn.add(r.pk);});const ed=p.ed&&p.ed!=='Any'?p.ed:yr!=='Any'?yr:'';
  /* 18e (Figma "Find Part simple" 2): breadcrumb, one lookup box, diagram cards with a picture */
  const bc=`<nav class="fp9-bc"><button onclick="fpClear()">Find Part</button>›<button onclick="go('findpart',{v:'brand',vb:'${m2Q(vb)}'})">${esc(vb)}</button>›<button onclick="go('findpart',{v:'year',vb:'${m2Q(vb)}',vm:'${m2Q(vm)}',yr:'Any'})">${esc(vm)}</button>${ed?'›<span>'+esc(ed)+'</span>':''}</nav>`;
- const th=s=>{const r=s.rows.find(r=>r.ext&&dgFig(r)),g=r&&dgFig(r);if(g)return dgEl(g,'fp9-dg');const q=s.rows.find(r=>r.img&&catFigSp(r));return q?catPic(q):`<span class="fp9-ph">${ic('package','s24')}</span>`;};
+ /* 18f: the card shows the section's full diagram the same way the section page finds it (sp/figp/YPEC picture first, then the catalogue file diagram) */
+ const th=s=>{const f=s.rows.find(r=>r.sp||r.figp);if(f)return catFigEl(f,'fp9-dg');const r=s.rows.find(r=>dgFig(r)),g=r&&dgFig(r);if(g)return dgEl(g,'fp9-dg');return `<span class="fp9-ph">${ic('package','s24')}</span>`;};
  return `${p.vin||p.rcn?vinBanner(p):bc}<div class="fp9-sh"><div class="grow"><div class="h3">${esc([vb,MODEL_CC[vm]?MODEL_CC[vm]+'cc':'',ed].filter(Boolean).join(' · '))}</div><div class="cap">${secs.length} sections · ${m2N(pn.size)} parts</div></div><div class="fp9-ls">${m2Bar('Search a part in this bike','')}</div></div>
  <div class="fp9-grid">${secs.map((s,i)=>{const n=catNice(s.asm||s.fig||'Section');return `<button class="fp9-sc" onclick="m2Sec('${m2Q(s.pg)}')"><div class="fp9-th">${th(s)}<span class="fp9-tag num">${esc(s.fig&&String(s.fig).length<=10?s.fig:String(i+1))}</span></div><div class="fp9-sn"><b>${esc(n)}</b><span class="cap">${s.pk.size} part${s.pk.size===1?'':'s'}</span></div></button>`;}).join('')}</div>`;}
 /* ----- one section: its diagram and parts table ----- */

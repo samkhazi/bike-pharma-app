@@ -230,8 +230,10 @@ class KTM:
             try:
                 b, _, ct = self.get_file(page, url)
                 if b and not ct.startswith('text/'):
-                    open(p + '.tmp', 'wb').write(b); os.replace(p + '.tmp', p)
-            except RuntimeError as e:
+                    t = f'{p}.{os.getpid()}.tmp'
+                    with open(t, 'wb') as fh: fh.write(b)
+                    os.replace(t, p)
+            except (RuntimeError, OSError) as e:
                 log.warning('KTM diagram %s: %s', url, e); return ''
         return f if os.path.exists(p) else ''
 
@@ -268,13 +270,20 @@ class KTM:
         rep = report or Report(self.name)
         st = self.state
         first = not st['editions']
+        import fcntl                                          # 17z4: only one KTM run at a time (two runs wrote the same files)
+        self._lock = open(os.path.join(self.dir, 'run.lock'), 'w')
+        try: fcntl.flock(self._lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError: raise SystemExit('KTM: ek aur KTM run abhi chal raha hai; yeh wala band kiya')
         from playwright.sync_api import sync_playwright
         with sync_playwright() as p:
-            ctx = p.chromium.launch_persistent_context(data_dir('ktm', 'browser'), args=['--disable-dev-shm-usage'],
-                                                       headless=env('KTM_HEADFUL', '') == '', viewport={'width': 1400, 'height': 900},
-                                                       **({'executable_path': env('KTM_CHROME')} if env('KTM_CHROME') else {}))
-            page = ctx.pages[0] if ctx.pages else ctx.new_page()
-            page.set_default_timeout(300000)
+            def launch():
+                c = p.chromium.launch_persistent_context(data_dir('ktm', 'browser'), args=['--disable-dev-shm-usage'],
+                                                         headless=env('KTM_HEADFUL', '') == '', viewport={'width': 1400, 'height': 900},
+                                                         **({'executable_path': env('KTM_CHROME')} if env('KTM_CHROME') else {}))
+                pg = c.pages[0] if c.pages else c.new_page()
+                pg.set_default_timeout(300000)
+                return c, pg
+            ctx, page = launch()
             try:
                 self.login(page)
                 menu = page.evaluate('() => kMenu()')
@@ -303,10 +312,11 @@ class KTM:
                 turn = sorted((v.get('read', ''), k) for k, v in st['editions'].items() if k in eds and k not in have)
                 todo += [(k, 'turn') for _, k in turn[:int(env('KTM_RECHECK', '8'))]]
                 log.info('KTM: reading %d model-years (%s)', len(todo), ', '.join(f'{k}:{w}' for k, w in todo[:40]))
-                def fresh(pg):                                 # 17z3: a new tab (the old one's memory grows over many plates; Chromium can crash)
-                    try: pg.close()
+                def fresh(pg):                                 # 17z4: a whole new browser (memory grows over many plates; Chromium can crash or close)
+                    nonlocal ctx
+                    try: ctx.close()
                     except Exception: pass
-                    pg = ctx.new_page(); pg.set_default_timeout(300000); self.login(pg); return pg
+                    ctx, pg = launch(); self.login(pg); return pg
                 for i, (k, why) in enumerate(todo):
                     e = eds[k]
                     if i and i % int(env('KTM_TAB_EVERY', '5')) == 0:
@@ -314,7 +324,7 @@ class KTM:
                     try:
                         plates = self.read_edition(page, k, e)
                     except Exception as ex:
-                        if not re.search(r'crash|closed|Target', str(ex), re.I): raise
+                        if not re.search(r'crash|closed|Target|disconnect', str(ex), re.I): raise
                         log.warning('KTM %s %s: browser tab crashed (%s), new tab, trying once more', e['model'], e['my'], str(ex)[:80])
                         page = fresh(page)
                         plates = self.read_edition(page, k, e)

@@ -303,9 +303,21 @@ class KTM:
                 turn = sorted((v.get('read', ''), k) for k, v in st['editions'].items() if k in eds and k not in have)
                 todo += [(k, 'turn') for _, k in turn[:int(env('KTM_RECHECK', '8'))]]
                 log.info('KTM: reading %d model-years (%s)', len(todo), ', '.join(f'{k}:{w}' for k, w in todo[:40]))
+                def fresh(pg):                                 # 17z3: a new tab (the old one's memory grows over many plates; Chromium can crash)
+                    try: pg.close()
+                    except Exception: pass
+                    pg = ctx.new_page(); pg.set_default_timeout(300000); self.login(pg); return pg
                 for i, (k, why) in enumerate(todo):
                     e = eds[k]
-                    plates = self.read_edition(page, k, e)
+                    if i and i % int(env('KTM_TAB_EVERY', '5')) == 0:
+                        page = fresh(page)
+                    try:
+                        plates = self.read_edition(page, k, e)
+                    except Exception as ex:
+                        if not re.search(r'crash|closed|Target', str(ex), re.I): raise
+                        log.warning('KTM %s %s: browser tab crashed (%s), new tab, trying once more', e['model'], e['my'], str(ex)[:80])
+                        page = fresh(page)
+                        plates = self.read_edition(page, k, e)
                     if not plates and st['editions'].get(k, {}).get('plates'):
                         log.warning('KTM %s %s: no plates this time, old data kept', e['model'], e['my']); continue
                     self.diff_edition(rep, k, e, plates, first or why == 'new')

@@ -18,7 +18,7 @@ let t0 = (await A.evaluate(() => { S.ui.fp = null; go('findpart'); return docume
 ok(/Chassis no\./.test(t0) && /Find model/i.test(t0), 'chassis card shown (VIN_ON on again, Sam 2026-10-19 "enable karo"; 17p: Find by bike cards)');
 await A.evaluate(() => { VIN_ON = true; S.ui.fp = null; go('findpart'); }); await A.waitForTimeout(400);
 let t = await T(A); ok(/Chassis no\./.test(t) && /Registration no\./.test(t) && /Brand · Model · Year/i.test(t), 'Find Part home: registration, chassis and brand / model cards all there');
-await A.fill('#fp-vin', 'MBLHAW123'); await A.click(SC + ' button:has-text("Find model")'); await A.waitForTimeout(400);
+await A.fill('#fp-reg', 'MBLHAW123'); await A.click(SC + ' .fp9-reg button'); await A.waitForTimeout(400);
 ok(await A.evaluate(() => cur().p.v === 'vin') && /17-letter/.test(await T(A)), 'chassis screen opens');
 await A.fill('#vin-q', 'MBLHAW123'); await A.press('#vin-q', 'Enter'); await A.waitForTimeout(200);
 ok(/17-letter chassis number, or the bike number.*You typed 9 letters/.test(await T(A)), 'short number: says 17 letters');

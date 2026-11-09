@@ -667,7 +667,8 @@ async function billRead(req, res, user) {
 const HOT_DIR = path.join(DATA_DIR, 'dghot'), HOT_RUN = new Map(), HOT_MAX = 12 * 1024 * 1024;
 const HOT_U = /^(?:p[fa]:catalogues\/[^\0]+?:\d+:\d+|pdf:catalogues\/[^\0]+?:\d+:\d+:\d+:[\d.]+,[\d.]+,[\d.]+,[\d.]+)$/;
 const hotFile = u => path.join(HOT_DIR, crypto.createHash('sha1').update(u).digest('hex') + '.json');
-const hotRead = u => { try { return JSON.parse(fs.readFileSync(hotFile(u), 'utf8')); } catch (e) { return null; } };
+// 18o: HOT_V goes up when the number reader learns more (dark label boxes): an older reading is done again, Admin's fixes kept
+const HOT_V = 2, hotRead = u => { try { const o = JSON.parse(fs.readFileSync(hotFile(u), 'utf8')); if (o && o.toks && (o.v || 1) < HOT_V) o.toks = null; return o; } catch (e) { return null; } };
 const hotWrite = (u, o) => { fs.mkdirSync(HOT_DIR, { recursive: true }); const f = hotFile(u), tmp = f + '.' + process.pid + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(o)); fs.renameSync(tmp, f); };
 const hotOut = o => ({ toks: o.toks || null, lo: o.lo || [], ed: o.ed || [] });
 // the diagram's picture straight out of the catalogue file here, as /api/files/read sends it
@@ -696,7 +697,7 @@ async function hotOcr(res, u, buf, user) {
     if (limited('dghot:' + user.id, 300, 3600e3)) return json(res, 429, { error: 'Too many diagrams in one hour. Please wait a little.' });
     job = BILL_AI.nums(buf).then(r => {
       const o = hotRead(u) || { u, ed: [] };
-      Object.assign(o, { u, toks: r.toks, lo: r.lo || [], w: r.w, h: r.h, at: new Date().toISOString() }); hotWrite(u, o); return o;
+      Object.assign(o, { u, v: HOT_V, toks: r.toks, lo: r.lo || [], w: r.w, h: r.h, at: new Date().toISOString() }); hotWrite(u, o); return o;
     }).finally(() => HOT_RUN.delete(u));
     HOT_RUN.set(u, job);
   }

@@ -173,10 +173,11 @@ const NUM_RE = /^[A-Z]?\d{1,3}[A-Z]?(?:-\d{1,2})?$/;
 // what the reader confuses in a number: I, l, | and ! are 1, O and o are 0, S is 5, B is 8, Z is 2, G is 6
 const numFix = s => /\d/.test(s) && s.length <= 6 ? s.replace(/^([A-Z]?)(.*?)([A-Z]?)$/, (m, a, mid, z) => a + mid.replace(/[Il|!]/g, '1').replace(/[Oo]/g, '0').replace(/S/g, '5').replace(/B/g, '8').replace(/Z/g, '2').replace(/G/g, '6') + z) : s;
 // one reading at one size (s = how many times bigger than the picture): the numbers as [text, x0, y0, x1, y1, sure] in fractions
-async function numsAt(buf, W0, H0, s, line = 0, sure = NUM_SURE) {
+async function numsAt(buf, W0, H0, s, line = 0, sure = NUM_SURE, inv = false) {
   const w = Math.max(32, Math.round(W0 * s)), h = Math.max(32, Math.round(H0 * s));
-  const g = await sharp(buf, { limitInputPixels: 80e6 }).flatten({ background: '#ffffff' }).grayscale().resize(w, h, { fit: 'fill', kernel: 'lanczos3' })
+  let g = await sharp(buf, { limitInputPixels: 80e6 }).flatten({ background: '#ffffff' }).grayscale().resize(w, h, { fit: 'fill', kernel: 'lanczos3' })
     .toColourspace('b-w').raw().toBuffer();
+  if (inv) { g = darkBoxes(g, w, h, Math.max(2, Math.round(s))); if (!g) return []; }
   if (line) unline(g, w, h, Math.round(line * s), line * s / 1.25);
   // the finder, tile by tile (white round the edges so every tile is a multiple of 32)
   const found = [], step = TILE - OVER;
@@ -205,6 +206,45 @@ async function numsAt(buf, W0, H0, s, line = 0, sure = NUM_SURE) {
     toks.push(...numsOf(b, w, h));
   }
   return toks;
+}
+// 18o (Sam 9 Nov, Honda: white numbers in grey squares were missed): the reader sees dark writing on light paper only. Solid dark
+// label boxes (a square or oblong, mostly filled, with light writing inside) are found and turned round: the box goes white and its
+// light writing black; everything else on the page goes white. Returns null when the page has no such boxes.
+export function darkBoxes(g, w, h, r = 3) {
+  const n = w * h, lab = new Int32Array(n).fill(-1), st = new Int32Array(n), out = Buffer.alloc(n, 255), big = Math.max(w, h) * 0.08;
+  // thin lines (leader lines touching a box) are taken off first: a pixel stays only with dark all round it r pixels wide
+  const dk = new Uint8Array(n), e1 = new Uint8Array(n), core = new Uint8Array(n);
+  for (let i = 0; i < n; i++) dk[i] = g[i] < 160 ? 1 : 0;
+  for (let y = 0; y < h; y++) { let run = 0; for (let x = 0; x < w; x++) { const i = y * w + x; run = dk[i] ? run + 1 : 0; if (run > 2 * r) e1[i - r] = 1; } }
+  for (let x = 0; x < w; x++) { let run = 0; for (let y = 0; y < h; y++) { const i = y * w + x; run = e1[i] ? run + 1 : 0; if (run > 2 * r) core[i - r * w] = 1; } }
+  let any = false;
+  for (let i0 = 0; i0 < n; i0++) {
+    if (lab[i0] !== -1 || !core[i0]) continue;
+    let sp = 0, x0 = w, y0 = h, x1 = 0, y1 = 0; st[sp++] = i0; lab[i0] = i0;
+    while (sp) { const i = st[--sp], x = i % w, y = (i - x) / w;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      if (x > 0 && lab[i - 1] === -1 && core[i - 1]) { lab[i - 1] = i0; st[sp++] = i - 1; }
+      if (x < w - 1 && lab[i + 1] === -1 && core[i + 1]) { lab[i + 1] = i0; st[sp++] = i + 1; }
+      if (y > 0 && lab[i - w] === -1 && core[i - w]) { lab[i - w] = i0; st[sp++] = i - w; }
+      if (y < h - 1 && lab[i + w] === -1 && core[i + w]) { lab[i + w] = i0; st[sp++] = i + w; } }
+    x0 = Math.max(0, x0 - r); y0 = Math.max(0, y0 - r); x1 = Math.min(w - 1, x1 + r); y1 = Math.min(h - 1, y1 + r);
+    let cnt = 0, sum = 0, sq = 0; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const i = y * w + x; if (dk[i]) { cnt++; sum += g[i]; sq += g[i] * g[i]; } }
+    if (cnt && Math.sqrt(Math.max(0, sq / cnt - (sum / cnt) ** 2)) > +(process.env.NUMS_INV_SD || 30)) continue;   // a label box is one even grey (or black); a dark part of the drawing is shaded
+    const bw = x1 - x0 + 1, bh = y1 - y0 + 1, fill = cnt / (bw * bh);
+    if (bw < 12 || bh < 12 || bw > big || bh > big || bw > 3.2 * bh || bh > 1.6 * bw || fill < 0.5 || fill > 0.95) continue;
+    // light writing inside: enough light pixels in the box's middle (a plain filled square or a dark part has none)
+    const mx0 = x0 + Math.round(bw * 0.15), mx1 = x1 - Math.round(bw * 0.15), my0 = y0 + Math.round(bh * 0.15), my1 = y1 - Math.round(bh * 0.15);
+    let lt = 0, tot = 0; for (let y = my0; y <= my1; y++) for (let x = mx0; x <= mx1; x++) { tot++; if (g[y * w + x] >= 160) lt++; }
+    if (!tot || lt < tot * 0.06 || lt > tot * 0.6) continue;
+    // the frame must be dark all round (a box), not an open shape
+    let edge = 0, et = 0; for (let x = x0; x <= x1; x++) { et += 2; if (g[y0 * w + x] < 160) edge++; if (g[y1 * w + x] < 160) edge++; }
+    for (let y = y0; y <= y1; y++) { et += 2; if (g[y * w + x0] < 160) edge++; if (g[y * w + x1] < 160) edge++; }
+    if (edge < et * 0.6) continue;
+    const thr = (sum / cnt + 255) / 2;
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const i = y * w + x; out[i] = g[i] >= thr ? 0 : 255; }
+    any = true;
+  }
+  return any ? out : null;
 }
 // a number touching its leader line is not seen as writing: straight lines (across or down) longer than a number are painted white.
 // Only the line's own thin pixels go: a digit's stroke is thicker than a leader line, so a "1" at the end of a line down stays.
@@ -258,6 +298,8 @@ export async function readNums(buf) {
   const sizes = (process.env.NUMS_SIZES || '3000:3,4500:4.5').split(',').map(x => x.split(':').map(Number));
   const all = [], low = [];
   for (const [side, cap] of sizes) for (const t of await numsAt(buf, W0, H0, Math.min(cap, side / Math.max(W0, H0)))) (t[5] >= 0.7 ? all : low).push(t);
+  // 18o: once more on the page with its dark label boxes turned round (white numbers in grey squares, Honda)
+  if (process.env.NUMS_INV !== '0') for (const t of await numsAt(buf, W0, H0, Math.min(sizes[0][1], sizes[0][0] / Math.max(W0, H0)), 0, NUM_SURE, true)) (t[5] >= 0.7 ? all : low).push(t);
   const hs = all.map(t => (t[4] - t[2]) * H0).sort((a, b) => a - b), hm = hs.length ? hs[hs.length >> 1] : Math.max(W0, H0) * 0.02;
   if (process.env.NUMS_LINE !== '0') {
     const [side, cap] = sizes[0];

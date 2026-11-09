@@ -9,6 +9,7 @@ usage:  python sync.py hero             # Hero e-catalogue (weekly): new models 
         python sync.py honda            # Honda e-catalogue (weekly, login code typed by Sam): new/changed models, MRP, kits, old<->new
         python sync.py re_spares        # Royal Enfield spares store (weekly, public, robots.txt checked first): models, parts, MRP
         python sync.py royal_enfield    # Royal Enfield EPC, India & SAARC (weekly, login from .env): new models/variants/diagrams/parts, MRP list
+        python sync.py ktm              # KTM + Husqvarna India, ktmspcatalog.bajajauto.com (weekly, dealer login from .env): new model years, plates, parts, kits, alternates, circulars
         python sync.py all              # every brand enabled in .env (BRANDS=bajaj,...)
         python sync.py bajaj --full     # re-download everything (first run does this anyway)
         python sync.py bajaj --rebuild  # rebuild all PDFs/Excel from saved data, no download
@@ -32,6 +33,8 @@ def brand_cls(name):
         from brands.re_spares import RESpares; return RESpares
     if name == 'royal_enfield':
         from brands.royal_enfield import RoyalEnfield; return RoyalEnfield
+    if name == 'ktm':
+        from brands.ktm import KTM; return KTM
     if name == 'hero':
         from brands.hero import Hero; return Hero
     if name == 'hero_dms':

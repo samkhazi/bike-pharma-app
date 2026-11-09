@@ -106,3 +106,17 @@ python sync.py bajaj            # Bajaj
 - DMS login me kabhi OTP ya captcha aa gaya to sync ruk jayega. `data/logs/` me screenshot milega.
 - Agar export adhoora aaye (90% se kam parts) to sync kuch bhi update nahi karta aur report me error aata hai.
 - 3-wheeler, KTM aur Husqvarna Bajaj me skip hote hain.
+
+## KTM + Husqvarna (`python sync.py ktm`, har Sunday subah 6:30)
+
+Bajaj ka KTM Spare Parts Finder (https://ktmspcatalog.bajajauto.com), aapke KTM dealer login se (.env: KTM_USER / KTM_PASS).
+Login pe captcha ya OTP aaya to tool ruk jata hai aur report me batata hai (khud nahi bharta). Galat password dobara try nahi hota.
+
+- Har hafte: menu ke saare model-years, Part Master / Plate-wise Part Master / Kit Master / Alternate Master ki download files, Circulars.
+- Naya model-year: uske saare diagrams (portal ki original picture), parts, aur portal ki apni full PDF (`output/KTM/PDF/<Model>/`).
+- Plate-wise part master me jis model-year ki line badli, uske plates dobara padhe jate hain; baaki har hafte 8 model-years baari baari.
+- Report: naya model-year, naya/hata part number (kis model-year ke kis diagram me), naye kits/alternates, naye circulars.
+- `output/KTM/KTM_Portal_Parts.xlsx`: saari lines + A-Z part numbers. `ktm/masters/`: portal ki download files (purani date ke naam se rakhi).
+- Website: `ktm/editions.json` se Find Part ka KTM/Husqvarna catalogue har ghante wale check me update hota hai (naye model-year + naye part numbers).
+- MRP portal me nahi hai (Dealer Price khali). KTM MRP dealer DMS list (ktm_mrp.json) se hi aata hai.
+- Pehli baar poora portal padhta hai (~100 model-years, 1 request/second, 2-3 ghante).

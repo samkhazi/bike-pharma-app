@@ -126,9 +126,10 @@ function tvsBuild(why) {
 }
 function ktmBuild(why) {
   if (!KTM_RAW.every(f => fs.existsSync(path.join(KTM_DIR, f)))) return false;
-  const src = [...[...KTM_RAW, KTM_MRP].map(f => path.join(KTM_DIR, f)), path.join(BAJAJ_DIR, BAJAJ_ALT), path.join(PUBLIC_DIR, 'app.html'), path.join(ROOT, 'lib', 'ktmbuild.mjs'), path.join(ROOT, 'lib', 'herobuild.mjs')];
-  if (why === 'start' && mtime(path.join(HERO_OUT, 'ktm.json')) > Math.max(...src.map(mtime))) return false;
-  catBuild('ktm', why, [path.join(ROOT, 'lib', 'ktmbuild.mjs'), PUBLIC_DIR, KTM_DIR, HERO_OUT, path.join(BAJAJ_DIR, BAJAJ_ALT)]);
+  const src = [...[...KTM_RAW, KTM_MRP].map(f => path.join(KTM_DIR, f)), path.join(BAJAJ_DIR, BAJAJ_ALT), path.join(PUBLIC_DIR, 'app.html'), path.join(ROOT, 'lib', 'ktmbuild.mjs'), path.join(ROOT, 'lib', 'herobuild.mjs'), path.join(HERO_SYNC_DIR, 'ktm', 'editions.json')];
+  if (why === 'sync' && catQ.some(q => q[0] === 'ktm')) return false;
+  if ((why === 'start' || why === 'sync') && mtime(path.join(HERO_OUT, 'ktm.json')) > Math.max(...src.map(mtime))) return false;
+  catBuild('ktm', why, [path.join(ROOT, 'lib', 'ktmbuild.mjs'), PUBLIC_DIR, KTM_DIR, HERO_OUT, path.join(BAJAJ_DIR, BAJAJ_ALT), HERO_SYNC_DIR]);   // 18d: + the weekly KTM portal sync
   return true;
 }
 const catQ = [];   // [slug, why, args]: the builds waiting, run one after another
@@ -144,7 +145,7 @@ function catRun() {
     if (q[0] !== 'xref' && code === 0) xrefBuild(q[0]);   // 16r: other brands with the same part, made again after any brand's build
     catRun(); });
 }
-setInterval(() => { for (const [n, f] of [['hero', heroBuild], ['honda', hondaBuild], ['tvs', tvsBuild], ['yamaha', yamahaBuild], ['royal-enfield', reBuild], ['bajaj', bajajBuild]]) try { f('sync'); } catch (e) { console.log(n + ' sync check:', e.message); } }, 3600e3).unref();   // 15d: Honda and TVS too   // 14z: the weekly Hero sync's new files make a new Hero build within the hour
+setInterval(() => { for (const [n, f] of [['hero', heroBuild], ['honda', hondaBuild], ['tvs', tvsBuild], ['yamaha', yamahaBuild], ['royal-enfield', reBuild], ['bajaj', bajajBuild], ['ktm', ktmBuild]]) try { f('sync'); } catch (e) { console.log(n + ' sync check:', e.message); } }, 3600e3).unref();   // 15d: Honda and TVS too   // 14z: the weekly Hero sync's new files make a new Hero build within the hour
 function xrefBuild(why) { catBuild('xref', why, [path.join(ROOT, 'lib', 'xrefbuild.mjs'), HERO_OUT, path.join(BAJAJ_DIR, 'bajaj_alt.json'), path.join(FILES_DIR, 'catalogues', 'aftermarket', 'am_build.json')]); }
 heroBuild('start'); hondaBuild('start'); bajajBuild('start'); yamahaBuild('start'); reBuild('start'); tvsBuild('start'); ktmBuild('start'); xrefBuild('start');
 const BACKUP = backups({ store, dataDir: DATA_DIR, env });   // 11u: every night + Admin > More > Backups

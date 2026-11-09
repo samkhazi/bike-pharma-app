@@ -67,7 +67,15 @@
 @container (min-width:900px){.m3a.m3b .m3-th,.m3a.m3b .m3-row{grid-template-columns:44px minmax(0,1.5fr) minmax(0,1fr) 64px 30px;gap:10px;font-size:13px}.m3a.m3b .m3-th{padding:10px}.m3a.m3b .m3-row{padding:8px 10px 8px 7px}.m3a.m3b .m3-g{grid-template-columns:minmax(0,1.1fr) minmax(0,1.3fr) minmax(0,.85fr)}.m3a.m3b .m3-c1{order:1;grid-column:auto;position:sticky;top:0}.m3a.m3b .m3-c2{order:2;grid-column:auto}.m3a.m3b .m3-c3{order:3;position:sticky;top:0;align-self:start}.m3a.m3b .m3-list{max-height:calc(100vh - 230px);overflow-y:auto}}
 
 /* 18l: diagram close-up on the chosen part's number */
-.hs-clip{position:relative;overflow:hidden;border-radius:inherit;width:100%}.hs-clip>.dg{transition:transform .35s ease;will-change:transform}
+.hs-clip{position:relative;overflow:hidden;border-radius:inherit;width:100%}.hs-clip>.dg{transition:transform .55s cubic-bezier(.22,.61,.36,1);will-change:transform}
+/* 18q (Mittal video): the chosen number pulses and shows its part; on a phone the diagram stays at the top while the list scrolls */
+.hs.on{animation:hsPulse 1.5s ease-out infinite}
+@keyframes hsPulse{0%{box-shadow:0 0 0 2.5px #141413,0 0 0 0 rgba(255,196,0,.95)}100%{box-shadow:0 0 0 2.5px #141413,0 0 0 calc(14px / var(--hz,1)) rgba(255,196,0,0)}}
+.hs.on[data-tip]::after{content:attr(data-tip);position:absolute;inset:auto auto calc(100% + 5px) 50%;transform:translateX(-50%);background:#141413;color:#fff;font:600 calc(11px / var(--hz,1))/1.3 'Plus Jakarta Sans',sans-serif;padding:calc(3px / var(--hz,1)) calc(7px / var(--hz,1));border-radius:calc(6px / var(--hz,1));white-space:nowrap;pointer-events:none;z-index:4;animation:hsTip .3s ease-out}
+@keyframes hsTip{from{opacity:0;transform:translate(-50%,4px)}to{opacity:1;transform:translateX(-50%)}}
+.hs.on,.hs.hv{z-index:3}
+@media (prefers-reduced-motion:reduce){.hs.on,.hs.on[data-tip]::after{animation:none}.hs-clip>.dg{transition:none}}
+@container (max-width:899px){.m3a.m3b .m3-c1{position:sticky;top:0;z-index:6;background:var(--paper,#F7F5EF);padding-bottom:8px;box-shadow:0 8px 12px -10px rgba(0,0,0,.25)}.m3a.m3b .m3-c1 .m3-tip,.m3a.m3b .m3-c1 .dg-other{display:none}}
 .hs-all{display:none;position:absolute;left:8px;bottom:8px;z-index:3;border:0;border-radius:8px;background:#141413;color:#FFC400;font:inherit;font-size:12px;font-weight:700;padding:6px 10px;cursor:pointer}.hs-clip.z .hs-all{display:block}
 .hs.hv{background:rgba(255,204,0,.75);box-shadow:0 0 0 3px #FFC400,0 0 0 5px rgba(20,20,19,.35);z-index:2}
 </style></head><body>
@@ -7285,14 +7293,16 @@ function hsRows(k){const c=M3[k];if(!c)return;document.querySelectorAll(`.m3[dat
 /* the chosen part's number lights up (fp3 calls this after every choice) */
 function hsSel(k){const c=M3[k];if(!c)return;const q=c.rows.find(x=>x.i===c.sel);const R=new Set();if(q){const r=hsNorm(q.ref);R.add(r);const m=/^(\d+)(?:[A-Z]|-\d+)$/.exec(r);if(m)R.add(m[1]);}
  document.querySelectorAll(`.dg[data-hk="${k}"]`).forEach(el=>{const L=el._hs?hsList(el._hs):[],by=el._hs?hsMap(c.rows,L):new Map();
-  el.querySelectorAll('.hs').forEach(b=>{const qs=by.get(b.dataset.ref)||[];b.classList.toggle('on',qs.some(x=>x.i===c.sel));});});}
+  el.querySelectorAll('.hs').forEach(b=>{const qs=by.get(b.dataset.ref)||[],on=qs.some(x=>x.i===c.sel);b.classList.toggle('on',on);
+   /* 18q (Mittal video): the chosen number shows its part's name and MRP next to it */
+   if(on&&q){const v=q.mrp||0;b.dataset.tip=catNice(q.desc).slice(0,40)+(v?' · '+inr(v):'');}else b.removeAttribute('data-tip');});});}
 /* tap a number: its part is chosen (a ref with two lines, colours or editions: the next one each tap); Admin fixing: take it away */
 /* 18l (Sam 9 Nov, Mittal video): a part chosen in the list brings the diagram in close on its number; "Whole diagram" goes back */
 function hsFocus(k,off){document.querySelectorAll(`.m3 .dg[data-hk="${k}"]`).forEach(el=>{let w=el.parentElement;
   if(!w.classList.contains('hs-clip')){w=document.createElement('div');w.className='hs-clip';el.before(w);w.appendChild(el);w.insertAdjacentHTML('beforeend',`<button type="button" class="hs-all" onclick="event.stopPropagation();hsFocus('${k}',1)">Whole diagram</button>`);}
-  const b=el.querySelector('.hs.on');if(off||!b){el.style.transform='';w.classList.remove('z');return;}
+  const b=el.querySelector('.hs.on');if(off||!b){el.style.transform='';el.style.setProperty('--hz',1);w.classList.remove('z');return;}
   const s=2.2,cx=parseFloat(b.style.left)+parseFloat(b.style.width)/2,cy=parseFloat(b.style.top)+parseFloat(b.style.height)/2,cl=v=>Math.min(0,Math.max(100-100*s,v));
-  el.style.transformOrigin='0 0';el.style.transform=`translate(${cl(50-cx*s).toFixed(2)}%,${cl(50-cy*s).toFixed(2)}%) scale(${s})`;w.classList.add('z');});}
+  el.style.transformOrigin='0 0';el.style.setProperty('--hz',s);el.style.transform=`translate(${cl(50-cx*s).toFixed(2)}%,${cl(50-cy*s).toFixed(2)}%) scale(${s})`;w.classList.add('z');});}
 /* 18n (Mittal): pointing at a part in the list lights its number on the diagram */
 document.addEventListener('mouseover',e=>{const r=e.target.closest&&e.target.closest('.m3-row'),m=r&&r.closest('.m3');if(r===hsHv)return;hsHv=r;document.querySelectorAll('.hs.hv').forEach(b=>b.classList.remove('hv'));if(!m)return;
  const c=M3[m.dataset.k],i=+r.dataset.i;if(!c)return;m.querySelectorAll('.dg[data-hk]').forEach(el=>{if(!el._hs)return;const by=hsMap(c.rows,hsList(el._hs));el.querySelectorAll('.hs').forEach(b=>{if((by.get(b.dataset.ref)||[]).some(q=>q.i===i))b.classList.add('hv');});});},{passive:true});

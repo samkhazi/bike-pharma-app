@@ -7318,7 +7318,7 @@ function hsEdit(k){S.ui.hsEd=S.ui.hsEd===k?null:k;hsRepaint(k);}
 function hsRepaint(k){document.querySelectorAll(`.dg[data-hk="${k}"]`).forEach(el=>{if(el._hs)hsPaint(el);else hsBar(el,'wait');});}
 const hsSave=(k,body)=>{const el=document.querySelector(`.m3 .dg[data-hk="${k}"]`);if(!el)return;const u=el.dataset.dg;
  return fetch('/api/dghot/edit',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({u},body))}).then(r=>r.json())
-  .then(d=>{if(d.error)throw d;const old=el._hs||{};const nd=Object.assign({},old,{ed:d.ed||[]});HSC[u]=Promise.resolve(nd);document.querySelectorAll(`.dg[data-hk="${k}"]`).forEach(x=>{x._hs=nd;hsPaint(x);});})
+  .then(d=>{if(d.error)throw d;const old=el._hs||{};const nd=Object.assign({},old,{ed:d.ed||[]});HSC[u]=Promise.resolve(nd);document.querySelectorAll(`.dg[data-hk="${k}"]`).forEach(x=>{x._hs=nd;hsPaint(x);});if(body.add&&typeof hsFocus==='function')setTimeout(()=>hsFocus(k),60);})   /* 18s: a number Admin just placed for the chosen part: the diagram glides to it at once */
   .catch(e=>toast((e&&e.error)||'Could not save. Check the connection.'));};
 function hsDel(k,x,y){hsSave(k,{del:[x,y]});}
 /* Admin fixing: a tap on the diagram puts the chosen part's number there (the size of the numbers already on it) */

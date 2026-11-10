@@ -104,6 +104,12 @@ try {
   ok(sq.map(l => l[0]).join() === '28,1,' && seqRefs([['1', 'A'], ['2', 'B']]).map(l => l[0]).join() === '1,2', '18u: an upload plate with EPC item numbers as refs takes the sync\'s diagram numbers by part number (else none); real refs stay');
   const sq2 = seqRefs([['703', 'KBUA0512', 'SCREW', '4'], ['881', 'DH162000', 'F', '1']], new Map([['KBUA0512', [['5', '2'], ['18', '2']]], ['DH162000', [['1', '']]]]));
   ok(sq2.map(l => l[0] + ':' + l[1] + ':' + l[3]).join() === '5:KBUA0512:2,18:KBUA0512:2,1:DH162000:1', '18x: a part the site shows under two diagram numbers is listed once per number, with the site\'s qty for each');
+  { const dh = zd.vars.findIndex(v => v.endsWith('· 00DH60ZZ')), before = zg.f[zg.p[String(dh)]['1']], sref = `pf:catalogues/hero-sync/bajaj/img/${IF}:0:${jpg('plate').length}`;
+    fs.writeFileSync(SB + '/coords.json', JSON.stringify({ [IF]: [100, 100, [['1', 10, 10, 5]]] }));
+    const Z2 = buildBajaj(D, 'catalogues/bajaj', { zipIndex: undefined, sync: SY }), dh2 = Z2.cat.vars.findIndex(v => v.endsWith('· 00DH60ZZ')), after = Z2.dg.f[Z2.dg.p[String(dh2)]['1']];
+    const rowRef = Z2.cat.d.filter(r => r[11].includes(dh2) && r[2] === '1').every(r => r[1] === -1);
+    fs.rmSync(SB + '/coords.json');
+    ok(before && before !== sref && after === sref && Z2.info.sitePics >= 1 && rowRef, '19a: a book plate the EPC site gave number places for shows the site\'s picture (exact places), not the book page: ' + before + ' -> ' + after); }
   ok(!buildBajaj(D).info.sync, 'no sync data: nothing changes');
 } catch (e) { ok(false, 'error ' + e.stack); }
 finally { srv.kill(); }

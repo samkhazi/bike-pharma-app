@@ -86,14 +86,105 @@ class Bajaj:
         rows = []
         for o in self.api_all('bom-plate-parts', f'&bom={bom_id}'):
             p, pt = o.get('plate') or {}, o.get('part') or {}
-            rows.append({'plate_id': str(p.get('plate_id') or '0'), 'plate': (p.get('plate_txt') or '').strip(),
+            rows.append({'plate_id': str(p.get('plate_id') or '0'), 'plate': (p.get('plate_txt') or '').strip(), 'pid': str(p.get('id') or ''), 'pm': p.get('modified_date') or '',
                          'img': p.get('plate_image_with_part') or p.get('plate_image') or '',
                          'item': o.get('item') or '', 'pn': (pt.get('part_number') or '').strip(),
                          'desc': (pt.get('description') or o.get('material_description') or '').strip(),
                          'qty': str(o.get('quantity') or '').strip(), 'valid_from': o.get('valid_from') or '',
                          'valid_to': o.get('valid_to') or '9999-12-31', 'status': o.get('status') or '',
                          'kit': bool(pt.get('kit_part_tag'))})
+        self.add_sn(rows)
         return rows
+
+    # ---------- diagram numbers (18u) ----------
+    # The API has no diagram number (item = line no., serial_number empty). The site's page /plates/<plate id>/sbom lists
+    # S.No. | ... | Part No | Description | Qty, and S.No. is the number printed on the diagram (Sam 10 Nov: plate 21224, 2 = KADD0622).
+    @staticmethod
+    def parse_sbom(html, known):
+        """[(sno, pn)] in page order; pn = the first cell of the row that is one of the plate's part numbers."""
+        out = []
+        for tr in re.findall(r'<tr\b.*?</tr>', html, re.S | re.I):
+            cells = [re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', c)).strip() for c in re.findall(r'<t[dh]\b[^>]*>(.*?)</t[dh]>', tr, re.S | re.I)]
+            if len(cells) < 2 or not re.fullmatch(r'\d{1,3}[A-Z]?', cells[0], re.I):
+                continue
+            pn = next((c.upper() for c in cells[1:] if c.upper() in known), None)
+            if pn:
+                out.append((cells[0].upper(), pn))
+        return out
+
+    def sbom(self, pid, pm, known):
+        cache = getattr(self, '_sbom', None)
+        if cache is None:
+            cache = self._sbom = load_json(os.path.join(self.dir, 'sbom.json'), {})
+        c, kh = cache.get(pid), hashlib.sha1(' '.join(sorted(known)).encode()).hexdigest()[:12]
+        if c and c.get('m') == pm and c.get('k') == kh:   # same plate, same part numbers: the page was read before
+            return c['sn']
+        try:
+            r = self.http.get(f'/plates/{pid}/sbom')
+            sn = self.parse_sbom(r.text, known) if r.status_code == 200 else []
+        except Exception as e:
+            log.warning('sbom %s: %s', pid, e); return []
+        if sn:   # an empty page (logged out, error) is asked again next time
+            cache[pid] = {'m': pm, 'k': kh, 'sn': [list(x) for x in sn]}
+            self._sbom_dirty = True
+        return sn
+
+    def save_sbom(self):
+        if getattr(self, '_sbom_dirty', False):
+            save_json(os.path.join(self.dir, 'sbom.json'), self._sbom); self._sbom_dirty = False
+
+    def add_sn(self, rows):
+        """Each line gets sn = its diagram number from the plate's sbom page ('' when the page does not list it)."""
+        by = {}
+        for r in rows:
+            by.setdefault(r.get('pid') or '', []).append(r)
+        for pid, rs in by.items():
+            if not pid:
+                continue
+            known = {r['pn'].upper() for r in rs if r['pn']}
+            left = {}
+            for sno, pn in self.sbom(pid, rs[0].get('pm', ''), known):
+                left.setdefault(pn, []).append(sno)
+            last = {}
+            for r in sorted(rs, key=lambda r: (int(r['item']) if str(r['item']).isdigit() else 10 ** 9, str(r['item']))):
+                q = left.get(r['pn'].upper())
+                if q:
+                    last[r['pn'].upper()] = q.pop(0)
+                r['sn'] = last.get(r['pn'].upper(), '')
+        self.save_sbom()
+
+    def fill_sn(self, limit=0):
+        """sync.py bajaj --sn: adds sn to BOMs saved before 18u (the newest BOM of every SKU the app uses), resumable."""
+        self.login()
+        skus = load_json(os.path.join(self.dir, 'skus.json'), {})
+        newest = {}
+        for bid, st, d in self.saved_boms():
+            sku = st['sku']
+            if self.skip(sku, skus.get(sku)):
+                continue
+            k = (str((d.get('header') or {}).get('valid_from') or ''), int(bid) if bid.isdigit() else 0)
+            if sku not in newest or k > newest[sku][0]:
+                newest[sku] = (k, bid)
+        todo = [bid for _, bid in newest.values()]
+        done = 0
+        for k, bid in enumerate(sorted(todo, key=lambda b: int(b) if b.isdigit() else 0), 1):
+            d = load_json(self.bom_path(bid), None)
+            if not d or d.get('sn'):
+                continue
+            pids = {str(o.get('plate_id')): (str(o.get('id')), o.get('modified_date') or '') for o in self.api_all('bom-plates', f'&bom={bid}')}
+            for r in d['rows']:
+                r['pid'], r['pm'] = pids.get(r['plate_id'], ('', ''))
+            self.add_sn(d['rows'])
+            got = sum(1 for r in d['rows'] if r.get('sn'))
+            d['sn'] = 1 if got or not pids else 0   # nothing read (logged out?): tried again next run
+            save_json(self.bom_path(bid), d)
+            log.info('BOM %s (%d/%d): %d of %d lines have a diagram number', bid, k, len(todo), got, len(d['rows']))
+            done += 1
+            if limit and done >= limit:
+                break
+        if done:   # the server rebuilds the Bajaj catalogue when state.json changes
+            self.state['sn_run'] = today(); save_json(self.state_path, self.state)
+        return done
 
     @staticmethod
     def skip(sku_code, s):
@@ -137,7 +228,7 @@ class Bajaj:
                 log.info('BOM %d/%d', k, len(changed))   # 17x: show progress on long first runs
             rows = self.bom_parts(bid)
             prev = load_json(self.bom_path(bid), {}).get('rows', [])
-            save_json(self.bom_path(bid), {'header': h, 'rows': rows, 'fetched': today()})
+            save_json(self.bom_path(bid), {'header': h, 'rows': rows, 'fetched': today(), 'sn': 1})
             self.state['boms'][bid] = {'sig': sig, 'n': n, 'sku': h['sku_code'].strip()}
             label = self.label(skus.get(h['sku_code'].strip()), h)
             if not old:

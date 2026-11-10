@@ -4652,8 +4652,15 @@ function m2PartV0(p){xrLoad();altLoad();const r=m2Row(p);if(!r)return `<div clas
  const det=m3Det(r,{rows:same.concat(r),vm,yr});
  return `${m2Head(esc(catNice(r.desc).replace(/^\.+\s*/,''))+(r.part?' – '+esc(r.part):'')+' for '+esc([r.vb,vm,cc?cc+'cc':'',yr].filter(Boolean).join(' ')),'')}
  <div class="m2v0">${!php&&pic?`<div class="card m2v0-pic"><div class="fpc-pic${r.img||ym||full?'':' sm'}">${r.ref?`<span class="fpc-ref">REF ${esc(r.ref)}</span>`:''}${pic}</div>${dgb}${catSee(r)}</div>`:''}<div class="card m3-det">${det}${php?dgb+catSee(r):''}</div></div>
- ${kitBox(r)}${amSection(r)}${coNeed(r,asm,q=>`m2Part(${q.i})`)}
+ ${g||full?'':catPlaces(r)}${kitBox(r)}${amSection(r)}${coNeed(r,asm,q=>`m2Part(${q.i})`)}
  ${asm.length?`<div class="sec"><h3 class="h2">Parts in this assembly</h3><span class="cap">${asm.length}</span></div><div class="stack g8">${asm.slice(0,8).map(mini).join('')}</div>${asm.length>8?`<button class="btn line" onclick="${secLink}">See all ${asm.length+1} in this section</button>`:''}`:''}`;}
+/* 18t (Sam 10 Nov "part search karta hun toh uss part ka catalogues bhi dekhne ka option chahiye"): a part opened from a search that has no
+   diagram of its own lists every bike + section of that brand where the same number is drawn; a tap opens that diagram page */
+function catPlaces(r){const pk=r.pk||catPk(r.part||'');if(!pk||pk.length<4)return '';const e=CAT_ALL.find(x=>x.vb===r.vb);let st=2;if(e&&e.split)st=catSplitQ(e,'pn:'+pk,{pn:pk});
+ const seen=new Set(),L=catRows().filter(q=>q.vb===r.vb&&q!==r&&(q.pk||catPk(q.part||''))===pk&&(q.sp||q.figp||dgFig(q))).filter(q=>{const k=fpWhere(q)+'|'+q.page;if(seen.has(k))return false;seen.add(k);return true;});
+ if(!L.length)return st===1?`<div class="sec"><h3 class="h2">See it in the catalogue</h3></div><div class="cap">Looking for the diagrams with this part…</div>`:'';
+ const yr=q=>{const v=(q.vv||[])[0],y=v&&typeof catVyrs==='function'?catVyrs(v):[];return y&&y.length?catYrsTxt(y):'';};
+ return `<div class="sec"><h3 class="h2">See it in the catalogue</h3><span class="cap">${L.length}</span></div><div class="stack g8">${L.slice(0,12).map(q=>`<button class="m2-row" onclick="m2Part(${q.i})"><span class="m2-num">${esc(q.ref||'·')}</span><div class="grow"><div class="h3" style="font-size:14px">${esc((q.vm||'').replace(/ \(.*$/,''))}${yr(q)?' · '+esc(yr(q)):''}</div><div class="cap">${esc([q.fig,catNice(q.asm||'')].filter(Boolean).join(' · '))}${q.ref?' · Ref '+esc(q.ref):''}</div></div>${ic('chevR','s18')}</button>`).join('')}</div>${L.length>12?`<div class="cap">and ${L.length-12} more bikes</div>`:''}`;}
 /* ----- the screen ----- */
 SCREENS.findpart=()=>{altListLoad();const f=S.ui.fp||(S.ui.fp=FP0());const p=cur().p||{};const v=p.v||'home';
  if(v==='res'&&p.q&&String(p.q).trim())fpRecAdd({t:'q',q:String(p.q).trim(),vb:p.vb,vm:p.vm});else if(v==='secs'&&p.vb&&p.vm&&p.vm!=='Any')fpRecAdd({t:'bike',vb:p.vb,vm:p.vm,yr:p.yr,ed:p.ed});

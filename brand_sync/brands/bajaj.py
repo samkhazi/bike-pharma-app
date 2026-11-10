@@ -144,7 +144,8 @@ class Bajaj:
             links |= set(re.findall(r'/plates/(\d+)/sbom', h))
             if k % 50 == 0:
                 log.info('model pages %d/%d, %d diagram pages', k, len(sms), len(links))
-        todo = [p for p in sorted(links, key=int) if p not in pages or pages[p][0] in refresh]
+        # newest pages first (current models), and every 1000 pages the numbers go into the BOMs so the app shows them while the rest is read
+        todo = [p for p in sorted(links, key=int, reverse=True) if p not in pages or pages[p][0] in refresh]
         log.info('%d model pages, %d diagram pages, %d to read', len(sms), len(links), len(todo))
         for k, pg in enumerate(todo, 1):
             try:
@@ -156,6 +157,8 @@ class Bajaj:
                 pages[pg] = [x[0], x[1], [list(t) for t in x[2]], x[3]]
             if k % 200 == 0 or k == len(todo):
                 save_json(path, pages); log.info('diagram pages %d/%d', k, len(todo))
+            if k % 1000 == 0 and k < len(todo) and self.sn_apply(pages)[0]:
+                self.state['sn_run'] = today(); save_json(self.state_path, self.state)   # the server rebuilds the Bajaj catalogue
         save_json(path, pages)
         return pages
 

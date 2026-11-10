@@ -703,18 +703,31 @@ function hotSvg(u) {
   try { fd = fs.openSync(path.join(FILES_DIR, rel), 'r'); fs.readSync(fd, buf, 0, buf.length, +m[2]); } catch (e) { return false; } finally { if (fd !== undefined) fs.closeSync(fd); }
   return buf[0] === 0x3C && /<svg[\s>]/.test(buf.toString('latin1'));
 }
-async function hotOcr(res, u, buf, user) {
+// the reader's job for one picture (one at a time per picture); null when this user read too many in the last hour
+function hotJob(u, buf, user) {
   let job = HOT_RUN.get(u);
   if (!job) {
-    if (limited('dghot:' + user.id, 300, 3600e3)) return json(res, 429, { error: 'Too many diagrams in one hour. Please wait a little.' });
+    if (limited('dghot:' + user.id, 300, 3600e3)) return null;
     job = BILL_AI.nums(buf).then(r => {
       const o = hotRead(u) || { u, ed: [] };
       Object.assign(o, { u, v: HOT_V, toks: r.toks, lo: r.lo || [], w: r.w, h: r.h, at: new Date().toISOString() }); hotWrite(u, o); return o;
     }).finally(() => HOT_RUN.delete(u));
     HOT_RUN.set(u, job);
   }
+  return job;
+}
+async function hotOcr(res, u, buf, user) {
+  const job = hotJob(u, buf, user);
+  if (!job) return json(res, 429, { error: 'Too many diagrams in one hour. Please wait a little.' });
   try { return json(res, 200, hotOut(await job)); }
   catch (e) { const o = hotRead(u) || {}; return json(res, 200, { ...hotOut(o), toks: null, off: String(e && e.message || e).slice(0, 200) }); }
+}
+// 18w (Sam 10 Nov, Fig 45: 11, 14, 18 missing): the site gives one place per number; numbers it leaves out and the other places of a
+// number drawn more than once (11 six times) come from the reader, but never on top of a place the site gave
+function hotMerge(site, toks) {
+  const near = t => { const cx = (t[1] + t[3]) / 2, cy = (t[2] + t[4]) / 2;
+    return site.some(s => { const w = (s[3] - s[1]) * 0.75, h = (s[4] - s[2]) * 0.75; return cx > s[1] - w && cx < s[3] + w && cy > s[2] - h && cy < s[4] + h; }); };
+  return (toks || []).filter(t => Array.isArray(t) && t.length >= 5 && !near(t));
 }
 async function dgHot(req, res, url, user) {
   if (roleClass(user) !== 'staff') { drain(req); return json(res, user ? 403 : 401, { error: user ? 'Staff login needed' : 'Please log in again' }); }
@@ -736,7 +749,12 @@ async function dgHot(req, res, url, user) {
   if (u.length > 600 || !HOT_U.test(u)) { drain(req); return json(res, 400, { error: 'Bad diagram' }); }
   const o = hotRead(u) || { u, toks: null, ed: [] };
   if (req.method === 'GET') {
-    const site = hotSite(u); if (site && site.length) return json(res, 200, { ...hotOut(o), toks: site, lo: [], site: 1 });   // 18v: the EPC site's own number places
+    const site = hotSite(u);
+    if (site && site.length) {   // 18v: the EPC site's own number places; 18w: + what the reader finds elsewhere on the picture
+      let r = o;
+      if (!o.toks && url.searchParams.get('ocr') === '1') { const buf = hotImg(u), job = buf && hotJob(u, buf, user); if (job) { try { r = await job; } catch (e) { r = o; } } }
+      return json(res, 200, { ...hotOut(o), toks: site.concat(hotMerge(site, r.toks)), lo: hotMerge(site, r.lo), site: 1 });
+    }
     if (o.toks || url.searchParams.get('ocr') !== '1') return json(res, 200, hotOut(o));
     if (u.startsWith('pdf:') || hotSvg(u)) return json(res, 200, { ...hotOut(o), need: 'img' });
     const buf = hotImg(u);

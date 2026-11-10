@@ -296,6 +296,9 @@ export async function readNums(buf) {
   // two sizes: what one size misses (a number touching its line) the other often finds; then once more with the straight lines
   // painted out (a line touching a number hides it), lines longer than about 2 numbers' height
   const sizes = (process.env.NUMS_SIZES || '3000:3,4500:4.5').split(',').map(x => x.split(':').map(Number));
+  // 18r (Sam 10 Nov, Bajaj EPC plate 393 x 489 px: 1, 4, 7 missed): a small picture is read twice more, 7 and 9 times bigger
+  // (tested on that plate on the server: 10 -> 12 numbers found, 3 s -> 9 s once; the reading is kept)
+  if (!process.env.NUMS_SIZES && Math.max(W0, H0) < 1000) sizes.push([3500, 7], [4500, 9]);
   const all = [], low = [];
   for (const [side, cap] of sizes) for (const t of await numsAt(buf, W0, H0, Math.min(cap, side / Math.max(W0, H0)))) (t[5] >= 0.7 ? all : low).push(t);
   // 18o: once more on the page with its dark label boxes turned round (white numbers in grey squares, Honda)

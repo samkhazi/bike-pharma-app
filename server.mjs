@@ -668,7 +668,7 @@ const HOT_DIR = path.join(DATA_DIR, 'dghot'), HOT_RUN = new Map(), HOT_MAX = 12 
 const HOT_U = /^(?:p[fa]:catalogues\/[^\0]+?:\d+:\d+|pdf:catalogues\/[^\0]+?:\d+:\d+:\d+:[\d.]+,[\d.]+,[\d.]+,[\d.]+)$/;
 const hotFile = u => path.join(HOT_DIR, crypto.createHash('sha1').update(u).digest('hex') + '.json');
 // 18o: HOT_V goes up when the number reader learns more (dark label boxes): an older reading is done again, Admin's fixes kept
-const HOT_V = 2, hotRead = u => { try { const o = JSON.parse(fs.readFileSync(hotFile(u), 'utf8')); if (o && o.toks && (o.v || 1) < HOT_V) o.toks = null; return o; } catch (e) { return null; } };
+const HOT_V = 3, hotRead = u => { try { const o = JSON.parse(fs.readFileSync(hotFile(u), 'utf8')); if (o && o.toks && (o.v || 1) < HOT_V) o.toks = null; return o; } catch (e) { return null; } };
 const hotWrite = (u, o) => { fs.mkdirSync(HOT_DIR, { recursive: true }); const f = hotFile(u), tmp = f + '.' + process.pid + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(o)); fs.renameSync(tmp, f); };
 const hotOut = o => ({ toks: o.toks || null, lo: o.lo || [], ed: o.ed || [] });
 // the diagram's picture straight out of the catalogue file here, as /api/files/read sends it

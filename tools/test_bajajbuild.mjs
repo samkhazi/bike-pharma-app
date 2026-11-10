@@ -90,16 +90,20 @@ try {
   const R = (plate_id, plate, item, pn, desc, extra = {}) => ({ plate_id, plate, img: plate_id === '1' ? U : '', item, pn, desc, qty: '1', valid_from: '2026-10-01', valid_to: '9999-12-31', status: '', kit: false, ...extra });
   fs.writeFileSync(SB + '/state.json', JSON.stringify({ last_run: '2026-11-01', skus: {}, boms: { 9001: { sig: 'x', n: 2, sku: '00JR99ZZ' }, 9002: { sig: 'x', n: 2, sku: '00DH60ZZ' }, 9003: { sig: 'x', n: 1, sku: '00JG11ZZ' } } }));
   fs.writeFileSync(SB + '/skus.json', JSON.stringify({ '00JR99ZZ': { desc: 'Pulsar N160 USD', brand: 'Pulsar N160', vertical: 'Motorcycle' }, '00DH60ZZ': { desc: 'Pulsar 150', brand: 'PULSAR 150', vertical: 'Motorcycle' } }));
-  fs.writeFileSync(SB + '/boms/9001.json', JSON.stringify({ header: { valid_from: '2026-10-05' }, rows: [R('1', 'FORK', '0010', 'JR991111', 'USD FORK ASSY', { sn: '7' }), R('2', 'SEAT', '0020', 'JR992222', 'SEAT', { valid_to: '2020-01-01' })] }));
+  fs.writeFileSync(SB + '/boms/9001.json', JSON.stringify({ header: { valid_from: '2026-10-05' }, rows: [R('1', 'FORK', '0010', 'JR991111', 'USD FORK ASSY', { sn: '7', snx: [['9', '2']], snq: '1' }), R('2', 'SEAT', '0020', 'JR992222', 'SEAT', { valid_to: '2020-01-01' })] }));
   fs.writeFileSync(SB + '/boms/9002.json', JSON.stringify({ header: { valid_from: '2023-04-01' }, rows: [R('1', 'COVER CYLINDER HEAD', '0003', 'PD519999', 'NEW GASKET'), R('1', 'COVER CYLINDER HEAD', '0001', 'PD511536', 'COVER')] }));
   fs.writeFileSync(SB + '/boms/9003.json', JSON.stringify({ header: {}, rows: [R('1', 'KTM', '0001', 'KTM0001', 'KTM PART')] }));
   const Z = buildBajaj(D, 'catalogues/bajaj', { zipIndex: undefined, sync: SY }), zd = Z.cat, zg = Z.dg, nv = zd.vars.findIndex(v => v.endsWith('· 00JR99ZZ')), fk = zd.d.find(r => r[5] === 'JR991111'), ng = zd.d.find(r => r[5] === 'PD519999');
   ok(nv >= 0 && zd.vmod[zd.vars[nv]] === 'Pulsar N160' && fk && fk[11].join() === String(nv) && /weekly sync/.test(fk[8]) && zg.f[zg.p[String(nv)]['1']] === `pf:catalogues/hero-sync/bajaj/img/${IF}:0:${jpg('plate').length}`
     && !zd.d.some(r => r[5] === 'JR992222' || r[5] === 'KTM0001') && ng && ng[2] === '1' && zd.d.filter(r => r[5] === 'PD511536' && r[11].includes(zd.vars.findIndex(v => v.endsWith('· 00DH60ZZ')))).length === 1 && Z.info.sync.parts === 1,
     'sync: a new Bajaj SKU is an edition with its plate picture; a known SKU gets only its new part, under its plate; ended lines and KTM are left out');
+  { const two = zd.d.filter(r => r[5] === 'JR991111' && r[11].includes(nv)).map(r => r[4] + ':' + r[7]).sort().join();
+    ok(two === '7:1,9:2', '18x: a sync line with a second diagram number (snx) is two lines, each with the site\'s qty: ' + two); }
   ok(fk[4] === '7' && ng[4] === '', '18u: a sync line\'s Ref = the diagram number (S.No.) read from the EPC site; none when the site has none (never the line order)');
-  const { seqRefs } = await import('../lib/bajajbuild.mjs'), sq = seqRefs([['703', 'dh162023', 'W', '1'], ['881', 'DH162000', 'F', '1'], ['1031', 'ZZ1', 'Q', '1']], new Map([['DH162023', '28'], ['DH162000', '1']]));
+  const { seqRefs } = await import('../lib/bajajbuild.mjs'), sq = seqRefs([['703', 'dh162023', 'W', '1'], ['881', 'DH162000', 'F', '1'], ['1031', 'ZZ1', 'Q', '1']], new Map([['DH162023', [['28', '']]], ['DH162000', [['1', '']]]]));
   ok(sq.map(l => l[0]).join() === '28,1,' && seqRefs([['1', 'A'], ['2', 'B']]).map(l => l[0]).join() === '1,2', '18u: an upload plate with EPC item numbers as refs takes the sync\'s diagram numbers by part number (else none); real refs stay');
+  const sq2 = seqRefs([['703', 'KBUA0512', 'SCREW', '4'], ['881', 'DH162000', 'F', '1']], new Map([['KBUA0512', [['5', '2'], ['18', '2']]], ['DH162000', [['1', '']]]]));
+  ok(sq2.map(l => l[0] + ':' + l[1] + ':' + l[3]).join() === '5:KBUA0512:2,18:KBUA0512:2,1:DH162000:1', '18x: a part the site shows under two diagram numbers is listed once per number, with the site\'s qty for each');
   ok(!buildBajaj(D).info.sync, 'no sync data: nothing changes');
 } catch (e) { ok(false, 'error ' + e.stack); }
 finally { srv.kill(); }

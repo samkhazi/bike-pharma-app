@@ -177,19 +177,42 @@ class Bajaj:
             for r in d['rows']:
                 by.setdefault(r['plate_id'], []).append(r)
             for pl, rs in by.items():
-                left = {}
-                for sno, pn in idx.get((bid, pl)) or num.get((bnum, pl), []):   # the page's bom_id is the API's BOM id; its BOM number as a second way
-                    left.setdefault(pn, []).append(sno)
-                last = {}
+                # 18x (Sam 10 Nov, Fig 45: 18 missing): the site can show one part number under two diagram numbers (KBUA0512 = 5 and 18).
+                # A part's lines valid today take its numbers in order; numbers left over go on its last line as snx [[number, site qty]]
+                # (the app lists the part once per number); snq = the site's qty for the line's own number when the part has several.
+                nums = {}
+                for sno, pn, *q in idx.get((bid, pl)) or num.get((bnum, pl), []):   # the page's bom_id is the API's BOM id; its BOM number as a second way
+                    e = nums.setdefault(pn, [])
+                    if not any(x[0] == sno for x in e):
+                        e.append([sno, str(q[0]).strip() if q and q[0] is not None else ''])
+                t, lines = today(), {}
                 for r in sorted(rs, key=lambda r: (int(r['item']) if str(r['item']).isdigit() else 10 ** 9, str(r['item']))):
+                    if (r.get('valid_to') or '9999') >= t and r.get('status') != 'DELETED':
+                        L = lines.setdefault((r['pn'] or '').upper(), [])
+                        if r['item'] not in L:
+                            L.append(r['item'])
+                for r in rs:
                     pn = (r['pn'] or '').upper()
-                    q = left.get(pn)
-                    if q:
-                        last[pn] = q.pop(0)
-                    v = last.get(pn, '')
+                    ns, L = nums.get(pn) or [], lines.get(pn) or []
+                    v, x, q = '', [], ''
+                    if ns and r['item'] in L and (r.get('valid_to') or '9999') >= t and r.get('status') != 'DELETED':
+                        i = L.index(r['item'])
+                        k = min(i, len(ns) - 1)
+                        v = ns[k][0]
+                        q = ns[k][1] if len(ns) > 1 else ''
+                        x = ns[len(L):] if i == len(L) - 1 else []
+                    elif ns:
+                        v = ns[0][0]
                     nl += bool(v)
-                    if r.get('sn', None) != v:
-                        r['sn'] = v; ch = True
+                    old = (r.get('sn', None), r.get('snx') or [], r.get('snq') or '')
+                    if old != (v, x, q):
+                        ch = True
+                        r['sn'] = v
+                        for key, val in (('snx', x), ('snq', q)):
+                            if val:
+                                r[key] = val
+                            else:
+                                r.pop(key, None)
             if ch:
                 save_json(self.bom_path(bid), d); nb += 1
         log.info('diagram numbers: %d BOMs changed, %d lines have one', nb, nl)
@@ -208,7 +231,7 @@ class Bajaj:
             j = r.json()
         except ValueError:
             return None
-        sn = [[str(x.get('map_id') or '').strip().upper(), str(x.get('part_no') or '').strip().upper()] for x in j.get('sboms') or []]
+        sn = [[str(x.get('map_id') or '').strip().upper(), str(x.get('part_no') or '').strip().upper(), str(x.get('quantity') or '').strip()] for x in j.get('sboms') or []]
         pts = []
         for m in j.get('maps') or []:
             c = [v.strip() for v in str(m.get('coords') or '').split(',')]
@@ -276,6 +299,15 @@ class Bajaj:
         log.info('number places: %d plate pictures', len(coords))
         return nl
 
+    @staticmethod
+    def hs_old(e):
+        """A plate read before 18x (no site qty) on which one part number has two diagram numbers: read again for the qty of each."""
+        seen = {}
+        for x in e.get('sn') or []:
+            if len(x) < 3:
+                seen.setdefault(x[1], set()).add(x[0])
+        return any(len(v) > 1 for v in seen.values())
+
     def hs_scan(self, refresh=(), every=20):
         """Diagram numbers + their places for every plate of the newest BOM of each SKU (bajaj/hs.json; resumable)."""
         path = os.path.join(self.dir, 'hs.json')
@@ -296,7 +328,7 @@ class Bajaj:
             new = 0
             for pl in sorted(imgs, key=lambda x: int(x) if x.isdigit() else 0):
                 key = bid + '|' + pl
-                if key in hs and bid not in refresh:
+                if key in hs and bid not in refresh and not self.hs_old(hs[key]):
                     continue
                 try:
                     c = self.catalog(bid, pl)

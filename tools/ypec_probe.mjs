@@ -16,6 +16,16 @@ const h = await get(url);
 say('PAGE', new URL(url).pathname, h.length, 'chars;', (/<title>([^<]*)/i.exec(h) || [])[1] || '');
 if (h.length < 3000) say(h.replace(/\s+/g, ' ').slice(0, 1500));
 const srcs = [...h.matchAll(/<script[^>]+src=["']([^"']+)/gi)].map(m => new URL(m[1], url).toString()).filter(u => u.startsWith(B));
+if (process.argv[3] === 'src' || process.argv[2] === 'src') {   // 19g: the catalogue page's own code around its data call and its hotspot map
+  const J = {}; for (const s of srcs) if (/parts-search\//.test(s)) J[s.replace(/.*\/|\?.*/g, '')] = await get(s);
+  const sq = t => t.replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n');
+  for (const f of ['ypec.const.js', 'ypec.controller.js', 'ypec.util.js']) say('=====', f, '\n' + sq(J[f] || 'none'));
+  const cut = (f, re, n, back = 0) => { const t = J[f] || ''; let m, k = 0; const r = new RegExp(re, 'g'); while ((m = r.exec(t)) && k++ < 6) say('=====', f, '@' + m.index, '\n' + sq(t.slice(Math.max(0, m.index - back), m.index + n))); };
+  cut('parts_catalog.common.js', 'initPartsList = function', 4500); cut('parts_catalog.common.js', 'createHotspotMap = function', 3000);
+  cut('parts_catalog.common.js', 'reqParams\\s*=', 1200); cut('parts_catalog.imagemap.js', ',init = function', 3000);
+  for (const f of ['parts_catalog.common.js', 'parts_catalog_pc.js']) cut(f, '\\$\\.ajax\\(', 300, 900);
+  process.exit(0);
+}
 say('SCRIPTS', srcs.length); for (const s of srcs) say('  ', s.slice(B.length));
 const inl = [...h.matchAll(/<script(?![^>]+src=)[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1]).join('\n');
 const KEY = /hot\s*spot|coord|callout|usemap|<area|\barea\b|imagemap|svg|canvas|illust|figNo|figureNo|refNo|\.json|ajax|fetch\(|XMLHttpRequest|url\s*:|\/ypec\/|control\//i;

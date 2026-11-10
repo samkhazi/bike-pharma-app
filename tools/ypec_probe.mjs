@@ -6,7 +6,7 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 try { for (const line of fs.readFileSync(path.join(ROOT, '.env'), 'utf8').split('\n')) { const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/.exec(line); if (m && !(m[1] in process.env)) process.env[m[1]] = m[2].replace(/^"(.*)"$/, '$1'); } } catch (e) {}
 const { _ypec } = await import('../lib/vinlook.mjs');
 const B = _ypec.base(), say = (...a) => console.log(...a);
-const pg = process.argv[2] || 'html5/app/en/parts-search/app/parts_catalog_pc.html?modelBaseCode=&modelTypeCode=D704&modelYear=2025&productNo=010';
+const SRC = process.argv.includes('src'), pg = process.argv.slice(2).find(x => x !== 'src') || 'html5/app/en/parts-search/app/parts_catalog_pc.html?modelBaseCode=&modelTypeCode=D704&modelYear=2025&productNo=010';
 const L = await _ypec.login();
 if (L.error) { say('LOGIN:', L.error); process.exit(1); }
 say('login ok');
@@ -16,7 +16,7 @@ const h = await get(url);
 say('PAGE', new URL(url).pathname, h.length, 'chars;', (/<title>([^<]*)/i.exec(h) || [])[1] || '');
 if (h.length < 3000) say(h.replace(/\s+/g, ' ').slice(0, 1500));
 const srcs = [...h.matchAll(/<script[^>]+src=["']([^"']+)/gi)].map(m => new URL(m[1], url).toString()).filter(u => u.startsWith(B));
-if (process.argv[3] === 'src' || process.argv[2] === 'src') {   // 19g: the catalogue page's own code around its data call and its hotspot map
+if (SRC) {   // 19g: the catalogue page's own code around its data call and its hotspot map
   const J = {}; for (const s of srcs) if (/parts-search\//.test(s)) J[s.replace(/.*\/|\?.*/g, '')] = await get(s);
   const sq = t => t.replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n');
   for (const f of ['ypec.const.js', 'ypec.controller.js', 'ypec.util.js']) say('=====', f, '\n' + sq(J[f] || 'none'));

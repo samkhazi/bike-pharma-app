@@ -6,7 +6,7 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 try { for (const line of fs.readFileSync(path.join(ROOT, '.env'), 'utf8').split('\n')) { const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/.exec(line); if (m && !(m[1] in process.env)) process.env[m[1]] = m[2].replace(/^"(.*)"$/, '$1'); } } catch (e) {}
 const { _ypec } = await import('../lib/vinlook.mjs');
 const B = _ypec.base(), say = (...a) => console.log(...a);
-const SRC = process.argv.includes('src'), CALL = process.argv.includes('call'), pg = process.argv.slice(2).map(x => x.replace(/^https?:\/\/[^/]+\/ypec\//, '')).find(x => x !== 'src' && x !== 'call') || 'html5/app/en/parts-search/app/parts_catalog_pc.html?modelBaseCode=&modelTypeCode=D704&modelYear=2025&productNo=010';
+const SRC = process.argv.includes('src'), CALL = process.argv.includes('call'), FLOW = process.argv.includes('flow'), pg = process.argv.slice(2).map(x => x.replace(/^https?:\/\/[^/]+\/ypec\//, '')).find(x => !['src', 'call', 'flow'].includes(x)) || 'html5/app/en/parts-search/app/parts_catalog_pc.html?modelBaseCode=&modelTypeCode=D704&modelYear=2025&productNo=010';
 const L = await _ypec.login();
 if (L.error) { say('LOGIN:', L.error); process.exit(1); }
 say('login ok');
@@ -16,7 +16,7 @@ const h = await get(url);
 say('PAGE', new URL(url).pathname, h.length, 'chars;', (/<title>([^<]*)/i.exec(h) || [])[1] || '');
 if (h.length < 3000) say(h.replace(/\s+/g, ' ').slice(0, 1500));
 const srcs = [...h.matchAll(/<script[^>]+src=["']([^"']+)/gi)].map(m => new URL(m[1], url).toString()).filter(u => u.startsWith(B));
-if (CALL) {   // 19i: makes the catalogue page's own data calls for this page address and shows what comes back (prices masked)
+if (CALL || FLOW) {   // 19i: makes the catalogue page's own data calls for this page address and shows what comes back (prices masked)
   const J = {}; for (const s of srcs) if (/parts-search\//.test(s)) J[s.replace(/.*\/|\?.*/g, '')] = await get(s);
   const all = Object.values(J).join('\n'), sq = t => t.replace(/\s+/g, ' ');
   const q = Object.fromEntries(new URL(url).searchParams), cid = {};
@@ -37,6 +37,42 @@ if (CALL) {   // 19i: makes the catalogue page's own data calls for this page ad
     }
   };
   const dims = b => b[0] === 0x89 ? [b.readUInt32BE(16), b.readUInt32BE(20)] : b[0] === 0x47 ? [b.readUInt16LE(6), b.readUInt16LE(8)] : (() => { for (let i = 2; i < b.length - 9;) { if (b[i] !== 0xFF) { i++; continue; } const m = b[i + 1]; if (m >= 0xC0 && m <= 0xCF && m !== 0xC4 && m !== 0xC8 && m !== 0xCC) return [b.readUInt16BE(i + 7), b.readUInt16BE(i + 5)]; i += 2 + b.readUInt16BE(i + 2); } return [0, 0]; })();
+  if (FLOW) {   // 19j: the way from choosing a model to its catalogue: the old search pages and the new catalogue-index page
+    const C = B + '/ypec/control/', txt = h => sq(h.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<[^>]+>/g, ' '));
+    const seen = new Set(), ctx = (name, t, re, n = 500, max = 8) => { let m, k = 0; const r = new RegExp(re, 'g'); while ((m = r.exec(t)) && k < max) { const c = sq(t.slice(Math.max(0, m.index - 150), m.index + n)); if (seen.has(c)) continue; seen.add(c); k++; say('  ', name, '|', c); } };
+    const acts = new Set();
+    for (const pgN of ['specification/FrameModelSelection', 'specification/HeaderModelSelection']) {
+      const t = await get(C + pgN); say('== OLD PAGE', pgN, t.length, 'chars');
+      say('   fields:', [...t.matchAll(/<(?:input|select)[^>]*\bname=["']?([\w.]+)[^>]*/gi)].map(m => m[1] + (/type=["']?hidden/i.test(m[0]) ? '(h)' : '')).join(' '));
+      say('   frames:', [...t.matchAll(/<i?frame[^>]*src=["']([^"']+)/gi)].map(m => m[1]).join(' '));
+      for (const m of t.matchAll(/actionType(?:\.value)?\s*=\s*["'](\w+)["']/g)) acts.add(m[1]);
+      ctx('js', t, 'actionType', 500, 10); ctx('js', t, 'function\\s+\\w+\\s*\\(', 300, 25);
+    }
+    say('ACTION TYPES', [...acts].join(',') || 'none seen');
+    const base = { modelName: '', modelYearFrom: '', modelYearTo: '', modelTypeCode: '', productNo: '', colorType: '', prefixNo: '', serialNo: '', frameNo: '', engineNo: '', Operation: '', SearchFlg: ' ',
+      baseCode: process.env.YPEC_BASE_CODE || '', prodCategory: '10', confirmId: '', pmpDisplayFlg: '0', pdfDisFlg: '1' };
+    let rowSrc = '';
+    for (const at of new Set([...acts, 'modelName', 'modelType', 'search'])) for (const f of [{ modelName: 'FZ' }, { modelTypeCode: 'D704' }]) {
+      if (at === 'serialNo') continue;
+      const t = await get(C + 'specification/ListModelSelection', { ...base, ...f, actionType: at });
+      const fn = {}; for (const m of t.matchAll(/JavaScript:\s*(\w+)\(([^)]{0,600})\)/gi)) (fn[m[1]] = fn[m[1]] || []).push(m[2]);
+      say('== LIST actionType=' + at, JSON.stringify(f), t.length, 'chars;', Object.entries(fn).map(([k, v]) => k + ' x' + v.length).join(', ') || txt(t).slice(0, 200));
+      if (Object.keys(fn).length && !rowSrc) { rowSrc = t; for (const [k, v] of Object.entries(fn)) for (const x of v.slice(0, 2)) say('     ', k + '(' + sq(x) + ')');
+        ctx('list js', t, 'function\\s+\\w+\\s*\\(', 900, 12); ctx('list html5', t, 'html5|parts_catalog|catalog_index', 400, 6);
+        say('   list fields:', [...t.matchAll(/<(?:input|select)[^>]*\bname=["']?([\w.]+)[^>]*/gi)].map(m => m[1]).filter((x, i, a) => a.indexOf(x) === i).join(' ')); }
+    }
+    const P = B + '/ypec/html5/app/en/parts-search/app/', J2 = {};
+    for (const n of ['catalog_index.html', 'catalog_index_pc.html', 'index.html', 'model_list.html', 'model_select.html']) {
+      const t = await get(P + n); say('== NEW PAGE', n, t.length, 'chars', (/<title>([^<]*)/i.exec(t) || [])[1] || sq(t).slice(0, 80));
+      for (const m of t.matchAll(/<script[^>]+src=["']([^"']+)/gi)) { const u = new URL(m[1], P + n).toString(), k = u.replace(/.*\/|\?.*/g, ''); if (/parts-search\//.test(u) && !(k in J) && !(k in J2)) { J2[k] = await get(u); say('     script', k, J2[k].length); } }
+      ctx(n + ' inline', t, 'generateUrl\\(ypec\\.const\\.\\w+', 1500, 4);
+    }
+    for (const [k, t] of Object.entries({ ...J2, ...J })) { ctx(k, t, 'generateUrl\\(ypec\\.const\\.apiCatalogIndexUrl', 1800, 3); ctx(k, t, "setItem\\('ypecData\\w+'", 300, 6); ctx(k, t, "forword\\(", 300, 6); }
+    for (const [k, t] of Object.entries(J2)) ctx(k, t, 'generateUrl\\(ypec\\.const\\.\\w+', 1500, 6);
+    for (const b0 of [{ modelBaseCode: q.modelBaseCode || '', modelTypeCode: q.modelTypeCode, modelYear: q.modelYear, productNo: q.productNo }, { modelBaseCode: '', modelTypeCode: q.modelTypeCode, modelYear: q.modelYear, productNo: q.productNo, colorType: '', catalogLangId: '02', calledCode: '1' }])
+      sum('catalog_index ' + Object.keys(b0).join(','), await post('/ypec/services/html5/catalog_index', b0));
+    process.exit(0);
+  }
   const calls = [];
   for (const m of all.matchAll(/ajaxOption\.url\s*=\s*ypec\.controller\.generateUrl\(ypec\.const\.(api\w+Url)\);\s*ajaxOption\.data\s*=\s*JSON\.stringify\(\{([\s\S]*?)\}\);/g)) { calls.push([m[1], m[2]]); say('CALL', m[1], '{', sq(m[2]).slice(0, 700), '}'); }
   const cu = n => { const m = new RegExp("ypec\\.const\\." + n + "\\s*=\\s*ypec\\.const\\.apiBaseUrl\\s*\\+\\s*'([^']+)'").exec(all); return m ? '/ypec/services/html5' + m[1] : null; };

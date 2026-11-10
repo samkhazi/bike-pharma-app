@@ -5592,7 +5592,10 @@ function dgMiss(){return '<div class="cap">This diagram is not on the server yet
 /* ---------- browser Back / Forward = the app's own screens ---------- */
 var NAVH={on:0,i:0};
 var NAV_PRE=['login','otp','signup','pw','roleok','boot'];
-function navSave(push){if(!NAVH||!NAVH.on)return;let st;try{st=JSON.parse(JSON.stringify(S.stack));}catch(e){return;}if(push)NAVH.i++;try{history[push?'pushState':'replaceState']({bpnav:{i:NAVH.i,st,u:S.uid||null}},'');}catch(e){}}
+function navSave(push){if(!NAVH||!NAVH.on)return;let st;try{st=JSON.parse(JSON.stringify(S.stack));}catch(e){return;}if(push)NAVH.i++;try{history[push?'pushState':'replaceState']({bpnav:{i:NAVH.i,st,u:S.uid||null}},'');}catch(e){}navKeep(st);}
+/* 18z: on bikepharma.com the app runs inside the website's frame, and a reload makes that frame again with an empty history: the open screens are
+   also kept in this tab's own store, and start() takes them from there */
+function navKeep(st){try{if(S.uid&&st&&st.length&&!st.some(x=>NAV_PRE.includes(x.s)))sessionStorage.setItem('bp_nav',JSON.stringify({u:S.uid,st}));else sessionStorage.removeItem('bp_nav');}catch(e){}}
 window.addEventListener('popstate',e=>{const h=e.state&&e.state.bpnav;if(!h||!NAVH.on)return;
  const dir=h.i<NAVH.i?'back':'push';NAVH.i=h.i;let st=h.st||[];const same=(a,b)=>a.every((x,k)=>b[k]&&x&&x.s===b[k].s);
  if(st.length<S.stack.length&&same(st,S.stack))st=S.stack.slice(0,st.length);
@@ -7416,9 +7419,10 @@ async function start(){SCREENS.boot=()=>'<div class="scroll"></div>';S.stack=[{s
  /* 18y (Sam 10 Nov 'refresh karne ke baad wahi page'): a reload keeps the page: the browser still holds this tab's screens (history.state),
     taken back when they are the same login's and every screen is one this login may open; a screen that cannot draw falls back to home */
  let nav0=0;
- if(b.user){try{const h=history.state&&history.state.bpnav,ok=x=>x&&SCREENS[x.s]&&!NAV_PRE.includes(x.s)&&allowed(x.s);
+ if(b.user){try{let h=history.state&&history.state.bpnav,kept=0;if(!h){try{h=JSON.parse(sessionStorage.getItem('bp_nav')||'null');kept=1;}catch(e){h=null;}}const ok=x=>x&&SCREENS[x.s]&&!NAV_PRE.includes(x.s)&&allowed(x.s);
   if(h&&h.u&&h.u===S.uid&&Array.isArray(h.st)&&h.st.length&&h.st.every(ok)){const home=S.stack;S.stack=h.st;nav0=h.i|0;
-   try{render('');}catch(e){console.error(e);S.stack=home;nav0=0;render('');}}
+   try{render('');if(kept){nav0=h.st.length-1;try{for(let k=1;k<h.st.length;k++){history[k===1?'replaceState':'pushState']({bpnav:{i:k-1,st:h.st.slice(0,k),u:S.uid}},'');}if(h.st.length>1)history.pushState({bpnav:{i:nav0,st:h.st,u:S.uid}},'');}catch(e){}}}   /* 18z: one history step per open screen, so Back still goes screen by screen */
+   catch(e){console.error(e);S.stack=home;nav0=0;render('');}}
   else render('');}catch(e){render('');}}
  else render('');
  splash();NAVH.on=1;NAVH.i=nav0;navSave(false);

@@ -10,7 +10,7 @@ Abhi ready: **Hero DMS (har Saturday raat 9 baje)**, **Hero e-catalogue (har Sun
 1. Admin > More > Catalogue files > "Hero sync start data": Mac ke Downloads se `brand_sync.zip` upload karo.
 2. Root se: `bash /home/bikepharma/htdocs/bikepharma.com/brand_sync/setup.sh`
 3. `nano /home/bikepharma/htdocs/bikepharma.com/brand_sync/.env` me HERO_DMS_USER / HERO_DMS_PASS bharo.
-4. setup.sh jo 2 cron lines dikhata hai, `crontab -u bikepharma -e` me daalo.
+4. Sabhi brand ka cron ek hi file me hai: `brand_sync/crontab.txt`. Lagane ke liye root se `bash brand_sync/install_cron.sh`.
 
 Sync ka data `data/project-files/catalogues/hero-sync` me jata hai. Website ka server har ghante dekhta hai: naya data aaya to
 Hero catalogue khud dobara banta hai (naye models, diagrams, photos, MRP, purana -> naya). Jo diagram/photo Raw Data me pehle se hai

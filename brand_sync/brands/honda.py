@@ -529,6 +529,9 @@ class Honda:
             i += 2 + int.from_bytes(b[i + 2:i + 4], 'big')
         return None
 
+    def lab_path(self, aid):
+        return os.path.join(data_dir('honda', 'labels'), f'{aid}.json')
+
     def labels_publish(self):
         """19c: honda/coords.json {assembly id: [w, h, [[number, x, y, w, h]]]} for the server (w, h = the picture at Factor 1)"""
         coords = {}
@@ -540,6 +543,13 @@ class Honda:
                 if not L or not wh: continue
                 f = 3.0 if max(x[1] + x[3] for x in L) <= wh[0] / 3 * 1.05 and max(x[2] + x[4] for x in L) <= wh[1] / 3 * 1.05 else 1.0   # the picture is read at Factor 3
                 coords[str(aid)] = [round(wh[0] / f, 2), round(wh[1] / f, 2), L]
+        # 19d: the uploaded diagrams (labels/<assembly id>.json: places + the size of Honda's picture at Factor 1)
+        d = data_dir('honda', 'labels')
+        for f in os.listdir(d):
+            aid = f[:-5]
+            if not f.endswith('.json') or aid in coords: continue
+            x = load_json(os.path.join(d, f), {})
+            if x.get('labels') and x.get('w') and x.get('h'): coords[aid] = [x['w'], x['h'], x['labels']]
         save_json(os.path.join(self.dir, 'coords.json'), coords)
         log.info('Honda: number places for %d diagrams', len(coords))
         return len(coords)
@@ -565,6 +575,21 @@ class Honda:
                         log.warning('Honda labels %s_%s: %s', mid, aid, str(e)[:160]); self.ensure_session(page); continue
                     save_json(path, d); done.add(aid)
                     if k % 200 == 0: log.info('Honda labels: %d/%d', k, len(todo)); self.labels_publish()
+                    time.sleep(float(env('HONDA_DELAY', '0.2')))
+                # 19d: the diagrams from Sam's upload (the Honda build lists them in labels_todo.json): places + Honda's picture size at Factor 1
+                up = [x for x in load_json(os.path.join(self.dir, 'labels_todo.json'), []) if str(x[1]) not in done and not os.path.exists(self.lab_path(x[1]))]
+                log.info('Honda labels: %d uploaded diagrams to read', len(up))
+                for k, (mid, aid) in enumerate(up, 1):
+                    try:
+                        page.evaluate('([a, m]) => hParts(a, m)', [str(aid), str(mid)]); L = self.labels(page)
+                        r = page.request.get(f'{BASE}/ImageHandler.ashx?Type=Part&PartId=-1,&Factor=1.00&time={aid}_{int(time.time() * 1000)}', timeout=120000)
+                        wh = None
+                        if r.ok and (r.headers.get('content-type') or '').startswith('image'):
+                            tmp = self.lab_path(aid) + '.img'; open(tmp, 'wb').write(r.body()); wh = self.img_size(tmp); os.remove(tmp)
+                    except Exception as e:
+                        log.warning('Honda labels %s_%s: %s', mid, aid, str(e)[:160]); self.ensure_session(page); continue
+                    save_json(self.lab_path(aid), {'mid': mid, 'labels': L, 'w': wh[0] if wh else 0, 'h': wh[1] if wh else 0, 'fetched': today()})
+                    if k % 200 == 0: log.info('Honda labels (upload): %d/%d', k, len(up)); self.labels_publish()
                     time.sleep(float(env('HONDA_DELAY', '0.2')))
             finally:
                 ctx.close()

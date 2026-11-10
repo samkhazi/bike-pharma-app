@@ -498,6 +498,51 @@ class Honda:
         self.state['crawled'][code] = {**meta, 'mid': mid, 'asms': out, 'date': today(), 'newpic': sorted(newpic)}
 
     # ---------- sync ----------
+    def probe(self):
+        """19b (Sam 10 Nov: Honda's own site lights the part and its number on the diagram, both ways): what the site sends for that,
+        read only, one diagram. Writes data/logs/honda_probe_<date>.txt and prints it."""
+        from playwright.sync_api import sync_playwright
+        out = []
+        def say(*a): out.append(' '.join(str(x) for x in a)); print(out[-1], flush=True)
+        with sync_playwright() as p:
+            ctx = p.chromium.launch_persistent_context(data_dir('honda', 'browser'), args=['--disable-dev-shm-usage'], headless=env('HONDA_HEADFUL', '') == '',
+                                                       viewport={'width': 1500, 'height': 900})
+            page = ctx.pages[0] if ctx.pages else ctx.new_page(); page.set_default_timeout(120000)
+            seen = []
+            page.on('response', lambda r: seen.append((r.request.method, r.url[:220], r.headers.get('content-type', ''), r.status)))
+            try:
+                self.login(page); self.ensure_session(page)
+                code = next((c for c, m in self.state['models'].items() if m.get('mid')), None)
+                mid = self.state['models'][code]['mid'] if code else page.evaluate('() => hModels()')[0]['MODELID']
+                aggs = page.evaluate('m => hAggs(m)', mid); asm = page.evaluate('a => hAsms(a)', aggs[0]['ID'])[0]
+                say('MODEL', code, mid, 'ASM', asm.get('FIGNO'), asm.get('CATEGORYNAME'), asm['ID'])
+                n = {'_search': False, 'nd': int(time.time() * 1000), 'rows': -1, 'page': 1, 'sidx': 'Priority', 'sord': 'asc'}
+                raw = page.evaluate('([a, m, n]) => hPost("GetIllustrationPartsJQ", Object.assign(n, {Id: hE(a), ModelId: hE(m), SelDate: hE(""), svinno: hE(""), isSbom: hE(""), sbomId: hE(""), SessionDate: hE("")}))', [asm['ID'], mid, n])
+                say('JQ KEYS', sorted((raw or {}).keys()))
+                rows = (raw or {}).get('rows') or []
+                say('ROW0', json.dumps(rows[0] if rows else {}, ensure_ascii=False)[:1500])
+                for k, v in (raw or {}).items():
+                    if k != 'rows': say('JQ', k, json.dumps(v, ensure_ascii=False)[:600])
+                pid = (rows[0].get('AssemblyPartId') or rows[0].get('PartId')) if rows else -1
+                for q in ['Type=Part&PartId=-1,&Factor=3.00', f'Type=Part&PartId={pid},&Factor=3.00']:
+                    r = page.request.get(f'{BASE}/ImageHandler.ashx?{q}&time={asm["ID"]}_{int(time.time() * 1000)}', timeout=120000)
+                    say('IMG', q, r.status, r.headers.get('content-type'), len(r.body()), r.body()[:60])
+                page.goto(BASE + '/Quickreference.aspx', wait_until='domcontentloaded'); page.wait_for_timeout(5000)
+                html = page.content(); say('QR PAGE', page.url, len(html))
+                srcs = page.evaluate('() => [...document.scripts].map(s => s.src).filter(Boolean)')
+                texts = [html] + [page.request.get(u, timeout=60000).text() for u in srcs if 'honda2wheelerparts' in u or u.startswith('/')]
+                found = set()
+                for t in texts:
+                    found |= set(re.findall(r'Service\.svc/(\w+)', t)) | set(re.findall(r'(\w+\.ashx[^\'"\s]{0,80})', t))
+                say('CALLS', sorted(found)[:80])
+                for t in texts:
+                    for m in re.finditer(r'(?i)(coord|hotspot|<area|imagemap|labelx|xpos|ypos|offsetx|highlight)', t):
+                        say('CTX', t[max(0, m.start() - 160):m.start() + 200].replace('\n', ' ')); break
+                say('NET', [x for x in seen if 'honda2wheelerparts' in x[1] and not re.search(r'\.(css|png|gif|woff2?)(\?|$)', x[1])][-40:])
+            finally:
+                ctx.close()
+        f = os.path.join(data_dir('logs'), f'honda_probe_{today()}.txt'); open(f, 'w', encoding='utf-8').write('\n'.join(out)); print('saved', f)
+
     def run(self, full=False, report=None):
         rep = report or Report(self.name)
         from playwright.sync_api import sync_playwright

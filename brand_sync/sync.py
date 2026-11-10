@@ -76,6 +76,7 @@ def main():
     ap.add_argument('--rebuild', action='store_true')
     ap.add_argument('--compare-old', action='store_true', help='tvs only: compare the saved NDP-MRP list with the old MRP on the server')
     ap.add_argument('--sn', action='store_true', help='bajaj only: read the diagram numbers (S.No.) of every diagram page into the saved BOMs')
+    ap.add_argument('--probe', action='store_true', help='honda only: what the site sends to light a part on its diagram (read only, one diagram)')
     ap.add_argument('--part', help='hero_dms only: live MRP of one part, e.g. 12310AAM000S')
     a = ap.parse_args()
     load_env()
@@ -92,6 +93,9 @@ def main():
         print(json.dumps(HeroDMS().check_part(a.part.strip().upper()), ensure_ascii=False)); return
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(name)s %(message)s',
                         handlers=[logging.StreamHandler(), logging.FileHandler(os.path.join(data_dir('logs'), 'sync.log'))])
+    if a.probe:                             # 19b: Honda diagram highlight data, read only
+        from brands.honda import Honda
+        Honda().probe(); return
     if a.sn:                                # Bajaj: diagram numbers for the BOMs saved before 18u
         from brands.bajaj import Bajaj
         logging.info('Bajaj: %d part lines have a diagram number', Bajaj().fill_sn()); return

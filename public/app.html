@@ -76,7 +76,8 @@
 .hs.on,.hs.hv{z-index:3}
 @media (prefers-reduced-motion:reduce){.hs.on,.hs.on[data-tip]::after{animation:none}.hs-clip>.dg{transition:none}}
 @container (max-width:899px){.m3a.m3b .m3-c1{position:sticky;top:0;z-index:6;background:var(--paper,#F7F5EF);padding-bottom:8px;box-shadow:0 8px 12px -10px rgba(0,0,0,.25)}.m3a.m3b .m3-c1 .m3-tip,.m3a.m3b .m3-c1 .dg-other{display:none}}
-.hs-all{display:none;position:absolute;left:8px;bottom:8px;z-index:3;border:0;border-radius:8px;background:#141413;color:#FFC400;font:inherit;font-size:12px;font-weight:700;padding:6px 10px;cursor:pointer}.hs-clip.z .hs-all{display:block}
+/* 18y (Sam 10 Nov 'zoom ke baad pehle jaisa nahi hota'): the way back is at the top, always in view; a tap on the picture or the same part again, or Esc, also shows the whole diagram */
+.hs-all{display:none;position:absolute;left:8px;top:8px;z-index:5;border:0;border-radius:10px;background:#141413;color:#FFC400;font:inherit;font-size:13px;font-weight:700;padding:9px 13px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.3)}.hs-clip.z .hs-all{display:block}.hs-clip.z>.dg.m3-fig{cursor:zoom-out}
 .hs.hv{background:rgba(255,204,0,.75);box-shadow:0 0 0 3px #FFC400,0 0 0 5px rgba(20,20,19,.35);z-index:2}
 </style></head><body>
 <title>Bike Pharma</title>
@@ -4093,7 +4094,7 @@ function cupCard(o){const t=cupStat(o),r=CUP.run&&CUP.run.dir===o.dir?CUP.run:nu
   ${qi>=0?`<div class="cap">${CUP.q[qi][0].todo.length} file${CUP.q[qi][0].todo.length===1?'':'s'} · ${cupMB(CUP.q[qi][0].total)} · starts by itself when the upload${qi?'s':''} before ${qi?'it finish':'it finishes'}.</div>`:r?cupProg(r):''}
   ${live?`<button class="btn line" onclick="cupStop()">Stop upload</button>`:qi>=0?`<button class="btn line" onclick="cupUnq('${m2Q(o.dir)}')">Remove from line</button>`:ready?`<p class="cap" style="margin:0">${o.am?'All '+esc(o.brands[0])+' files are on your server, in their original quality.':'Every '+esc(o.brands.join(' and '))+' diagram opens from your server now, in its original quality.'}</p>`:`<label class="btn" for="${id}" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">${ic('upload','s18')} Choose the ${esc(o.brands[0])} folder</label><input id="${id}" type="file" webkitdirectory directory multiple hidden onchange="cupPick(this,'${m2Q(o.dir)}')">
    <label class="link" for="${id}f" style="text-align:center" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">or choose the files</label><input id="${id}f" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.zip,.json,.csv,.txt,.xlsx" hidden onchange="cupPick(this,'${m2Q(o.dir)}')">
-   <p class="cap" style="margin:0">On your computer: ${o.pick?'<b>'+esc(o.pick)+'</b>':'the '+esc(o.brands[0])+' folder inside All Catalogues'}. Only the files this catalogue needs are sent. Keep this page open until it says Done.</p>${cupSpace(o)}`}</div>`;}
+   <p class="cap" style="margin:0">On your computer: ${o.pick?'<b>'+esc(o.pick)+'</b>':'the '+esc(o.brands[0])+' folder inside All Catalogues'}. Only the files this catalogue needs are sent. Keep this page open until it says Done.</p>${cupSpace(o)}`}${!live&&qi<0&&o.dir==='catalogues/bajaj'?bjDmsPick(id,o):''}</div>`;}
 SCREENS.catup=()=>{cupLoad();const s=CUP.sets;
  const body=CUP.st===3?`<div class="card cap">Could not read the catalogue list. <button class="link" onclick="CUP.st=0;refresh()">Try again</button></div>`:!s?`<div class="card cap">Checking the files on your server…</div>`
   :!Object.keys(s).length?`<div class="card cap">No brand catalogue on the website needs files yet.</div>`:Object.values(s).map(cupCard).join('');
@@ -4101,6 +4102,9 @@ SCREENS.catup=()=>{cupLoad();const s=CUP.sets;
 /* 14w (Sam 2026-10-27 "jiska match nhi hota toh abhi jo excel me MRP he usko update kardo har jagah"): Hero's dealer list MRP
    (Excel > Hero_DMS_All_Parts_MRP.xlsx, made on the server) against the shop's own Hero parts: Admin sees the ones that differ and updates them */
 const hdPk=s=>{const k=catPk(s);return k.length>=10&&k.endsWith('S')?k.slice(0,-1):k;};
+/* 18y: Bajaj's dealer system Excel lists (Part List.xlsx = MRP, List of Alternate Items....xlsx = old/new/alternate numbers) go up from the Bajaj card as they are */
+const BJ_DMS=/^(Part[ _]?List|List[ _]of[ _]Alternate[ _]Items).*\.xlsx$/i;
+const bjDmsPick=(id,o)=>`<label class="link" for="${id}d" style="text-align:center" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">Update Bajaj MRP and alternate numbers</label><input id="${id}d" type="file" multiple accept=".xlsx" hidden onchange="cupPick(this,'${m2Q(o.dir)}')"><p class="cap" style="margin:0">Choose the two Excel files from Bajaj DMS: <b>Part List.xlsx</b> and <b>List of Alternate Items And Service Ability Indicator And MR.xlsx</b>. Only MRP and part numbers are read, never the purchase price.</p>`;
 const heroDmsCard=()=>!S.user||S.user.role!=='admin'?'':`<button class="row card" style="flex-direction:row;text-align:left;gap:12px;align-items:center" onclick="heroDmsCheck()"><div class="tile g">${ic('sliders','s20')}</div><div class="grow" style="min-width:0"><div class="h3">Hero MRP check</div><div class="cap">Compare your Hero parts with Hero's dealer list MRP and update the ones that differ.</div></div></button>`;
 /* 14z: the weekly Hero sync on the server (brand_sync: e-catalogue every Sunday, dealer system every Saturday night) */
 const heroSyncCard=()=>!S.user||S.user.role!=='admin'?'':`<button class="row card" style="flex-direction:row;text-align:left;gap:12px;align-items:center" onclick="heroSyncSheet()"><div class="tile n">${ic('history','s20')}</div><div class="grow" style="min-width:0"><div class="h3">Brand weekly sync</div><div class="cap">When the Hero, Honda and TVS catalogues were last checked, and what changed.</div></div></button>`;
@@ -4124,7 +4128,7 @@ const cupHome=()=>{if(!S.user||S.user.role!=='admin'||typeof SRV==='undefined')r
  const miss=Object.values(s).filter(o=>{const t=cupStat(o);return t.n<t.all;});
  return `<button class="row card" style="flex-direction:row;text-align:left;gap:12px;align-items:center" onclick="go('catup')"><div class="tile y">${ic('upload','s20')}</div><div class="grow" style="min-width:0"><div class="h3">Catalogue files · Admin</div><div class="cap">${r?`Uploading ${esc(r.cur)} · ${Math.min(100,Math.floor(100*r.sent/(r.total||1)))}%${CUP.q.length?' · '+CUP.q.length+' more in line':''}`:miss.length?`${Object.keys(s).length-miss.length} of ${Object.keys(s).length} catalogue files uploaded · ${miss.length} waiting. Tap to upload.`:'All catalogue files are on your server.'}</div></div><span class="chev">${ic('chevR','s18')}</span></button>`;};
 function cupPick(inp,dir){const o=CUP.sets&&CUP.sets[dir];const fl=[...(inp.files||[])];inp.value='';if(!o||!fl.length)return;if(CUP.q.some(x=>x[0].dir===dir)||(cupLive()&&CUP.run.dir===dir)){toast(o.brands[0]+' is already uploading or in line');return;}
- const pick=new Map();let dup=0,other=0,spare=0;const sp=new Set();
+ const pick=new Map();let dup=0,other=0,spare=0;const sp=new Set();if(dir==='catalogues/bajaj')fl.forEach(f=>{if(BJ_DMS.test(f.name))o.files.set(f.name,f.size);});
  fl.forEach(f=>{const z=o.files.get(f.name);if(z===f.size){if(pick.has(f.name))dup++;else pick.set(f.name,f);}else if(o.spare.get(f.name)===f.size){if(sp.has(f.name))dup++;else{sp.add(f.name);spare++;}}else other++;});
  const todo=[...pick.values()].filter(f=>o.have.get(f.name)!==f.size);
  const missing=[...o.files.keys()].filter(n=>!pick.has(n)&&o.have.get(n)!==o.files.get(n)).length;
@@ -5588,7 +5592,7 @@ function dgMiss(){return '<div class="cap">This diagram is not on the server yet
 /* ---------- browser Back / Forward = the app's own screens ---------- */
 var NAVH={on:0,i:0};
 var NAV_PRE=['login','otp','signup','pw','roleok','boot'];
-function navSave(push){if(!NAVH||!NAVH.on)return;let st;try{st=JSON.parse(JSON.stringify(S.stack));}catch(e){return;}if(push)NAVH.i++;try{history[push?'pushState':'replaceState']({bpnav:{i:NAVH.i,st}},'');}catch(e){}}
+function navSave(push){if(!NAVH||!NAVH.on)return;let st;try{st=JSON.parse(JSON.stringify(S.stack));}catch(e){return;}if(push)NAVH.i++;try{history[push?'pushState':'replaceState']({bpnav:{i:NAVH.i,st,u:S.uid||null}},'');}catch(e){}}
 window.addEventListener('popstate',e=>{const h=e.state&&e.state.bpnav;if(!h||!NAVH.on)return;
  const dir=h.i<NAVH.i?'back':'push';NAVH.i=h.i;let st=h.st||[];const same=(a,b)=>a.every((x,k)=>b[k]&&x&&x.s===b[k].s);
  if(st.length<S.stack.length&&same(st,S.stack))st=S.stack.slice(0,st.length);
@@ -7202,7 +7206,7 @@ function m2PartV(p){xrLoad();altLoad();const r=m2Row(p);   /* 17y: the part page
  const v=g?g.v:m3Vg(r),kr=m3K(r);let L=m3Rows(r.vb,r.page,v).map(q=>m3K(q)===kr?r:q);if(!L.includes(r))L=L.concat(r).sort(m3By);
  const x=m3Sel(p,L,r),k='m3'+r.i,vm=p.vm&&p.vm!=='Any'?p.vm:v&&CAT_VMOD[v]||(m2FitL(r)[0]||r.vm||'').replace(/ \(.*$/,''),ys=v?catVyrs(v):[],yr=p.yr&&p.yr!=='Any'?String(p.yr):ys.length?catYrsTxt(ys):'',cc=MODEL_CC[vm];
  if(p.si!=null){p.si=x.i;p.spk=x.pk||'';p.sref=x.ref||'';}const o=M3[k]={rows:L,sel:x.i,vb:r.vb,page:r.page,v,vm,yr},sm=new Map();PRODUCTS.forEach(y=>{const q=catPk(y.pn);if(q&&!sm.has(q))sm.set(q,y);});queueMicrotask(m3Mount);
- const dia=g?dgOther(g)+`<div class="m3-dgw dg-wrap">${dgEl(g,'fpc-fig m3-fig').replace('<div ',`<div data-hk="${k}" onclick="if(!event.target.closest('button'))dgZoom(this.closest('.m3-dgw'))" `)}<button class="m3-zb" onclick="dgZoom(this.closest('.m3-dgw'))" aria-label="Open the diagram bigger">${ic('zoom','s18')}</button><div class="dg-alt">${dgMiss()}</div></div><div class="cap m3-tip">Tap a number on the diagram or a part in the list.</div>`
+ const dia=g?dgOther(g)+`<div class="m3-dgw dg-wrap">${dgEl(g,'fpc-fig m3-fig').replace('<div ',`<div data-hk="${k}" onclick="if(!event.target.closest('button')){const z=this.closest('.hs-clip');if(z&&z.classList.contains('z'))hsFocus('${k}',1);else dgZoom(this.closest('.m3-dgw'));}" `)}<button class="m3-zb" onclick="dgZoom(this.closest('.m3-dgw'))" aria-label="Open the diagram bigger">${ic('zoom','s18')}</button><div class="dg-alt">${dgMiss()}</div></div><div class="cap m3-tip">Tap a number on the diagram or a part in the list.</div>`
   :`<div class="m3-dgw m3-ld"><span class="cap">Loading diagram…</span></div>`;
  const D=m3Dgs(r,v,vm),di=D.findIndex(d=>d.pg===r.page),ttl=catNice(r.asm||r.fig)+(r.asm&&r.fig?' – '+r.fig:'');
  const dh=`<div class="m3-dh">${di>0?`<button class="m3-nb" onclick="m3Go(${D[di-1].i})" aria-label="Previous diagram">${ic('chevL','s18')}</button>`:''}<div class="m3-dt"><b>${esc(ttl)}</b><span class="cap">${di>=0?'Diagram '+(di+1)+' of '+D.length+' · ':''}${L.length} part${L.length===1?'':'s'}</span></div>${D.length>1?`<button class="btn y sm m3-all" onclick="m3AllSec()">${ic('menu','s16')} All sections</button>`:''}${di>=0&&di<D.length-1?`<button class="m3-nb" onclick="m3Go(${D[di+1].i})" aria-label="Next diagram">${ic('chevR','s18')}</button>`:''}</div>`;
@@ -7226,12 +7230,12 @@ function m3Mount(){const el=document.querySelector('#vp .m3:not([data-m])');if(!
  ls.addEventListener('scroll',()=>{p.m3y=ls.scrollTop;},{passive:true});if(sc)sc.addEventListener('scroll',()=>{p.m3t=sc.scrollTop;},{passive:true});}
 /* another line chosen in place (from: 'dg' a number on the diagram, 'need' the list under the columns); refresh() and Back keep it */
 function m3Pick(i,from){const el=document.querySelector('#vp .m3'),o=el&&M3[el.dataset.k],x=o&&o.rows.find(q=>q.i===i);if(!x)return;const p=cur().p||{},sc=el.closest('.scroll'),d=el.querySelector('.m3-det');let row=null;
- p.si=x.i;p.spk=x.pk||'';p.sref=x.ref||'';o.sel=x.i;
+ const again=o.sel===x.i&&!!el.querySelector('.hs-clip.z');p.si=x.i;p.spk=x.pk||'';p.sref=x.ref||'';o.sel=x.i;
  el.querySelectorAll('.m3-row').forEach(b=>{const on=+b.dataset.i===x.i;b.classList.toggle('on',on);b.setAttribute('aria-current',on);if(on)row=b;});
  const nw=m3Nw(el),y0=row?row.getBoundingClientRect().top:0;d.innerHTML=m3Det(x,o);d.scrollTop=0;el.querySelector('.m3-more').innerHTML=m3More(x,o);m3Place(el);
  if(row&&sc&&nw){if(!from)sc.scrollTop+=row.getBoundingClientRect().top-y0;m3Top(row,sc,.5,1);}
  else if(row&&from){m3Mid(row,el.querySelector('.m3-list'));if(sc){const a=d.getBoundingClientRect(),b=sc.getBoundingClientRect();if(a.bottom<b.top+60||a.top>b.bottom-60)el.querySelector('.m3-g').scrollIntoView({block:'start',behavior:'smooth'});}}
- if(typeof hsSel==='function')hsSel(el.dataset.k);if(from!=='dg'&&typeof hsFocus==='function')hsFocus(el.dataset.k);}
+ if(typeof hsSel==='function')hsSel(el.dataset.k);if(from!=='dg'&&typeof hsFocus==='function')hsFocus(el.dataset.k,again?1:0);navSave(false);}   /* 18y: the chosen part is kept for a reload; the same part tapped again while close up: the whole diagram */
 addEventListener('resize',()=>{clearTimeout(M3_T);M3_T=setTimeout(()=>m3Place(),120);});
 /* ---------- the diagram's numbers, clickable (update 8r) ---------- */
 /* Bajaj / Suzuki book pages: the numbers printed in the page's own text -> [[text, x0, y0, x1, y1]] in fractions of the drawn part */
@@ -7310,6 +7314,7 @@ function hsFocus(k,off){document.querySelectorAll(`.m3 .dg[data-hk="${k}"]`).for
   const b=el.querySelector('.hs.on');if(off||!b){el.style.transform='';el.style.setProperty('--hz',1);w.classList.remove('z');return;}
   const s=2.2,cx=parseFloat(b.style.left)+parseFloat(b.style.width)/2,cy=parseFloat(b.style.top)+parseFloat(b.style.height)/2,cl=v=>Math.min(0,Math.max(100-100*s,v));
   el.style.transformOrigin='0 0';el.style.setProperty('--hz',s);el.style.transform=`translate(${cl(50-cx*s).toFixed(2)}%,${cl(50-cy*s).toFixed(2)}%) scale(${s})`;w.classList.add('z');});}
+addEventListener('keydown',e=>{if(e.key==='Escape'){const z=document.querySelector('#vp .m3 .hs-clip.z .dg[data-hk]');if(z)hsFocus(z.dataset.hk,1);}});
 /* 18n (Mittal): pointing at a part in the list lights its number on the diagram */
 document.addEventListener('mouseover',e=>{const r=e.target.closest&&e.target.closest('.m3-row'),m=r&&r.closest('.m3');if(r===hsHv)return;hsHv=r;document.querySelectorAll('.hs.hv').forEach(b=>b.classList.remove('hv'));if(!m)return;
  const c=M3[m.dataset.k],i=+r.dataset.i;if(!c)return;m.querySelectorAll('.dg[data-hk]').forEach(el=>{if(!el._hs)return;const by=hsMap(c.rows,hsList(el._hs));el.querySelectorAll('.hs').forEach(b=>{if((by.get(b.dataset.ref)||[]).some(q=>q.i===i))b.classList.add('hv');});});},{passive:true});
@@ -7408,7 +7413,15 @@ async function start(){SCREENS.boot=()=>'<div class="scroll"></div>';S.stack=[{s
  SRV.cfg=b.cfg||{};catManifest(SRV.cfg.cat);srvSetDb(b.db,b.rev,b.ep);applyTheme();S.ui.lgLang=LANG;
  if(b.user){S.uid=b.user.id;S.user=ACC()[S.uid]||b.user;S.stack=[{s:HOME[S.user.role]||'login',p:{}}];}else{S.uid=null;S.user=null;S.stack=[{s:'login',p:{}}];}
  bpIn(!!b.user);
- render('');splash();NAVH.on=1;NAVH.i=0;navSave(false);
+ /* 18y (Sam 10 Nov 'refresh karne ke baad wahi page'): a reload keeps the page: the browser still holds this tab's screens (history.state),
+    taken back when they are the same login's and every screen is one this login may open; a screen that cannot draw falls back to home */
+ let nav0=0;
+ if(b.user){try{const h=history.state&&history.state.bpnav,ok=x=>x&&SCREENS[x.s]&&!NAV_PRE.includes(x.s)&&allowed(x.s);
+  if(h&&h.u&&h.u===S.uid&&Array.isArray(h.st)&&h.st.length&&h.st.every(ok)){const home=S.stack;S.stack=h.st;nav0=h.i|0;
+   try{render('');}catch(e){console.error(e);S.stack=home;nav0=0;render('');}}
+  else render('');}catch(e){render('');}}
+ else render('');
+ splash();NAVH.on=1;NAVH.i=nav0;navSave(false);
  const t2=()=>{const d=new Date();document.getElementById('clock').textContent=(d.getHours()%12||12)+':'+String(d.getMinutes()).padStart(2,'0');};t2();setInterval(t2,30000);}
 function quickLogin(k){S.user=null;S.uid=null;S.ui={loginVal:k};S.stack=[{s:'login',p:{}}];render('fade');}
 start();

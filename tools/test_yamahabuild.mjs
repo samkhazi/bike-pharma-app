@@ -81,6 +81,17 @@ try {
   ok(zv >= 0 && zd.vars[zv] === 'R15 V4 · DM4C YZF155D-B (2026-10-25)' && gk && gk[11].join() === String(zv) && zd.d.find(r => r[5] === 'B0T-E1102-10' && r[2] === '1')[11].includes(zv)
     && zg.f[zg.p[String(zv)]['1']] === `pdf:catalogues/hero-sync/output/Yamaha/PDF/Models/${NB}:0:9:4:0,0,0.48,1` && Z.info.sync.books === 1 && Z.info.sync.newModels[0] === 'DM4C R15 V4'
     && !zd.vars.some(v => v.includes('XX11')), 'sync: a downloaded new model book is an edition (name from its code family), parts searchable, diagram from the PDF; a scan with no rows is left out');
+  // 19l: YPEC's picture of a diagram with the places of its numbers (lib/ypecsync.mjs) is shown for that fig, and /api/dghot answers with those places
+  const YP = SY + '/yamaha/ypec'; fs.mkdirSync(YP + '/img', { recursive: true }); fs.mkdirSync(YP + '/models', { recursive: true });
+  const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, 0, 0, 2, 0x95, 0, 0, 3, 0xA7]), Buffer.alloc(10)]);   // 661 x 935
+  fs.writeFileSync(YP + '/img/B0T4470-W010.PNG', png);
+  fs.writeFileSync(YP + '/models/DM49.json', JSON.stringify({ code: 'DM49', figs: [{ no: '01', br: '1', name: 'CYLINDER HEAD', ill: 'B0T4470-W010', parts: [] }, { no: '25', br: '1', name: 'REAR WHEEL', ill: 'B0T4470-W250', parts: [] }, { no: '25', br: '2', name: 'OTHER WHEEL', ill: 'B0T4470-W251', parts: [] }] }));
+  fs.writeFileSync(YP + '/coords.json', JSON.stringify({ 'B0T4470-W010.PNG': [661, 935, [['1', 222, 592, 242, 612], ['2', 226, 502, 246, 522]]] }));
+  const Q = buildYamaha(D, 'catalogues/yamaha', { sync: SY }), qv = Q.cat.vars.findIndex(v => v.includes(' · DM49 ')), qp = Q.dg.p[String(qv)], yref = 'pf:catalogues/hero-sync/yamaha/ypec/img/B0T4470-W010.PNG:0:' + png.length;
+  ok(Q.dg.f[qp['1']] === yref && Q.dg.f[qp['25']].startsWith('pdf:') && Q.dg.f[qp['1 (2024-01-10)']].startsWith('pdf:') && Q.info.sitePics === 1
+    && Q.dg.f[Q.dg.p[String(Q.cat.vars.findIndex(v => v.includes(' · DM4A ')))]['1']].startsWith('pdf:'), "YPEC: a fig with YPEC's places shows YPEC's picture; other figs, older books and other codes keep the PDF page");
+  const hj = await (await get('/api/dghot?u=' + encodeURIComponent(yref))).json();
+  ok(hj.site === 1 && hj.toks.length === 2 && hj.toks[0].join() === ['1', 0.3359, 0.6332, 0.3661, 0.6545, 1].join(), "YPEC: /api/dghot gives YPEC's own place of every number");
 } catch (e) { ok(false, 'error ' + e.stack); }
 finally { srv.kill(); }
 if (fails) console.log(log.slice(-3000));

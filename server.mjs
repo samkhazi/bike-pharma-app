@@ -102,7 +102,7 @@ function bajajBuild(why) {
 }
 function yamahaBuild(why) {
   if (!YAMAHA_RAW.every(f => fs.existsSync(path.join(YAMAHA_DIR, f)))) return false;
-  const src = [...YAMAHA_RAW.map(f => path.join(YAMAHA_DIR, f)), path.join(PUBLIC_DIR, 'app.html'), path.join(ROOT, 'lib', 'yamahabuild.mjs'), path.join(ROOT, 'lib', 'herobuild.mjs'), path.join(HERO_SYNC_DIR, 'yamaha', 'state.json')];
+  const src = [...YAMAHA_RAW.map(f => path.join(YAMAHA_DIR, f)), path.join(PUBLIC_DIR, 'app.html'), path.join(ROOT, 'lib', 'yamahabuild.mjs'), path.join(ROOT, 'lib', 'herobuild.mjs'), path.join(HERO_SYNC_DIR, 'yamaha', 'state.json'), path.join(HERO_SYNC_DIR, 'yamaha', 'ypec', 'done.json')];   // 19l: + YPEC's number places
   if (why === 'sync' && catQ.some(q => q[0] === 'yamaha')) return false;
   if ((why === 'start' || why === 'sync') && mtime(path.join(HERO_OUT, 'yamaha.json')) > Math.max(...src.map(mtime))) return false;
   catBuild('yamaha', why, [path.join(ROOT, 'lib', 'yamahabuild.mjs'), PUBLIC_DIR, YAMAHA_DIR, HERO_OUT, HERO_SYNC_DIR]);
@@ -146,6 +146,14 @@ function catRun() {
     catRun(); });
 }
 setInterval(() => { for (const [n, f] of [['hero', heroBuild], ['honda', hondaBuild], ['tvs', tvsBuild], ['yamaha', yamahaBuild], ['royal-enfield', reBuild], ['bajaj', bajajBuild], ['ktm', ktmBuild]]) try { f('sync'); } catch (e) { console.log(n + ' sync check:', e.message); } }, 3600e3).unref();   // 15d: Honda and TVS too   // 14z: the weekly Hero sync's new files make a new Hero build within the hour
+// 19l: YPEC's number places (lib/ypecsync.mjs) are read again once a week, at night (IST), as its own process; only models whose YPEC catalogue changed are read again
+setInterval(() => { try {
+  if (!env.YPEC_USER_ID || !env.YPEC_PASSWORD || !fs.existsSync(path.join(HERO_SYNC_DIR, 'yamaha', 'ypec', 'done.json'))) return;   // the first run is started by hand
+  const h = new Date(Date.now() + 5.5 * 3600e3).getUTCHours(); if (h < 1 || h > 4) return;
+  if (Date.now() - mtime(path.join(HERO_SYNC_DIR, 'yamaha', 'ypec', 'done.json')) < 6.5 * 86400e3) return;
+  const c = spawn(process.execPath, [path.join(ROOT, 'lib', 'ypecsync.mjs'), HERO_SYNC_DIR, YAMAHA_DIR], { stdio: ['ignore', 'inherit', 'inherit'] });
+  c.on('exit', code => console.log(new Date().toISOString(), 'YPEC sync ended', code));
+} catch (e) { console.log('YPEC sync check:', e.message); } }, 3600e3).unref();
 function xrefBuild(why) { catBuild('xref', why, [path.join(ROOT, 'lib', 'xrefbuild.mjs'), HERO_OUT, path.join(BAJAJ_DIR, 'bajaj_alt.json'), path.join(FILES_DIR, 'catalogues', 'aftermarket', 'am_build.json')]); }
 heroBuild('start'); hondaBuild('start'); bajajBuild('start'); yamahaBuild('start'); reBuild('start'); tvsBuild('start'); ktmBuild('start'); xrefBuild('start');
 const BACKUP = backups({ store, dataDir: DATA_DIR, env });   // 11u: every night + Admin > More > Backups
@@ -686,7 +694,19 @@ function hotHonda(u) {
   return c[2].filter(p => Array.isArray(p) && /^[A-Z0-9-]{1,8}$/i.test(String(p[0])) && p.slice(1, 5).every(v => typeof v === 'number'))
     .map(([t, x, y, bw, bh]) => [String(t).toUpperCase(), q(x / w), q(y / h), q((x + bw) / w), q((y + bh) / h), 1]);
 }
+// 19l (Sam 10 Nov, YPEC video): Yamaha's dealer catalogue's own places (yamaha/ypec/coords.json {picture: [w, h, [[number, x0, y0, x1, y1]]]}, its pixels)
+let HOT_YPEC = { m: -1, d: {} };
+function hotYpec(u) {
+  const m = /^pf:catalogues\/hero-sync\/yamaha\/ypec\/img\/([^/:]+):\d+:\d+$/.exec(u); if (!m) return null;
+  const f = path.join(HERO_SYNC_DIR, 'yamaha', 'ypec', 'coords.json'); let t = 0; try { t = fs.statSync(f).mtimeMs; } catch (e) { return null; }
+  if (t !== HOT_YPEC.m) { try { HOT_YPEC = { m: t, d: JSON.parse(fs.readFileSync(f, 'utf8')) || {} }; } catch (e) { HOT_YPEC = { m: t, d: {} }; } }
+  const c = HOT_YPEC.d[m[1]]; if (!Array.isArray(c) || !(c[0] > 0) || !(c[1] > 0) || !Array.isArray(c[2]) || !c[2].length) return null;
+  const [w, h] = c, q = v => Math.round(Math.min(1, Math.max(0, v)) * 1e4) / 1e4;
+  return c[2].filter(p => Array.isArray(p) && /^[A-Z0-9-]{1,8}$/i.test(String(p[0])) && p.slice(1, 5).every(v => typeof v === 'number'))
+    .map(([t, x0, y0, x1, y1]) => [String(t).toUpperCase(), q(x0 / w), q(y0 / h), q(x1 / w), q(y1 / h), 1]);
+}
 function hotSite(u) {
+  if (/^pf:catalogues\/hero-sync\/yamaha\/ypec\/img\//.test(u)) return hotYpec(u);
   if (!/^pf:catalogues\/hero-sync\/bajaj\/img\//.test(u)) return hotHonda(u);
   const m = /^pf:catalogues\/hero-sync\/bajaj\/img\/([^/:]+):\d+:\d+$/.exec(u); if (!m) return null;
   const f = path.join(HERO_SYNC_DIR, 'bajaj', 'coords.json'); let t = 0; try { t = fs.statSync(f).mtimeMs; } catch (e) { return null; }

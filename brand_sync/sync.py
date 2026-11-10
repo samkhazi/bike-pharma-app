@@ -12,7 +12,7 @@ usage:  python sync.py hero             # Hero e-catalogue (weekly): new models 
         python sync.py ktm              # KTM + Husqvarna India, ktmspcatalog.bajajauto.com (weekly, dealer login from .env): new model years, plates, parts, kits, alternates, circulars
         python sync.py all              # every brand enabled in .env (BRANDS=bajaj,...)
         python sync.py bajaj --full     # re-download everything (first run does this anyway)
-        python sync.py bajaj --sn       # Bajaj: diagram numbers (S.No. of the site's sbom page) for BOMs saved before 18u
+        python sync.py bajaj --sn       # Bajaj: diagram numbers (S.No.) of every diagram page into the saved BOMs
         python sync.py bajaj --rebuild  # rebuild all PDFs/Excel from saved data, no download
 """
 import os, sys, logging, argparse, datetime
@@ -75,7 +75,7 @@ def main():
     ap.add_argument('--full', action='store_true')
     ap.add_argument('--rebuild', action='store_true')
     ap.add_argument('--compare-old', action='store_true', help='tvs only: compare the saved NDP-MRP list with the old MRP on the server')
-    ap.add_argument('--sn', type=int, nargs='?', const=0, default=None, help='bajaj only: add diagram numbers (S.No.) to BOMs saved before 18u; optional max BOMs')
+    ap.add_argument('--sn', action='store_true', help='bajaj only: read the diagram numbers (S.No.) of every diagram page into the saved BOMs')
     ap.add_argument('--part', help='hero_dms only: live MRP of one part, e.g. 12310AAM000S')
     a = ap.parse_args()
     load_env()
@@ -92,9 +92,9 @@ def main():
         print(json.dumps(HeroDMS().check_part(a.part.strip().upper()), ensure_ascii=False)); return
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(name)s %(message)s',
                         handlers=[logging.StreamHandler(), logging.FileHandler(os.path.join(data_dir('logs'), 'sync.log'))])
-    if a.sn is not None:                                # Bajaj: diagram numbers for the BOMs saved before 18u
+    if a.sn:                                # Bajaj: diagram numbers for the BOMs saved before 18u
         from brands.bajaj import Bajaj
-        logging.info('Bajaj: %d BOMs got diagram numbers', Bajaj().fill_sn(a.sn)); return
+        logging.info('Bajaj: %d part lines have a diagram number', Bajaj().fill_sn()); return
     names = [x.strip() for x in env('BRANDS', 'bajaj').split(',')] if a.brand == 'all' else [a.brand]
     md = []
     for n in names:

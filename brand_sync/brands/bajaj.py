@@ -86,105 +86,119 @@ class Bajaj:
         rows = []
         for o in self.api_all('bom-plate-parts', f'&bom={bom_id}'):
             p, pt = o.get('plate') or {}, o.get('part') or {}
-            rows.append({'plate_id': str(p.get('plate_id') or '0'), 'plate': (p.get('plate_txt') or '').strip(), 'pid': str(p.get('id') or ''), 'pm': p.get('modified_date') or '',
+            rows.append({'plate_id': str(p.get('plate_id') or '0'), 'plate': (p.get('plate_txt') or '').strip(),
                          'img': p.get('plate_image_with_part') or p.get('plate_image') or '',
                          'item': o.get('item') or '', 'pn': (pt.get('part_number') or '').strip(),
                          'desc': (pt.get('description') or o.get('material_description') or '').strip(),
                          'qty': str(o.get('quantity') or '').strip(), 'valid_from': o.get('valid_from') or '',
                          'valid_to': o.get('valid_to') or '9999-12-31', 'status': o.get('status') or '',
                          'kit': bool(pt.get('kit_part_tag'))})
-        self.add_sn(rows)
         return rows
 
     # ---------- diagram numbers (18u) ----------
-    # The API has no diagram number (item = line no., serial_number empty). The site's page /plates/<plate id>/sbom lists
-    # S.No. | ... | Part No | Description | Qty, and S.No. is the number printed on the diagram (Sam 10 Nov: plate 21224, 2 = KADD0622).
+    # The API has no diagram number (item = line no., serial_number empty). The site shows it on each diagram's page /plates/<page id>/sbom:
+    # S.No. | (hidden id) | Part No | Description | Qty, S.No. = the number printed on the diagram (Sam 10 Nov: page 21224, 2 = KADD0622).
+    # The page id is the site's own (not the API plate id); each page says its BOM and plate in hidden fields bom_id / plate_id.
+    # Pages are found from the model pages /sub-models/<id>/plates/ (ids from the API lists sub-brand-models + list-models).
     @staticmethod
-    def parse_sbom(html, known):
-        """[(sno, pn)] in page order; pn = the first cell of the row that is one of the plate's part numbers."""
+    def parse_sbom(html):
+        """(bom_id, plate_id, [(sno, pn)], bom_number) of one diagram page, or None when it is not one."""
+        def hid(name):
+            for tag in re.findall(r'<input\b[^>]*>', html, re.I):
+                if re.search(r'\b(?:id|name)=["\']' + name + r'["\']', tag):
+                    m = re.search(r'\bvalue=["\']([^"\']*)["\']', tag)
+                    if m and m.group(1).strip():
+                        return m.group(1).strip()
+            return None
+        bid, pid = hid('bom_id'), hid('plate_id')
+        i = html.find('S.No')
+        if not bid or not pid or i < 0:
+            return None
+        j = html.find('</table>', i)
         out = []
-        for tr in re.findall(r'<tr\b.*?</tr>', html, re.S | re.I):
+        for tr in re.findall(r'<tr\b.*?</tr>', html[i:j if j > 0 else None], re.S | re.I):
             cells = [re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', c)).strip() for c in re.findall(r'<t[dh]\b[^>]*>(.*?)</t[dh]>', tr, re.S | re.I)]
-            if len(cells) < 2 or not re.fullmatch(r'\d{1,3}[A-Z]?', cells[0], re.I):
-                continue
-            pn = next((c.upper() for c in cells[1:] if c.upper() in known), None)
-            if pn:
-                out.append((cells[0].upper(), pn))
-        return out
+            if len(cells) >= 3 and re.fullmatch(r'\d{1,3}[A-Z]?', cells[0], re.I) and cells[2]:
+                out.append((cells[0].upper(), cells[2].upper()))
+        return bid, pid, out, hid('bom_number') or ''
 
-    def sbom(self, pid, pm, known):
-        cache = getattr(self, '_sbom', None)
-        if cache is None:
-            cache = self._sbom = load_json(os.path.join(self.dir, 'sbom.json'), {})
-        c, kh = cache.get(pid), hashlib.sha1(' '.join(sorted(known)).encode()).hexdigest()[:12]
-        if c and c.get('m') == pm and c.get('k') == kh:   # same plate, same part numbers: the page was read before
-            return c['sn']
-        try:
-            r = self.http.get(f'/plates/{pid}/sbom')
-            sn = self.parse_sbom(r.text, known) if r.status_code == 200 else []
-        except Exception as e:
-            log.warning('sbom %s: %s', pid, e); return []
-        if sn:   # an empty page (logged out, error) is asked again next time
-            cache[pid] = {'m': pm, 'k': kh, 'sn': [list(x) for x in sn]}
-            self._sbom_dirty = True
-        return sn
+    def sn_scan(self, refresh_boms=()):
+        """Reads the diagram pages into sbom.json {page id: [bom_id, plate_id, [[sno, pn]]]}: new pages, and again those of BOMs in refresh_boms."""
+        path = os.path.join(self.dir, 'sbom.json')
+        pages = load_json(path, {})
+        if not isinstance(next(iter(pages.values()), []), list):
+            pages = {}   # 18u first try kept another shape
+        refresh = {str(x) for x in refresh_boms}
+        sms = set()
+        for res in ('sub-brand-models', 'list-models'):
+            try:
+                sms |= {str(o['id']) for o in self.api_all(res) if o.get('id') is not None}
+            except Exception as e:
+                log.warning('%s: %s', res, e)
+        links = set()
+        for k, sm in enumerate(sorted(sms, key=lambda x: int(x) if x.isdigit() else 0), 1):
+            try:
+                h = self.http.get(f'/sub-models/{sm}/plates/').text
+            except Exception as e:
+                log.warning('model page %s: %s', sm, e); continue
+            links |= set(re.findall(r'/plates/(\d+)/sbom', h))
+            if k % 50 == 0:
+                log.info('model pages %d/%d, %d diagram pages', k, len(sms), len(links))
+        todo = [p for p in sorted(links, key=int) if p not in pages or pages[p][0] in refresh]
+        log.info('%d model pages, %d diagram pages, %d to read', len(sms), len(links), len(todo))
+        for k, pg in enumerate(todo, 1):
+            try:
+                r = self.http.get(f'/plates/{pg}/sbom')
+            except Exception as e:
+                log.warning('diagram page %s: %s', pg, e); continue
+            x = self.parse_sbom(r.text) if r.status_code == 200 else None
+            if x and x[2]:
+                pages[pg] = [x[0], x[1], [list(t) for t in x[2]], x[3]]
+            if k % 200 == 0 or k == len(todo):
+                save_json(path, pages); log.info('diagram pages %d/%d', k, len(todo))
+        save_json(path, pages)
+        return pages
 
-    def save_sbom(self):
-        if getattr(self, '_sbom_dirty', False):
-            save_json(os.path.join(self.dir, 'sbom.json'), self._sbom); self._sbom_dirty = False
-
-    def add_sn(self, rows):
-        """Each line gets sn = its diagram number from the plate's sbom page ('' when the page does not list it)."""
-        by = {}
-        for r in rows:
-            by.setdefault(r.get('pid') or '', []).append(r)
-        for pid, rs in by.items():
-            if not pid:
-                continue
-            known = {r['pn'].upper() for r in rs if r['pn']}
-            left = {}
-            for sno, pn in self.sbom(pid, rs[0].get('pm', ''), known):
-                left.setdefault(pn, []).append(sno)
-            last = {}
-            for r in sorted(rs, key=lambda r: (int(r['item']) if str(r['item']).isdigit() else 10 ** 9, str(r['item']))):
-                q = left.get(r['pn'].upper())
-                if q:
-                    last[r['pn'].upper()] = q.pop(0)
-                r['sn'] = last.get(r['pn'].upper(), '')
-        self.save_sbom()
-
-    def fill_sn(self, limit=0):
-        """sync.py bajaj --sn: adds sn to BOMs saved before 18u (the newest BOM of every SKU the app uses), resumable."""
-        self.login()
-        skus = load_json(os.path.join(self.dir, 'skus.json'), {})
-        newest = {}
+    def sn_apply(self, pages=None):
+        """Every saved BOM line gets sn = its diagram number ('' when the site has none). Returns (BOMs changed, lines with a number)."""
+        pages = pages if pages is not None else load_json(os.path.join(self.dir, 'sbom.json'), {})
+        idx, num = {}, {}
+        for b, p, sn, *bn in pages.values():
+            idx.setdefault((str(b), str(p)), []).extend(sn)
+            if bn and bn[0]:
+                num.setdefault((bn[0].strip().lstrip('0'), str(p)), []).extend(sn)
+        nb = nl = 0
         for bid, st, d in self.saved_boms():
-            sku = st['sku']
-            if self.skip(sku, skus.get(sku)):
-                continue
-            k = (str((d.get('header') or {}).get('valid_from') or ''), int(bid) if bid.isdigit() else 0)
-            if sku not in newest or k > newest[sku][0]:
-                newest[sku] = (k, bid)
-        todo = [bid for _, bid in newest.values()]
-        done = 0
-        for k, bid in enumerate(sorted(todo, key=lambda b: int(b) if b.isdigit() else 0), 1):
-            d = load_json(self.bom_path(bid), None)
-            if not d or d.get('sn'):
-                continue
-            pids = {str(o.get('plate_id')): (str(o.get('id')), o.get('modified_date') or '') for o in self.api_all('bom-plates', f'&bom={bid}')}
+            by, ch = {}, False
+            bnum = str((d.get('header') or {}).get('bom_number') or '').strip().lstrip('0')
             for r in d['rows']:
-                r['pid'], r['pm'] = pids.get(r['plate_id'], ('', ''))
-            self.add_sn(d['rows'])
-            got = sum(1 for r in d['rows'] if r.get('sn'))
-            d['sn'] = 1 if got or not pids else 0   # nothing read (logged out?): tried again next run
-            save_json(self.bom_path(bid), d)
-            log.info('BOM %s (%d/%d): %d of %d lines have a diagram number', bid, k, len(todo), got, len(d['rows']))
-            done += 1
-            if limit and done >= limit:
-                break
-        if done:   # the server rebuilds the Bajaj catalogue when state.json changes
+                by.setdefault(r['plate_id'], []).append(r)
+            for pl, rs in by.items():
+                left = {}
+                for sno, pn in idx.get((bid, pl)) or num.get((bnum, pl), []):   # the page's bom_id is the API's BOM id; its BOM number as a second way
+                    left.setdefault(pn, []).append(sno)
+                last = {}
+                for r in sorted(rs, key=lambda r: (int(r['item']) if str(r['item']).isdigit() else 10 ** 9, str(r['item']))):
+                    pn = (r['pn'] or '').upper()
+                    q = left.get(pn)
+                    if q:
+                        last[pn] = q.pop(0)
+                    v = last.get(pn, '')
+                    nl += bool(v)
+                    if r.get('sn', None) != v:
+                        r['sn'] = v; ch = True
+            if ch:
+                save_json(self.bom_path(bid), d); nb += 1
+        log.info('diagram numbers: %d BOMs changed, %d lines have one', nb, nl)
+        return nb, nl
+
+    def fill_sn(self):
+        """sync.py bajaj --sn: read all diagram pages once (resumable: pages already read are kept) and put the numbers in the saved BOMs."""
+        self.login()
+        nb, nl = self.sn_apply(self.sn_scan())
+        if nb:   # the server rebuilds the Bajaj catalogue when state.json changes
             self.state['sn_run'] = today(); save_json(self.state_path, self.state)
-        return done
+        return nl
 
     @staticmethod
     def skip(sku_code, s):
@@ -228,7 +242,7 @@ class Bajaj:
                 log.info('BOM %d/%d', k, len(changed))   # 17x: show progress on long first runs
             rows = self.bom_parts(bid)
             prev = load_json(self.bom_path(bid), {}).get('rows', [])
-            save_json(self.bom_path(bid), {'header': h, 'rows': rows, 'fetched': today(), 'sn': 1})
+            save_json(self.bom_path(bid), {'header': h, 'rows': rows, 'fetched': today()})
             self.state['boms'][bid] = {'sig': sig, 'n': n, 'sku': h['sku_code'].strip()}
             label = self.label(skus.get(h['sku_code'].strip()), h)
             if not old:
@@ -242,6 +256,10 @@ class Bajaj:
                     rep.add('Parts badle', f"{label}: +{len(added)} naye, -{len(gone)} hataye"
                             + (f" (naye: {', '.join(added[:8])}{'...' if len(added) > 8 else ''})" if added else ''))
             self.download_images(rows)
+        try:   # 18u: diagram numbers for new diagram pages and changed BOMs
+            self.sn_apply(self.sn_scan([h['id'] for h, *_ in changed]))
+        except Exception as e:
+            log.warning('diagram numbers: %s', e)
         if known:
             for pn in sorted(self.all_part_numbers() - known)[:500]:
                 rep.add('Naye part number (EPC)', pn)

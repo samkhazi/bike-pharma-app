@@ -25,7 +25,8 @@ def send_code_link(link):
                                           f'font:bold 18px sans-serif;text-decoration:none;border-radius:8px">Enter code</a></p>')
 
 
-def send(text, subject=None, html=None):
+def send(text, subject=None, html=None, attach=None):
+    """attach: (file name, bytes, 'text/csv') or None"""
     site = {} if env('SMTP_HOST') else site_env()
     get = lambda k, d=None: env(k) or site.get(k) or d
     host, to = get('SMTP_HOST'), env('REPORT_TO')
@@ -40,6 +41,9 @@ def send(text, subject=None, html=None):
     m.set_content(text)
     if html:
         m.add_alternative(html, subtype='html')
+    if attach:
+        mt, st = (attach[2] if len(attach) > 2 else 'application/octet-stream').split('/', 1)
+        m.add_attachment(attach[1], maintype=mt, subtype=st, filename=attach[0])
     try:
         with (smtplib.SMTP_SSL(host, port, timeout=60) if port == 465 else smtplib.SMTP(host, port, timeout=60)) as s:
             if port != 465:

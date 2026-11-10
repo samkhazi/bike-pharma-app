@@ -103,23 +103,36 @@ def main():
         from brands.bajaj import Bajaj
         logging.info('Bajaj: %d part lines have a diagram number', Bajaj().fill_sn()); return
     names = [x.strip() for x in env('BRANDS', 'bajaj').split(',')] if a.brand == 'all' else [a.brand]
-    md = []
+    # 19o (Sam 11 Nov): an email when the run starts and one when it ends; the end email is the same table layout for every brand (runmail.py)
+    import runmail
+    from notify import send
+    t0 = runmail.now()
+    try:
+        s_, t_, h_ = runmail.start_mail(a.brand, t0, otp=a.brand in ('tvs', 'honda', 'yamaha', 'all'))
+        send(t_, subject=s_, html=h_)
+    except Exception:
+        logging.exception('start email failed')
+    md, results = [], []
     for n in names:
         try:
             r = run_brand(n, a.full, a.rebuild)
             if r: md.append(r.markdown())
+            results.append((n, r, ''))
         except SystemExit as e:
-            md.append(f'## {n}\n\nERROR: {e}\n')
+            md.append(f'## {n}\n\nERROR: {e}\n'); results.append((n, None, str(e) or 'stopped'))
         except Exception as e:
             logging.exception('%s failed', n)
-            md.append(f'## {n}\n\nERROR: {e}\n')
+            md.append(f'## {n}\n\nERROR: {e}\n'); results.append((n, None, f'{type(e).__name__}: {e}'))
     if md:
         p = os.path.join(data_dir('reports'), f'report_{datetime.date.today()}_{a.brand}.md')   # one file per run: the DMS and e-catalogue reports of one night both stay
         open(p, 'w', encoding='utf-8').write('\n'.join(md))
         print(open(p, encoding='utf-8').read())
-        from notify import send
-        send('\n'.join(md))
-
+    try:
+        subj, text, htm, data, fname = runmail.done_mail(a.brand, t0, runmail.now(), results)
+        send(text, subject=subj, html=htm, attach=(fname, data, 'text/csv') if data else None)
+    except Exception:
+        logging.exception('end email failed')
+        if md: send('\n'.join(md))
 
 if __name__ == '__main__':
     main()

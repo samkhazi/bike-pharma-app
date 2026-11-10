@@ -59,6 +59,7 @@ window.hParts = async (asm, mid) => {
   const n = {_search: false, nd: Date.now(), rows: -1, page: 1, sidx: 'Priority', sord: 'asc', Id: hE(asm), ModelId: hE(mid),
              SelDate: hE(''), svinno: hE(''), isSbom: hE(''), sbomId: hE(''), SessionDate: hE('')};
   const d = await hPost('GetIllustrationPartsJQ', n);
+  window._hLab = d && d.labels;   // 19c: every number's place on the diagram (XPOINT, YPOINT, LWIDTH, LHEIGHT), as Honda's own page uses it
   return (d && d.rows || []).map(r => ({ref: r.RefNo || r.LabelText || '', pn: r.PartNo, desc: r.Description, qty: r.Qty,
     mrp: r.Price1, hist: r.History, apid: r.AssemblyPartId, apmid: r.AssPartModId, pid: r.PartId, start: r.StartDate,
     end: r.EndDate, color: r.ColorCode, ns: r.NS, remark: r.Remark}));
@@ -488,7 +489,7 @@ class Honda:
                 p = self.img_path(h)
                 if not os.path.exists(p): open(p, 'wb').write(b)          # bytes exactly as Honda serves them
             for x in rows: x['mid'] = mid
-            save_json(self.asm_path(mid, aid), {'rows': rows, 'fetched': today()})
+            save_json(self.asm_path(mid, aid), {'rows': rows, 'labels': self.labels(page), 'fetched': today()})
             out.append([agg, fig, name, aid, h])
             if h and before.get(aid) and before[aid] != h:      # 16d: Honda changed this diagram's picture
                 newpic.add(aid); log.info('Honda %s: new picture for %s %s', code, fig, name)
@@ -498,6 +499,77 @@ class Honda:
         self.state['crawled'][code] = {**meta, 'mid': mid, 'asms': out, 'date': today(), 'newpic': sorted(newpic)}
 
     # ---------- sync ----------
+    def labels(self, page):
+        """19c: the numbers' places Honda sent with the last hParts: [[number, x, y, w, h], ...] in the page's picture pixels (Factor 1)"""
+        raw = page.evaluate('() => window._hLab || ""')
+        try:
+            arr = (json.loads(raw) if isinstance(raw, str) else raw or {}).get('yourArray') or []
+        except ValueError:
+            return []
+        out = []
+        for L in arr:
+            t = str(L.get('LABELTEXT') or '').strip().upper()
+            try: v = [float(L[k]) for k in ('XPOINT', 'YPOINT', 'LWIDTH', 'LHEIGHT')]
+            except (KeyError, TypeError, ValueError): continue
+            if t and v[2] > 0 and v[3] > 0: out.append([t] + v)
+        return out
+
+    @staticmethod
+    def img_size(f):
+        """(w, h) of a JPEG or PNG file, or None"""
+        try: b = open(f, 'rb').read(512 * 1024)
+        except OSError: return None
+        if b[:8] == b'\x89PNG\r\n\x1a\n' and len(b) >= 24: return int.from_bytes(b[16:20], 'big'), int.from_bytes(b[20:24], 'big')
+        i = 2
+        while b[:2] == b'\xff\xd8' and i + 9 < len(b):
+            if b[i] != 0xFF: i += 1; continue
+            mk = b[i + 1]
+            if mk in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF): return int.from_bytes(b[i + 7:i + 9], 'big'), int.from_bytes(b[i + 5:i + 7], 'big')
+            if mk in (0xD8, 0x01) or 0xD0 <= mk <= 0xD7: i += 2; continue
+            i += 2 + int.from_bytes(b[i + 2:i + 4], 'big')
+        return None
+
+    def labels_publish(self):
+        """19c: honda/coords.json {assembly id: [w, h, [[number, x, y, w, h]]]} for the server (w, h = the picture at Factor 1)"""
+        coords = {}
+        for code, c in (self.state.get('crawled') or {}).items():
+            for agg, fig, name, aid, h in c.get('asms') or []:
+                if str(aid) in coords: continue
+                L = load_json(self.asm_path(c['mid'], aid), {}).get('labels') or []
+                wh = self.img_size(self.img_path(h)) if h else None
+                if not L or not wh: continue
+                f = 3.0 if max(x[1] + x[3] for x in L) <= wh[0] / 3 * 1.05 and max(x[2] + x[4] for x in L) <= wh[1] / 3 * 1.05 else 1.0   # the picture is read at Factor 3
+                coords[str(aid)] = [round(wh[0] / f, 2), round(wh[1] / f, 2), L]
+        save_json(os.path.join(self.dir, 'coords.json'), coords)
+        log.info('Honda: number places for %d diagrams', len(coords))
+        return len(coords)
+
+    def fill_labels(self):
+        """sync.py honda --labels: the numbers' places of every diagram already downloaded (only the part list is asked again, no pictures)"""
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            ctx = p.chromium.launch_persistent_context(data_dir('honda', 'browser'), args=['--disable-dev-shm-usage', '--js-flags=--max-old-space-size=4096'], headless=env('HONDA_HEADFUL', '') == '',
+                                                       viewport={'width': 1500, 'height': 900})
+            page = ctx.pages[0] if ctx.pages else ctx.new_page(); page.set_default_timeout(120000)
+            try:
+                self.login(page); self.ensure_session(page)
+                done, todo = set(), [(c['mid'], a[3]) for c in (self.state.get('crawled') or {}).values() for a in c.get('asms') or []]
+                for k, (mid, aid) in enumerate(todo, 1):
+                    path = self.asm_path(mid, aid)
+                    if aid in done: continue
+                    d = load_json(path, None)
+                    if not d or d.get('labels'): done.add(aid); continue
+                    try:
+                        page.evaluate('([a, m]) => hParts(a, m)', [aid, mid]); d['labels'] = self.labels(page)
+                    except Exception as e:
+                        log.warning('Honda labels %s_%s: %s', mid, aid, str(e)[:160]); self.ensure_session(page); continue
+                    save_json(path, d); done.add(aid)
+                    if k % 200 == 0: log.info('Honda labels: %d/%d', k, len(todo)); self.labels_publish()
+                    time.sleep(float(env('HONDA_DELAY', '0.2')))
+            finally:
+                ctx.close()
+        return self.labels_publish()
+
     def probe(self):
         """19b (Sam 10 Nov: Honda's own site lights the part and its number on the diagram, both ways): what the site sends for that,
         read only, one diagram. Writes data/logs/honda_probe_<date>.txt and prints it."""
@@ -589,6 +661,7 @@ class Honda:
             finally:
                 ctx.close()
         self.merge_acc(rep, acc, kits)
+        self.labels_publish()
         self.state['last_run'] = today()
         save_json(self.state_path, self.state)
         self.write_files(rep, built)

@@ -117,6 +117,8 @@ try {
   const st = JSON.parse(fs.readFileSync(SH + '/state.json', 'utf8')); st.crawled.SCV110T.asms[0][4] = 'abc'; fs.writeFileSync(SH + '/state.json', JSON.stringify(st));
   const Y2 = buildHonda(H, 'catalogues/honda', { sync: SY, syncRel: 'catalogues/hero-sync' }), f2 = Y2.dg.p[String(YV('SCV110T'))]['E-3'];
   ok(Y2.dg.f[f2] === 'pf:catalogues/hero-sync/honda/img/abc.jpg:0:' + jpg.length && Y2.info.sync.newpics === 1, "sync: an assembly Honda added parts to shows Honda's new picture");
+  { const hf = 'pf:catalogues/hero-sync/honda/img/abc.jpg:0:' + jpg.length, up = Object.entries(Y.hot || {}).find(([k]) => k.startsWith('pf:catalogues/honda/'));
+    ok(['65', '77'].includes(Y.hot[hf]) && up && up[1] === '65', "19c: the build tells the server which Honda assembly each picture shows (honda-hot.json), the sync's and the upload's: " + JSON.stringify(Y.hot)); }
   ok(!buildHonda(H).info.sync, 'no sync data: nothing changes');
 } catch (e) { ok(false, 'error ' + e.stack); }
 finally { srv.kill(); }

@@ -674,7 +674,20 @@ const hotOut = o => ({ toks: o.toks || null, lo: o.lo || [], ed: o.ed || [] });
 // 18v (Sam 10 Nov, Bajaj EPC video): the weekly Bajaj sync keeps the EPC site's own place of every number on its plate pictures
 // (bajaj/coords.json {picture file: [w, h, [[number, x, y, r]]]}, pixels of that picture); those diagrams take these places, not the reader's guess
 let HOT_SITE = { m: -1, d: {} };
+// 19c (Sam 10 Nov, Honda's own site: every number clickable): the Honda sync keeps the places Honda's page uses (honda/coords.json
+// {assembly id: [w, h, [[number, x, y, w, h]]]}, pixels of its picture at Factor 1); the Honda build says which assembly a picture shows (cat/honda-hot.json)
+let HOT_HONDA = { m: '', hot: {}, c: {} };
+function hotHonda(u) {
+  const fh = path.join(HERO_OUT, 'honda-hot.json'), fc = path.join(HERO_SYNC_DIR, 'honda', 'coords.json'); let k = '';
+  try { k = fs.statSync(fh).mtimeMs + ':' + fs.statSync(fc).mtimeMs; } catch (e) { return null; }
+  if (k !== HOT_HONDA.m) { const rj = f => { try { return JSON.parse(fs.readFileSync(f, 'utf8')) || {}; } catch (e) { return {}; } }; HOT_HONDA = { m: k, hot: rj(fh), c: rj(fc) }; }
+  const aid = HOT_HONDA.hot[u], c = aid && HOT_HONDA.c[aid]; if (!Array.isArray(c) || !(c[0] > 0) || !(c[1] > 0) || !Array.isArray(c[2]) || !c[2].length) return null;
+  const [w, h] = c, q = v => Math.round(Math.min(1, Math.max(0, v)) * 1e4) / 1e4;
+  return c[2].filter(p => Array.isArray(p) && /^[A-Z0-9-]{1,8}$/i.test(String(p[0])) && p.slice(1, 5).every(v => typeof v === 'number'))
+    .map(([t, x, y, bw, bh]) => [String(t).toUpperCase(), q(x / w), q(y / h), q((x + bw) / w), q((y + bh) / h), 1]);
+}
 function hotSite(u) {
+  if (!/^pf:catalogues\/hero-sync\/bajaj\/img\//.test(u)) return hotHonda(u);
   const m = /^pf:catalogues\/hero-sync\/bajaj\/img\/([^/:]+):\d+:\d+$/.exec(u); if (!m) return null;
   const f = path.join(HERO_SYNC_DIR, 'bajaj', 'coords.json'); let t = 0; try { t = fs.statSync(f).mtimeMs; } catch (e) { return null; }
   if (t !== HOT_SITE.m) { try { HOT_SITE = { m: t, d: JSON.parse(fs.readFileSync(f, 'utf8')) || {} }; } catch (e) { HOT_SITE = { m: t, d: {} }; } }

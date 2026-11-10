@@ -671,6 +671,18 @@ const hotFile = u => path.join(HOT_DIR, crypto.createHash('sha1').update(u).dige
 const HOT_V = 3, hotRead = u => { try { const o = JSON.parse(fs.readFileSync(hotFile(u), 'utf8')); if (o && o.toks && (o.v || 1) < HOT_V) o.toks = null; return o; } catch (e) { return null; } };
 const hotWrite = (u, o) => { fs.mkdirSync(HOT_DIR, { recursive: true }); const f = hotFile(u), tmp = f + '.' + process.pid + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(o)); fs.renameSync(tmp, f); };
 const hotOut = o => ({ toks: o.toks || null, lo: o.lo || [], ed: o.ed || [] });
+// 18v (Sam 10 Nov, Bajaj EPC video): the weekly Bajaj sync keeps the EPC site's own place of every number on its plate pictures
+// (bajaj/coords.json {picture file: [w, h, [[number, x, y, r]]]}, pixels of that picture); those diagrams take these places, not the reader's guess
+let HOT_SITE = { m: -1, d: {} };
+function hotSite(u) {
+  const m = /^pf:catalogues\/hero-sync\/bajaj\/img\/([^/:]+):\d+:\d+$/.exec(u); if (!m) return null;
+  const f = path.join(HERO_SYNC_DIR, 'bajaj', 'coords.json'); let t = 0; try { t = fs.statSync(f).mtimeMs; } catch (e) { return null; }
+  if (t !== HOT_SITE.m) { try { HOT_SITE = { m: t, d: JSON.parse(fs.readFileSync(f, 'utf8')) || {} }; } catch (e) { HOT_SITE = { m: t, d: {} }; } }
+  const c = HOT_SITE.d[m[1]]; if (!Array.isArray(c) || !(c[0] > 0) || !(c[1] > 0) || !Array.isArray(c[2]) || !c[2].length) return null;
+  const [w, h] = c, q = v => Math.round(Math.min(1, Math.max(0, v)) * 1e4) / 1e4;
+  return c[2].filter(p => Array.isArray(p) && /^[A-Z0-9]{1,6}$/i.test(String(p[0])) && p.slice(1, 4).every(v => typeof v === 'number'))
+    .map(([t, x, y, r]) => [String(t).toUpperCase(), q((x - r) / w), q((y - r) / h), q((x + r) / w), q((y + r) / h), 1]);
+}
 // the diagram's picture straight out of the catalogue file here, as /api/files/read sends it
 function hotImg(u) {
   const m = /^(p[fa]):(.+):(\d+):(\d+)$/.exec(u); if (!m) return null;
@@ -724,6 +736,7 @@ async function dgHot(req, res, url, user) {
   if (u.length > 600 || !HOT_U.test(u)) { drain(req); return json(res, 400, { error: 'Bad diagram' }); }
   const o = hotRead(u) || { u, toks: null, ed: [] };
   if (req.method === 'GET') {
+    const site = hotSite(u); if (site && site.length) return json(res, 200, { ...hotOut(o), toks: site, lo: [], site: 1 });   // 18v: the EPC site's own number places
     if (o.toks || url.searchParams.get('ocr') !== '1') return json(res, 200, hotOut(o));
     if (u.startsWith('pdf:') || hotSvg(u)) return json(res, 200, { ...hotOut(o), need: 'img' });
     const buf = hotImg(u);

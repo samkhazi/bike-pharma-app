@@ -9,7 +9,7 @@ Change check: a BOM is re-downloaded when it is new, its header changed, or its 
 Also: hidden BOMs (BOM without a SKU in the site tree) are included. EPC has no MRP, so no price column.
 old <-> new part numbers -> output/Bajaj/Bajaj_Purana_Naya.xlsx (EPC: same diagram, old line ends the day the new one starts).
 """
-import os, re, hashlib, logging, datetime
+import os, re, json, hashlib, logging, datetime
 from common import Http, env, data_dir, load_json, save_json, today, Report
 
 log = logging.getLogger('brand_sync.bajaj')
@@ -195,13 +195,131 @@ class Bajaj:
         log.info('diagram numbers: %d BOMs changed, %d lines have one', nb, nl)
         return nb, nl
 
-    def fill_sn(self):
-        """sync.py bajaj --sn: read all diagram pages once (resumable: pages already read are kept) and put the numbers in the saved BOMs."""
-        self.login()
-        nb, nl = self.sn_apply(self.sn_scan())
-        if nb:   # the server rebuilds the Bajaj catalogue when state.json changes
-            self.state['sn_run'] = today(); save_json(self.state_path, self.state)
+    # 18v (Sam 10 Nov video): the site's own diagram view asks POST /v1/bom-plate-parts/catalog/parts/ {bom_id, plate_id} and gets
+    # sboms [{map_id = diagram number, part_no, ...}] + maps [{href = number, coords = "x, y, r"}] (pixels of the plate picture).
+    # One call per plate gives both, so the app's numbers sit where the site puts them.
+    def catalog(self, bid, plate):
+        r = self.http.post('/v1/bom-plate-parts/catalog/parts/', data=json.dumps({'bom_id': str(bid), 'plate_id': str(plate)}),
+                           headers={'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest',
+                                    'X-CSRFToken': self.http.s.cookies.get('csrftoken', ''), 'Referer': self.http.url('/')})
+        if r.status_code != 200:
+            return None
+        try:
+            j = r.json()
+        except ValueError:
+            return None
+        sn = [[str(x.get('map_id') or '').strip().upper(), str(x.get('part_no') or '').strip().upper()] for x in j.get('sboms') or []]
+        pts = []
+        for m in j.get('maps') or []:
+            c = [v.strip() for v in str(m.get('coords') or '').split(',')]
+            t = str(m.get('href') or '').strip().upper()
+            if t and len(c) >= 3 and all(re.fullmatch(r'-?\d+(?:\.\d+)?', v) for v in c[:3]):
+                pts.append([t, float(c[0]), float(c[1]), float(c[2])])
+        return {'sn': [x for x in sn if x[0] and x[1]], 'pts': pts, 'img': j.get('plate_image_url') or ''}
+
+    @staticmethod
+    def img_size(f):
+        """(w, h) of a PNG or JPEG file, or None."""
+        try:
+            b = open(f, 'rb').read(512 * 1024)
+        except OSError:
+            return None
+        if b[:8] == b'\x89PNG\r\n\x1a\n' and len(b) >= 24:
+            return int.from_bytes(b[16:20], 'big'), int.from_bytes(b[20:24], 'big')
+        if b[:2] == b'\xff\xd8':
+            i = 2
+            while i + 9 < len(b):
+                if b[i] != 0xFF:
+                    i += 1; continue
+                mk = b[i + 1]
+                if mk in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
+                    return int.from_bytes(b[i + 7:i + 9], 'big'), int.from_bytes(b[i + 5:i + 7], 'big')
+                if mk in (0xD8, 0x01) or 0xD0 <= mk <= 0xD7:
+                    i += 2; continue
+                i += 2 + int.from_bytes(b[i + 2:i + 4], 'big')
+        return None
+
+    def newest_boms(self):
+        skus = load_json(os.path.join(self.dir, 'skus.json'), {})
+        newest = {}
+        for bid, st, d in self.saved_boms():
+            sku = st['sku']
+            if self.skip(sku, skus.get(sku)):
+                continue
+            k = (str((d.get('header') or {}).get('valid_from') or ''), int(bid) if bid.isdigit() else 0)
+            if sku not in newest or k > newest[sku][0]:
+                newest[sku] = (k, bid)
+        return [bid for k, bid in sorted(newest.values(), reverse=True)]   # newest models first
+
+    def hs_publish(self, hs):
+        """Numbers into the saved BOMs + bajaj/coords.json for the server; state.json touched so the app is rebuilt."""
+        pages = load_json(os.path.join(self.dir, 'sbom.json'), {})
+        have = {tuple(k.split('|', 1)) for k in hs}
+        merged = {k: v for k, v in pages.items() if (str(v[0]), str(v[1])) not in have}
+        for k, v in hs.items():
+            b, p = k.split('|', 1)
+            merged['hs:' + k] = [b, p, v.get('sn') or [], '']
+        nb, nl = self.sn_apply(merged)
+        coords = {}
+        for k, v in hs.items():
+            if not v.get('pts'):
+                continue
+            b, p = k.split('|', 1)
+            urls = {v.get('img') or ''} | set(v.get('rimg') or [])
+            for u in urls - {''}:
+                f = self.img_path(u)
+                wh = self.img_size(f) if os.path.exists(f) else None
+                if wh and wh[0] > 0 and wh[1] > 0:
+                    coords[os.path.basename(f)] = [wh[0], wh[1], v['pts']]
+        save_json(os.path.join(self.dir, 'coords.json'), coords)
+        self.state['sn_run'] = today(); save_json(self.state_path, self.state)   # the server rebuilds the Bajaj catalogue
+        log.info('number places: %d plate pictures', len(coords))
         return nl
+
+    def hs_scan(self, refresh=(), every=20):
+        """Diagram numbers + their places for every plate of the newest BOM of each SKU (bajaj/hs.json; resumable)."""
+        path = os.path.join(self.dir, 'hs.json')
+        hs = load_json(path, {})
+        refresh = {str(x) for x in refresh}
+        todo = self.newest_boms()
+        nl, done = 0, 0
+        for k, bid in enumerate(todo, 1):
+            d = load_json(self.bom_path(bid), None)
+            if not d:
+                continue
+            imgs = {}
+            for r in d['rows']:
+                if r['plate_id'] not in ('', '0') and r.get('img'):
+                    imgs.setdefault(r['plate_id'], set()).add(r['img'])
+                elif r['plate_id'] not in ('', '0'):
+                    imgs.setdefault(r['plate_id'], set())
+            new = 0
+            for pl in sorted(imgs, key=lambda x: int(x) if x.isdigit() else 0):
+                key = bid + '|' + pl
+                if key in hs and bid not in refresh:
+                    continue
+                try:
+                    c = self.catalog(bid, pl)
+                except Exception as e:
+                    log.warning('plate %s: %s', key, e); c = None
+                if c is None:
+                    continue
+                c['rimg'] = sorted(imgs[pl])
+                hs[key] = c; new += 1
+            if new:
+                done += 1
+                save_json(path, hs)
+                log.info('BOM %s (%d/%d): %d plates read', bid, k, len(todo), new)
+            if done and (done % every == 0):
+                self.download_images([{'img': v.get('img')} for v in hs.values() if v.get('img')])
+                nl = self.hs_publish(hs)
+        self.download_images([{'img': v.get('img')} for v in hs.values() if v.get('img')])
+        return self.hs_publish(hs)
+
+    def fill_sn(self):
+        """sync.py bajaj --sn: diagram numbers and their places for the newest BOM of every SKU (resumable)."""
+        self.login()
+        return self.hs_scan()
 
     @staticmethod
     def skip(sku_code, s):
@@ -260,7 +378,7 @@ class Bajaj:
                             + (f" (naye: {', '.join(added[:8])}{'...' if len(added) > 8 else ''})" if added else ''))
             self.download_images(rows)
         try:   # 18u: diagram numbers for new diagram pages and changed BOMs
-            self.sn_apply(self.sn_scan([h['id'] for h, *_ in changed]))
+            self.hs_scan([h['id'] for h, *_ in changed])   # 18v: numbers + their places from the site's diagram view
         except Exception as e:
             log.warning('diagram numbers: %s', e)
         if known:

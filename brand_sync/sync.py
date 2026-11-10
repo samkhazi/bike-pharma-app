@@ -76,7 +76,7 @@ def main():
     ap.add_argument('--rebuild', action='store_true')
     ap.add_argument('--compare-old', action='store_true', help='tvs only: compare the saved NDP-MRP list with the old MRP on the server')
     ap.add_argument('--sn', action='store_true', help='bajaj only: read the diagram numbers (S.No.) of every diagram page into the saved BOMs')
-    ap.add_argument('--probe', action='store_true', help='honda only: what the site sends to light a part on its diagram (read only, one diagram)')
+    ap.add_argument('--probe', action='store_true', help='honda, tvs: what the site sends to light a part on its diagram (read only, one diagram)')
     ap.add_argument('--labels', action='store_true', help="honda only: every downloaded diagram's number places (part lists asked again, no pictures)")
     ap.add_argument('--part', help='hero_dms only: live MRP of one part, e.g. 12310AAM000S')
     a = ap.parse_args()
@@ -97,9 +97,8 @@ def main():
     if a.labels:                            # 19c: Honda number places for the diagrams downloaded before
         from brands.honda import Honda
         logging.info('Honda: %d diagrams have number places', Honda().fill_labels()); return
-    if a.probe:                             # 19b: Honda diagram highlight data, read only
-        from brands.honda import Honda
-        Honda().probe(); return
+    if a.probe:                             # 19b/19e: what the site sends for a diagram's numbers, read only (honda, tvs)
+        brand_cls(a.brand)().probe(); return
     if a.sn:                                # Bajaj: diagram numbers for the BOMs saved before 18u
         from brands.bajaj import Bajaj
         logging.info('Bajaj: %d part lines have a diagram number', Bajaj().fill_sn()); return

@@ -544,6 +544,36 @@ class TVS:
     def asm_path(self, sid, aid):
         return os.path.join(data_dir('tvs', 'asm'), f'{sid}_{aid}.json')
 
+    def probe(self):
+        """19e (Sam 10 Nov: check TVS like Honda): what the e-catalogue sends for one diagram, read only. Prints and saves logs/tvs_probe_<date>.txt"""
+        from playwright.sync_api import sync_playwright
+        out = []
+        def say(*a): out.append(' '.join(str(x) for x in a)); print(out[-1], flush=True)
+        with sync_playwright() as p:
+            ctx = p.chromium.launch_persistent_context(data_dir('tvs', 'browser'), args=['--disable-dev-shm-usage'], headless=env('TVS_HEADFUL', '') == '',
+                                                       accept_downloads=True, viewport={'width': 1500, 'height': 900})
+            page = ctx.pages[0] if ctx.pages else ctx.new_page(); page.set_default_timeout(120000)
+            seen = []
+            page.on('response', lambda r: seen.append((r.request.method, r.url[:200], r.status)))
+            try:
+                self.login(page); dealer = self.open_ecat(page)
+                sid = next(iter(self.state.get('series') or {}), None)
+                if not sid:
+                    meta = page.evaluate("() => tvGet('Catalouge/GetPartsearch', {partid:'X',description:'',partdesc:'',partSeries:'',modelID:'',page:1,pageSize:1,frameNumber:''})")
+                    sid = (meta.get('CModel') or [{}])[0].get('ID')
+                v = page.evaluate('s => tvGet("Catalouge/GetVehCoordinatesbySeries", {series: s})', sid) or {}
+                say('SERIES', sid, 'VEH KEYS', sorted(v.keys()) if isinstance(v, dict) else type(v))
+                c0 = (v.get('coordinates') or [{}])[0]; say('VEH COORD0', json.dumps(c0, ensure_ascii=False)[:600])
+                rec = page.evaluate('([s, a, d]) => tvGet("Catalouge/GetPartDetailsByAssemblyID", {SERIES: s, ASSEMBLY_ID: a, DealerID: d})', [sid, c0.get('ASSEMBLY_ID'), dealer]) or {}
+                say('ASM KEYS', sorted(rec.keys()) if isinstance(rec, dict) else type(rec))
+                for k, val in (rec.items() if isinstance(rec, dict) else []):
+                    if k == 'partDetails': say('PART0', json.dumps((val or [{}])[0], ensure_ascii=False)[:1200]); say('PARTS', len(val or []))
+                    else: say('ASM', k, json.dumps(val, ensure_ascii=False)[:900])
+                say('NET', [x for x in seen if 'tvs' in x[1].lower() and not re.search(r'\.(css|png|gif|jpe?g|svg|woff2?|ttf|js)(\?|$)', x[1])][-30:])
+            finally:
+                ctx.close()
+        f = os.path.join(data_dir('logs'), f'tvs_probe_{today()}.txt'); open(f, 'w', encoding='utf-8').write('\n'.join(out)); print('saved', f)
+
     # ---------- sync ----------
     def run(self, full=False, report=None):
         rep = report or Report(self.name)

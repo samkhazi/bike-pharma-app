@@ -42,7 +42,7 @@ def main(src, out_f):
             pn, nm, mrp = m.group(1), sp(m.group(2)), int(round(float(m.group(3).replace(',', ''))))
             if pn in seen or mrp <= 0: continue
             seen.add(pn)
-            rows.append({'pn': pn, 'nm': nm, 'mk': maker(nm, sub), 'veh': sub if sub and sub != sec else '', 'sec': sec or 'Part', 'mrp': mrp, 'oem': [],
+            rows.append({'pn': pn, 'nm': full(nm), 'mk': maker(nm, sub), 'veh': sub if sub and sub != sec else '', 'sec': sec or 'Part', 'mrp': mrp, 'oem': [],
                          'fit': full(sub) if sub and sub != sec else '', 'hay': full(nm)})
             continue
         if re.match(r'^\s{4,}\S', l) and not re.search(r'\d{3,}\s+\d+\s*$', l):          # a heading

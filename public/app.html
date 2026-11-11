@@ -4510,7 +4510,9 @@ function fpStock(r){const x=m2Shop(r),n=x?DB.stock[x.id]||0:0;return {x,n,h:x?(n
 function fpAddB(r,big){const s=fpStock(r);return s.n>0?`<button class="btn${big?'':' sm'}" onclick="event.stopPropagation();S.ui.scanHit='${s.x.id}';S.ui.scanMiss=null;go('scanfind')">${big?ic('cart','s18')+' Add to bill':'+ Add'}</button>`:'';}
 const fpWhere=r=>[r.vm&&!/^(Kits|Other)/.test(r.vm)?r.vm:'',catNice(r.asm||'')||r.fig].filter(Boolean).join(' · ');
 /* the searched number: the best line (a book line before a price-list line) on top */
-function fpPnTop(list,q){const k=catPk(q),ex=list.filter(r=>(r.pk||catPk(r.part||''))===k);if(!ex.length)return null;
+/* 19v (Sam 2026-11-11, B44H350003): a Yamaha number is the same with or without its last '00' (B44H350003 = B44H35000300): the typed number's own part is the top card */
+const ymSame=(a,b)=>a.length===12&&b.length===10?a===b+'00':a.length===10&&b.length===12&&b===a+'00';
+function fpPnTop(list,q){const k=catPk(q);let ex=list.filter(r=>(r.pk||catPk(r.part||''))===k);if(!ex.length)ex=list.filter(r=>r.vb==='Yamaha'&&ymSame(r.pk||catPk(r.part||''),k));if(!ex.length)return null;
  return ex.find(r=>!kitHead(r)&&!/price list/i.test(r.page||''))||ex.find(r=>!/price list/i.test(r.page||''))||ex[0];}
 function fpPnCard(r){if(kitHead(r))r=r;const N=fpNos(r),s=fpStock(r),K=kitsOf(r),L=m2FitL(r).map(v=>v.replace(/ \(.*$/,'')).filter((v,i,a)=>v&&!/^(Kits|Other)/.test(v)&&a.indexOf(v)===i);
  const tile=(l,body,cls)=>`<div class="fp-tile ${cls||''}"><div class="micro muted">${l}</div>${body}</div>`;

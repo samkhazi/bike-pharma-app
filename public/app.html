@@ -93,7 +93,7 @@
 /* 20c (Sam's recording 11 Nov 20:52: two fingers zoomed the whole page, the diagram stayed small under the card): two fingers zoom only the diagram, in its box;
    while a part's card is open the bike bar and the 'n of n parts' line make room for the diagram */
 .m3p .m3-dgw{touch-action:none}.m3p[data-ph="c"] .m3-bike{display:none}.m3p[data-ph="c"]:not(.hs-edit) .m3-dgw{--hb:0px}.m3p[data-ph="c"]:not(.hs-edit) .m3-dgw .hs-bar{display:none}
-.m3p .hs-clip{width:fit-content;max-width:100%;flex:none}.m3p .m3-dgw .hs-bar{flex:none;width:100%;font-size:11px;min-height:22px}.m3p .m3-dgw .hs-bar .grow{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m3p .hs-clip{width:100%;height:calc(100cqh - var(--hb,46px));flex:none;display:flex;align-items:center;justify-content:center}.m3p .m3-dgw .hs-bar{flex:none;width:100%;font-size:11px;min-height:22px}.m3p .m3-dgw .hs-bar .grow{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .m3p .m3-c2,.m3p .m3-c3{display:flex;position:absolute;left:0;right:0;bottom:0;z-index:9;max-height:92%;background:var(--card);border-radius:18px 18px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.28);padding:12px 10px 14px;transform:translateY(105%);visibility:hidden;transition:transform .25s ease,visibility .25s}
 .m3p[data-ph="l"] .m3-c2,.m3p[data-ph="d"] .m3-c3{transform:none;visibility:visible}
 .m3p .m3-c2{height:88%}.m3p .m3-c2 .m3-list{flex:1;min-height:0;max-height:none;overflow-y:auto}.m3p .m3-c2 .m3-lh{align-items:center;justify-content:flex-start}.m3p .m3-c2 .m3-lh .cap{flex:1}
@@ -7450,15 +7450,19 @@ function hsSel(k){const c=M3[k];if(!c)return;const q=c.rows.find(x=>x.i===c.sel)
 function hsFocus(k,off){document.querySelectorAll(`.m3 .dg[data-hk="${k}"]`).forEach(el=>{let w=el.parentElement;
   if(!w.classList.contains('hs-clip')){w=document.createElement('div');w.className='hs-clip';el.before(w);w.appendChild(el);w.insertAdjacentHTML('beforeend',`<button type="button" class="hs-all" onclick="event.stopPropagation();hsFocus('${k}',1)">Whole diagram</button>`);}
   const b=el.querySelector('.hs.on');if(off||!b){el.style.transform='';el.style.setProperty('--hz',1);w.classList.remove('z');return;}
-  const s=2.2,cx=parseFloat(b.style.left)+parseFloat(b.style.width)/2,cy=parseFloat(b.style.top)+parseFloat(b.style.height)/2,cl=v=>Math.min(0,Math.max(100-100*s,v));
-  el.style.transformOrigin='0 0';el.style.setProperty('--hz',s);el.style.transform=`translate(${cl(50-cx*s).toFixed(2)}%,${cl(50-cy*s).toFixed(2)}%) scale(${s})`;w.classList.add('z');});}
+  const s=2.2,cx=parseFloat(b.style.left)+parseFloat(b.style.width)/2,cy=parseFloat(b.style.top)+parseFloat(b.style.height)/2,L=hsLim(el,s);
+  el.style.transformOrigin='0 0';el.style.setProperty('--hz',s);hsMove(el,(L.CW/2-L.ox)/L.W*100-cx*s,(L.CH/2-L.oy)/L.H*100-cy*s,s);w.classList.add('z');});}
 addEventListener('keydown',e=>{if(e.key==='Escape'){const z=document.querySelector('#vp .m3 .hs-clip.z .dg[data-hk]');if(z)hsFocus(z.dataset.hk,1);}});
 /* 19m (Sam 10 Nov video: "zoom hone ke baad move nhi hota"): a close-up diagram is moved by dragging it (mouse or finger) or by the wheel / two fingers on the
    trackpad, never past its edges; a drag is not a tap, so it neither picks a number nor zooms out */
 let HSDRAG=null,HSDRAG_T=0;
 const hsZ=t=>{const el=t&&t.closest&&t.closest('.hs-clip.z>.dg[data-hk]');return el&&!t.closest('button')?el:null;};
 const hsPos=el=>{const m=/translate\(\s*(-?[\d.]+)%\s*,\s*(-?[\d.]+)%\s*\)/.exec(el.style.transform||'');return{x:m?+m[1]:0,y:m?+m[2]:0,s:parseFloat(el.style.getPropertyValue('--hz'))||1};};
-const hsMove=(el,x,y,s)=>{const cl=v=>Math.min(0,Math.max(100-100*s,v));el.style.transform=`translate(${cl(x).toFixed(2)}%,${cl(y).toFixed(2)}%) scale(${s})`;};
+/* 20d (Sam 11 Nov 21:04: a tall picture zoomed only inside its own narrow shape): the close-up uses the whole box around the picture; the picture never leaves
+   a gap inside the box while it is bigger than the box, and sits in the middle while it is smaller */
+const hsLim=(el,s)=>{const w=el.parentElement,W=el.offsetWidth||1,H=el.offsetHeight||1,CW=w.clientWidth||W,CH=w.clientHeight||H,f=(C,D,o)=>v=>(s*D>=C?Math.min(-o,Math.max(C-s*D-o,v/100*D)):(C-s*D)/2-o)/D*100;
+ return {x:f(CW,W,el.offsetLeft),y:f(CH,H,el.offsetTop),W,H,CW,CH,ox:el.offsetLeft,oy:el.offsetTop};};
+const hsMove=(el,x,y,s)=>{const L=hsLim(el,s);el.style.transform=`translate(${L.x(x).toFixed(2)}%,${L.y(y).toFixed(2)}%) scale(${s})`;};
 addEventListener('pointerdown',e=>{const el=hsZ(e.target);if(!el||(e.pointerType==='mouse'&&e.button!==0))return;const p=hsPos(el);HSDRAG={el,id:e.pointerId,px:e.clientX,py:e.clientY,x:p.x,y:p.y,s:p.s,mv:false};});
 addEventListener('pointermove',e=>{const d=HSDRAG;if(!d||e.pointerId!==d.id)return;const dx=e.clientX-d.px,dy=e.clientY-d.py;
   if(!d.mv){if(Math.abs(dx)+Math.abs(dy)<6)return;d.mv=true;d.el.style.transition='none';d.el.classList.add('hs-drag');}
@@ -7470,10 +7474,10 @@ let HSPIN=null;
 const hsPinEl=t=>{const w=t&&t.closest&&t.closest('.m3 .m3-dgw');return w&&w.querySelector('.dg[data-hk]');};
 addEventListener('touchstart',e=>{if(e.touches.length!==2)return;const el=hsPinEl(e.target);if(!el)return;if(!el.parentElement.classList.contains('hs-clip'))hsFocus(el.dataset.hk,1);
  const w=el.parentElement,r=w.getBoundingClientRect(),a=e.touches[0],b=e.touches[1],p=hsPos(el),W=el.offsetWidth||1,H=el.offsetHeight||1,cx=(a.clientX+b.clientX)/2-r.left,cy=(a.clientY+b.clientY)/2-r.top;
- HSPIN={el,w,d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)||1,s:p.s,lx:(cx-p.x/100*W)/p.s,ly:(cy-p.y/100*H)/p.s,W,H};HSDRAG=null;el.style.transition='none';e.preventDefault();},{passive:false});
+ HSPIN={el,w,d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)||1,s:p.s,ox:el.offsetLeft,oy:el.offsetTop,lx:(cx-el.offsetLeft-p.x/100*W)/p.s,ly:(cy-el.offsetTop-p.y/100*H)/p.s,W,H};HSDRAG=null;el.style.transition='none';e.preventDefault();},{passive:false});
 addEventListener('touchmove',e=>{const d=HSPIN;if(!d||e.touches.length!==2)return;e.preventDefault();const a=e.touches[0],b=e.touches[1],r=d.w.getBoundingClientRect();
  const s=Math.min(5,Math.max(1,d.s*Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)/d.d)),cx=(a.clientX+b.clientX)/2-r.left,cy=(a.clientY+b.clientY)/2-r.top;
- d.el.style.transformOrigin='0 0';d.el.style.setProperty('--hz',s.toFixed(3));hsMove(d.el,(cx-s*d.lx)/d.W*100,(cy-s*d.ly)/d.H*100,+s.toFixed(3));d.w.classList.toggle('z',s>1.02);},{passive:false});
+ d.el.style.transformOrigin='0 0';d.el.style.setProperty('--hz',s.toFixed(3));hsMove(d.el,(cx-d.ox-s*d.lx)/d.W*100,(cy-d.oy-s*d.ly)/d.H*100,+s.toFixed(3));d.w.classList.toggle('z',s>1.02);},{passive:false});
 const hsPinEnd=e=>{const d=HSPIN;if(!d||e.touches.length>=2)return;HSPIN=null;HSDRAG_T=Date.now();d.el.style.transition='';if(hsPos(d.el).s<=1.02)hsFocus(d.el.dataset.hk,1);};
 addEventListener('touchend',hsPinEnd);addEventListener('touchcancel',hsPinEnd);
 addEventListener('gesturestart',e=>{if(e.target.closest&&e.target.closest('.m3p'))e.preventDefault();});

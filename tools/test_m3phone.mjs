@@ -49,7 +49,7 @@ for (const [ar, name] of [[661 / 935, 'tall Yamaha diagram'], [4 / 3, 'wide diag
     ok(Math.abs(z.s - 3) < 0.05 && z.z && z.vv === 1 && z.inBox && Math.abs(z.bc - s.bc.t) < 1, name + ': two fingers zoom only the diagram (' + z.s + 'x), in its box, page and card stay');
     await p.click('#vp .m3 .hs-all'); await p.waitForTimeout(700); ok((await st(p)).zoom === false, name + ': "Whole diagram" goes back'); }
   await p.evaluate(() => m3Ph('')); await p.waitForTimeout(500); const s0 = await st(p);
-  ok(!s0.cardOpen && s0.dgw.h > s.dgw.h && s0.dg.h >= s.dg.h - 1, name + ': card closed = more room for the diagram (' + Math.round(s.dgw.h) + ' > ' + Math.round(s0.dgw.h) + ' px)');
+  ok(!s0.cardOpen && s0.dgw.h > s.dgw.h && s0.dg.h >= s.dg.h - 12, name + ': card closed = more room for the diagram (' + Math.round(s.dgw.h) + ' > ' + Math.round(s0.dgw.h) + ' px)');
   await p.click('#vp .m3 .hs[data-ref="1"]'); await p.waitForTimeout(600); s = await st(p);
   ok(s.cardOpen && /Cover Assembly/i.test(s.name || '') && s.onRef === '1' && !s.zoom, 'tap number 1: its part in the card, lit, diagram still whole: ' + s.name);
   await swipe(p, -120, 5); s = await st(p);

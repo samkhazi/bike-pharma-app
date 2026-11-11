@@ -4539,6 +4539,9 @@ function fpFChips(list,p){const c=FP_FF.map(([k,l,fn])=>[k,l,fn?list.filter(fn).
 function fpBikeBar(p,v){const b=S.ui.fpBike;if(!b&&['sec','res'].includes(v)&&p.vb&&p.vb!=='Any'&&p.vm&&p.vm!=='Any'){const cc=MODEL_CC[p.vm],ed=p.ed&&p.ed!=='Any'?p.ed:p.yr&&p.yr!=='Any'?p.yr:'';
   return `<div class="fp-bike"><div class="grow"><b>${esc([p.vb+' '+p.vm,ed,cc?cc+'cc':''].filter(Boolean).join(' · '))}</b><div class="cap">Picked by brand, model and year</div></div><button class="btn y sm" onclick="go('findpart',{v:'brand',vb:'${m2Q(p.vb)}'})">Change bike</button></div>`;}
  if(!b||v==='home'||v==='vin'||v==='brand')return '';if(p.vb&&p.vb!=='Any'&&p.vb!==b.vb)return '';
+ /* 19w (Sam 2026-11-11 'royal enfield classic q dikh raha he'): a search this bike does not have (a Yamaha number while an RE bike is remembered) shows the
+    part where the catalogue lists it: the remembered bike's bar is not put on top of that */
+ if(v==='res'&&p.q&&!p.cat){try{const c=m2Res(p).c;if(c&&c.wide)return '';}catch(e){}}
  const rc=b.reg&&RC_SEEN[b.reg]||{},cc=rc.cc||MODEL_CC[b.vm]||'',yr=rc.mfg||b.yr||'';
  const l1=[b.vb+' '+b.vm,yr,rc.fuel,cc?String(cc).replace(/\s*cc$/i,'')+'cc':'',rc.colour].filter(Boolean).join(' · '),ch=rc.chassis||b.vin||'',en=rc.engine||'';
  const chg=b.vin?`vinChange('${m2Q(b.vin)}')`:`S.ui.vin={q:'${m2Q(b.reg||'')}'};go('findpart',{v:'vin'})`;
@@ -4547,7 +4550,7 @@ function fpResBody(list,n,p){const t=!p.cat&&p.q&&fpIsPn(p.q)?fpPnTop(list,p.q):
 function m2ResView(p){xrLoad();altLoad();amLoad();const A=m2A(p);m2AllLoad(A,p);const R=m2Res(p);if(R.spell){A.q=R.spell.q;p={...p,q:R.spell.q};}
  if(R.loading)return (p.cat?'':amRes(p.q))+m2Head(p.cat?esc(p.cat):'“'+esc(p.q)+'”','')+catSection(R.loading,A);
  const c=R.c;const all=m2Sort(R.list,p.sort||'best'),pnTop=!p.cat&&p.q&&fpIsPn(p.q)?fpPnTop(all,p.q):null,list=pnTop?all:fpFilt(all,p);const n=Math.min(p.n||30,list.length);
- const scope=A.vm!=='Any'?`in ${esc(A.vb)} ${esc(A.vm)}${A.yr!=='Any'?' · '+esc(A.yr):''}`:A.vb!=='Any'?`in ${esc(A.vb)}`:m2Loaded().length?`in ${esc(m2Loaded().join(', '))}`:'in the open catalogues (none open yet)';
+ const scope=c&&c.wide?'in all open catalogues':A.vm!=='Any'?`in ${esc(A.vb)} ${esc(A.vm)}${A.yr!=='Any'?' · '+esc(A.yr):''}`:A.vb!=='Any'?`in ${esc(A.vb)}`:m2Loaded().length?`in ${esc(m2Loaded().join(', '))}`:'in the open catalogues (none open yet)';
  const count=p.cat?`${m2N(list.length)} result${list.length===1?'':'s'} where Category contains “${esc(p.cat==='All'?'All':p.cat)}”`:`${m2N(list.length)} part${list.length===1?'':'s'} for “${esc(p.q)}”`;
  const sort=`<div class="m2-sort"><span class="cap">Sort</span><select onchange="m2SortSet(this.value)" aria-label="Sort">${[['best','Best match'],['name','Name (A–Z)'],['pn','Part no.'],['cat','Category']].map(([k,l])=>`<option value="${k}"${(p.sort||'best')===k?' selected':''}>${l}</option>`).join('')}</select></div>`;
  const sq=(A.q||'').replace(/(^|\s)[A-Za-z0-9](?=\s|$)/g,' ').trim();const m2ShopOk=x=>{const toks=(x.name+' '+x.pn+' '+x.cat+' '+x.brand).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);const has=w=>toks.some(t=>t.startsWith(w)||(t.length>=4&&w.startsWith(t)));return sq.toLowerCase().split(/[^a-z0-9]+/).filter(w=>w.length>=4).every(w=>has(w)||(CAT_WORDS[w.toUpperCase()]||[]).some(al=>al.toLowerCase().split(' ').filter(x=>/^[a-z0-9]+$/.test(x)).every(has)));};const shop=!p.cat&&sq?PRODUCTS.filter(m2ShopOk).map(x=>[x,fpMatch(x,{...A,q:sq})]).filter(([,m])=>m).slice(0,6):[];

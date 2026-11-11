@@ -3195,8 +3195,22 @@ const catNewNo=(rem,vb,skip,pk,R)=>{if(pk){const have=new Set([...String(rem||''
  const line=(pill,cls,l)=>`<div class="row wrap" style="gap:6px;align-items:center"><span class="pill ${cls}">${pill}</span>${l.map(n=>{const m=catNoMrp(vb,n);return `<b class="num">${esc(n)}</b>${m?`<span class="cap" style="font-weight:600">MRP ${inr(m)}</span>`:''}`;}).join(' ')}</div>`;
  return (a.length?line('New part no.','g',a):/No replacement \(Hero: NLS\)/.test(rem||'')?`<div class="cap" style="font-weight:600">No new part number: Hero has stopped this part</div>`:'')+(o.length?line('Old part no.','',o):'')+(al.length?line('Alternate part no.','',al):'')+catOtherBr(R);};
 /* Sam 2026-10-30: the same part in other brands right with the alternate numbers (brand, number, MRP; tap opens it there) */
-const catOtherBr=R=>catOtherBr0(R)+(typeof sameRow==='function'?sameRow(R):'');
+const catOtherBr=R=>catOtherBr0(R)+(typeof verRow==='function'?verRow(R):'')+(typeof sameRow==='function'?sameRow(R):'');
 const catOtherBr0=R=>{if(!R||typeof xrLoad!=='function'||!xrLoad())return '';const L=xrOther(R);if(!L.length)return '';return `<div class="row wrap" style="gap:6px;align-items:center"><span class="pill g">Other brands</span>${L.map(([b,ms,on])=>{const n=on||R.part,m=catNoMrp(b,n);return `<button class="chip" title="${esc(ms.slice(0,6).join(', '))}" onclick="xrGo('${m2Q(b)}','${m2Q(n)}')"><b>${esc(b)}</b> <span class="num">${esc(n)}</span>${m?' · MRP '+inr(m):''}${ms.length?' · '+esc(ms.slice(0,2).join(', '))+(ms.length>2?' +'+(ms.length-2):''):''}</button>`;}).join('')}</div>`;};
+/* ---------- 19z (Sam 2026-11-11: RE 148239/D has no MRP but 148239/E, /F, /G are sold and fit the same bikes): a Royal Enfield number's
+   other letter versions are shown on its page and number card, with or without an MRP. The server sends their lines (lib/catsplit vr). ---------- */
+const catVer=q=>{const m=/^(\d{5,8})\/[A-Z]{1,2}$/.exec(String(q||'').trim().toUpperCase());return m?m[1]:'';};
+const VER={b:null,m:new Map()};
+function verOf(R){const base=catVer(R&&R.part),vb=R&&R.vb;if(!base||!vb)return [];const pk=R.pk||catPk(R.part);catPkRows(vb,pk);
+ const e=CAT_ALL.find(x=>x.vb===vb);if(e&&e.split&&e.st===2)catSplitQ(e,'vr:'+base,{vr:base});
+ if(VER.b!==CAT_PKB){VER.b=CAT_PKB;VER.m=new Map();}const ck=vb+'|'+base;let L=VER.m.get(ck);
+ if(!L){L=[];for(const [k,rs] of CAT_PKB.get(vb)||[])if(k.length>base.length&&k.length<=base.length+2&&k.startsWith(base)){const r=rs.find(x=>catVer(x.part)===base);if(!r)continue;
+   const fits=[];rs.forEach(x=>m2FitL(x).forEach(v=>{v=String(v).replace(/ \(.*$/,'');if(v&&!/^(Kits|Other)/.test(v)&&!fits.includes(v))fits.push(v);}));
+   L.push({pk:k,pn:r.part,name:catNice(r.desc||''),mrp:rs.reduce((m,x)=>Math.max(m,+x.mrp||0),0),ms:fits});}
+  L.sort((a,b)=>a.pn<b.pn?-1:1);VER.m.set(ck,L);}
+ return L.filter(v=>v.pk!==pk);}
+function verRow(R){const L=verOf(R);if(!L.length)return '';
+ return `<div class="stack g8 ver-box"><div class="row wrap" style="gap:6px;align-items:center"><span class="pill g">Other versions of this number</span><span class="cap">Alternate parts: the same number with another letter</span></div>${L.map(v=>`<div class="row wrap" style="gap:6px;align-items:center"><button class="chip" title="${esc(v.ms.join(', '))}" onclick="xrGo('${m2Q(R.vb)}','${m2Q(v.pn)}')"><b class="num">${esc(v.pn)}</b>${v.name?' · '+esc(v.name):''} · ${v.mrp?'MRP '+inr(v.mrp):'MRP on request'}${v.ms.length?' · '+esc(v.ms.slice(0,3).join(', '))+(v.ms.length>3?' +'+(v.ms.length-3):''):''}</button>${sameStock({pn:v.pn})}</div>`).join('')}</div>`;}
 /* ---------- 19y (Sam 2026-11-11: RE 585643/A and Yamaha 93315-317Y4 are the same part): two numbers of different brands that staff mark as the same
    part. Kept on the server (/api/same), shown on the part's page in Find Part, in Add product and while billing. Every staff login can mark one. ---------- */
 const SAME={m:new Map(),t:0,busy:0,sig:''};
@@ -4559,6 +4573,7 @@ function fpPnCard(r){if(kitHead(r))r=r;const N=fpNos(r),s=fpStock(r),K=kitsOf(r)
  <div class="fp-pn-top"><div class="fp-pn-ph">${m2Thumb(r)}</div><div class="grow"><div class="row" style="gap:10px;flex-wrap:wrap"><b class="fp-pn-no num" id="pn-${r.i}">${esc(r.part)}</b><button class="btn line sm" onclick="catCopy(${r.i})">Copy</button></div><div class="fp-pn-nm">${esc(catNice(r.desc))}</div><div class="cap">${esc([r.vb,fpWhere(r)].filter(Boolean).join(' · '))}</div></div>
  <div class="fp-pn-pr"><div class="micro muted">MRP (incl. GST)</div><b class="num">${r.mrp?inr(r.mrp):s.x?inr(s.x.mrp):'On request'}</b>${s.h}</div></div>
  <div class="fp-tiles">${tile('New part no.',N.a.length?nl(N.a,r.vb):`<span class="cap" style="font-weight:600">${N.stop?'None: the maker has stopped this part':'This is the latest'}</span>`,N.a.length?'b':'')}${tile('Old part no.',N.o.length?nl(N.o,r.vb):'<span class="cap">—</span>')}${tile('Alternate part no.',N.al.length?nl(N.al,r.vb):'<span class="cap">None in the data</span>',N.al.length?'g':'')}${tile(kitHead(r)?'Kit':'Also in kit',kitT||'<span class="cap">—</span>',kitT?'y':'')}</div>
+ ${typeof verRow==='function'?verRow(r):''}
  ${typeof sameRow==='function'?sameRow(r):''}
  ${L.length?`<div class="row wrap" style="gap:6px;align-items:center"><span class="cap" style="font-weight:700">Fits</span>${L.slice(0,8).map(v=>`<span class="chip">${esc(v)}</span>`).join('')}${L.length>8?`<span class="cap">+${L.length-8} more</span>`:''}</div>`:''}
  <div class="row wrap" style="gap:8px">${fpAddB(r,1)}<button class="btn y" onclick="m2Part(${r.i})">Open part (diagram)</button>${!s.x&&r.part&&typeof invFpAdd==='function'?'':''}</div></div>`;}

@@ -75,7 +75,10 @@
 @keyframes hsTip{from{opacity:0;transform:translate(-50%,4px)}to{opacity:1;transform:translateX(-50%)}}
 .hs.on,.hs.hv{z-index:3}
 @media (prefers-reduced-motion:reduce){.hs.on,.hs.on[data-tip]::after{animation:none}.hs-clip>.dg{transition:none}}
-@container (max-width:899px){.m3a.m3b .m3-c1{position:sticky;top:0;z-index:6;background:var(--paper,#F7F5EF);padding-bottom:8px;box-shadow:0 8px 12px -10px rgba(0,0,0,.25)}.m3a.m3b .m3-c1 .m3-tip,.m3a.m3b .m3-c1 .dg-other{display:none}}
+@container (max-width:899px){.m3a.m3b .m3-c1{position:sticky;top:0;z-index:6;background:var(--paper,#F7F5EF);padding-bottom:8px;box-shadow:0 8px 12px -10px rgba(0,0,0,.25)}.m3a.m3b .m3-c1 .m3-tip,.m3a.m3b .m3-c1 .dg-other{display:none}
+/* 20a (Sam's video 11 Nov: Yamaha's tall diagram filled the phone and the parts list under it could not be seen): on a phone the
+   diagram that stays on top is never taller than a normal wide (4:3) one; its shape is kept (narrower, centred), the zoom button opens it big */
+.m3a.m3b .m3-c1 .m3-dgw .dg{width:min(100%,calc(72cqw*var(--ar,1.3333)));margin:0 auto}}
 /* 18y (Sam 10 Nov 'zoom ke baad pehle jaisa nahi hota'): the way back is at the top, always in view; a tap on the picture or the same part again, or Esc, also shows the whole diagram */
 .hs-all{display:none;position:absolute;left:8px;top:8px;z-index:5;border:0;border-radius:10px;background:#141413;color:#FFC400;font:inherit;font-size:13px;font-weight:700;padding:9px 13px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.3)}.hs-clip.z .hs-all{display:block}.hs-clip.z>.dg.m3-fig{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}.hs-clip.z>.dg.m3-fig.hs-drag{cursor:grabbing}
 .hs.hv{background:rgba(255,204,0,.75);box-shadow:0 0 0 3px #FFC400,0 0 0 5px rgba(20,20,19,.35);z-index:2}
@@ -4104,8 +4107,8 @@ function dgZoom(btn){const el=btn.querySelector('[data-dg]');if(!el)return;const
  const k=e=>{if(e.key==='Escape')close();},close=()=>{d.remove();document.removeEventListener('keydown',k);};d.querySelector('.fpz-x').onclick=close;document.addEventListener('keydown',k);sc.appendChild(d);d.querySelector('.fpz-x').focus();}
 (()=>{const IM={};const img=u=>IM[u]||(IM[u]=catPf(u).then(b=>new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok({b,w:i.naturalWidth,h:i.naturalHeight});i.onerror=no;i.src=b;})).catch(e=>{delete IM[u];throw e;}));IM.x=1;
  const show=t=>{if(t.dataset.got)return;t.dataset.got=1;img(t.dataset.dg).then(({b,w,h})=>{const bx=t.dataset.box?t.dataset.box.split(',').map(Number):null;t.style.backgroundImage='url('+b+')';t.style.backgroundRepeat='no-repeat';
-   if(bx){const x=bx[0]/100*w,y=bx[1]/100*h,bw=Math.max(1,(bx[2]-bx[0])/100*w),bh=Math.max(1,(bx[3]-bx[1])/100*h);t.style.cssText+=';'+catBgPos({W:w,H:h},x,y,bw,bh)+';aspect-ratio:'+(bw/bh).toFixed(4);}
-   else{t.style.backgroundSize='100% 100%';t.style.aspectRatio=(w/h).toFixed(4);}t.classList.add('on');if(t.dataset.hk&&typeof hsWire==='function')hsWire(t);},
+   if(bx){const x=bx[0]/100*w,y=bx[1]/100*h,bw=Math.max(1,(bx[2]-bx[0])/100*w),bh=Math.max(1,(bx[3]-bx[1])/100*h);t.style.cssText+=';'+catBgPos({W:w,H:h},x,y,bw,bh)+';aspect-ratio:'+(bw/bh).toFixed(4)+';--ar:'+(bw/bh).toFixed(4);}
+   else{t.style.backgroundSize='100% 100%';t.style.aspectRatio=(w/h).toFixed(4);t.style.setProperty('--ar',(w/h).toFixed(4));}t.classList.add('on');if(t.dataset.hk&&typeof hsWire==='function')hsWire(t);},
   ()=>{t.classList.add('dg-no');const f=t.closest('.dg-wrap');if(f)f.classList.add('dg-fail');});};
  const io='IntersectionObserver' in window?new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)show(e.target);}),{rootMargin:'400px 0px'}):null;
  const scan=()=>document.querySelectorAll('[data-dg]:not([data-io])').forEach(el=>{el.dataset.io=1;if(io)io.observe(el);else show(el);});

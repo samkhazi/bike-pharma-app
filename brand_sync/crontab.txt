@@ -14,8 +14,8 @@ LOG=/home/bikepharma/htdocs/bikepharma.com/data/project-files/catalogues/hero-sy
 # --- Saturday ---
 # Hero DMS (prices)
 0 21 * * 6 cd $BS && .venv/bin/python sync.py hero_dms >> $LOG 2>&1
-# Rolon catalogue PDF (Sam's own script in the site user's home; 21:30 UTC = Sunday 3 am India; own log in ~/rolon_dump/logs)
-30 21 * * 6 /bin/bash /home/bikepharma/rolon_dump/rolon_weekly.sh
+# Rolon: fresh data (rolon_fetch.py), then the catalogue PDF (Sam's own script in the site user's home; 21:30 UTC = Sunday 3 am India; own log in ~/rolon_dump/logs)
+30 21 * * 6 ROLON_FETCH=$BS/rolon_fetch.py /bin/bash /home/bikepharma/rolon_dump/rolon_weekly.sh
 # --- Sunday ---
 # Hero
 0 1 * * 0 cd $BS && .venv/bin/python sync.py hero >> $LOG 2>&1

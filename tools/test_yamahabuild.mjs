@@ -64,12 +64,19 @@ try {
   // 16h: the weekly pymidol sync (brand_sync on this server): its MRP wins, new old/new pairs and kits join, parts only in its list are findable
   const SY = T + '/pf/catalogues/hero-sync'; fs.mkdirSync(SY + '/yamaha', { recursive: true });
   fs.writeFileSync(SY + '/yamaha/state.json', JSON.stringify({ last_run: '2026-11-01',
-    mrp: { B0TE11021000: { name: 'CYLINDER HEAD', mrp: 5400 }, BX9F00010000: { name: 'NEW MIRROR', mrp: 450 } },
-    sup: [['BX9F00000000', 'BX9F00010000']], kits: { 'NEW KIT 1': { name: 'NEW KIT', parts: [['BX9F00010000', 'MIRROR', 1]] } } }));
+    mrp: { B0TE11021000: { name: 'CYLINDER HEAD', mrp: 5400 }, BX9F00010000: { name: 'NEW MIRROR', mrp: 450 }, B0TE11021100: { name: 'CYLINDER HEAD NEW', mrp: 5600 } },
+    sup: [['BX9F00000000', 'BX9F00010000'], ['B0TE11021000', 'B0TE11021100']], kits: { 'NEW KIT 1': { name: 'NEW KIT', parts: [['BX9F00010000', 'MIRROR', 1]] } } }));
   const { buildYamaha } = await import('../lib/yamahabuild.mjs');
   const Y = buildYamaha(D, 'catalogues/yamaha', { sync: SY }), yd = Y.cat, nr = yd.d.find(r => r[5] === 'BX9F00010000');
   ok(yd.mrp['B0T-E1102-10'] === 5400 && nr && yd.mrp.BX9F00010000 === 450 && /Old no\. BX9F00000000/.test(nr[8]) && /In kit: NEW KIT 1/.test(nr[8])
     && yd.vars[nr[11][0]] === 'Other Yamaha (no model name) · Yamaha MRP list (weekly sync)', "sync: pymidol's MRP wins; a part only in its list is findable with old no. and kit");
+  { // 19u: a part only in the MRP list that is the new number of a book part is listed in that part's places too (model, diagram, ref no.)
+    const olds = yd.d.filter(r => r[5] === 'B0T-E1102-10'), news = yd.d.filter(r => r[5] === 'B0TE11021100'), pl = news.filter(r => r[2] !== 'MRP list');
+    ok(olds.length && !news.some(r => r[2] === 'MRP list') && pl.length === new Set(olds.map(r => [r[1], r[2], r[3], r[4]].join('|'))).size
+      && pl.every(r => olds.some(o => o[2] === r[2] && o[3] === r[3] && o[4] === r[4] && o[7] === r[7] && r[11].every(v => o[11].includes(v))) && /New number of B0T-E1102-10/.test(r[8]) && !/Old no\. B0T-E1102-10/.test(r[8]))
+      && yd.mrp.B0TE11021100 === 5600 && Y.info.newPlaced === pl.length && !yd.d.some(r => r[5] === 'BX9F00010000' && r[2] !== 'MRP list'),
+      "19u: the new number of a book part shows in that part's model and diagram too (" + pl.length + ' places); a part with no book part stays under the price list only');
+  }
   ok(!buildYamaha(D).info.sync, 'no sync data: nothing changes');
   // 16i: a model catalogue the sync downloaded and read: a new model code becomes an edition, its diagram is the downloaded PDF's page
   const st = JSON.parse(fs.readFileSync(SY + '/yamaha/state.json', 'utf8')), NB = 'DM4C YZF155D-B (2026-10-25).pdf';

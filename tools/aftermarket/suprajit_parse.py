@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Suprajit two-wheeler price lists -> one small list for Find Part's aftermarket parts (update 20g, Sam 2026-11-11 "dono catalogue ko use karke").
 
-  python3 suprajit_parse.py OLD.txt NEW.txt OUT.json
+  python3 suprajit_parse.py OLD.txt NEW.txt OUT.json [MID.txt]
 
 OLD.txt = `pdftotext -layout` of the list that has the REF. PART NO. column (the original maker's number), e.g. Two-Wheeler-Price-list-Jan-24.pdf
 NEW.txt = the text of the newest list (MRP, new parts; it has no REF. PART NO.), e.g. 2w Cable BC Price list July-26.pdf
@@ -135,14 +135,45 @@ def tidy(r):
         if n[k:].startswith(n[:k]): r['nm'] = n[k:]; break
 
 
-def main(old_f, new_f, out_f):
+def parse_mid(t):
+    """20i: the Dec 2025 list (`pdftotext -layout`): PART NO., DESCRIPTION, MODEL NAME, MOQ, MRP in clean columns."""
+    out, pend = {}, None
+    price = re.compile(r'^[\d,]+\.\d\d$')
+    for raw in t.split('\n'):
+        cells = [c for c in re.split(r' {2,}', raw.strip()) if c]
+        if not cells: continue
+        m = re.match(r'^(' + PN + r'|SM\d{2,3}(?: [A-Z]{1,2}){1,2})(?: +(.*))?$', cells[0])
+        has_price = price.match(cells[-1]) is not None
+        if m:
+            pn = m.group(1).replace(' ', ''); rest = ([m.group(2)] if m.group(2) else []) + cells[1:]
+            if not has_price: pend = [pn, rest]; continue
+            pend = None
+        elif pend and has_price: pn, rest = pend[0], pend[1] + cells; pend = None
+        elif pend and len(cells) <= 2 and not re.search(r'PART NO|PAGE|^\d+$', raw): pend[1] += cells; continue
+        else: pend = None; continue
+        mrp = num(rest[-1]); rest = rest[:-1]
+        if rest and re.match(r'^\d{1,3}$', rest[-1]): rest = rest[:-1]                   # MOQ: not kept
+        if rest and re.match(r'^(F|R|F&R|Foam|Paper|Oil|Fuel)$', rest[-1]): rest = rest[:-1]
+        if pn in out or not rest: continue
+        if sec_pn(pn) == 'Control cable' and len(rest) >= 2: nm, veh = rest[0], sp(' '.join(rest[1:]))
+        else: nm, veh = sp(' '.join(rest)), ''
+        out[pn] = {'pn': pn, 'nm': sp(nm), 'veh': veh, 'sec': sec_pn(pn), 'mrp': mrp, 'oem': []}
+    return out
+
+
+def main(old_f, new_f, out_f, mid_f=None):
     old = parse_old(open(old_f, errors='replace').read()); new = parse_new(open(new_f, errors='replace').read())
+    mid = parse_mid(open(mid_f, errors='replace').read()) if mid_f else {}
     rows = []
-    for pn in sorted(set(old) | set(new)):
-        o, n = old.get(pn), new.get(pn)
-        r = dict(o) if o else {'pn': pn, 'nm': n['nm'], 'mk': '', 'veh': n['veh'], 'sec': n['sec'], 'oem': n['oem'], 'mrp': 0}
-        if n and n['mrp'] > 0 and n['mrp'] >= r['mrp']: r['mrp'] = n['mrp']
-        elif o and o['mrp'] > 0: r['oldmrp'] = 1                            # 20h (Sam: two lists, two MRPs = the higher one), or not priced in the newest list: the older MRP
+    for pn in sorted(set(old) | set(new) | set(mid)):
+        o, n, d = old.get(pn), new.get(pn), mid.get(pn)
+        f = n or d
+        r = dict(o) if o else {'pn': pn, 'nm': f['nm'], 'mk': '', 'veh': f['veh'], 'sec': f['sec'], 'oem': list(f['oem']), 'mrp': 0}
+        if not o and d and n and r['sec'] == 'Control cable' and d['veh']: r['nm'], r['veh'] = d['nm'], d['veh']   # clean columns beat the text copy
+        late = max(n['mrp'] if n else 0, d['mrp'] if d else 0)
+        # 20h (Sam: lists with different MRPs = the higher one); the note only when the oldest list gives it
+        if late > 0 and late >= r['mrp']: r['mrp'] = late
+        elif o and o['mrp'] > 0: r['oldmrp'] = 1
         if o and n and r['sec'] != 'Control cable':                          # these lines read cleaner in the newest list
             if len(n['nm']) >= 8: r['nm'] = n['nm']
             r['oem'] = sorted(set(o['oem'] + n['oem']), key=(o['oem'] + n['oem']).index)
@@ -150,11 +181,12 @@ def main(old_f, new_f, out_f):
         r['fit'] = full(r['veh']) if r['veh'] else ''
         r['hay'] = full(r['nm']) if r['sec'] != 'Control cable' else ''      # the name with its short bike words spelt out, for search and bike match
         rows.append(r)
-    json.dump({'brand': 'Suprajit', 'oldname': 'Jan 2024', 'src': 'Suprajit price lists: Jan 2024 (original part numbers) + July 2026 (MRP)', 'rows': rows}, open(out_f, 'w'), ensure_ascii=False, separators=(',', ':'))
+    json.dump({'brand': 'Suprajit', 'oldname': 'Jan 2024', 'src': 'Suprajit price lists: Jan 2024 (original part numbers), Dec 2025, July 2026 (the higher MRP)', 'rows': rows}, open(out_f, 'w'), ensure_ascii=False, separators=(',', ':'))
     c = lambda f: sum(1 for r in rows if f(r))
-    print('parts', len(rows), '| in both', c(lambda r: r['pn'] in old and r['pn'] in new), '| only new', c(lambda r: r['pn'] not in old), '| only old', c(lambda r: 'oldmrp' in r),
-          '| with original number', c(lambda r: r['oem']), '| with bike', c(lambda r: r['veh']), '| no name', c(lambda r: not r['nm']))
+    print('parts', len(rows), '| Jan-24', len(old), '| Dec-25', len(mid), '| July-26', len(new), '| only in Dec-25', c(lambda r: r['pn'] not in old and r['pn'] not in new),
+          '| Jan-24 MRP kept', c(lambda r: 'oldmrp' in r), '| Dec-25 MRP highest', c(lambda r: r['pn'] in mid and mid[r['pn']]['mrp'] == r['mrp'] and (r['pn'] not in new or new[r['pn']]['mrp'] < r['mrp']) and 'oldmrp' not in r),
+          '| with original number', c(lambda r: r['oem']), '| with bike', c(lambda r: r['veh']), '| no MRP', c(lambda r: r['mrp'] <= 0))
 
 
 if __name__ == '__main__':
-    main(*sys.argv[1:4])
+    main(*sys.argv[1:5])

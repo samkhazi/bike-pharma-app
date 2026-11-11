@@ -89,7 +89,10 @@
 .m3a.m3b.m3p .m3-c1{position:static;flex:1;min-height:0;padding:0;box-shadow:none;background:none;z-index:auto}
 .m3p .m3-dh{flex:none}.m3p .m3-dt b{font-size:14px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
 .m3a.m3b.m3p .m3-dgw{flex:1;min-height:0;container-type:size;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px;overflow:hidden}
-.m3a.m3b.m3p .m3-c1 .m3-dgw .dg{width:min(100cqw,calc((100cqh - 46px)*var(--ar,1.3333)));margin:0;flex:none}
+.m3a.m3b.m3p .m3-c1 .m3-dgw .dg{width:min(100cqw,calc((100cqh - var(--hb,46px))*var(--ar,1.3333)));margin:0;flex:none}
+/* 20c (Sam's recording 11 Nov 20:52: two fingers zoomed the whole page, the diagram stayed small under the card): two fingers zoom only the diagram, in its box;
+   while a part's card is open the bike bar and the 'n of n parts' line make room for the diagram */
+.m3p .m3-dgw{touch-action:none}.m3p[data-ph="c"] .m3-bike{display:none}.m3p[data-ph="c"]:not(.hs-edit) .m3-dgw{--hb:0px}.m3p[data-ph="c"]:not(.hs-edit) .m3-dgw .hs-bar{display:none}
 .m3p .hs-clip{width:fit-content;max-width:100%;flex:none}.m3p .m3-dgw .hs-bar{flex:none;width:100%;font-size:11px;min-height:22px}.m3p .m3-dgw .hs-bar .grow{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .m3p .m3-c2,.m3p .m3-c3{display:flex;position:absolute;left:0;right:0;bottom:0;z-index:9;max-height:92%;background:var(--card);border-radius:18px 18px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.28);padding:12px 10px 14px;transform:translateY(105%);visibility:hidden;transition:transform .25s ease,visibility .25s}
 .m3p[data-ph="l"] .m3-c2,.m3p[data-ph="d"] .m3-c3{transform:none;visibility:visible}
@@ -101,7 +104,7 @@
 .m3p .m3-bc{display:flex;flex-direction:column;flex:none;background:var(--card);border:1.5px solid var(--k,#141413);border-radius:16px;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
 .m3-bcc{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}.m3p[data-ph=""] .m3-bcc{display:none}
 .m3-bcn{font-size:15px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.m3-bcc .m2-num{min-width:32px;height:32px;border-radius:9px;background:var(--y);color:#141413;font-weight:800;flex:none}
-.m3-bcp{font-size:22px}.m3-bcs{white-space:nowrap}.m3-bh .grow{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.m3-bh .cap{flex:none}.m3-bcc .m3-nb:disabled{opacity:.3}
+.m3-bcp{font-size:20px;white-space:nowrap}.m3-bcc .pill{white-space:nowrap}.m3-bd{padding-inline:12px;flex:none}.m3-bcs{white-space:nowrap}.m3-bh .grow{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.m3-bh .cap{flex:none}.m3-bcc .m3-nb:disabled{opacity:.3}
 .m3-bh{display:flex;align-items:center;gap:8px;padding:11px 12px;width:100%;text-align:left;font-size:14px;color:var(--ink);background:var(--y-soft)}.m3-bh svg{transform:rotate(180deg)}.m3p[data-ph="c"] .m3-bh .cap{display:none}
 /* 18y (Sam 10 Nov 'zoom ke baad pehle jaisa nahi hota'): the way back is at the top, always in view; a tap on the picture or the same part again, or Esc, also shows the whole diagram */
 .hs-all{display:none;position:absolute;left:8px;top:8px;z-index:5;border:0;border-radius:10px;background:#141413;color:#FFC400;font:inherit;font-size:13px;font-weight:700;padding:9px 13px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.3)}.hs-clip.z .hs-all{display:block}.hs-clip.z>.dg.m3-fig{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}.hs-clip.z>.dg.m3-fig.hs-drag{cursor:grabbing}
@@ -7265,8 +7268,8 @@ function coNeed(x,rows,pick){const seen=new Set([x.pk]),out=[],tx=n=>`Sold toget
 /* 20b: the phone's bottom card for the chosen part, and the sheets' state: '' only the diagram, 'c' the card, 'l' the parts list, 'd' the full details */
 function m3Card(x,o){const L=o.rows,j0=L.findIndex(q=>q.i===x.i),sh=m2Shop(x),n=sh?DB.stock[sh.id]||0:0,v=x.mrp||(sh&&sh.mrp)||0;
  return `<div class="m3-bcc"><div class="row" style="gap:10px;align-items:flex-start"><span class="m2-num">${esc(x.ref||'·')}</span><div class="grow" style="min-width:0"><b class="m3-bcn">${esc(catNice(x.desc).replace(/^\.+\s*/,''))}</b><div class="cap"><span class="num">${esc(x.part||'No part number')}</span>${x.qty>1?' · ×'+esc(x.qty):''}${x.ns?' · N.S.':''}</div></div><button class="m3-sx" onclick="m3Ph('')" aria-label="Close, show only the diagram">${ic('x','s18')}</button></div>
- <div class="row" style="gap:6px;align-items:center"><b class="num m3-bcp">${v?inr(v):'On request'}</b><span class="cap">MRP</span>${sh?(n>0?`<span class="pill g">${n} in stock</span>`:`<span class="pill r">Out of stock</span>`):''}<span class="grow"></span><button class="m3-nb" onclick="m3Step(-1)" aria-label="Previous number"${j0>0?'':' disabled'}>${ic('chevL','s18')}</button><span class="cap m3-bcs">${j0+1} of ${L.length}</span><button class="m3-nb" onclick="m3Step(1)" aria-label="Next number"${j0>=0&&j0<L.length-1?'':' disabled'}>${ic('chevR','s18')}</button></div>
- <div class="row" style="gap:8px"><button class="btn line sm grow" onclick="m3Ph('d')">Full details</button>${sh&&n>0?`<button class="btn sm grow" onclick="S.ui.scanHit='${sh.id}';S.ui.scanMiss=null;go('scanfind')">${ic('cart','s16')} Add to bill</button>`:''}</div></div>
+ <div class="row" style="gap:6px;align-items:center"><b class="num m3-bcp">${v?inr(v):'On request'}</b>${v?'<span class="cap">MRP</span>':''}${sh?(n>0?`<span class="pill g">${n} in stock</span>`:`<span class="pill r">Out of stock</span>`):''}<span class="grow"></span><button class="m3-nb" onclick="m3Step(-1)" aria-label="Previous number"${j0>0?'':' disabled'}>${ic('chevL','s18')}</button><span class="cap m3-bcs">${j0+1}/${L.length}</span><button class="m3-nb" onclick="m3Step(1)" aria-label="Next number"${j0>=0&&j0<L.length-1?'':' disabled'}>${ic('chevR','s18')}</button><button class="btn line sm m3-bd" onclick="m3Ph('d')">Details</button></div>
+ ${sh&&n>0?`<button class="btn sm" onclick="S.ui.scanHit='${sh.id}';S.ui.scanMiss=null;go('scanfind')">${ic('cart','s16')} Add to bill</button>`:''}</div>
  <button class="m3-bh" onclick="m3Ph('l')">${ic('chevD','s18')}<span class="grow"><b>Parts in this diagram</b> · ${L.length}</span><span class="cap">Tap a number</span></button>`;}
 function m3Ph(st){const el=document.querySelector('#vp .m3');if(!el)return;const p=cur().p||{};el.dataset.ph=st;if(st===''||st==='c')p.m3c=st?1:0;
  if(st==='l'){const ls=el.querySelector('.m3-list'),row=el.querySelector('.m3-row.on');if(row&&ls)setTimeout(()=>m3Mid(row,ls),40);}
@@ -7462,6 +7465,18 @@ addEventListener('pointermove',e=>{const d=HSDRAG;if(!d||e.pointerId!==d.id)retu
   hsMove(d.el,d.x+dx/(d.el.offsetWidth||1)*100,d.y+dy/(d.el.offsetHeight||1)*100,d.s);e.preventDefault();},{passive:false});
 const hsDragEnd=e=>{const d=HSDRAG;if(!d||e.pointerId!==d.id)return;HSDRAG=null;if(d.mv){HSDRAG_T=Date.now();d.el.style.transition='';d.el.classList.remove('hs-drag');}};
 addEventListener('pointerup',hsDragEnd);addEventListener('pointercancel',hsDragEnd);
+/* 20c: two fingers on the diagram zoom the diagram itself (1x to 5x) around the fingers, never the page; one finger then moves it (19m), "Whole diagram" goes back */
+let HSPIN=null;
+const hsPinEl=t=>{const w=t&&t.closest&&t.closest('.m3 .m3-dgw');return w&&w.querySelector('.dg[data-hk]');};
+addEventListener('touchstart',e=>{if(e.touches.length!==2)return;const el=hsPinEl(e.target);if(!el)return;if(!el.parentElement.classList.contains('hs-clip'))hsFocus(el.dataset.hk,1);
+ const w=el.parentElement,r=w.getBoundingClientRect(),a=e.touches[0],b=e.touches[1],p=hsPos(el),W=el.offsetWidth||1,H=el.offsetHeight||1,cx=(a.clientX+b.clientX)/2-r.left,cy=(a.clientY+b.clientY)/2-r.top;
+ HSPIN={el,w,d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)||1,s:p.s,lx:(cx-p.x/100*W)/p.s,ly:(cy-p.y/100*H)/p.s,W,H};HSDRAG=null;el.style.transition='none';e.preventDefault();},{passive:false});
+addEventListener('touchmove',e=>{const d=HSPIN;if(!d||e.touches.length!==2)return;e.preventDefault();const a=e.touches[0],b=e.touches[1],r=d.w.getBoundingClientRect();
+ const s=Math.min(5,Math.max(1,d.s*Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)/d.d)),cx=(a.clientX+b.clientX)/2-r.left,cy=(a.clientY+b.clientY)/2-r.top;
+ d.el.style.transformOrigin='0 0';d.el.style.setProperty('--hz',s.toFixed(3));hsMove(d.el,(cx-s*d.lx)/d.W*100,(cy-s*d.ly)/d.H*100,+s.toFixed(3));d.w.classList.toggle('z',s>1.02);},{passive:false});
+const hsPinEnd=e=>{const d=HSPIN;if(!d||e.touches.length>=2)return;HSPIN=null;HSDRAG_T=Date.now();d.el.style.transition='';if(hsPos(d.el).s<=1.02)hsFocus(d.el.dataset.hk,1);};
+addEventListener('touchend',hsPinEnd);addEventListener('touchcancel',hsPinEnd);
+addEventListener('gesturestart',e=>{if(e.target.closest&&e.target.closest('.m3p'))e.preventDefault();});
 addEventListener('click',e=>{if(Date.now()-HSDRAG_T<400&&e.target.closest&&e.target.closest('.hs-clip')){e.stopPropagation();e.preventDefault();}},true);
 addEventListener('dragstart',e=>{if(hsZ(e.target))e.preventDefault();});
 addEventListener('wheel',e=>{const el=hsZ(e.target);if(!el||e.ctrlKey)return;const p=hsPos(el);el.style.transition='none';hsMove(el,p.x-e.deltaX/(el.offsetWidth||1)*100,p.y-e.deltaY/(el.offsetHeight||1)*100,p.s);

@@ -42,8 +42,14 @@ for (const [ar, name] of [[661 / 935, 'tall Yamaha diagram'], [4 / 3, 'wide diag
   ok(s.dg.t >= s.dgw.t - 1 && s.dg.b <= s.dgw.b + 1 && s.dg.l >= s.dgw.l - 1 && s.dg.r <= s.dgw.r + 1, name + ': the picture is inside its box');
   ok(s.bcVis && s.cardOpen && s.bc.b <= s.navTop + 1, name + ': the opened part is in the card, clear of the bottom menu');
   ok(s.onRef && !s.zoom, name + ': its number is lit on the whole diagram (' + s.onRef + ')');
+  // 20c: two fingers on the diagram zoom the diagram in its box, not the page
+  { const cdp = await p.context().newCDPSession(p), c = [s.dg.l + s.dg.w / 2, s.dg.t + s.dg.h / 2], T = (type, g) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: g == null ? [] : [{ x: c[0] - g, y: c[1], id: 1 }, { x: c[0] + g, y: c[1], id: 2 }] });
+    await T('touchStart', 20); for (const g of [30, 45, 60]) await T('touchMove', g); await T('touchEnd'); await p.waitForTimeout(600);
+    const z = await p.evaluate(() => { const el = document.querySelector('#vp .m3 .dg'), w = el.parentElement.getBoundingClientRect(), g = document.querySelector('#vp .m3-dgw').getBoundingClientRect(); return { s: hsPos(el).s, vv: visualViewport.scale, inBox: w.top >= g.top - 1 && w.bottom <= g.bottom + 1 && w.left >= g.left - 1 && w.right <= g.right + 1, z: el.parentElement.classList.contains('z'), bc: document.querySelector('#vp .m3-bc').getBoundingClientRect().top }; });
+    ok(Math.abs(z.s - 3) < 0.05 && z.z && z.vv === 1 && z.inBox && Math.abs(z.bc - s.bc.t) < 1, name + ': two fingers zoom only the diagram (' + z.s + 'x), in its box, page and card stay');
+    await p.click('#vp .m3 .hs-all'); await p.waitForTimeout(700); ok((await st(p)).zoom === false, name + ': "Whole diagram" goes back'); }
   await p.evaluate(() => m3Ph('')); await p.waitForTimeout(500); const s0 = await st(p);
-  ok(!s0.cardOpen && s0.dg.h > s.dg.h, name + ': card closed = bigger diagram (' + Math.round(s.dg.h) + ' > ' + Math.round(s0.dg.h) + ' px)');
+  ok(!s0.cardOpen && s0.dgw.h > s.dgw.h && s0.dg.h >= s.dg.h - 1, name + ': card closed = more room for the diagram (' + Math.round(s.dgw.h) + ' > ' + Math.round(s0.dgw.h) + ' px)');
   await p.click('#vp .m3 .hs[data-ref="1"]'); await p.waitForTimeout(600); s = await st(p);
   ok(s.cardOpen && /Cover Assembly/i.test(s.name || '') && s.onRef === '1' && !s.zoom, 'tap number 1: its part in the card, lit, diagram still whole: ' + s.name);
   await swipe(p, -120, 5); s = await st(p);
@@ -54,7 +60,7 @@ for (const [ar, name] of [[661 / 935, 'tall Yamaha diagram'], [4 / 3, 'wide diag
   ok(s.ph === 'l' && s.list, 'swipe up: the parts list opens');
   await p.click('#vp .m3 .m3-row >> nth=1'); await p.waitForTimeout(700); s = await st(p);
   ok(s.ph === 'c' && !s.list && /Washer/i.test(s.name || ''), 'a part tapped in the list: list closes, the card shows it');
-  await p.click('#vp .m3-bcc >> text=Full details'); await p.waitForTimeout(600); s = await st(p);
+  await p.click('#vp .m3-bcc .m3-bd'); await p.waitForTimeout(600); s = await st(p);
   ok(s.ph === 'd' && s.det && s.moreIn && /JG511021/.test(s.detPn || ''), 'Full details: the sheet with the number (' + s.detPn + ')');
   await p.click('#vp .m3-c3 .m3-sx'); await p.waitForTimeout(500); await p.click('#vp .m3-bcc .m3-sx'); await p.waitForTimeout(700); s = await st(p);
   ok(s.ph === '' && !s.cardOpen && !s.zoom, 'close: only the whole diagram again');

@@ -4582,7 +4582,11 @@ function amBike(r){if(!AM||!r)return [];const ty=amType(r.desc)||amType(r.asm);i
  const ot=amTags(r.desc+' '+(r.asm||'')),nn=r.kind==='d'&&r.pk?catPkNorms(r.vb,r.pk):null;if(nn&&!nn.none&&nn.n.size===1){const z=[...nn.n][0];if(/6|VI/.test(z))ot.add('bs6');else if(/4|IV/.test(z))ot.add('bs4');}
  const ex=new Set(amByOem(r.pk).concat(amNear(r.pk)).map(p=>p.i)),out=[];
  AM.p.forEach((p,i)=>{if(p[8]!==ty||ex.has(i))return;if(!p[9].some(([b,m])=>AM.ob[b]===r.vb&&ms.has(m)))return;const t=amTags(p[2]+' '+p[3]+' '+p[5]);if(amClash(ot,t))return;
-  let sc=0;t.forEach(x=>{if(ot.has(x))sc++;});out.push(Object.assign(amP(i),{sc}));});return out.sort((x,y)=>y.sc-x.sc);}
+  let sc=0;t.forEach(x=>{if(ot.has(x))sc++;});out.push(Object.assign(amP(i),{sc}));});
+ /* 19t: also the lines that name this bike in words (Rolon's "HERO MOTO: SPLENDER PLUS"), every word of the model on the line */
+ const got=new Set(out.map(p=>p.i)),H=amHay();if(H)AM.p.forEach((p,i)=>{if(p[8]!==ty||ex.has(i)||got.has(i))return;const q=amP(i),T=H[i][0];if(!amForBrand(q,T,r.vb)||![...ms].some(m=>amForModel(q,T,r.vb,m)===2))return;const t=amTags(p[2]+' '+p[3]+' '+p[5]);if(amClash(ot,t))return;
+  let sc=0;t.forEach(x=>{if(ot.has(x))sc++;});out.push(Object.assign(q,{sc}));});
+ return out.sort((x,y)=>y.sc-x.sc);}
 const amNear=pk=>AM_NR&&pk?(AM_NR.get(pk)||[]).map(amP):[];
 /* the Admin's word on a match: DB.amPick[original pk] = {ok:[brand|pk], no:[...]} */
 const amKey=p=>p.b+'|'+catPk(p.pn);
@@ -4632,12 +4636,29 @@ let AM_HAY=null;
 const amToks=s=>{const t=new Set();String(s||'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').split(' ').forEach(w=>{if(!w)return;t.add(w);if(AM_ABBR[w])AM_ABBR[w].split(' ').forEach(x=>t.add(x));});return [...t];};
 /* per part: [all its words, the words of its name] */
 function amHay(){if(AM_HAY||!AM)return AM_HAY;AM_HAY=AM.p.map(p=>[amToks([AM.b[p[0]],p[2],p[3],p[5],p[8],...p[9].map(([b,m])=>AM.ob[b]+' '+m)].join(' ')),amToks(p[2])]);return AM_HAY;}
-const amWordIn=(w,T)=>T.some(t=>t===w||(w.length>=3&&t.startsWith(w))||(w.length>=4&&w.endsWith('S')&&t===w.slice(0,-1)));
-function amName(q,vb){if(!q||fpIsPn(q)||!amLoad())return [];const W=catNorm(q).split(' ').filter(w=>w&&!AM_STOP.has(w));if(!W.length||W.every(w=>w.length<3))return [];
+const amWordIn=(w,T)=>T.some(t=>t===w||(w.length>=3&&t.startsWith(w))||(w.length>=4&&w.endsWith('S')&&t===w.slice(0,-1)))||amFz(w,T);
+/* 19t (Sam 11 Nov "splendour chain sprocket ... part number har koi yaad nhi rhakhta"): a long word spelt a little differently still
+   counts, both ways (typed SPLENDOUR, Rolon's own list prints SPLENDER and SPLENDOR): one letter off from 6 letters, two from 9 */
+let AM_VOC=null;const AM_NS=new Map();
+const amEd=(a,b,k)=>{if(Math.abs(a.length-b.length)>k)return k+1;let pv=[];for(let j=0;j<=b.length;j++)pv[j]=j;for(let i=1;i<=a.length;i++){const cu=[i];let mn=i;for(let j=1;j<=b.length;j++){cu[j]=Math.min(pv[j]+1,cu[j-1]+1,pv[j-1]+(a[i-1]===b[j-1]?0:1));if(cu[j]<mn)mn=cu[j];}if(mn>k)return k+1;pv=cu;}return pv[b.length];};
+function amNearSet(w){if(w.length<6||/\d/.test(w)||!AM_HAY)return null;if(AM_NS.has(w))return AM_NS.get(w);if(!AM_VOC){AM_VOC=new Set();AM_HAY.forEach(([T])=>T.forEach(t=>{if(t.length>=5&&!/\d/.test(t))AM_VOC.add(t);}));}
+ const k=w.length>=9?2:1,o=new Set();AM_VOC.forEach(t=>{if(t!==w&&t.slice(0,3)===w.slice(0,3)&&amEd(w,t,k)<=k)o.add(t);});AM_NS.set(w,o.size?o:null);return AM_NS.get(w);}
+const amFz=(w,T)=>{const o=amNearSet(w);return !!o&&T.some(t=>o.has(t));};
+/* is this aftermarket line for the picked brand / model? A list that names the maker first ("HERO MOTO: SPLENDER PLUS") or names a
+   brand anywhere is only for that brand. Model: 2 = every word of the model is on the line, 1 = only its first word (check) */
+let AM_BW=null;
+function amForBrand(p,T,vb){if(!vb||vb==='Any')return true;if(p.fm.length&&p.fm.some(([b])=>b===vb))return true;const v=vb.toUpperCase().split(' ')[0];
+ const mk=/^([A-Z][A-Z0-9 .&\/-]{1,40}):\s/.exec(String(p.fit||'').toUpperCase());if(mk)return mk[1].split(/[^A-Z0-9]+/).includes(v);
+ if(!AM_BW)AM_BW=new Set(Object.keys(BRANDS_V).map(b=>b.toUpperCase().split(' ')[0]));return T.includes(v)||!T.some(t=>AM_BW.has(t))&&!p.fm.length;}
+function amForModel(p,T,vb,vm){if(!vm||vm==='Any')return 2;if(p.fm.some(([b,m])=>b===vb&&m===vm))return 2;const W=amToks(String(vm).replace(/\(.*?\)/g,' '));if(!W.length)return 0;
+ if(W.every(w=>amWordIn(w,T)))return 2;const f=W.find(w=>w.length>=4&&!/\d/.test(w));return f&&amWordIn(f,T)?1:0;}
+function amName(q,vb,vm){if(!q||fpIsPn(q)||!amLoad())return [];const W=catNorm(q).split(' ').filter(w=>w&&!AM_STOP.has(w));if(!W.length||W.every(w=>w.length<3))return [];
  /* the parts whose name has more of the words first */
- const H=amHay(),out=[];H.forEach(([T,N],i)=>{if(!W.every(w=>amWordIn(w,T)))return;const p=amP(i);if(vb&&vb!=='Any'&&p.fm.length&&!p.fm.some(([b])=>b===vb))return;p.sc=W.filter(w=>amWordIn(w,N)).length;out.push(p);});return out.sort((x,y)=>y.sc-x.sc);}
-function amNameRes(q,A){const L=amName(q,A.vb);if(!L.length)return '';const all=!!S.ui.amNAll,n=all?L.length:6;
- return `<div class="sec"><h3 class="h2">Aftermarket parts</h3><span class="cap">${L.length}</span></div><div class="stack g8">${L.slice(0,n).map(p=>amRow(p)).join('')}</div>${L.length>6?`<button class="link" onclick="S.ui.amNAll=!S.ui.amNAll;refresh()">${all?'Show less':'Show all '+L.length+' aftermarket parts'}</button>`:''}<div class="cap">From the aftermarket catalogues (${esc([...new Set(L.map(p=>p.b))].join(', '))}).</div>`;}
+ const H=amHay(),out=[];H.forEach(([T,N],i)=>{if(!W.every(w=>amWordIn(w,T)))return;const p=amP(i);if(!amForBrand(p,T,vb))return;p.mf=amForModel(p,T,vb,vm);if(!p.mf)return;p.sc=W.filter(w=>amWordIn(w,N)).length;out.push(p);});
+ /* 19t: with a model picked, the lines that name that model; only when none does, the lines of its family (marked: check) */
+ const ex=out.filter(p=>p.mf===2);return (ex.length?ex:out).sort((x,y)=>y.sc-x.sc);}
+function amNameRes(q,A){const L=amName(q,A.vb,A.vm);if(!L.length)return '';const lo=L[0].mf===1;const all=!!S.ui.amNAll,n=all?L.length:6;
+ return `<div class="sec"><h3 class="h2">Aftermarket parts</h3><span class="cap">${L.length}</span></div><div class="stack g8">${L.slice(0,n).map(p=>amRow(p)).join('')}</div>${L.length>6?`<button class="link" onclick="S.ui.amNAll=!S.ui.amNAll;refresh()">${all?'Show less':'Show all '+L.length+' aftermarket parts'}</button>`:''}<div class="cap">From the aftermarket catalogues (${esc([...new Set(L.map(p=>p.b))].join(', '))}).${lo?' No line names '+esc(A.vm)+' exactly: these are for bikes of the same family, so check the bike on the line before fitting.':''}</div>`;}
 /* a part number in no catalogue, read again: O as zero and I as one (Honda boxes print 0 like O) */
 function pnMisreads(q){const u=String(q||'').trim().toUpperCase(),o=new Set();[[/O/g,'0'],[/I/g,'1']].forEach(([x,y])=>{if(x.test(u))o.add(u.replace(x,y));});if(/O/.test(u)&&/I/.test(u))o.add(u.replace(/O/g,'0').replace(/I/g,'1'));o.delete(u);return [...o];}
 function ocrVia(q,to){return `<div class="row cap fp-via">${ic('search','s16')}<span class="grow" style="overflow-wrap:anywhere">No part number <b class="num">${esc(String(q).trim().toUpperCase())}</b>. Showing <b class="num">${esc(to)}</b> (the letter O read as zero${/1/.test(to)&&/I/i.test(q)?', I as one':''}).</span></div>`;}

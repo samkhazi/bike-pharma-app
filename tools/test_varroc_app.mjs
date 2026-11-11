@@ -14,5 +14,6 @@ ok(await p.evaluate(()=>AM.p.filter(x=>AM.b[x[0]]==='Varroc').length)>7000,'Varr
 let t=strip(await p.evaluate(()=>amRes('ABSP-PPRO-SC24S'))); console.log(t.slice(0,260)); ok(/Varroc/.test(t)&&/727/.test(t),'Varroc code shows the part with its MRP');
 let L=await p.evaluate(()=>amName('varroc visor shine','Any').map(x=>x.pn)); console.log(L.length,L.slice(0,4)); ok(L.length>0,'found by words: visor shine (the list writes Shain)');
 L=await p.evaluate(()=>amName('cdi dio','Any').map(x=>x.b+' '+x.pn)); console.log(L.slice(0,4)); ok(L.some(x=>/^Varroc CDEI-/.test(x)),'found by words: cdi dio');
+let h=await p.evaluate(()=>amRes('ABSP-PPRO-SC24S')); ok(/background-image:url\('https:\/\/cdn\.shopify\.com\/[^']+'\)/.test(h),'the part shows its photo by web address');
 ok(!errs.length,'no page errors '+errs.join(';'));
 await b.close(); process.exit(fails?1:0);

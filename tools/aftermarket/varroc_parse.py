@@ -3,7 +3,7 @@
   python3 varroc_parse.py DIR OUT.json
 DIR = the pages of varrocaftermarket.com's public two-wheeler list (collections/2-wheeler/products.json?limit=250&page=N saved as p1.json, p2.json ...;
 robots.txt allows the public pages; one page a second). Kept: Varroc's part code, its K number, name, bike maker, kind, MRP (the "compare at" price;
-the shop's own selling price is not kept). No photos, no descriptions. Three-wheeler lines are left out. The out file is data: never in git."""
+the shop's own selling price is not kept). The photo is kept as its web address only (Sam: "images ke saath lena he"), no descriptions. Three-wheeler lines are left out. The out file is data: never in git."""
 import glob, json, re, sys, os
 
 sp = lambda s: re.sub(r'\s+', ' ', str(s or '')).strip()
@@ -50,7 +50,9 @@ def main(d, out_f):
         kinds = [x for x in tags if x not in GENERIC and not re.search(r'BAJAJ$', x)]
         sec = kinds[-1] if kinds else next((x for x in tags if x not in ('2W',)), 'Part')
         mk = maker(p.get('product_type'))
-        rows.append({'pn': pn, 'nm': nm + (' · ' + sku if sku and sku != pn else ''), 'mk': mk, 'veh': '', 'sec': sec, 'mrp': int(round(mrp)), 'oem': [], 'fit': '', 'hay': full(nm)})
+        im = (p.get('images') or [{}])[0].get('src') or ''                          # the part's photo: only its web address (shown from Varroc's own site)
+        img = (im + ('&' if '?' in im else '?') + 'width=600') if im.startswith('https://') and 'comingsoon' not in im.lower() else ''
+        rows.append({'pn': pn, 'nm': nm + (' · ' + sku if sku and sku != pn else ''), 'mk': mk, 'veh': '', 'sec': sec, 'mrp': int(round(mrp)), 'oem': [], 'fit': '', 'hay': full(nm), 'img': img})
     rows.sort(key=lambda r: r['pn'])
     json.dump({'brand': 'Varroc', 'src': 'Varroc aftermarket two-wheeler list (MRP)', 'rows': rows}, open(out_f, 'w'), ensure_ascii=False, separators=(',', ':'))
     print('products read', len(P), '| parts kept', len(rows), '| without a part code (K number used)', nocode, '| 3/4 wheeler left out', three)

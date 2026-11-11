@@ -56,7 +56,7 @@
 .fp9-reg input{flex:1;height:44px;border:1px solid var(--line);border-radius:10px;background:var(--paper);padding:0 14px;font:inherit;font-weight:700;font-size:15px;color:var(--ink);min-width:0}
 @media(min-width:900px){.fp9 .m2-veh{display:flex;flex-direction:row;align-items:flex-end;gap:14px}.fp9 .m2-veh .m2-grid{flex:1;grid-template-columns:1fr 1.5fr .7fr .9fr}.fp9 .m2-veh>.btn{flex:none;width:auto;margin:0}}
 .fp9-bc{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:-6px}.fp9-bc button{background:none;border:0;padding:2px 0;font:inherit;color:inherit;cursor:pointer}.fp9-bc button:hover{color:var(--ink);text-decoration:underline}.fp9-bc span{color:var(--ink)}
-.fp9-sh{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px 24px}.fp9-ls{flex:1 1 300px;min-width:0;max-width:520px}@media(max-width:699px){.fp9-sn{flex-direction:column;gap:2px}}
+.fp9-sh{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px 24px}.fp9-ls{flex:1 1 300px;min-width:0;max-width:520px}.fp9-sh>.grow{flex:1 1 200px;min-width:0}@media(max-width:699px){.fp9-sn{flex-direction:column;gap:2px}}
 .fp9-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}@media(min-width:700px){.fp9-grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px}}
 .fp9-sc{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--card);text-align:left;cursor:pointer;font:inherit;color:var(--ink);min-width:0}.fp9-sc:hover{border-color:var(--ink)}
 .fp9-th{position:relative;border-radius:10px;overflow:hidden;background:#f6f6f4;aspect-ratio:4/3;display:grid;place-items:center}.fp9-th>*{width:100%;max-height:100%}.fp9-th>.fp9-ph{height:100%}.fp9-th .fp9-dg{background-color:#fff}.fp9-th>img{height:100%;object-fit:contain;background:#fff}.fp9-th img{object-fit:contain}
@@ -68,6 +68,8 @@
 
 /* 18l: diagram close-up on the chosen part's number */
 .hs-clip{position:relative;overflow:hidden;border-radius:inherit;width:100%}.hs-clip>.dg{transition:transform .55s cubic-bezier(.22,.61,.36,1);will-change:transform}
+/* 20f: a close-up at rest is drawn again at its size (sharp lines), not a stretched copy of the small picture */
+.hs-clip.z>.dg:not(.hs-drag){will-change:auto}
 /* 18q (Mittal video): the chosen number pulses and shows its part; on a phone the diagram stays at the top while the list scrolls */
 .hs.on{animation:hsPulse 1.5s ease-out infinite}
 @keyframes hsPulse{0%{box-shadow:0 0 0 2.5px #141413,0 0 0 0 rgba(255,196,0,.95)}100%{box-shadow:0 0 0 2.5px #141413,0 0 0 calc(14px / var(--hz,1)) rgba(255,196,0,0)}}
@@ -89,11 +91,11 @@
 .m3a.m3b.m3p .m3-c1{position:static;flex:1;min-height:0;padding:0;box-shadow:none;background:none;z-index:auto}
 .m3p .m3-dh{flex:none}.m3p .m3-dt b{font-size:14px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
 .m3a.m3b.m3p .m3-dgw{flex:1;min-height:0;container-type:size;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px;overflow:hidden}
-.m3a.m3b.m3p .m3-c1 .m3-dgw .dg{width:min(100cqw,calc((100cqh - var(--hb,46px))*var(--ar,1.3333)));margin:0;flex:none}
+.m3a.m3b.m3p .m3-c1 .m3-dgw .dg{width:min(100cqw,calc((100cqh - var(--hb,26px))*var(--ar,1.3333)));margin:0;flex:none}
 /* 20c (Sam's recording 11 Nov 20:52: two fingers zoomed the whole page, the diagram stayed small under the card): two fingers zoom only the diagram, in its box;
    while a part's card is open the bike bar and the 'n of n parts' line make room for the diagram */
 .m3p .m3-dgw{touch-action:none}.m3p[data-ph="c"] .m3-bike{display:none}.m3p[data-ph="c"]:not(.hs-edit) .m3-dgw{--hb:0px}.m3p[data-ph="c"]:not(.hs-edit) .m3-dgw .hs-bar{display:none}
-.m3p .hs-clip{width:100%;height:calc(100cqh - var(--hb,46px));flex:none;display:flex;align-items:center;justify-content:center}.m3p .m3-dgw .hs-bar{flex:none;width:100%;font-size:11px;min-height:22px}.m3p .m3-dgw .hs-bar .grow{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m3p .hs-clip{width:100%;height:calc(100cqh - var(--hb,26px));flex:none;display:flex;align-items:center;justify-content:center}.m3p .m3-dgw .hs-bar{flex:none;width:100%;font-size:11px;min-height:18px;margin-top:0}.m3p:not(.hs-edit) .m3-dgw .hs-bar .btn{display:none}.m3p .m3-dgw .m3-fig{cursor:default}.m3p .m3-dgw .hs-bar .grow{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .m3p .m3-c2,.m3p .m3-c3{display:flex;position:absolute;left:0;right:0;bottom:0;z-index:9;max-height:92%;background:var(--card);border-radius:18px 18px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.28);padding:12px 10px 14px;transform:translateY(105%);visibility:hidden;transition:transform .25s ease,visibility .25s}
 .m3p[data-ph="l"] .m3-c2,.m3p[data-ph="d"] .m3-c3{transform:none;visibility:visible}
 .m3p .m3-c2{height:88%}.m3p .m3-c2 .m3-list{flex:1;min-height:0;max-height:none;overflow-y:auto}.m3p .m3-c2 .m3-lh{align-items:center;justify-content:flex-start}.m3p .m3-c2 .m3-lh .cap{flex:1}
@@ -7274,7 +7276,8 @@ function m3Card(x,o){const L=o.rows,j0=L.findIndex(q=>q.i===x.i),sh=m2Shop(x),n=
 function m3Ph(st){const el=document.querySelector('#vp .m3');if(!el)return;const p=cur().p||{};el.dataset.ph=st;if(st===''||st==='c')p.m3c=st?1:0;
  if(st==='l'){const ls=el.querySelector('.m3-list'),row=el.querySelector('.m3-row.on');if(row&&ls)setTimeout(()=>m3Mid(row,ls),40);}
  if(st==='d'){const c=el.querySelector('.m3-c3');if(c)c.scrollTop=0;}
- if(st===''&&typeof hsFocus==='function')hsFocus(el.dataset.k,1);}
+ if(st===''&&typeof hsFocus==='function')hsFocus(el.dataset.k,1);
+ else requestAnimationFrame(()=>el.querySelectorAll('.hs-clip.z>.dg[data-hk]').forEach(g=>{const q=hsPos(g);hsMove(g,q.x,q.y,q.s);}));}
 function m3Step(d){const el=document.querySelector('#vp .m3'),o=el&&M3[el.dataset.k];if(!o)return;const j=o.rows.findIndex(q=>q.i===o.sel),q=o.rows[j+d];if(q)m3Pick(q.i,'sw');}
 /* the page is exactly as tall as the screen under the app's top bar, so the diagram gets all the room the card leaves */
 /* the app's bottom menu floats over the page's end (its bubble stands higher than the bar): the card stays clear of it */
@@ -7349,7 +7352,7 @@ function m2PartV(p){xrLoad();altLoad();const r=m2Row(p);   /* 17y: the part page
  const v=g?g.v:m3Vg(r),kr=m3K(r);let L=m3Rows(r.vb,r.page,v).map(q=>m3K(q)===kr?r:q);if(!L.includes(r))L=L.concat(r).sort(m3By);
  const x=m3Sel(p,L,r),k='m3'+r.i,vm=p.vm&&p.vm!=='Any'?p.vm:v&&CAT_VMOD[v]||(m2FitL(r)[0]||r.vm||'').replace(/ \(.*$/,''),ys=v?catVyrs(v):[],yr=p.yr&&p.yr!=='Any'?String(p.yr):ys.length?catYrsTxt(ys):'',cc=MODEL_CC[vm];
  if(p.si!=null){p.si=x.i;p.spk=x.pk||'';p.sref=x.ref||'';}const o=M3[k]={rows:L,sel:x.i,vb:r.vb,page:r.page,v,vm,yr},sm=new Map();if(p.m3c==null)p.m3c=p.m3o?0:1;PRODUCTS.forEach(y=>{const q=catPk(y.pn);if(q&&!sm.has(q))sm.set(q,y);});queueMicrotask(m3Mount);
- const dia=g?dgOther(g)+`<div class="m3-dgw dg-wrap">${dgEl(g,'fpc-fig m3-fig').replace('<div ',`<div data-hk="${k}" onclick="if(!event.target.closest('button')){const z=this.closest('.hs-clip');if(z&&z.classList.contains('z'))hsFocus('${k}',1);else dgZoom(this.closest('.m3-dgw'));}" `)}<button class="m3-zb" onclick="dgZoom(this.closest('.m3-dgw'))" aria-label="Open the diagram bigger">${ic('zoom','s18')}</button><div class="dg-alt">${dgMiss()}</div></div><div class="cap m3-tip">Tap a number on the diagram or a part in the list.</div>`
+ const dia=g?dgOther(g)+`<div class="m3-dgw dg-wrap">${dgEl(g,'fpc-fig m3-fig').replace('<div ',`<div data-hk="${k}" onclick="if(!event.target.closest('button')&&!this.closest('.m3p')){const z=this.closest('.hs-clip');if(z&&z.classList.contains('z'))hsFocus('${k}',1);else dgZoom(this.closest('.m3-dgw'));}" `)}<button class="m3-zb" onclick="dgZoom(this.closest('.m3-dgw'))" aria-label="Open the diagram bigger">${ic('zoom','s18')}</button><div class="dg-alt">${dgMiss()}</div></div><div class="cap m3-tip">Tap a number on the diagram or a part in the list.</div>`
   :`<div class="m3-dgw m3-ld"><span class="cap">Loading diagram…</span></div>`;
  const D=m3Dgs(r,v,vm),di=D.findIndex(d=>d.pg===r.page),ttl=catNice(r.asm||r.fig)+(r.asm&&r.fig?' – '+r.fig:'');
  const dh=`<div class="m3-dh">${di>0?`<button class="m3-nb" onclick="m3Go(${D[di-1].i})" aria-label="Previous diagram">${ic('chevL','s18')}</button>`:''}<div class="m3-dt"><b>${esc(ttl)}</b><span class="cap">${di>=0?'Diagram '+(di+1)+' of '+D.length+' · ':''}${L.length} part${L.length===1?'':'s'}</span></div>${D.length>1?`<button class="btn y sm m3-all" onclick="m3AllSec()">${ic('menu','s16')} All sections</button>`:''}${di>=0&&di<D.length-1?`<button class="m3-nb" onclick="m3Go(${D[di+1].i})" aria-label="Next diagram">${ic('chevR','s18')}</button>`:''}</div>`;
@@ -7500,7 +7503,7 @@ let hsHv=null;
 function hsTap(e,b){e.stopPropagation();e.preventDefault();const el=b.closest('[data-hk]'),k=el.dataset.hk,c=M3[k];if(!c)return;
  if(S.ui.hsEd===k){hsAsk(el,b);return;}
  const qs=hsMap(c.rows,hsList(el._hs||{})).get(b.dataset.ref)||[];if(!qs.length)return;const j=qs.findIndex(q=>q.i===c.sel);const q=qs[(j+1)%qs.length];
- m3Pick(q.i,'dg');hsTip(b,1);}
+ m3Pick(q.i,'dg');if(!el.closest('.m3p'))hsTip(b,1);}
 function hsAsk(el,b){const w=el.closest('.m3-dgw')||el.parentElement,bar=w&&w.querySelector('.hs-bar');if(!bar)return;
  const r=el.getBoundingClientRect(),o=b.getBoundingClientRect(),x=(o.left+o.width/2-r.left)/r.width,y=(o.top+o.height/2-r.top)/r.height;
  bar.innerHTML=`<span class="grow">Take number ${esc(b.dataset.ref)} away from here?</span><button class="btn sm" onclick="hsDel('${el.dataset.hk}',${x.toFixed(4)},${y.toFixed(4)})">Take away</button><button class="btn line sm" onclick="hsRepaint('${el.dataset.hk}')">Keep</button>`;}

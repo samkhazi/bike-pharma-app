@@ -79,5 +79,8 @@ for (const [ar, name] of [[661 / 935, 'tall Yamaha diagram'], [4 / 3, 'wide diag
 }
 { const p = await open(1280, 900, 4 / 3), s = await st(p);
   ok(!s.p && !s.bcVis && !s.moreIn && s.det, 'computer: the page as before (three columns, no card)');
+  await p.click('#vp .m3 .m3-row >> nth=0'); await p.waitForTimeout(900);
+  const z = await p.evaluate(() => { const el = document.querySelector('#vp .m3 .dg'), w = el.parentElement.getBoundingClientRect(), b = el.querySelector('.hs.on').getBoundingClientRect(); return { z: el.parentElement.classList.contains('z'), in: b.left >= w.left && b.right <= w.right && b.top >= w.top && b.bottom <= w.bottom, tf: el.style.transform }; });
+  ok(z.z && z.in, 'computer: a part clicked in the list brings the diagram to its number (' + z.tf + ')');
   ok(!p.errs.length, 'computer: no page errors ' + p.errs.join(';')); }
 await b.close(); process.exit(fails ? 1 : 0);

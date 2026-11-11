@@ -3,6 +3,7 @@
 #  Rolon Catalogue — full server install (one file)
 #  Usage:  bash rolon_install.sh
 #  Idempotent: safe to re-run.
+#  On this server run rolon_site_user.sh right after it (19q): the job then lives with the site user, cron line in crontab.txt.
 #  Sam's installer as sent on 11 Nov 2026; only the cron step is changed for this server (run as root):
 #  no CRON_TZ line (it would move root's other cron lines), time written in UTC.
 # ============================================================

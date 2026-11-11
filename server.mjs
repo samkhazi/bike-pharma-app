@@ -317,6 +317,22 @@ async function api(req, res, url, user) {
     return json(res, 200, { on: MON.on, to: MON.to.map(mask), last: l.map(x => ({ at: x.at, title: x.title })) });
   }
   if (p === '/api/alt') return ALT.api(m, body, user, res);
+  // 19y (Sam 2026-11-11): two part numbers of different brands that staff mark as the same part (RE 585643/A = Yamaha 93315-317Y4); every staff login
+  if (p === '/api/same') {
+    if (roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: user ? 'Staff login needed' : 'Please log in again' });
+    if (m === 'GET') return json(res, 200, { list: store.kvAll('samepart').map(([, v]) => v) });
+    if (m !== 'POST') return json(res, 405, { error: 'Not allowed' });
+    const pkk = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, ''), txt = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f<>]/g, ' ').trim().slice(0, n);
+    const side = x => x && typeof x === 'object' ? { pn: txt(x.pn, 40), vb: txt(x.vb, 40), name: txt(x.name, 120), ms: (Array.isArray(x.ms) ? x.ms : []).slice(0, 8).map(v => txt(v, 60)).filter(Boolean) } : null;
+    const a = side(body && body.a), b = side(body && body.b), ka = a ? pkk(a.pn) : '', kb = b ? pkk(b.pn) : '';
+    if (ka.length < 5 || kb.length < 5 || ka === kb) return json(res, 400, { error: 'Give two different part numbers' });
+    const key = [ka, kb].sort().join('|');
+    if (body.del) { store.kvDel('samepart', key); console.log(new Date().toISOString(), 'same part removed', a.pn, b.pn, 'by', user.id); return json(res, 200, { ok: true }); }
+    if (store.kvAll('samepart').length >= 20000) return json(res, 400, { error: 'Too many links' });
+    store.kvSet('samepart', key, { a, b, by: txt(user.name || user.id, 60), at: new Date().toISOString() });
+    console.log(new Date().toISOString(), 'same part saved', a.pn, '=', b.pn, 'by', user.id);
+    return json(res, 200, { ok: true });
+  }
   if (p === '/api/health' && m === 'GET') return json(res, 200, { ok: true, rev: store.rev(), sqlite: HAS_SQLITE, version: VERSION, photoAi: PHOTO_AI.summary(), billAi: BILL_AI.summary(), mysql: MIRROR.summary() });
   if (p === '/api/boot' && m === 'GET') { if (!user && cookies(req).bp_s) setSession(req, res, '', true); return json(res, 200, full(user)); }
 

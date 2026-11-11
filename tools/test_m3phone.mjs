@@ -57,6 +57,16 @@ for (const [ar, name] of [[661 / 935, 'tall Yamaha diagram'], [4 / 3, 'wide diag
   ok(/Washer/i.test(s.name || '') && s.onRef === '2' && s.zoom, 'swipe left: next number (2 Washer), the diagram goes to it: ' + s.name);
   await swipe(p, 120, -5); s = await st(p);
   ok(/Cover Assembly/i.test(s.name || '') && s.onRef === '1', 'swipe right: back to number 1');
+  // 20e: a swipe that begins at the screen's edge still turns the card (the page keeps the finger), and a tap at the edge still works
+  { const cdp = await p.context().newCDPSession(p), y = s.bc.t + 30, T = (type, x, yy) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: x == null ? [] : [{ x, y: yy == null ? y : yy, id: 1 }] });
+    await p.evaluate(() => { window.TS = []; addEventListener('touchstart', e => TS.push(e.defaultPrevented), false); });
+    await T('touchStart', 23); for (const x of [60, 110, 160]) await T('touchMove', x); await T('touchEnd'); await p.waitForTimeout(800); const e1 = await st(p), pv = await p.evaluate(() => TS.slice());
+    ok(/Cover Assembly/i.test(s.name || '') && /Washer/i.test(e1.name || '') ? false : true, 'edge swipe right from number 1: stays on 1 (no previous)');
+    await T('touchStart', 368); for (const x of [330, 280, 230]) await T('touchMove', x); await T('touchEnd'); await p.waitForTimeout(800); const e2 = await st(p), pv2 = await p.evaluate(() => TS.slice());
+    ok(/Washer/i.test(e2.name || '') && pv2.length >= 2 && pv2.every(Boolean), 'a swipe from the screen\'s edge turns the card and is kept from the browser (' + e2.name + ', ' + pv2.join() + ')');
+    await p.waitForTimeout(500); const by = e2.bc.b - 16; await T('touchStart', 24, by); await T('touchEnd'); await p.waitForTimeout(600); const e3 = await st(p);
+    ok(e3.ph === 'l' && e3.list, 'a tap at the edge still works (the parts list opened)');
+    await p.click('#vp .m3-c2 .m3-sx'); await p.waitForTimeout(500); await p.evaluate(() => m3Step(-1)); await p.waitForTimeout(700); s = await st(p); }
   await swipe(p, 4, -90); s = await st(p);
   ok(s.ph === 'l' && s.list, 'swipe up: the parts list opens');
   await p.click('#vp .m3 .m3-row >> nth=1'); await p.waitForTimeout(700); s = await st(p);

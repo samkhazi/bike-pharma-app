@@ -7286,6 +7286,14 @@ addEventListener('pointerdown',e=>{const c=e.target.closest&&e.target.closest('.
 addEventListener('pointerup',e=>{const s=M3SW;M3SW=null;if(!s||s.id!==e.pointerId)return;const dx=e.clientX-s.x,dy=e.clientY-s.y;if(Math.max(Math.abs(dx),Math.abs(dy))<36)return;M3SW_T=Date.now();
  if(Math.abs(dx)>Math.abs(dy))m3Step(dx<0?1:-1);else m3Ph(dy<0?'l':'');},true);
 addEventListener('click',e=>{if(Date.now()-M3SW_T<400&&e.target.closest&&e.target.closest('.m3-bc')){e.stopPropagation();e.preventDefault();}},true);
+/* 20e (Sam's recording 11 Nov 21:23: a swipe on the card that began at the screen's edge was taken by iPhone Safari as its own "back" swipe, so the
+   page went away and loaded again): a finger that lands in the screen's outer 30px on the card or the diagram is kept for the page (touchstart
+   cancelled, which is what stops Safari's edge swipe); a plain tap there is passed on by hand, since a cancelled touch makes no click */
+let M3EDGE=null;
+addEventListener('touchstart',e=>{M3EDGE=null;if(e.touches.length!==1||!e.target.closest)return;const t=e.touches[0];if(!e.target.closest('.m3p .m3-bc,.m3p .m3-dgw')||(t.clientX>30&&t.clientX<innerWidth-30))return;
+ e.preventDefault();M3EDGE={x:t.clientX,y:t.clientY,t:Date.now(),el:e.target};},{passive:false});
+addEventListener('touchend',e=>{const d=M3EDGE;M3EDGE=null;if(!d)return;const t=e.changedTouches[0];
+ if(t&&Math.abs(t.clientX-d.x)+Math.abs(t.clientY-d.y)<10&&Date.now()-d.t<700&&d.el.isConnected)d.el.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window}));});
 function m3More(x,o){return kitBox(x)+xrSection(x)+amSection(x)+coNeed(x,o.rows,q=>`m3Pick(${q.i},'need')`);}
 /* the page; no diagram for the part (and none coming): the old page */
 /* layout A (Sam 2026-10-22, Figma "Catalogue view (23 Oct)" A): the bike on top, all its diagrams on the left, the diagram with the

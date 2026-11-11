@@ -25,6 +25,6 @@ const bk=(desc,vb,vms)=>p.evaluate(([desc,vb,vms])=>{try{return amBike({desc,asm
 r=await bk('SPROCKET, FINAL DRIVEN (44T)','Hero',['Splendor Plus']); console.log(r); ok(r==='KIT3001EL00840000,KIT3001J400842500','Hero Splendor Plus sprocket page shows the Rolon Splendor Plus kits');
 r=await bk('CHAIN, DRIVE (428-110L)','Hero',['Splendor Plus']); console.log(r); ok(r==='L01DRV428','drive chain page shows the Rolon drive chain');
 r=await bk('SPROCKET, FINAL DRIVEN','Bajaj',['Pulsar 180']); ok(r==='KIT3657DE01041439','Bajaj Pulsar 180 sprocket page shows its Rolon kit only');
-r=await bk('BRAKE SHOE','Hero',['Splendor Plus']); ok(r==='','another kind of part: nothing');
+r=await bk('RING SET, PISTON','Hero',['Splendor Plus']); ok(r==='','another kind of part: nothing');
 ok(!errs.length,'no page errors '+errs.join(';'));
 await b.close(); process.exit(fails?1:0);

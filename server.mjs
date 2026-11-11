@@ -913,7 +913,7 @@ function serveStatic(req, res, url, user) {
   // 13a: the aftermarket parts list, made on Sam's Mac from All Catalogues > After Market Brands and uploaded in Admin > More > Catalogue files
   if (rel === 'cat/am.json' && fs.existsSync(path.join(FILES_DIR, 'catalogues', 'aftermarket', 'am_build.json'))) file = path.join(FILES_DIR, 'catalogues', 'aftermarket', 'am_build.json');
   // 19s: Rolon's own weekly list (~/rolon_dump) joins the aftermarket list; on any trouble the list is served as before
-  if (rel === 'cat/am.json') { try { const rf = rolonAmFile({ baseFile: fs.existsSync(file) ? file : null, outFile: path.join(DATA_DIR, 'am-rolon.json'), xrefFile: path.join(HERO_OUT, 'xref.json'), supFile: [path.join(FILES_DIR, 'catalogues', 'aftermarket', 'suprajit.json'), path.join(DATA_DIR, 'suprajit.json')].find(f => fs.existsSync(f)) || null }); if (rf) file = rf; } catch (e) { console.error('rolon am:', e.message); } }
+  if (rel === 'cat/am.json') { try { const rf = rolonAmFile({ baseFile: fs.existsSync(file) ? file : null, outFile: path.join(DATA_DIR, 'am-rolon.json'), xrefFile: path.join(HERO_OUT, 'xref.json'), supFiles: ['suprajit', 'sparkminda'].map(n => [path.join(FILES_DIR, 'catalogues', 'aftermarket', n + '.json'), path.join(DATA_DIR, n + '.json')].find(f => fs.existsSync(f))).filter(Boolean) }); if (rf) file = rf; } catch (e) { console.error('rolon am:', e.message); } }
   let st; try { st = fs.statSync(file); } catch (e) { return json(res, 404, { error: 'Not found' }); }
   if (st.isDirectory()) return json(res, 404, { error: 'Not found' });
   const ext = path.extname(file).toLowerCase(); const type = MIME[ext] || 'application/octet-stream';

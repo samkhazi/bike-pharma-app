@@ -14,7 +14,7 @@ ok(await p.evaluate(()=>AM.p.filter(x=>AM.b[x[0]]==='Suprajit').length)>1900,'Su
 let t=strip(await p.evaluate(()=>amRes('SHH0105'))); console.log(t.slice(0,300));
 ok(/Suprajit/.test(t)&&/SHH0105/.test(t)&&/121/.test(t),'Suprajit number shows the cable with MRP 121');
 let L=await p.evaluate(()=>amByOem(catPk('22870AAF400S')).map(x=>x.b+' '+x.pn+' '+x.mrp)); console.log(L);
-ok(L.join()==='Suprajit SHH0105 121','the original number 22870AAF400S leads to the Suprajit cable');
+ok(L.includes('Suprajit SHH0105 121'),'the original number 22870AAF400S leads to the Suprajit cable');
 L=await p.evaluate(()=>amByOem(catPk('574337/F')).map(x=>x.pn)); ok(L.includes('SRE0114'),'RE number 574337/F leads to SRE0114');
 t=strip(await p.evaluate(()=>amRes('DD191075'))); console.log(t.slice(0,300)); ok(/SKB0530/.test(t)&&/Suprajit/.test(t),'typing a Bajaj original number shows the Suprajit cable');
 L=await p.evaluate(()=>amName('suprajit clutch cable himalayan','Any').map(x=>x.pn+' '+x.mrp)); console.log(L); ok(L.some(x=>/^SRE0114 168/.test(x)),'found by words: clutch cable himalayan');

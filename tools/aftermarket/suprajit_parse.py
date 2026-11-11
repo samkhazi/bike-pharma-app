@@ -141,8 +141,8 @@ def main(old_f, new_f, out_f):
     for pn in sorted(set(old) | set(new)):
         o, n = old.get(pn), new.get(pn)
         r = dict(o) if o else {'pn': pn, 'nm': n['nm'], 'mk': '', 'veh': n['veh'], 'sec': n['sec'], 'oem': n['oem'], 'mrp': 0}
-        if n and n['mrp'] > 0: r['mrp'] = n['mrp']
-        elif o and o['mrp'] > 0: r['oldmrp'] = 1                            # not priced in the newest list: the older MRP
+        if n and n['mrp'] > 0 and n['mrp'] >= r['mrp']: r['mrp'] = n['mrp']
+        elif o and o['mrp'] > 0: r['oldmrp'] = 1                            # 20h (Sam: two lists, two MRPs = the higher one), or not priced in the newest list: the older MRP
         if o and n and r['sec'] != 'Control cable':                          # these lines read cleaner in the newest list
             if len(n['nm']) >= 8: r['nm'] = n['nm']
             r['oem'] = sorted(set(o['oem'] + n['oem']), key=(o['oem'] + n['oem']).index)
@@ -150,7 +150,7 @@ def main(old_f, new_f, out_f):
         r['fit'] = full(r['veh']) if r['veh'] else ''
         r['hay'] = full(r['nm']) if r['sec'] != 'Control cable' else ''      # the name with its short bike words spelt out, for search and bike match
         rows.append(r)
-    json.dump({'brand': 'Suprajit', 'src': 'Suprajit price lists: Jan 2024 (original part numbers) + July 2026 (MRP)', 'rows': rows}, open(out_f, 'w'), ensure_ascii=False, separators=(',', ':'))
+    json.dump({'brand': 'Suprajit', 'oldname': 'Jan 2024', 'src': 'Suprajit price lists: Jan 2024 (original part numbers) + July 2026 (MRP)', 'rows': rows}, open(out_f, 'w'), ensure_ascii=False, separators=(',', ':'))
     c = lambda f: sum(1 for r in rows if f(r))
     print('parts', len(rows), '| in both', c(lambda r: r['pn'] in old and r['pn'] in new), '| only new', c(lambda r: r['pn'] not in old), '| only old', c(lambda r: 'oldmrp' in r),
           '| with original number', c(lambda r: r['oem']), '| with bike', c(lambda r: r['veh']), '| no name', c(lambda r: not r['nm']))

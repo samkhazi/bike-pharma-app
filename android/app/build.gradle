@@ -154,8 +154,9 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
-        // Play Store AAB: signed with Bike Pharma's own upload key. The key and its passwords come only
-        // from GitHub secrets (BP_UPLOAD_*), never from the repo.
+        // Play Store AAB (and the same app as a release APK): signed with Bike Pharma's own upload key.
+        // The key and its passwords come from GitHub secrets (BP_UPLOAD_*) or, one time only, from a key
+        // made in the GitHub build (see .github/workflows/android.yml); never from the repo.
         upload {
             if (System.getenv('BP_UPLOAD_KEYSTORE')) {
                 storeFile file(System.getenv('BP_UPLOAD_KEYSTORE'))

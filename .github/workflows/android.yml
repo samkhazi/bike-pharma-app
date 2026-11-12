@@ -1,8 +1,14 @@
 # Builds the Bike Pharma Android app on every push to this branch (mobile-app).
 #   Test APK  (BikePharma-test.apk): always, signed with the test key in android/app/debug.keystore.
-#   Play AAB  (BikePharma-play.aab): only when the four BP_UPLOAD_* secrets are set in GitHub
-#             (Settings > Secrets and variables > Actions); it is signed with Bike Pharma's own upload key.
-# The files (and build.log) are put on the branch app-builds, one commit, replaced on every build.
+#   Play files (BikePharma-play.aab for the Play Console, BikePharma-play.apk = the same app to install on a
+#             phone): only when there is a Play upload key, from
+#               - the four BP_UPLOAD_* secrets (Settings > Secrets and variables > Actions), or
+#               - ONE TIME only: a new key made in this build, when no secrets are set and the commit message
+#                 has [make-upload-key]. That key never goes into the repo: it is offered only as this run's
+#                 download "KEEP-SAFE-bikepharma-upload-key" (30 days), with its password and the four
+#                 secret values, so Sam can keep it and put it in the secrets for later builds.
+# The files (and build.log) are put on the branch app-builds, one commit, replaced on every build; a build
+# without an upload key keeps the last Play files there (PLAY.txt says which build they are from).
 name: Android app
 on:
   push:
@@ -23,35 +29,93 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Play upload key
+        id: key
+        env:
+          B64: ${{ secrets.BP_UPLOAD_KEYSTORE_B64 }}
+          SP: ${{ secrets.BP_UPLOAD_STORE_PASSWORD }}
+          KA: ${{ secrets.BP_UPLOAD_KEY_ALIAS }}
+          KP: ${{ secrets.BP_UPLOAD_KEY_PASSWORD }}
+          MSG: ${{ github.event.head_commit.message }}
+        run: |
+          KS="$RUNNER_TEMP/upload.jks"; NEW=""
+          if [ -n "$B64" ]; then
+            printf '%s' "$B64" | base64 -d > "$KS"
+          elif printf '%s' "$MSG" | grep -qF '[make-upload-key]'; then
+            SP=$(openssl rand -hex 16); KP="$SP"; KA=upload; NEW=1
+            echo "::add-mask::$SP"
+            keytool -genkeypair -storetype PKCS12 -keystore "$KS" -alias "$KA" -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "$SP" -keypass "$KP" -dname "CN=Bike Pharma, O=Bike Pharma Automobiles, C=IN"
+          else
+            echo "No Play upload key: only the test APK is built."
+            exit 0
+          fi
+          FP=$(keytool -list -v -keystore "$KS" -storepass "$SP" -alias "$KA" | sed -n 's/^[[:space:]]*SHA256: *//p' | head -1)
+          [ -n "$FP" ] || { echo "The upload key could not be read: check the four BP_UPLOAD_* secrets."; exit 1; }
+          echo "Upload key SHA-256: $FP"
+          echo "$FP" > "$RUNNER_TEMP/upload-sha256.txt"
+          { echo "BP_UPLOAD_KEYSTORE=$KS"; echo "BP_UPLOAD_STORE_PASSWORD=$SP"; echo "BP_UPLOAD_KEY_ALIAS=$KA"; echo "BP_UPLOAD_KEY_PASSWORD=$KP"; } >> "$GITHUB_ENV"
+          if [ -n "$NEW" ]; then
+            K="$RUNNER_TEMP/KEEP-SAFE"; mkdir -p "$K"
+            cp "$KS" "$K/bikepharma-upload-key.jks"
+            base64 -w0 "$KS" > "$K/BP_UPLOAD_KEYSTORE_B64.txt"
+            {
+              echo "Bike Pharma - Play Store UPLOAD KEY (sambhal ke rakhna)"
+              echo
+              echo "1. Ye poora zip Google Drive aur Mac dono me rakh lo. Play Store ka har update isi key se banega."
+              echo "2. Ye key aur password kisi ko mat dena (developer ko bhi nahi). Developer ko sirf BikePharma-play.aab bhejo."
+              echo "3. GitHub me ek baar daal do, taki aage ke update apne aap isi key se bane:"
+              echo "   $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/settings/secrets/actions > New repository secret"
+              echo "   BP_UPLOAD_KEYSTORE_B64   = BP_UPLOAD_KEYSTORE_B64.txt ka poora text"
+              echo "   BP_UPLOAD_STORE_PASSWORD = niche wala password"
+              echo "   BP_UPLOAD_KEY_ALIAS      = upload"
+              echo "   BP_UPLOAD_KEY_PASSWORD   = niche wala password"
+              echo "4. Phir GitHub ke build page se ye download (Artifacts) delete kar do."
+              echo
+              echo "Key file : bikepharma-upload-key.jks (PKCS12, RSA 2048, 10000 din)"
+              echo "Alias    : upload"
+              echo "Password : $SP   (store aur key dono ka yahi)"
+              echo "SHA-256  : $FP"
+              echo "Bana     : $(date -u +%FT%TZ), $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            } > "$K/READ-ME.txt"
+            echo "new=1" >> "$GITHUB_OUTPUT"
+          fi
       - name: Build
         working-directory: android
-        env:
-          BP_UPLOAD_KEYSTORE_B64: ${{ secrets.BP_UPLOAD_KEYSTORE_B64 }}
-          BP_UPLOAD_STORE_PASSWORD: ${{ secrets.BP_UPLOAD_STORE_PASSWORD }}
-          BP_UPLOAD_KEY_ALIAS: ${{ secrets.BP_UPLOAD_KEY_ALIAS }}
-          BP_UPLOAD_KEY_PASSWORD: ${{ secrets.BP_UPLOAD_KEY_PASSWORD }}
         run: |
           set -o pipefail
           mkdir -p ../out
           tasks="assembleDebug"
-          if [ -n "$BP_UPLOAD_KEYSTORE_B64" ]; then
-            printf '%s' "$BP_UPLOAD_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"
-            export BP_UPLOAD_KEYSTORE="$RUNNER_TEMP/upload.jks"
-            tasks="$tasks bundleRelease"
-          fi
+          if [ -n "$BP_UPLOAD_KEYSTORE" ]; then tasks="$tasks bundleRelease assembleRelease"; fi
           chmod +x gradlew
           ./gradlew --no-daemon --stacktrace $tasks 2>&1 | tee ../out/build.log
           cp app/build/outputs/apk/debug/app-debug.apk ../out/BikePharma-test.apk
           if [ -f app/build/outputs/bundle/release/app-release.aab ]; then cp app/build/outputs/bundle/release/app-release.aab ../out/BikePharma-play.aab; fi
-          rm -f "$RUNNER_TEMP/upload.jks"
+          if [ -f app/build/outputs/apk/release/app-release.apk ]; then cp app/build/outputs/apk/release/app-release.apk ../out/BikePharma-play.apk; fi
+          if [ -f ../out/BikePharma-play.aab ]; then
+            { echo "Play files from build $(git rev-parse --short HEAD) $(date -u +%FT%TZ)"; echo "Upload key SHA-256: $(cat "$RUNNER_TEMP/upload-sha256.txt")"; echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"; } > ../out/PLAY.txt
+          fi
+      - name: KEEP-SAFE upload key (download once, keep it safe, then delete it here)
+        if: steps.key.outputs.new == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: KEEP-SAFE-bikepharma-upload-key
+          path: ${{ runner.temp }}/KEEP-SAFE/
+          retention-days: 30
+          if-no-files-found: error
       - name: Put the files on the app-builds branch
         if: always()
         env:
           TOKEN: ${{ github.token }}
           STATUS: ${{ job.status }}
         run: |
+          rm -f "$RUNNER_TEMP/upload.jks"
           mkdir -p out && cd out
+          if [ ! -f BikePharma-play.aab ] && git -C .. fetch -q --depth 1 origin app-builds 2>/dev/null; then
+            for f in BikePharma-play.aab BikePharma-play.apk PLAY.txt; do git -C .. show "FETCH_HEAD:$f" > "$f" 2>/dev/null || rm -f "$f"; done
+          fi
           echo "$STATUS $(git -C .. rev-parse --short HEAD) $(date -u +%FT%TZ)" > BUILD.txt
+          echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> BUILD.txt
           ls -l >> BUILD.txt
           git init -q -b app-builds
           git config user.name "github-actions[bot]"

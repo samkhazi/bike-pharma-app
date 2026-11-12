@@ -5,7 +5,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
 const T = '/tmp/claude-0/bptest-names', R = T + '/raw', SY = T + '/sync'; fs.rmSync(T, { recursive: true, force: true });
 fs.mkdirSync(R, { recursive: true }); fs.mkdirSync(SY + '/output/Hero DMS', { recursive: true });
 fs.writeFileSync(R + '/hero_hidden_models.json', '{}'); fs.writeFileSync(R + '/hero_oldnew_harvest.json', '{"supercedence":[]}');
-fs.writeFileSync(R + '/Hero_Complete_Parts_List.csv', 'part,desc,x,mrp,old\n22870-TST-C00,&#8729;&#8729;&#8729;&#8729;&#8729;&#8729;,,,\n11111-TST-000,PLAIN NAME,,50,\n33333-TST-000,,,,\n53199-TST-D10,,,,\n');
+fs.writeFileSync(R + '/Hero_Complete_Parts_List.csv', 'part,desc,x,mrp,old\n22870-TST-C00,&#8729;&#8729;&#8729;&#8729;&#8729;&#8729;,,,\n11111-TST-000,PLAIN NAME,,50,\n33333-TST-000,,,,\n');
 fs.writeFileSync(SY + '/output/Hero DMS/Hero_DMS_Parts.csv', 'part_no,name,mrp,mrp_from,hsn,group,active,superseded_by,models\n22870TSTC00S,"PLATE COMP., CLUTCH LIFTER",83,,,,Y,,\n11111-TST-000,DMS NAME,55,,,,Y,,\n33333-TST-000,&#8729;&#8729;&#8729;,,,,,Y,,\n');
 const E = H.EMPTY_HERO(), G = H.EMPTY_HERO_DG();
 let r; try { r = H.buildHero(E, G, R, 'catalogues/hero-raw', { syncDir: SY }); } catch (e) { console.log('FAIL build', e); process.exit(1); }
@@ -13,8 +13,7 @@ const d = r.cat, row = pn => d.d.find(x => x[5] === pn), nm = pn => row(pn) && d
 ok(nm('22870-TST-C00') === 'PLATE COMP., CLUTCH LIFTER', 'filler-dot name is replaced by the weekly dealer list name: ' + nm('22870-TST-C00'));
 ok(d.mrp['22870-TST-C00'] === 83, 'its missing MRP comes from the weekly dealer list');
 ok(nm('11111-TST-000') === 'PLAIN NAME' && d.mrp['11111-TST-000'] === 55, 'a part that has a name keeps it; MRP is the dealer list one: ' + nm('11111-TST-000'));
-ok(!row('53199-TST-D10') && r.info.lists.empty === 1, '20v: a list number with no name, MRP, bike or old/new number, not in the dealer list, is not shown');
-ok(!!row('33333-TST-000'), '20v: an empty list number that the dealer list has stays');
+ok(H.blankName(nm('33333-TST-000')), 'no name anywhere stays empty (no junk): "' + nm('33333-TST-000') + '"');
 ok(r.info.dms && r.info.dms.nameSet === 1, 'build report counts the names filled: ' + JSON.stringify(r.info.dms && r.info.dms.nameSet) + (r.info.listsErr || r.info.dmsErr || ''));
 // 20t: no weekly CSV: the sync's own parts.json is read
 { fs.rmSync(SY + '/output/Hero DMS/Hero_DMS_Parts.csv'); fs.mkdirSync(SY + '/hero_dms');

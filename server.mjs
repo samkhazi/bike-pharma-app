@@ -301,7 +301,7 @@ async function api(req, res, url, user) {
     const slug = String(body.b || ''); if (!/^[a-z0-9-]{1,40}$/.test(slug)) return json(res, 400, { error: 'Bad catalogue' });
     let r; try { r = SPLIT.rows(slug, body, user); } catch (x) { console.log(new Date().toISOString(), 'cat rows failed', x.message); return json(res, 500, { error: 'Could not read the catalogue' }); }
     if (r.error) return json(res, r.code || 400, { error: r.error });
-    if (r.over) { CATG.stop(user, 'lines', ipOf(req)); return json(res, 429, { error: CATG.check(user) || 'Catalogue limit for today reached' }); }
+    if (r.over && CATG.on) { CATG.stop(user, 'lines', ipOf(req)); return json(res, 429, { error: CATG.check(user) || 'Catalogue limit for today reached' }); }
     delete r.over;
     const raw = Buffer.from(JSON.stringify(r)), gz = /\bgzip\b/.test(req.headers['accept-encoding'] || ''), out = gz ? zlib.gzipSync(raw, { level: 6 }) : raw;
     CATG.count(user, 'cat', raw.length, 'cat/' + slug + '.json lines ' + r.g.length, ipOf(req));

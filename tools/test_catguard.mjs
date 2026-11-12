@@ -5,7 +5,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
 const T = '/tmp/claude-0/bptest-catg'; fs.rmSync(T, { recursive: true, force: true }); fs.mkdirSync(T + '/pf/catalogues/t', { recursive: true });
 fs.writeFileSync(T + '/pf/catalogues/t/a.bin', Buffer.alloc(3 * 1024 * 1024, 7));
 await new Promise(r => { const a = spawn('node', ['--no-warnings', 'admin.mjs', 'add-admin', 'sam@bikepharma.com', 'Sam', '--password', 'Test@1234'], { env: { ...process.env, DATA_DIR: T + '/data' } }); a.on('exit', r); });
-const srv = spawn('node', ['--no-warnings', 'server.mjs'], { env: { ...process.env, PORT: '3019', DATA_DIR: T + '/data', FILES_DIR: T + '/pf', PHOTO_AI: 'off', CAT_DAY_MB: '20', CAT_FILES_DAY_MB: '5' }, stdio: ['ignore', 'pipe', 'pipe'] });
+const srv = spawn('node', ['--no-warnings', 'server.mjs'], { env: { ...process.env, PORT: '3019', DATA_DIR: T + '/data', FILES_DIR: T + '/pf', PHOTO_AI: 'off', CAT_DAY_MB: '20', CAT_LIMIT: 'on', CAT_FILES_DAY_MB: '5' }, stdio: ['ignore', 'pipe', 'pipe'] });
 let log = ''; srv.stdout.on('data', d => log += d); srv.stderr.on('data', d => log += d);
 await new Promise(r => setTimeout(r, 1500));
 const BASE = 'http://127.0.0.1:3019';

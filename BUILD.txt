@@ -1,0 +1,9 @@
+success fe1be4e 2026-11-12T15:00:09Z
+Run: https://github.com/samkhazi/bike-pharma-app/actions/runs/43242753069
+total 7500
+-rw-r--r-- 1 runner runner     111 Nov 12 15:00 BUILD.txt
+-rw-r--r-- 1 runner runner 1273157 Nov 12 15:00 BikePharma-play.aab
+-rw-r--r-- 1 runner runner 1183722 Nov 12 15:00 BikePharma-play.apk
+-rw-r--r-- 1 runner runner 5203146 Nov 12 15:00 BikePharma-test.apk
+-rw-r--r-- 1 runner runner     241 Nov 12 15:00 PLAY.txt
+-rw-r--r-- 1 runner runner    5487 Nov 12 15:00 build.log

@@ -1,0 +1,34 @@
+// 21d: Rolon kit vs original chain / sprockets by size. Needs the local server on 3033 (admin sam@bikepharma.com / Test@1234).
+const {chromium}=require('playwright');const out=[];let bad=0;const ok=(n,c,x)=>{if(!c)bad++;out.push((c?'PASS ':'FAIL ')+n+(c?'':' '+JSON.stringify(x)));};
+(async()=>{const b=await chromium.launch();const p=await b.newPage();const e=[];p.on('pageerror',x=>e.push(String(x)));
+await p.goto((process.env.BASE||'http://127.0.0.1:3033')+'/app.html');await p.waitForFunction(()=>typeof S!=='undefined'&&S.stack&&S.stack.length&&cur().s!=='boot');
+await p.fill('#loginId','sam@bikepharma.com');await p.evaluate(()=>sendOtp());await p.waitForTimeout(600);await p.fill('#pw1','Test@1234');await p.evaluate(()=>pwGo());await p.waitForTimeout(1500);
+const r=await p.evaluate(()=>{const R={};
+ const row=(desc,part,asm)=>catRow({kind:'d',vb:'Bajaj',vms:['Pulsar 180'],vv:[],desc,part,asm:asm||'REAR WHEEL',rem:'',old:'',sup:''});
+ const rows=[row('SPROCKET, FINAL DRIVEN (39T)','DJ101039'),row('SPROCKET DRIVEN 42 T','DJ101042'),row('SPROCKET, DRIVE (14T)','DJ201014','TRANSMISSION'),row('CHAIN, DRIVE (520-104L)','DJ301104'),row('CHAIN DRIVE 428 H 120 LINKS','DJ301120'),row('BOLT, FLANGE 8MM','B8')];
+ window.catScope=()=>({rows});
+ const nm='Chain sprocket kit · KIT BSOR 146 · chain R520BSOR104-1S · sprockets 14T front / 39T rear';
+ R.k=kitSpec(nm);R.k2=kitSpec('Chain sprocket kit · KIT BS 227 · chain R428H-120L · sprockets 15T front / 42T rear');R.k3=kitSpec('Drive belt · VB 12');
+ R.o=rows.map(oeKitSpec);
+ const P={b:'Rolon',pn:'KIT3657DE01041439',nm,fm:[['Bajaj','Pulsar 180']],mrp:1640,oem:[],same:[],near:[]};
+ const P2={...P,pn:'KITX',nm:'Chain sprocket kit · KIT BS 227 · chain R428H-120L · sprockets 15T front / 42T rear'};
+ R.f39=kitFit(P,rows[0]);R.f42=kitFit(P,rows[1]);R.fc=kitFit(P,rows[3]);R.fc2=kitFit(P,rows[4]);R.fb=kitFit(P,rows[5]);R.fo=kitFit({...P,b:'Other'},rows[0]);
+ R.p2=kitFit(P2,rows[1]);
+ R.t39=kitFitTxt(P,rows[0]);R.t42=kitFitTxt(P,rows[1]);R.tp2=kitFitTxt(P2,rows[1]);
+ R.ord=kitOrd([P2,P],rows[0]).map(x=>x.pn);R.box=kitOeBox(P);R.box2=kitOeBox(P2);
+ const j=x=>x&&{st:x.st,mine:x.mine,kits:x.kits};['f39','f42','fc','fc2','fb','fo','p2'].forEach(k=>R[k]=j(R[k]));return R;});
+ok('kit spec 14/39, 520, 104 links',r.k&&r.k.f===14&&r.k.b===39&&r.k.pitch===520&&r.k.links===104,r.k);
+ok('kit spec 15/42, 428, 120 links',r.k2&&r.k2.f===15&&r.k2.b===42&&r.k2.pitch===428&&r.k2.links===120,r.k2);
+ok('a belt has no kit spec',r.k3===null,r.k3);
+ok('original rear 39T read',r.o[0]&&r.o[0].role===2&&r.o[0].t===39,r.o[0]);ok('original rear "42 T" read',r.o[1]&&r.o[1].role===2&&r.o[1].t===42,r.o[1]);
+ok('original front 14T read',r.o[2]&&r.o[2].role===1&&r.o[2].t===14,r.o[2]);ok('original chain 520, 104 links',r.o[3]&&r.o[3].role===0&&r.o[3].links===104&&r.o[3].pitch===520,r.o[3]);
+ok('original chain "428 H 120 LINKS"',r.o[4]&&r.o[4].role===0&&r.o[4].links===120&&r.o[4].pitch===428,r.o[4]);ok('a bolt is not a kit part',r.o[5]===null,r.o[5]);
+ok('39T rear + all three found = exact',r.f39&&r.f39.st==='exact',r.f39);ok('42T rear vs 39T kit = different size',r.f42&&r.f42.st==='no',r.f42);
+ok('chain 104 links = exact',r.fc&&r.fc.st==='exact',r.fc);ok('428 chain vs 520 kit = different size',r.fc2&&r.fc2.st==='no',r.fc2);
+ok('bolt: no verdict',r.fb===null);ok('another company: no verdict',r.fo===null);
+ok('second kit: rear and chain match but no 15T front = same size, not exact',r.p2&&r.p2.st==='ok',r.p2);
+ok('text says Exact match',/Exact match/.test(r.t39)&&/14T front, 39T rear, 104 links/.test(r.t39),r.t39);ok('text says Different size with both sizes',/Different size/.test(r.t42)&&/39T rear/.test(r.t42)&&/42T rear/.test(r.t42),r.t42);
+ok('text says Same size',/Same size/.test(r.tp2),r.tp2);ok('exact kit sorted first',r.ord[0]==='KIT3657DE01041439',r.ord);
+ok('kit page lists the three original numbers, Exact',/Exact match/.test(r.box)&&/DJ101039/.test(r.box)&&/DJ201014/.test(r.box)&&/DJ301104/.test(r.box),r.box.slice(0,300));
+ok('second kit page: part match only',/check the rest/.test(r.box2)&&/DJ101042/.test(r.box2)&&!/Exact match/.test(r.box2),r.box2.slice(0,300));
+ok('no page errors',!e.length,e);console.log(out.join('\n'));console.log(bad?bad+' FAILED':'ALL PASS');await b.close();process.exit(bad?1:0)})()

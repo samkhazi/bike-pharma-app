@@ -15,6 +15,11 @@ ok(d.mrp['22870-TST-C00'] === 83, 'its missing MRP comes from the weekly dealer 
 ok(nm('11111-TST-000') === 'PLAIN NAME' && d.mrp['11111-TST-000'] === 55, 'a part that has a name keeps it; MRP is the dealer list one: ' + nm('11111-TST-000'));
 ok(H.blankName(nm('33333-TST-000')), 'no name anywhere stays empty (no junk): "' + nm('33333-TST-000') + '"');
 ok(r.info.dms && r.info.dms.nameSet === 1, 'build report counts the names filled: ' + JSON.stringify(r.info.dms && r.info.dms.nameSet) + (r.info.listsErr || r.info.dmsErr || ''));
+// 20t: no weekly CSV: the sync's own parts.json is read
+{ fs.rmSync(SY + '/output/Hero DMS/Hero_DMS_Parts.csv'); fs.mkdirSync(SY + '/hero_dms');
+  fs.writeFileSync(SY + '/hero_dms/parts.json', JSON.stringify({ '22870TSTC00S': { name: 'PLATE FROM JSON', mrp: 91, sup: '', models: [] } }));
+  const q = H.buildHero(H.EMPTY_HERO(), H.EMPTY_HERO_DG(), R, 'catalogues/hero-raw', { syncDir: SY }).cat, rw = q.d.find(x => x[5] === '22870-TST-C00');
+  ok(rw && q.desc[rw[6]] === 'PLATE FROM JSON' && q.mrp['22870-TST-C00'] === 91, 'without the weekly CSV, name and MRP come from hero_dms/parts.json'); }
 // other brands: the shared helper on their rows
 { const dd = { desc: ['', 'OLD', '....'], d: [[0, 0, '', 0, '', '53199-K0N-D10', 0], [0, 0, '', 0, '', 'AB12', 1], [0, 0, '', 0, '', 'N1', 2]] }, di = a => { let i = dd.desc.indexOf(a); if (i < 0) i = dd.desc.push(a) - 1; return i; };
   const n = H.fillNames(dd.d, dd, di, { '53199K0ND10': { desc: 'SPRING', mrp: 5 }, AB12: { name: 'NEW' }, N1: { name: '' } });

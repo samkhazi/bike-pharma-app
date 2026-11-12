@@ -3283,7 +3283,10 @@ const CAT_WORDS={'SELF START MOTOR':['STARTER GENERATOR'],'SELF MOTOR':['STARTER
 const CAT_STOP=new Set(['FOR','OF','THE','WITH','PLEASE','NEED','WANT','GIVE','SHOW','ME','MY','KA','KI','KE','KO','WALA','WALI','WALE','SE','CHAHIYE','DENA','BHAI']);
 const CAT_GENERIC=new Set(['ASSY','COMP','ASSEMBLY','KIT','SET','NEW','AND','STD','STANDARD','TYPE','COMPLETE','WITH','WITHOUT','ASSLY']);
 const catNorm=s=>(s||'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();
-const catNice=s=>(s||'').toLowerCase().replace(/\b([a-z])/g,c=>c.toUpperCase()).replace(/\b(Assy|Ks|Es|Lh|Rh|Tsl|Sai|Cdi|Efi|Bsvi|Bsiv|Sbs|Hd|Ns|Oem|Comp|Brkt|Crr|Mtg|Rr|Fr|Dia|Vrl|Ecu|Ii|Iii|Iv|Vi|Abs|Gt|Led|Tvs|Mrp|[A-Z]?\d+[A-Za-z0-9.x/]*|[A-Za-z]{1,6}\d[A-Za-z0-9]*)\b/g,w=>w.toUpperCase());
+/* update 20r (Sam's screenshot 2026-11-12, Hero 22870-K3C-C00): a list that has no name for a part gives a row of filler dots, typed as
+   the code "&#8729;&#8729;…": codes are turned back into their letters and filler dots are dropped, so such a part shows no junk name */
+const catTxt=s=>String(s||'').replace(/&#(\d{2,6});/g,(m,n)=>String.fromCodePoint(+n)).replace(/&amp;/g,'&').replace(/(?:[\s.]*[\u2219\u00b7\u2022\u22c5]){2,}[\s.]*|\.{4,}/g,' ').trim();
+const catNice=s=>catTxt(s).toLowerCase().replace(/\b([a-z])/g,c=>c.toUpperCase()).replace(/\b(Assy|Ks|Es|Lh|Rh|Tsl|Sai|Cdi|Efi|Bsvi|Bsiv|Sbs|Hd|Ns|Oem|Comp|Brkt|Crr|Mtg|Rr|Fr|Dia|Vrl|Ecu|Ii|Iii|Iv|Vi|Abs|Gt|Led|Tvs|Mrp|[A-Z]?\d+[A-Za-z0-9.x/]*|[A-Za-z]{1,6}\d[A-Za-z0-9]*)\b/g,w=>w.toUpperCase());
 const catFig=p=>'figs/f'+String(p).padStart(2,'0')+'.jpg';
 let CAT_ROWS=null;
 /* the base of a part number that the same part in another colour or revision shares: Honda 64320-K0Y-DH0ZC -> 64320-K0Y-DH0 (13),
@@ -4685,7 +4688,7 @@ function fpPnCard(r){if(kitHead(r))r=r;const N=fpNos(r),s=fpStock(r),K=kitsOf(r)
  const nl=(L2,vb)=>L2.length?L2.slice(0,3).map(n=>`<b class="num">${esc(n)}</b><span class="cap">${fpNoM(vb,n)}</span>`).join('<br>'):'';
  const kitT=kitHead(r)?`<b>This is a kit</b><div class="cap">${kitParts(r).length} parts · tap Open part</div>`:K.length?K.slice(0,2).map(h=>`<button class="fp-lnk" onclick="m2Part(${h.i})"><b class="num">${esc(h.part)}</b></button><div class="cap">${esc(catNice(h.desc))}${h.mrp?' · '+inr(h.mrp):''}</div>`).join(''):'';
  return `<div class="card fp-pn">
- <div class="fp-pn-top"><div class="fp-pn-ph">${m2Thumb(r)}</div><div class="grow"><div class="row" style="gap:10px;flex-wrap:wrap"><b class="fp-pn-no num" id="pn-${r.i}">${esc(r.part)}</b><button class="btn line sm" onclick="catCopy(${r.i})">Copy</button></div><div class="fp-pn-nm">${esc(catNice(r.desc))}</div><div class="cap">${esc([r.vb,fpWhere(r)].filter(Boolean).join(' · '))}</div></div>
+ <div class="fp-pn-top"><div class="fp-pn-ph">${m2Thumb(r)}</div><div class="grow"><div class="row" style="gap:10px;flex-wrap:wrap"><b class="fp-pn-no num" id="pn-${r.i}">${esc(r.part)}</b><button class="btn line sm" onclick="catCopy(${r.i})">Copy</button></div><div class="fp-pn-nm" style="overflow-wrap:anywhere">${esc(catNice(r.desc))||'<span class="cap">No name for this part in the maker\'s list</span>'}</div><div class="cap">${esc([r.vb,fpWhere(r)].filter(Boolean).join(' · '))}</div></div>
  <div class="fp-pn-pr"><div class="micro muted">MRP (incl. GST)</div><b class="num">${r.mrp?inr(r.mrp):s.x?inr(s.x.mrp):'On request'}</b>${s.h}</div></div>
  <div class="fp-tiles">${tile('New part no.',N.a.length?nl(N.a,r.vb):`<span class="cap" style="font-weight:600">${N.stop?'None: the maker has stopped this part':'This is the latest'}</span>`,N.a.length?'b':'')}${tile('Old part no.',N.o.length?nl(N.o,r.vb):'<span class="cap">—</span>')}${tile('Alternate part no.',N.al.length?nl(N.al,r.vb):'<span class="cap">None in the data</span>',N.al.length?'g':'')}${tile(kitHead(r)?'Kit':'Also in kit',kitT||'<span class="cap">—</span>',kitT?'y':'')}</div>
  ${typeof verRow==='function'?verRow(r):''}

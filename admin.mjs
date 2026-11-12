@@ -3,6 +3,7 @@
 //   node admin.mjs add-admin <email-or-mobile> "<name>" [--password <pw>]   first admin login (asks for the password)
 //   node admin.mjs set-password <login> [--password <pw>]                   new password for any staff login
 //   node admin.mjs list                                                      all logins
+//   node admin.mjs staff-off <staff ID or login> [--to <staff ID or login>]    switch a staff login off; --to gives the other staff the same role
 //   node admin.mjs has-admin                                                 exit 0 when an admin exists
 //   node admin.mjs clear-demo                                                remove the old demo shop data again (the server does it once by itself;
 //                                                                            keeps logins, settings, real products and bills; a copy goes to data/)
@@ -67,6 +68,31 @@ async function main() {
     store.kvSet('pw', id, hashPw(pw));
     for (const [t, s] of store.kvAll('sess')) if (s.uid === id) store.kvDel('sess', t);
     console.log('password updated for ' + id);
+    return;
+  }
+  if (cmd === 'staff-off') {   // 21a: switch one staff login off for good and make sure another staff has the same role (so the same options)
+    const a = accounts(); const find = v => { const u = String(v || '').trim().toUpperCase(); const e = Object.entries(a).find(([id, x]) => x && String(x.sid || '').toUpperCase() === u) || (a[normId(v)] ? [normId(v), a[normId(v)]] : null); return e; };
+    const from = find(pos[0]); const toArg = opt('--to'); const to = toArg ? find(toArg) : null;
+    if (!from) { console.error(`${pos[0] || '(nothing)'} is not a staff login. Run: node admin.mjs list`); process.exit(2); }
+    if (toArg && !to) { console.error(`${toArg} is not a staff login. Nothing changed.`); process.exit(2); }
+    if (from[1].role === 'admin') { console.error('an Admin login cannot be switched off here. Nothing changed.'); process.exit(2); }
+    if (to && to[0] === from[0]) { console.error('both are the same login. Nothing changed.'); process.exit(2); }
+    const off = new Set(state('staffOff') || []); off.add(from[0]); const w = {};
+    if (to) {
+      off.delete(to[0]);
+      if (to[1].role !== from[1].role) { a[to[0]] = { ...to[1], role: from[1].role, label: from[1].label }; const sr = state('staffRole') || {}; sr[to[0]] = from[1].label; w.staffRole = JSON.stringify(sr); w.accounts = JSON.stringify(a); }
+    }
+    w.staffOff = JSON.stringify([...off]);
+    const now = new Date(); const au = state('audit'); if (Array.isArray(au)) {
+      const t = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }) + ' · ' + now.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' });
+      au.unshift({ who: 'Server command', a: 'Login deactivated', e: from[1].sid || from[0], o: 'Active', n: 'Inactive', t });
+      if (w.accounts) au.unshift({ who: 'Server command', a: 'Staff role changed', e: to[1].sid || to[0], o: to[1].label, n: from[1].label, t });
+      w.audit = JSON.stringify(au);
+    }
+    store.write(w);
+    let n = 0; for (const [t, s] of store.kvAll('sess')) if (s.uid === from[0]) { store.kvDel('sess', t); n++; }
+    console.log(`login OFF: ${from[1].sid || ''} ${from[1].name} (${from[1].label}); ${n} open session(s) closed`);
+    if (to) console.log(`${to[1].sid || ''} ${to[1].name}: ${w.accounts ? 'role changed ' + to[1].label + ' -> ' + from[1].label : 'already ' + to[1].label + ', same options, nothing to change'}; login is ON`);
     return;
   }
   if (cmd === 'clear-demo') {

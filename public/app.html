@@ -4376,7 +4376,8 @@ const XR_PLAT=[
  ['Suzuki',/^Gixxer (250|SF 250)/i,'Suzuki',[/^Gixxer (250|SF 250)/i],'Gixxer 250 and SF 250 share engine and platform']];
 const xrPk=r=>r.pk&&r.pk.length>=5?r.pk:'';
 /* other brands' books with this very number: [brand, models...] */
-function xrOther(r){const X=XR,pk=xrPk(r);if(!X||!pk||!X.x[pk])return [];const o=X.x[pk],nn=(X.n||{})[pk]||{},rr=(X.r||{})[pk]||{};return Object.keys(o).map(k=>X.b[+k]).filter(b=>b!==r.vb).map(b=>{const i=X.b.indexOf(b);return [b,o[i].map(j=>X.m[i][j]),nn[i]||'',rr[i]||''];});}
+const XR_NOBIKE=/^Other |^Accessories & merchandise$|^Service kits$|^Oils & lubricants$/;
+function xrOther(r){const X=XR,pk=xrPk(r);if(!X||!pk||!X.x[pk])return [];const o=X.x[pk],nn=(X.n||{})[pk]||{},rr=(X.r||{})[pk]||{};return Object.keys(o).map(k=>X.b[+k]).filter(b=>b!==r.vb).map(b=>{const i=X.b.indexOf(b);return [b,o[i].map(j=>X.m[i][j]).filter(m=>!XR_NOBIKE.test(m)),nn[i]||'',rr[i]||''];}).filter(e=>e[1].length);}   /* 20u: a number that brand has only in a list (no bike, no diagram) is not a match */
 /* 16s: same size / design in other brands (not the same number): [label, check, [[brand, [[pn, models]]]]] */
 function xrSize(r){const X=XR,pk=xrPk(r);if(!X||!pk||!X.gk||!X.gk[pk])return [];return X.gk[pk].map(gi=>{const [lab,ck,o]=X.g[gi];const L=Object.keys(o).map(k=>[X.b[+k],o[k].filter(([pn])=>catPk(pn)!==pk).map(([pn,ms])=>[pn,ms.map(j=>X.m[+k][j])])]).filter(([b,l])=>l.length);return [lab,ck,L];}).filter(g=>g[2].length);}   /* 16r: [brand, models, its own number when it differs] */
 function xrGo(vb,pn){catLoad(vb);const f=S.ui.fp||(S.ui.fp=FP0());f.vb=vb;f.vm='Any';f.yr='Any';f.cc='Any';go('findpart',{v:'res',q:pn,vb,vm:'Any',yr:'Any',bs:'Any',sort:'best',n:30});}

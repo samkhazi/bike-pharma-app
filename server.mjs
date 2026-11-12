@@ -53,6 +53,11 @@ vinSetup({ filesDir: FILES_DIR });   // 12f: RE chassis index
 const SESSION_DAYS = +env.SESSION_DAYS || 30;
 const PROTECTED = (env.PROTECTED_DIRS || 'cat,bj,ph,phh,figs').split(',').map(s => s.trim()).filter(Boolean);
 const OTP = otpConfig(env);
+// 21p (Google Play): the reviewers' test login: one customer number with a fixed OTP, both only in .env (REVIEW_PHONE, REVIEW_OTP).
+// No SMS goes to that number; a staff or mechanic number never gets the fixed OTP.
+const REVIEW = /^[6-9]\d{9}$/.test(env.REVIEW_PHONE || '') && /^\d{6}$/.test(env.REVIEW_OTP || '') ? { id: env.REVIEW_PHONE, otp: env.REVIEW_OTP } : null;
+// 21p: pages anyone can open without logging in (Google Play asks for a privacy policy and an account deletion page)
+const PAGES = { 'privacy': 'privacy.html', 'privacy-policy': 'privacy.html', 'delete-account': 'delete-account.html' };
 const store = openStore(DATA_DIR);
 const SYNC_SEEN = new Map();   // 13f: each login's last push ids and their answers
 const MIRROR = startMirror(store, process.env);   // MySQL copy for phpMyAdmin (10m), off unless MYSQL_* are in .env
@@ -192,6 +197,20 @@ const stateVal = k => { const r = store.stateGet(k); return r ? JSON.parse(r.jso
 const accounts = () => stateVal('accounts') || {};
 const reader = () => { const c = new Map(); return k => { if (!c.has(k)) c.set(k, stateVal(k)); return c.get(k); }; }; // cached reads for one request
 function setAccount(id, acc) { const a = accounts(); a[id] = acc; store.write({ accounts: JSON.stringify(a) }); }
+const me = u => ({ id: u.id, name: u.name || '', kind: roleClass(u) });   // 21p: who is logged in, without any shop data
+// 21p (Google Play): a customer deletes their own account: the login, its sessions and everything kept only for them go
+// (profile with addresses, bikes, cart and wishlist, wallet, chat, notification choices, papers, reviews they wrote);
+// bills, orders and warranties stay with the shop as tax records
+const CUST_GONE = ['cu', 'cwl', 'chats', 'nprefs', ...Object.values(CUST_OWN), 'accounts'];
+function deleteCustomer(id) {
+  const w = {}, done = [];
+  for (const k of CUST_GONE) { const v = stateVal(k); if (v && typeof v === 'object' && !Array.isArray(v) && Object.hasOwn(v, id)) { const o = { ...v }; delete o[id]; w[k] = JSON.stringify(o); done.push(k); } }
+  const rv = stateVal('reviews'); if (Array.isArray(rv) && rv.some(r => r && r.m === id)) { w.reviews = JSON.stringify(rv.filter(r => !(r && r.m === id))); done.push('reviews'); }
+  if (Object.keys(w).length) store.write(w);
+  for (const [t, s] of store.kvAll('sess')) if (s.uid === id) store.kvDel('sess', t);
+  store.kvDel('otp', id); SYNC_SEEN.delete(id);
+  return done;
+}
 function hashPw(pw) { const salt = crypto.randomBytes(16); const h = crypto.scryptSync(String(pw), salt, 32); return salt.toString('hex') + ':' + h.toString('hex'); }
 function checkPw(pw, stored) { if (!stored) return false; const [s, h] = String(stored).split(':'); if (!s || !h) return false; const x = crypto.scryptSync(String(pw), Buffer.from(s, 'hex'), 32); const y = Buffer.from(h, 'hex'); return x.length === y.length && crypto.timingSafeEqual(x, y); }
 export { hashPw };
@@ -349,6 +368,16 @@ async function api(req, res, url, user) {
   if (p === '/api/health' && m === 'GET') return json(res, 200, { ok: true, rev: store.rev(), sqlite: HAS_SQLITE, version: VERSION, photoAi: PHOTO_AI.summary(), billAi: BILL_AI.summary(), mysql: MIRROR.summary() });
   if (p === '/api/boot' && m === 'GET') { if (!user && cookies(req).bp_s) setSession(req, res, '', true); return json(res, 200, full(user)); }
 
+  if (p === '/api/me' && m === 'GET') return json(res, 200, { user: user ? me(user) : null });   // 21p: for the account deletion page
+  if (p === '/api/account/delete' && m === 'POST') {   // 21p (Google Play): Account > Delete my account, and bikepharma.com/delete-account
+    if (!user) return json(res, 401, { error: 'Please log in again.' });
+    if (roleClass(user) !== 'customer') return json(res, 200, { error: 'Mechanic and staff logins are business accounts: the shop closes them. Please call Bike Pharma.' });
+    if (body.confirm !== 'DELETE') return json(res, 200, { error: 'Tick the box to confirm.' });
+    const done = deleteCustomer(user.id);
+    console.log(new Date().toISOString(), 'account deleted by its owner', user.id.slice(0, 2) + '******' + user.id.slice(-2), done.join(' '));
+    setSession(req, res, '', true);
+    return json(res, 200, { ok: true });
+  }
   if (p === '/api/otp' && m === 'POST') {
     const id = normId(body.id);
     if (!id) return json(res, 200, { error: 'Enter your mobile number or email.' });
@@ -360,13 +389,16 @@ async function api(req, res, url, user) {
     if (acc && (isEmail || (STAFF_ROLES.includes(acc.role) && !(OTP.real && /^[6-9]\d{9}$/.test(id))))) return json(res, 200, { kind: 'password', name: acc.name });
     if (!acc && isEmail) return json(res, 200, { error: 'This email isn’t registered. Staff logins are created by the Bike Pharma Admin.' });
     if (!/^[6-9]\d{9}$/.test(id)) return json(res, 200, { error: 'Enter a valid 10-digit mobile number.' });
+    // 21p: the account deletion page sends no SMS to a number without a customer account
+    if (body.del && (!acc || roleClass({ id, ...acc }) !== 'customer')) return json(res, 200, { error: acc ? 'This number is a mechanic or staff login. The shop closes those: please call Bike Pharma.' : 'No Bike Pharma account uses this number.' });
     // real SMS: a new OTP every 30 s at most, 5 SMS an hour per number, 20 an hour per IP (so nobody can empty the SMS balance)
     const prev = store.kvGet('otp', id);
     if (OTP.real && prev && prev.sent && Date.now() - prev.sent < 30e3) return json(res, 200, { error: 'Please wait ' + Math.ceil((30e3 - (Date.now() - prev.sent)) / 1000) + ' seconds before asking for a new OTP.' });
     if (OTP.real ? (limited('otph:' + id, 5, 3600e3) || limited('otphip:' + ipOf(req), 20, 3600e3)) : (limited('otp:' + id, 5, 600e3) || limited('otpip:' + ipOf(req), 40, 600e3))) return json(res, 200, { error: 'Too many OTP requests. Please try again later.' });
-    const code = makeOtp(OTP);
+    const rv = !!REVIEW && id === REVIEW.id && (!acc || roleClass({ id, ...acc }) === 'customer');   // 21p: Google's reviewers: the fixed OTP, no SMS
+    const code = rv ? REVIEW.otp : makeOtp(OTP);
     store.kvSet('otp', id, { code, exp: Date.now() + 5 * 60e3, tries: 0, sent: Date.now() });
-    const d = await deliverOtp(OTP, id, code);
+    const d = rv ? { ok: true } : await deliverOtp(OTP, id, code);
     if (!d.ok) { store.kvDel('otp', id); return json(res, 200, { error: d.error }); }
     return json(res, 200, { kind: 'otp', signup: !acc });
   }
@@ -389,14 +421,14 @@ async function api(req, res, url, user) {
       if (!acc) {
         const name = safeText(String((body.signup && body.signup.name) || '').trim().slice(0, 60));
         if (!name) return json(res, 200, { error: 'Enter your name to register.' });
-        acc = { role: 'customer', name, label: 'Customer', sub: 'Customer account · joined ' + today(), status: 'active', joined: today() };
+        acc = { role: 'customer', name, label: 'Customer', sub: 'Customer account · joined ' + today() + (REVIEW && id === REVIEW.id ? ' · Google Play review login' : ''), status: 'active', joined: today() };
         setAccount(id, acc);
       }
     }
     if (acc.status === 'pending') return json(res, 200, { error: loginError.pending });
     MON.loginOk({ id, ...acc }, ipOf(req), roleClass({ id, ...acc }) === 'staff');
     const t = sessionCreate(id); setSession(req, res, t);
-    return json(res, 200, full({ id, ...acc }));
+    return json(res, 200, body.lite ? { user: me({ id, ...acc }) } : full({ id, ...acc }));   // 21p: lite = the deletion page, no shop data
   }
 
   if (p === '/api/logout' && m === 'POST') {
@@ -904,6 +936,7 @@ function serveStatic(req, res, url, user) {
   if (rel === '/' || rel === '') rel = '/index.html';
   rel = path.posix.normalize(rel).replace(/^\/+/, '');
   if (rel.includes('..') || rel.includes('\0')) return json(res, 404, { error: 'Not found' });
+  { const pg = rel.replace(/\/+$/, ''); if (Object.hasOwn(PAGES, pg)) rel = PAGES[pg]; }   // 21p: /privacy and /delete-account
   const top = rel.split('/')[0];
   if (PROTECTED.includes(top) && roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: 'Staff login needed' });
   const isCat = top === 'cat' && rel.endsWith('.json');

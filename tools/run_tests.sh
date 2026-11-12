@@ -3,7 +3,7 @@
 cd "$(dirname "$0")/.."
 T=/tmp/claude-0/bptest
 # update 11m: the old brand lists are gone from public/cat (Sam 2026-10-23); the tests use them from git (11l) in their own public folder
-P=/tmp/claude-0/bptest-pub; rm -rf $P; mkdir -p $P; git archive 9dba268 public/cat | tar -x -C $P --strip-components=1; cp -r public/app.html public/index.html public/vendor $P/; cp -r public/cat/. $P/cat/
+P=/tmp/claude-0/bptest-pub; rm -rf $P; mkdir -p $P; git archive 9dba268 public/cat | tar -x -C $P --strip-components=1; cp -r public/app.html public/index.html public/privacy.html public/delete-account.html public/vendor $P/; cp -r public/cat/. $P/cat/
 export PUBLIC_DIR=$P
 for pid in $(pgrep -x node); do if tr "\0" "\n" < /proc/$pid/environ 2>/dev/null | grep -qx "PORT=3015"; then kill $pid; fi; done
 sleep 0.8
@@ -18,6 +18,7 @@ node tools/test.mjs; r=$?
 node tools/test_9c.mjs || r=1
 node tools/test_back.mjs || r=1
 node tools/test_otp10t.mjs || r=1   # update 10t: real OTP by Renflair SMS (own server on 3018, mock Renflair on 3031)
+node tools/test_play21p.mjs || r=1   # 21p: Google Play pages (privacy, delete account), reviewers' test login, account deletion (own server on 3035, mock SMS on 3036)
 node tools/test_catguard.mjs || r=1   # update 11h: catalogue guard (daily amount per login, log, Admin unlock; own server on 3019)
 node tools/test_herobuild.mjs || r=1   # update 11k: Hero made on the server from the Raw Data upload (own server on 3018)
 node tools/test_hondabuild.mjs || r=1   # update 11z: Honda made on the server from the whole Honda Catalogue folder (own server on 3026)

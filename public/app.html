@@ -6067,19 +6067,29 @@ async function apScanCam(){const o=APS;if(!o)return;
    apScanSheet();v=document.getElementById('aps-v');if(!v){apScanStop();return;}v.srcObject=o.st;try{await v.play();}catch(e){}if(APS!==o)return;if(o.msg)apScanMsg(o.msg);}
   o.re=0;if(APS!==o||!v.videoWidth){if(APS===o)o.t=setTimeout(tick,200);return;}
   let codes=[],qp=null;   /* qp: a Honda QR's top-left corner, the direction of its top edge and its side, in the camera frame */
-  const isH=x=>/hondagenuineparts\.|hondacarindia\.com\/pa\?uid=/i.test(x);
-  try{if(bd){try{const B=await bd.detect(v);codes=B.map(b=>b.rawValue).filter(Boolean);const h=B.find(b=>isH(b.rawValue||'')&&b.cornerPoints&&b.cornerPoints.length>=2);
+  const isH=x=>/hondagenuineparts\.|hondacarindia\.com\/pa\?uid=/i.test(x),isL=x=>isH(x)||apReQR(x);
+  try{if(bd){try{const B=await bd.detect(v);codes=B.map(b=>b.rawValue).filter(Boolean);const h=B.find(b=>isL(b.rawValue||'')&&b.cornerPoints&&b.cornerPoints.length>=2);
      if(h){const [a,b2]=h.cornerPoints;qp={x:a.x,y:a.y,ang:Math.atan2(b2.y-a.y,b2.x-a.x),s:Math.hypot(b2.x-a.x,b2.y-a.y)};}}catch(e){bd=null;Z=await scZXing();}}
    /* update 20p: every second look is at the camera's full sharpness (a small QR on a big label), the other at half (a blurred one) */
-   else if(Z){o.n=(o.n||0)+1;const k=Math.min(1,(o.n%2?960:1920)/Math.max(v.videoWidth,v.videoHeight));c.width=Math.round(v.videoWidth*k);c.height=Math.round(v.videoHeight*k);c.getContext('2d').drawImage(v,0,0,c.width,c.height);
-    const pts=[];codes=scZXRead(Z,c,pts).filter(Boolean);const h=pts.find(x=>isH(x[0])&&x[1].length>=3);
+   else if(Z){o.n=(o.n||0)+1;const md=o.n%3,vw=v.videoWidth,vh=v.videoHeight;   /* update 20x: every third look is at the middle half of the picture, twice as big (a small QR on a box held away) */
+    const ox=md===2?vw/4:0,oy=md===2?vh/4:0,sw=md===2?vw/2:vw,sh=md===2?vh/2:vh,k=md===2?Math.min(2,1920/Math.max(sw,sh)):Math.min(1,(md?960:1920)/Math.max(vw,vh));c.width=Math.round(sw*k);c.height=Math.round(sh*k);c.getContext('2d').drawImage(v,ox,oy,sw,sh,0,0,c.width,c.height);
+    const pts=[];codes=scZXRead(Z,c,pts).filter(Boolean);const h=pts.find(x=>isL(x[0])&&x[1].length>=3);
     if(h){const tl=h[1][1],tr=h[1][2],d=Math.hypot(tr[0]-tl[0],tr[1]-tl[1])/k;const ang=Math.atan2(tr[1]-tl[1],tr[0]-tl[0]);
      /* ZXing gives the middles of the corner squares: the QR's own corner is a little out from there, its side a little longer */
-     qp={x:tl[0]/k-.16*d*(Math.cos(ang)-Math.sin(ang)),y:tl[1]/k-.16*d*(Math.sin(ang)+Math.cos(ang)),ang,s:d*1.32};}}}catch(e){}
+     qp={x:ox+tl[0]/k-.16*d*(Math.cos(ang)-Math.sin(ang)),y:oy+tl[1]/k-.16*d*(Math.sin(ang)+Math.cos(ang)),ang,s:d*1.32};}}}catch(e){}
   if(APS!==o)return;
   /* update 20p (Sam 2026-11-11, his choice A): Honda's box QR is only a link with a per-box code (hondagenuineparts...?uid=), no part
      number in it. The number printed beside the QR is read from the camera picture instead: the label is cut out and set straight by
      the QR's own place and tilt, then read. Nothing is sent to Honda. */
+  /* update 20x (Sam 2026-11-12, 9 box photos): Royal Enfield's box QR is only the box's serial (7 digits, month letter, year, serial),
+     no part number in it. The "PART NO:" line printed under the QR is read from the camera picture instead, like Honda's. */
+  const rq=codes.find(apReQR);
+  if(rq){const rest=codes.filter(x=>!apReQR(x));if(rest.length&&apScanUse(rest,{min:70}))return;
+   let done=false;
+   if(qp&&qp.s>20){if(!(o.hn>=3))apScanMsg('Royal Enfield QR seen. Hold still, reading the PART NO printed under it…');
+    o.re=1;try{done=await apReRead(v,qp,o);}catch(e){try{console.warn('apReRead',e);}catch(x){}}
+    if(done||APS!==o)return;}
+   o.t=setTimeout(tick,qp?(o.hn>=3?2500:600):300);return;}
   const hq=codes.find(isH);
   if(hq){const rest=codes.filter(x=>!isH(x));if(rest.length&&apScanUse(rest,{min:70}))return;   /* a barcode with the number in the same picture wins */
    let done=false;
@@ -6126,8 +6136,8 @@ async function apScanPhoto(file){if(!file||!APS)return;apScanMsg('Reading the ph
  if(!apScanUse(codes.concat(lines0),{ocr:1,min:51}))apScanMsg('No part number found on the label. Try again closer, or type the number.');}
 /* update 20p: the white Honda label around its QR, cut out of the camera picture and set straight. The label is about 7 QR-widths wide
    and 4 high, the QR near its lower right; the part number is the first line, top left */
-function apHondaCrop(v,q){const k=Math.min(2.5,Math.max(.5,250/q.s)),W=Math.round(7.8*q.s*k),H=Math.round(4.4*q.s*k);const o=document.createElement('canvas');o.width=W;o.height=H;
- const x=o.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,W,H);x.translate(6.1*q.s*k,2.5*q.s*k);x.scale(k,k);x.rotate(-q.ang);x.translate(-q.x,-q.y);x.drawImage(v,0,0);return o;}
+function apHondaCrop(v,q,g){g=g||[7.8,4.4,6.1,2.5];const k=Math.min(2.5,Math.max(.5,250/q.s)),W=Math.round(g[0]*q.s*k),H=Math.round(g[1]*q.s*k);const o=document.createElement('canvas');o.width=W;o.height=H;
+ const x=o.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,W,H);x.translate(g[2]*q.s*k,g[3]*q.s*k);x.scale(k,k);x.rotate(-q.ang);x.translate(-q.x,-q.y);x.drawImage(v,0,0);return o;}
 /* The number line alone is read first (quick), then the whole label as a block. The reader mixes up look-alike letters in Honda's print
    (0/O, 9/S), so a number is taken ONLY when a catalogue or the shop's list knows it (look-alikes are tried both ways there);
    a number no list knows is shown to be checked and typed, never filled in by itself */
@@ -6143,6 +6153,29 @@ async function apHondaRead(v,q,o){const c=apHondaCrop(v,q),w=await apOcrW(),k=c.
  if(APS!==o)return true;
  o.hn=(o.hn||0)+1;const seen=all.flatMap(l=>String(l).toUpperCase().replace(/[^A-Z0-9]+/g,' ').split(' ')).find(t=>/^\d{4}[A-Z0-9]{7,10}$/.test(t)&&/[A-Z]/.test(t));
  o.msg=o.hn<3?'Honda QR seen. Reading the printed number again, hold the label flat and close…':(seen?'Read “'+seen+'”, but no list has this number. Check it on the box and type it, or hold closer.':'The printed number is not clear. Hold closer, or use Take photo, or type the number.');apScanMsg(o.msg);
+ return false;}
+/* update 20x: Royal Enfield box label. The QR's text is the box serial: 7 digits, the month as a letter (A-L), 2 digits of the year,
+   7 digits, a letter, 4 digits (3002260B264814996H5203 = Feb 2026). The lines under the QR (PART NO, name, MRP) are cut out by the
+   QR's place and tilt and read. A number a list knows is taken at once; one no list knows only when two reads in a row give the same. */
+const apReQR=x=>/^\d{7}[A-L]\d{9}[A-Z]\d{4}$/.test(String(x||'').trim());
+const apRePn=lines=>{const D={O:'0',Q:'0',D:'0',I:'1',L:'1',S:'5',B:'8',Z:'2',G:'6'};
+ /* Royal Enfield numbers: 6 or 7 digits (145575, 1100684) or letters then 5 digits (RAP00076, KAA00194), then often /A. In the digit
+    part a letter is a misread digit (O for 0), and a 0 read twice as "0O" is one 0 */
+ const fix=t=>{const h=/^[A-Z]{2,3}(?=[A-Z0-9]{5,6}$)/.exec(t),a=h?h[0]:'';let b=t.slice(a.length);const n=a?5:0;
+  if(n&&b.length===n+1)b=b.replace(/0[OQD]|[OQD]0/,'0');b=b.replace(/[A-Z]/g,ch=>D[ch]||ch);return a+b;};
+ for(const l of lines){const m=/PART\s*N[O0Q]\s*[:;.,]?\s*([A-Z0-9]{5,9})\s*(?:[\/|]\s*([A-Z]))?(?![A-Z0-9])/.exec(String(l).toUpperCase());if(!m)continue;
+  const t=fix(m[1]);if(/^(?:\d{6,7}|[A-Z]{2,3}\d{5})$/.test(t))return t+(m[2]?'/'+m[2]:'');}return '';};
+async function apReRead(v,q,o){const c=apHondaCrop(v,q,[5.6,1.9,2.9,-1.05]),w=await apOcrW();let all=[];
+ try{if(w.psm!=='6'){await w.setParameters({tessedit_pageseg_mode:'6'});w.psm='6';}
+  const r=await w.recognize(c);all=String(r.data&&r.data.text||'').split(/\r?\n/).filter(l=>l.trim());}
+ finally{c.width=c.height=0;if(w.psm!=='3'){try{await w.setParameters({tessedit_pageseg_mode:'3'});w.psm='3';}catch(e){}}}
+ if(APS!==o)return true;
+ const pn=apRePn(all);
+ if(pn){const nd=apScanNeed([pn]);if(nd.length){try{catNeed(nd);}catch(e){}for(let i=0;i<60&&APS===o&&nd.some(e=>e.st===0||e.st===1);i++)await new Promise(r=>setTimeout(r,250));}
+  if(APS!==o||apScanUse([pn],{min:100}))return true;
+  if(o.rl===pn&&apScanUse([pn],{min:10}))return true;
+  o.rl=pn;o.msg='Read “'+pn+'”. Hold still, checking it once more…';apScanMsg(o.msg);return false;}
+ o.rl='';o.hn=(o.hn||0)+1;o.msg=o.hn<3?'Royal Enfield QR seen. Reading the PART NO again, hold the label flat and close…':'The PART NO line is not clear. Hold closer, or use Take photo, or type the number.';apScanMsg(o.msg);
  return false;}
 const apScanNeed=lines=>[...new Set(apScanUse(lines,{ocr:1,rank:1}).slice(0,6).flatMap(x=>{try{return catRoute(catPk(x[2])).l.slice(0,2);}catch(e){return [];}}))].filter(e=>e.st!==2);
 /* the label reader stays ready while the shop scans one box after another */

@@ -909,6 +909,7 @@ function serveStatic(req, res, url, user) {
     }
   }
   let file = path.join(PUBLIC_DIR, rel);
+  if (rel === '.well-known/assetlinks.json') file = path.join(ROOT, '.well-known', 'assetlinks.json');   // 20y: the Android app's link file (Chrome opens the app full screen only when this lists its key); nginx may give the same file from the site folder
   if (HERO_SERVED.has(rel) && fs.existsSync(path.join(HERO_OUT, path.basename(rel)))) file = path.join(HERO_OUT, path.basename(rel));
   // 13a: the aftermarket parts list, made on Sam's Mac from All Catalogues > After Market Brands and uploaded in Admin > More > Catalogue files
   if (rel === 'cat/am.json' && fs.existsSync(path.join(FILES_DIR, 'catalogues', 'aftermarket', 'am_build.json'))) file = path.join(FILES_DIR, 'catalogues', 'aftermarket', 'am_build.json');

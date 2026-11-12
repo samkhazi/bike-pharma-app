@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.bikepharma.app",
+      "sha256_cert_fingerprints": [
+        "16:A7:1D:FF:A5:B6:47:D8:35:9E:28:01:C6:39:CB:7A:BD:3E:AE:77:25:A8:14:D5:31:33:D8:7D:F8:66:87:A7"
+      ]
+    }
+  }
+]

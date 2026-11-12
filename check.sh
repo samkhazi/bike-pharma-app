@@ -32,6 +32,8 @@ c=$(code "${NG[@]}" "https://$DOM/"); [ "$c" = 200 ] && ok "https://$DOM/ khulta
 LP=$(curl -sk --max-time 20 "${NG[@]}" "https://$DOM/" 2>/dev/null || true)
 if [ -z "$LP" ]; then bad "landing page nahi mili"; elif printf '%s' "$LP" | grep -q "Back to website"; then bad "purani landing file (Back to website abhi bhi hai)"; else ok "landing page nayi wali hai"; fi
 c=$(code "${NG[@]}" "https://$DOM/app.html"); [ "$c" = 200 ] && ok "app (login) khulta hai" || bad "/app.html ka jawab $c"
+al=$(curl -sk --max-time 12 "${NG[@]}" "https://$DOM/.well-known/assetlinks.json" 2>/dev/null || true)   # 20y: Android app link file
+case "$al" in *com.bikepharma.app*) ok "Android app ka link theek (app full screen khulega)";; *) bad "Android app ka link file nahi mila (/.well-known/assetlinks.json): app me upar address bar dikhega. Ye line mujhe bhejo";; esac
 c=$(code "${NG[@]}" "https://$DOM/vendor/zxing.min.js")
 [ "$c" = 200 ] && ok "scripts load hote hain" || bad "/vendor/zxing.min.js ka jawab $c: nginx .js/.png files site folder se de raha hai, app se nahi (CloudPanel Vhost me static files wala block)"
 p=".check-$$.js"; echo "x" > "$p"; c=$(code "${NG[@]}" "https://$DOM/$p"); rm -f "$p"

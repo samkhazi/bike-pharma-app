@@ -5,7 +5,8 @@
       "namespace": "android_app",
       "package_name": "com.bikepharma.app",
       "sha256_cert_fingerprints": [
-        "16:A7:1D:FF:A5:B6:47:D8:35:9E:28:01:C6:39:CB:7A:BD:3E:AE:77:25:A8:14:D5:31:33:D8:7D:F8:66:87:A7"
+        "16:A7:1D:FF:A5:B6:47:D8:35:9E:28:01:C6:39:CB:7A:BD:3E:AE:77:25:A8:14:D5:31:33:D8:7D:F8:66:87:A7",
+        "70:57:90:E1:8D:DC:97:0F:7C:61:D6:CC:25:82:B6:FE:92:3C:D2:0C:2B:00:50:AD:35:6C:2E:87:4A:C7:01:9F"
       ]
     }
   }

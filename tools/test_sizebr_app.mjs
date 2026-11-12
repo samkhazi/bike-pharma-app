@@ -11,10 +11,10 @@ await p.evaluate(()=>{XR={b:['Hero','Honda'],m:[['Splendor'],['Shine']],x:{'4513
   g:[['Honda design 12209-GB4 (other supplier or revision)',1,{0:[['12209-GB4-680',[0]],['12209-GB4-681',[0]]],1:[['12209-GB4-682',[0]]]}],['Honda design 45131-GZ0',1,{0:[['45131-GZ0-006L',[0]]],1:[['45131-GZ0-006',[0]]]}]],
   gk:{'12209GB4680':[0],'12209GB4682':[0],'45131GZ0006L':[1]}};XR_ST=2;});
 let h=await p.evaluate(()=>catOtherBr({vb:'Hero',part:'12209-GB4-680',pk:'12209GB4680'}));
-ok(/check before fitting/.test(h)&&/Honda<\/span><b class="num"[^>]*>12209-GB4-682/.test(h),'Hero 12209-GB4-680 shows Honda 12209-GB4-682, marked check before fitting');
+ok(/check before fitting/i.test(h)&&/Honda<\/span><b class="num"[^>]*>12209-GB4-682/.test(h),'Hero 12209-GB4-680 shows Honda 12209-GB4-682, marked check before fitting');
 ok(!/12209-GB4-681/.test(h),"the part's own brand numbers are not repeated");
 h=await p.evaluate(()=>catOtherBr({vb:'Honda',part:'12209-GB4-682',pk:'12209GB4682'})); ok(/Hero<\/span><b class="num"[^>]*>12209-GB4-680/.test(h)&&/12209-GB4-681/.test(h),'from the Honda side both Hero numbers show');
-h=await p.evaluate(()=>catOtherBr({vb:'Hero',part:'45131-GZ0-006L',pk:'45131GZ0006L'})); ok((h.match(/45131-?GZ0-?006</g)||[]).length===1&&!/check before fitting/.test(h),'a number already shown as the same part is not shown again');
+h=await p.evaluate(()=>catOtherBr({vb:'Hero',part:'45131-GZ0-006L',pk:'45131GZ0006L'})); ok((h.match(/45131-?GZ0-?006</g)||[]).length===1&&!/check before fitting/i.test(h),'a number already shown as the same part is not shown again');
 ok(await p.evaluate(()=>catSizeBr({vb:'Hero',part:'99999-AAA-000',pk:'99999AAA000'}))==='','a part with no group shows nothing');
 ok(!errs.length,'no page errors '+errs.join(';'));
 await b.close(); process.exit(fails?1:0);

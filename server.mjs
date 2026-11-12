@@ -24,6 +24,7 @@ import { billAi } from './lib/billai.mjs';
 import { makeAlt } from './lib/altagent.mjs';
 import { pnLookup } from './lib/pnlook.mjs';
 import { startMirror } from './lib/mysqlmirror.mjs';
+import { sameReport } from './lib/samereport.mjs';
 import { catGuard } from './lib/catguard.mjs';
 import { spawn } from 'node:child_process';
 import { HERO_RAW, HERO_OPT, HERO_XL } from './lib/herobuild.mjs';
@@ -55,6 +56,7 @@ const OTP = otpConfig(env);
 const store = openStore(DATA_DIR);
 const SYNC_SEEN = new Map();   // 13f: each login's last push ids and their answers
 const MIRROR = startMirror(store, process.env);   // MySQL copy for phpMyAdmin (10m), off unless MYSQL_* are in .env
+const SAMEREP = sameReport({ file: path.join(DATA_DIR, 'xref-pairs.json'), store });
 const CATG = catGuard(store, DATA_DIR, env); CATG.tidy(); setInterval(() => CATG.tidy(), 86400e3).unref();   // catalogue limits + log (11h)
 // Hero made on the server from Sam's Raw Data upload (11k) and the PDF > Models index (11m: hero_pdf_index.json, its parts + diagram pages): DATA_DIR/cat/hero.json, hero-dg.json and app.html (its Hero part number line)
 // are served instead of the public ones; made again when the Raw Data or the app's own Hero files are newer
@@ -318,18 +320,29 @@ async function api(req, res, url, user) {
   }
   if (p === '/api/alt') return ALT.api(m, body, user, res);
   // 19y (Sam 2026-11-11): two part numbers of different brands that staff mark as the same part (RE 585643/A = Yamaha 93315-317Y4); every staff login
+  if (p === '/api/samereport' && m === 'GET') {   // 21n: Admin > Same parts
+    if (!user || user.role !== 'admin') return json(res, user ? 403 : 401, { error: 'Only Admin' });
+    const g = k => String(url.searchParams.get(k) || '').slice(0, 80), tab = ['c', 'k', 's'].includes(g('tab')) ? g('tab') : 'c';
+    if (g('csv')) { const b = Buffer.from('\ufeff' + SAMEREP.csv(tab, g('q'), g('bp')));
+      res.writeHead(200, { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Length': b.length, 'Content-Disposition': 'attachment; filename="same-parts-' + ({ c: 'catalogue', k: 'to-check', s: 'staff' })[tab] + '.csv"', 'Cache-Control': 'no-store' }); return res.end(b); }
+    return json(res, 200, SAMEREP.page(tab === 's' ? 'c' : tab, g('q'), g('bp'), Math.max(0, +g('off') || 0), 50));
+  }
   if (p === '/api/same') {
     if (roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: user ? 'Staff login needed' : 'Please log in again' });
-    if (m === 'GET') return json(res, 200, { list: store.kvAll('samepart').map(([, v]) => v) });
+    if (m === 'GET') return json(res, 200, { list: store.kvAll('samepart').map(([, v]) => v), wrong: store.kvAll('samewrong').map(([k]) => k) });
     if (m !== 'POST') return json(res, 405, { error: 'Not allowed' });
     const pkk = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, ''), txt = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f<>]/g, ' ').trim().slice(0, n);
     const side = x => x && typeof x === 'object' ? { pn: txt(x.pn, 40), vb: txt(x.vb, 40), name: txt(x.name, 120), ms: (Array.isArray(x.ms) ? x.ms : []).slice(0, 8).map(v => txt(v, 60)).filter(Boolean) } : null;
     const a = side(body && body.a), b = side(body && body.b), ka = a ? pkk(a.pn) : '', kb = b ? pkk(b.pn) : '';
     if (ka.length < 5 || kb.length < 5 || ka === kb) return json(res, 400, { error: 'Give two different part numbers' });
     const key = [ka, kb].sort().join('|');
+    if (body.wrong != null) {   // 21n: Admin says two numbers of the "to check" list are NOT the same part (or takes that back)
+      if (user.role !== 'admin') return json(res, 403, { error: 'Only Admin' });
+      if (body.wrong) store.kvSet('samewrong', key, { a, b, by: txt(user.name || user.id, 60), at: new Date().toISOString() }); else store.kvDel('samewrong', key);
+      console.log(new Date().toISOString(), 'same part', body.wrong ? 'marked wrong' : 'wrong mark removed', a.pn, b.pn, 'by', user.id); return json(res, 200, { ok: true }); }
     if (body.del) { store.kvDel('samepart', key); console.log(new Date().toISOString(), 'same part removed', a.pn, b.pn, 'by', user.id); return json(res, 200, { ok: true }); }
     if (store.kvAll('samepart').length >= 20000) return json(res, 400, { error: 'Too many links' });
-    store.kvSet('samepart', key, { a, b, by: txt(user.name || user.id, 60), at: new Date().toISOString() });
+    store.kvSet('samepart', key, { a, b, by: txt(user.name || user.id, 60), byId: txt(user.id, 60), at: new Date().toISOString() }); store.kvDel('samewrong', key);
     console.log(new Date().toISOString(), 'same part saved', a.pn, '=', b.pn, 'by', user.id);
     return json(res, 200, { ok: true });
   }

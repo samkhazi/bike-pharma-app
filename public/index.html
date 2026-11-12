@@ -1354,8 +1354,12 @@ window.addEventListener('load',revealVisible);
 </div>
 <script>
 /* Log in: app.html, loaded into the frame as its own page (same site, same files) */
-(()=>{const v=document.getElementById('appv'),f=document.getElementById('appf');let on=false;
- const load=()=>{if(on)return;on=true;fetch('app.html').then(r=>{if(!r.ok)throw 0;return r.text();}).then(t=>{f.srcdoc=t;}).catch(()=>{f.src='app.html';});};
+(()=>{const v=document.getElementById('appv');let f=document.getElementById('appf'),on=false;
+ /* 21o: the frame is made with its address already set (the real app.html, not a pasted copy), so the browser keeps no empty
+    "about:srcdoc" step in Back, and a Back step always has a real page to show */
+ const load=()=>{if(on)return;on=true;const n=document.createElement('iframe');n.id='appf';n.title=f.title;n.src='app.html';f.replaceWith(n);f=n;};
+ /* safety net: if Back still leaves the frame on an empty page, put the app back (without a new Back step) */
+ const heal=()=>{if(!on||v.hidden)return;setTimeout(()=>{try{const w=f.contentWindow,d=f.contentDocument;if(d&&d.readyState==='complete'&&(String(d.URL).indexOf('about:')===0||!d.body||!d.body.firstElementChild))w.location.replace('app.html');}catch(e){}},600);};
  const open=()=>{load();v.hidden=false;document.body.classList.add('appopen');document.documentElement.classList.remove('bp-in');setTimeout(()=>{try{f.focus();}catch(e){}},50);};
  const close=()=>{v.hidden=true;document.body.classList.remove('appopen');};
  const inApp=()=>{try{return localStorage.getItem('bp_in')==='1';}catch(e){return false;}};
@@ -1364,7 +1368,7 @@ window.addEventListener('load',revealVisible);
  document.addEventListener('click',e=>{const a=e.target.closest('[data-login]');if(a){e.preventDefault();if(location.hash!=='#login'){try{history.pushState(null,'','#login');}catch(x){}}open();}});
  const hl=document.querySelector('header .logo .lg-light'),am=v.querySelector('.abar .mark');if(hl&&am){const l=hl.cloneNode();l.className='mark mark-l';l.removeAttribute('style');am.after(l);}
  const tb=document.getElementById('themeBtn');if(tb){const t=tb.cloneNode(true);t.id='appTheme';t.addEventListener('click',()=>tb.click());v.querySelector('.abar').append(t);}
- if(location.hash==='#login')open();window.addEventListener('hashchange',sync);window.addEventListener('popstate',sync);})();
+ if(location.hash==='#login')open();window.addEventListener('hashchange',sync);window.addEventListener('popstate',()=>{sync();heal();});window.addEventListener('pageshow',heal);})();
 </script>
 <script>(function(){var hero=document.querySelector('.hero'),art=document.querySelector('.hero-art'),xv=document.getElementById('xv'),xp=document.getElementById('xp');if(!hero||!art||!xv)return;
 var parts=[].slice.call(xv.querySelectorAll('.part')),AR=+xv.getAttribute('data-ar')||1.5,rm=matchMedia('(prefers-reduced-motion: reduce)').matches;

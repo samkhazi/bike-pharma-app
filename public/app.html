@@ -718,9 +718,11 @@ const NAVS={
 const HOME={customer:'home',mechanic:'mhome',billing:'bhome',sales:'shome',manager:'mghome',inventory:'ihome',admin:'ahome'};
 function cur(){return S.stack[S.stack.length-1];}
 function go(s,p={}){S.stack.push({s,p});navSave(true);render('push');}
-function back(){if(S.stack.length>1){if(NAVH&&NAVH.on&&NAVH.i>0&&history.state&&history.state.bpnav){history.back();return;}S.stack.pop();render('back');}}
+function back(){if(S.stack.length>1){if(NAVH&&NAVH.on&&NAVH.i>0&&HIST.state&&HIST.state.bpnav){HIST.back();return;}S.stack.pop();render('back');}}
 function tab(s){S.stack=[{s,p:{}}];navSave(true);render('fade');}
-function reset(s,p={}){const was=cur();S.stack=[{s,p}];navSave(!!(S.user&&was&&!NAV_PRE.includes(was.s)&&!NAV_PRE.includes(s)));render('fade');}
+function reset(s,p={}){const was=cur();S.stack=[{s,p}];navSave(!!(S.user&&was&&!NAV_PRE.includes(was.s)&&!NAV_PRE.includes(s)));render('fade');
+ /* 21o: just logged in: the log in steps are left behind, so the first Back on the home screen is not a dead press */
+ if(S.user&&was&&NAV_PRE.includes(was.s)&&!NAV_PRE.includes(s)&&NAVH&&NAVH.on&&NAVH.i>0){try{NAVH.pend=1;HIST.go(-NAVH.i);}catch(e){NAVH.pend=0;}}}
 function refresh(){const ev=window.event;if(ev&&ev.type==='change'&&ev.isTrusted){clearTimeout(refresh._t);refresh._t=setTimeout(refresh,250);return;}clearTimeout(refresh._t);const vp=document.getElementById('vp');const sc=vp.querySelector('.scroll');const top=sc?sc.scrollTop:0;render('');const sc2=vp.querySelector('.scroll');if(sc2)sc2.scrollTop=top;}
 function vpMorph(a,b){if(a.nodeType!==b.nodeType||a.nodeName!==b.nodeName){a.replaceWith(b);return;}
  if(a.nodeType===3||a.nodeType===8){if(a.nodeValue!==b.nodeValue)a.nodeValue=b.nodeValue;return;}if(a.nodeType!==1)return;
@@ -5912,12 +5914,19 @@ function dgMiss(){return '<div class="cap">This diagram is not on the server yet
 
 /* ---------- browser Back / Forward = the app's own screens ---------- */
 var NAVH={on:0,i:0};
+/* 21o: inside the website's frame the Back steps are kept by the website page itself, not by the frame. A frame's own steps are lost on a
+   reload and stay behind as empty steps (Back did nothing, or showed a blank about:srcdoc page); the page's steps come back with it */
+var HWIN=(()=>{try{if(self!==top&&parent.location.origin===location.origin&&parent.document.getElementById('appf'))return parent;}catch(e){}return window;})();
+var HIST=HWIN.history;
 var NAV_PRE=['login','otp','signup','pw','roleok','boot'];
-function navSave(push){if(!NAVH||!NAVH.on)return;let st;try{st=JSON.parse(JSON.stringify(S.stack));}catch(e){return;}if(push)NAVH.i++;try{history[push?'pushState':'replaceState']({bpnav:{i:NAVH.i,st,u:S.uid||null}},'');}catch(e){}navKeep(st);}
+function navSave(push){if(!NAVH||!NAVH.on)return;let st;try{st=JSON.parse(JSON.stringify(S.stack));}catch(e){return;}if(push)NAVH.i++;try{HIST[push?'pushState':'replaceState']({bpnav:{i:NAVH.i,st,u:S.uid||null}},'');}catch(e){}navKeep(st);}
 /* 18z: on bikepharma.com the app runs inside the website's frame, and a reload makes that frame again with an empty history: the open screens are
    also kept in this tab's own store, and start() takes them from there */
 function navKeep(st){try{if(S.uid&&st&&st.length&&!st.some(x=>NAV_PRE.includes(x.s)))sessionStorage.setItem('bp_nav',JSON.stringify({u:S.uid,st}));else sessionStorage.removeItem('bp_nav');}catch(e){}}
-window.addEventListener('popstate',e=>{const h=e.state&&e.state.bpnav;if(!h||!NAVH.on)return;
+function navPop(e){const h=e.state&&e.state.bpnav;if(!NAVH.on)return;
+ /* a step of the website page itself, under the app's first screen: logged in, the app stays, on its first screen, and that step becomes the app's */
+ if(!h){if(HWIN!==window&&S.user&&!NAVH.pend){NAVH.i=0;NAVH.skip=0;try{closeSheet();}catch(err){}if(S.stack.length>1){S.stack=[S.stack[0]];render('back');}navSave(false);}return;}
+ if(NAVH.pend){NAVH.pend=0;NAVH.i=h.i;navSave(false);return;}
  const dir=h.i<NAVH.i?'back':'push';NAVH.i=h.i;let st=h.st||[];const same=(a,b)=>a.every((x,k)=>b[k]&&x&&x.s===b[k].s);
  if(st.length<S.stack.length&&same(st,S.stack))st=S.stack.slice(0,st.length);
  else if(st.length>S.stack.length&&same(S.stack,st))st=S.stack.concat(st.slice(S.stack.length));
@@ -5925,8 +5934,13 @@ window.addEventListener('popstate',e=>{const h=e.state&&e.state.bpnav;if(!h||!NA
  try{closeSheet();}catch(err){}
  /* a screen this login may not see (the login screens once logged in, staff screens after log out): stay where we are.
     Logged in, the website stays behind the app until log out (Sam 2026-10-11): the landing page re-opens the app on Back (bpIn) */
- if(!st.length||!st.every(ok)){navSave(false);return;}
- S.stack=st;render(dir);});
+ if(!st.length||!st.every(ok)){
+  /* 21o: such a step is passed over in the same direction, so Back never seems to do nothing (the log in steps sit under the home screen) */
+  if(dir==='back'&&h.i>0&&(NAVH.skip|0)<8){NAVH.skip=(NAVH.skip|0)+1;HIST.back();return;}
+  NAVH.skip=0;navSave(false);return;}
+ NAVH.skip=0;S.stack=st;render(dir);}
+HWIN.addEventListener('popstate',navPop);
+if(HWIN!==window)window.addEventListener('pagehide',()=>{try{HWIN.removeEventListener('popstate',navPop);}catch(e){}});
 /* tells the landing page (same site) that someone is logged in on this browser */
 function bpIn(on){try{if(on)localStorage.setItem('bp_in','1');else localStorage.removeItem('bp_in');}catch(e){}}
 
@@ -7883,9 +7897,9 @@ async function start(){SCREENS.boot=()=>'<div class="scroll"></div>';S.stack=[{s
  /* 18y (Sam 10 Nov 'refresh karne ke baad wahi page'): a reload keeps the page: the browser still holds this tab's screens (history.state),
     taken back when they are the same login's and every screen is one this login may open; a screen that cannot draw falls back to home */
  let nav0=0;
- if(b.user){try{let h=history.state&&history.state.bpnav,kept=0;if(!h){try{h=JSON.parse(sessionStorage.getItem('bp_nav')||'null');kept=1;}catch(e){h=null;}}const ok=x=>x&&SCREENS[x.s]&&!NAV_PRE.includes(x.s)&&allowed(x.s);
+ if(b.user){try{let h=HIST.state&&HIST.state.bpnav,kept=0;if(!h){try{h=JSON.parse(sessionStorage.getItem('bp_nav')||'null');kept=1;}catch(e){h=null;}}const ok=x=>x&&SCREENS[x.s]&&!NAV_PRE.includes(x.s)&&allowed(x.s);
   if(h&&h.u&&h.u===S.uid&&Array.isArray(h.st)&&h.st.length&&h.st.every(ok)){const home=S.stack;S.stack=h.st;nav0=h.i|0;
-   try{render('');if(kept){nav0=h.st.length-1;try{for(let k=1;k<h.st.length;k++){history[k===1?'replaceState':'pushState']({bpnav:{i:k-1,st:h.st.slice(0,k),u:S.uid}},'');}if(h.st.length>1)history.pushState({bpnav:{i:nav0,st:h.st,u:S.uid}},'');}catch(e){}}}   /* 18z: one history step per open screen, so Back still goes screen by screen */
+   try{render('');if(kept){nav0=h.st.length-1;try{for(let k=1;k<h.st.length;k++){HIST[k===1?'replaceState':'pushState']({bpnav:{i:k-1,st:h.st.slice(0,k),u:S.uid}},'');}if(h.st.length>1)HIST.pushState({bpnav:{i:nav0,st:h.st,u:S.uid}},'');}catch(e){}}}   /* 18z: one history step per open screen, so Back still goes screen by screen */
    catch(e){console.error(e);S.stack=home;nav0=0;render('');}}
   else render('');}catch(e){render('');}}
  else render('');

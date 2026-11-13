@@ -8357,6 +8357,30 @@ html.wv .wv-side{flex:0 0 88px;padding:16px 10px 14px;align-items:center}
 .wv-user:hover{background:none}
 .wv-out{width:44px;height:44px;padding:0;justify-content:center;border-radius:12px}
 .wv-out span{display:none}
+/* 22k (Sam 13 Nov, redesign previews): desktop = white side menu with the full logo, tabs as rows (icon + name), open tab yellow; pages 980px wide and airy; wide tables keep 1240px */
+html.wv{--wvw:980px}
+html.wv .screen:has(.inv-2c,.ro-row,.m3a,.wv-dash,table){--wvw:1240px}
+html.wv .wv-side{flex:0 0 232px;padding:20px 14px 16px;align-items:stretch;background:var(--card);color:var(--ink);border-right:1px solid var(--line);animation:none}
+.wv-logo{width:132px;height:auto;margin:2px 8px 20px;color:var(--ink)}
+.wv-lab{display:block;font-size:10.5px;font-weight:700;letter-spacing:.1em;color:var(--ink5);padding:0 14px 6px}
+.wv-lab:first-of-type{display:none}
+.wv-menu{align-items:stretch;gap:3px}
+.wv-menu~.wv-menu{margin-top:0;padding-top:0;border-top:0}
+.wv-menu+.wv-lab{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.wv-menu button{flex-direction:row;justify-content:flex-start;gap:12px;width:100%;min-height:0;height:auto;padding:11px 14px;border-radius:12px;font-size:14px;font-weight:500;color:var(--ink);text-align:left}
+.wv-menu~.wv-menu button{padding:8px 14px;font-size:13px;color:var(--ink5)}
+.wv-menu button span{display:block;max-width:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.wv-menu button svg{color:inherit}
+.wv-menu button:hover{padding-left:14px;background:var(--paper);color:var(--ink)}
+.wv-menu button.on,.wv-menu button.on:hover{background:var(--y);color:#141414;font-weight:600;padding-left:14px}
+.wv-menu button.on svg{color:#141414}
+.wv-foot{flex-direction:row;align-items:center;justify-content:space-between;gap:10px;padding:14px 6px 0;margin-top:auto;border-top:1px solid var(--line)}
+.wv-out{border:1px solid var(--line);color:var(--ink3)}
+.wv-out:hover{border-color:#D1483A;color:#D1483A;background:rgba(209,72,58,.08)}
+html.wv .screen .pad:not(.fpw){max-width:var(--wvw);padding:24px 28px 56px}
+html.wv .screen .bar{padding:24px max(28px,calc((100% - var(--wvw)) / 2 + 28px)) 0}
+html.wv .screen .foot{padding-inline:max(28px,calc((100% - var(--wvw)) / 2 + 28px))}
+html.wv .sheet.sheet{max-width:480px;border-radius:20px}
 
 /* ---- top bar ---- */
 html.wv .wv-top{display:flex;flex:none;align-items:center;gap:12px;height:70px;padding:0 28px;background:var(--card);border-bottom:1px solid var(--line);position:relative;z-index:2;animation:wvTopIn .5s .1s cubic-bezier(.2,.8,.2,1) both}
@@ -8796,7 +8820,7 @@ let sideKey='';
 function buildSide(){const u=S.user,r=u.role,k=r+'|'+u.name+'|'+LANG+'|'+JSON.stringify(optOv(S.uid)||0);if(sideKey===k)return;sideKey=k;
  const nav=NAVS[r]||[];const x=(XTRA[r]||[]).concat(optExtraList().filter(o=>!(XTRA[r]||[]).some(e=>e[0]===o[3][0])).map(o=>[o[3][0],o[1],'grid',optGo(o[3][0])])).filter(e=>{try{return allowed(e[0]);}catch(_){return false;}}).filter(e=>!nav.some(n=>n[0]===e[0]));
  const acc=nav[nav.length-1];
- side.innerHTML=`<svg class="wv-logo" viewBox="128 0 114 122" role="img" aria-label="Bike Pharma Automobiles"><use href="#logoMark" width="370" height="190"/></svg>
+ side.innerHTML=`<svg class="wv-logo" viewBox="0 0 370 190" role="img" aria-label="Bike Pharma Automobiles"><use href="#logoMark" width="370" height="190"/></svg>
  <div class="wv-lab">Menu</div><nav class="wv-menu"><i class="wv-ind" aria-hidden="true"></i>${nav.map(n=>mBtn(n[0],n[1],n[2],`tab('${n[0]}')`)).join('')}</nav>
  ${x.length?`<div class="wv-lab">Shortcuts</div><nav class="wv-menu"><i class="wv-ind" aria-hidden="true"></i>${x.map(e=>mBtn(e[0],e[1],e[2],e[3],1)).join('')}</nav>`:''}
  <div class="wv-foot"><button class="wv-user" title="${esc(u.name)} · ${esc(u.label||ROLE[r]||r)}${u.sid?' · '+esc(u.sid):''}" onclick="tab('${acc[0]}')"><span class="wv-av">${esc(initials(u.name))}</span></button><button class="wv-out" title="Log out" onclick="logout()">${ic('logout','s20')}<span>Log out</span></button></div>`;

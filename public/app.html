@@ -4662,7 +4662,6 @@ function fitHome(k){const ix=fitIx(k),s=fitSt(),w=fitW(k);
  <button class="btn y" onclick="fitGo()">${k==='b'?'Show batteries':'Show tyres'}</button>
  <div class="fp9-or"><span>or</span></div>
  <div class="fp-in" style="max-width:none"><input id="fit-q" class="fit-q" placeholder="${k==='b'?'Type the battery, like 12 V 5 Ah':'Type a tyre size, like 90/90-12'}" aria-label="${k==='b'?'Battery volt and Ah':'Tyre size'}" autocomplete="off" onkeydown="if(event.key==='Enter')fitSzGo()"><button class="btn y sm" onclick="fitSzGo()">Find</button></div>
- ${VIN_ON?`<div class="fp9-card"><div class="fp9-reg"><b>Have the bike number?</b><div class="fp-in"><input id="fit-reg" placeholder="KA 01 AB 1234 or chassis no." aria-label="Registration or chassis number" autocomplete="off" autocapitalize="characters" spellcheck="false" onkeydown="if(event.key==='Enter')fpGoVin('fit-reg')"><button class="btn y sm" onclick="fpGoVin('fit-reg')">Find</button></div></div></div>`:''}
  <div class="cap">${ix.have} of ${ix.all} bikes have the ${k==='b'?'battery':'tyre size'} in the list.</div>`;}
 const fitRow=(x,i,sub)=>`<button class="fit-row"${x[7]?' disabled':` onclick="fitOpen(${i})"`}><span class="grow"><b>${esc(x[2]||x[1])}</b><span class="cap">${x[1]?esc(x[1])+' · ':''}${esc(x[0])} ${x[7]?'list':'catalogue'}${sub?' · '+esc(sub):''}</span></span><span class="fit-mrp">${x[3]?`<b>${inr(x[3])}</b><span class="cap">MRP</span>`:x[7]?'':'<span class="cap">MRP not listed</span>'}</span></button>`;
 function fitOpen(i){const x=(FIT.cur||[])[i];if(x)xrGo(x[0],x[1]);}

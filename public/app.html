@@ -51,6 +51,13 @@
 .fp9{gap:18px}.fp9-h{font-family:'Chakra Petch',var(--font,sans-serif);font-weight:700;font-size:30px;line-height:1.15;margin:0}.fp9 .fp-sub{margin:4px 0 0}
 .fp9-or{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:13px;font-weight:600}.fp9-or:before,.fp9-or:after{content:"";flex:1;height:1px;background:var(--line)}
 .fp9-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:16px}
+/* 21t: Find Part > Spares / Tyre / Battery */
+.fit-seg{display:flex;gap:4px;padding:4px;border-radius:12px;background:var(--paper)}.fit-seg button{flex:1;border:0;background:transparent;border-radius:9px;padding:10px 8px;font-weight:700;font-size:13px;color:var(--ink5)}.fit-seg button.on{background:var(--y);color:#121212}
+.fit-pick{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;background:var(--card);padding:10px 14px}.fit-pick.off{opacity:.55}.fit-pick .grow{display:flex;flex-direction:column;gap:2px;min-width:0}.fit-pick select{border:0;background:transparent;color:var(--ink);font-weight:700;font-size:15px;padding:2px 0;width:100%;min-width:0}
+.fit-no{flex:none;width:26px;height:26px;border-radius:50%;background:var(--k);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.fit-q{flex:1;min-width:0;height:46px;border:1.5px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);padding:0 12px;font-size:14px;font-weight:600;width:100%}
+.fit-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.fit-tile{display:flex;flex-direction:column;gap:4px;border-radius:12px;background:var(--paper);padding:12px;min-width:0}.fit-tile b{font-size:20px;line-height:1.15}
+.fit-list{gap:0}.fit-row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;border-top:1px solid var(--line);background:transparent;color:var(--ink);padding:11px 0}.fit-list .micro+.fit-row{border-top:0}.fit-row:disabled{opacity:1}.fit-row .grow{display:flex;flex-direction:column;gap:3px;min-width:0}.fit-row b{font-size:13px}.fit-mrp{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:2px}.fit-mrp b{font-size:14px}
 .fp9 .m2-veh{background:none;border:0;padding:0;box-shadow:none;margin:0}.fp9 .m2-veh>.row:first-child{display:none}
 .fp9-reg{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;border-top:1px solid var(--line);padding-top:14px}.fp9-reg .fp-in{display:flex;gap:8px;flex:1;min-width:240px;max-width:460px}
 .fp9-reg input{flex:1;height:44px;border:1px solid var(--line);border-radius:10px;background:var(--paper);padding:0 14px;font:inherit;font-weight:700;font-size:15px;color:var(--ink);min-width:0}
@@ -4618,8 +4625,80 @@ function fpRecGo(i){const it=fpRecGet()[i];if(!it)return;const f=S.ui.fp||(S.ui.
 function fpRecClear(){try{localStorage.removeItem(FP_REC);}catch{}refresh();}
 const fpRecRow=()=>{const a=fpRecGet();if(!a.length)return '';return `<div class="sec"><h3 class="h2">Recent searches</h3><button class="chip" onclick="fpRecClear()">Clear</button></div><div class="row wrap" style="gap:8px">${a.map((it,i)=>`<button class="chip" onclick="fpRecGo(${i})">${ic(it.t==='bike'?'bike':it.t==='reg'?'scan':'search','s16')} ${esc(it.t==='reg'?it.q:it.t==='bike'?it.vb+' '+it.vm+(it.ed&&it.ed!=='Any'?' '+it.ed:it.yr&&it.yr!=='Any'?' '+it.yr:''):it.q+(it.vb&&it.vb!=='Any'?' · '+it.vb+(it.vm&&it.vm!=='Any'?' '+it.vm:''):''))}</button>`).join('')}</div>`;};
 /* 18e (Sam 9 Nov, Figma "Find Part simple"): one search box, the bike picker in one row, bike number box, recent searches; brand tiles, category chips and the catalogue-files card left out */
-function m2Home(f){
- return `<div class="fp-home fp9"><p class="fp-sub">Type a part name or number, or pick the bike.</p>${fpVia()}
+/* 21t (Sam 13 Nov "mujhe Spares dhoondna he ya tyre ya battery", Figma "Tyre and battery (13 Nov)"): Find Part asks what to find.
+   Tyre / Battery: bike brand > model > tyre (battery) brand, then the bike's size from the catalogues (server /api/fit) and what fits it.
+   A bike whose catalogue does not print the size: Admin or Manager types it once. Staff only, MRP only. */
+var FIT={ix:{},bk:{},sz:{},cur:null};
+const fitK=()=>S.ui.fpm==='t'||S.ui.fpm==='b'?S.ui.fpm:'s';
+const fitW=k=>k==='b'?'battery':'tyre';
+const fitSt=()=>S.ui.fit||(S.ui.fit={vb:'',vm:'',mk:'All',side:'F'});
+function fitSeg(k){return `<div class="fit-seg">${[['s','Spares'],['t','Tyre'],['b','Battery']].map(([v,l])=>`<button class="${k===v?'on':''}" onclick="fitMode('${v}')">${l}</button>`).join('')}</div>`;}
+function fitMode(v){const p=cur().p||{};S.ui.fpm=v;fitSt().mk='All';if(p.v==='fit'&&v!=='s'){S.stack[S.stack.length-1]={s:'findpart',p:{v:'fit',k:v,vb:p.vb,vm:p.vm}};navSave(false);render();return;}if(p.v==='fit'||p.v==='fitsz'){back();return;}refresh();}
+function fitGet(store,key,url){const c=store[key];if(c)return c;store[key]={busy:1};api('GET',url).then(j=>{store[key]=j&&!j.error?j:{err:(j&&j.error)||'Could not load'};refresh();}).catch(()=>{store[key]={err:'No network'};refresh();});return store[key];}
+const fitIx=k=>fitGet(FIT.ix,k,'/api/fit?k='+k);
+const fitMk=x=>x[4]?x[4]:x[0]+' genuine';
+function fitSet(f,v){const s=fitSt();s[f]=v;if(f==='vb'){s.vm='';}refresh();}
+function fitGo(){const s=fitSt(),k=fitK();s.side='F';if(!s.vb||!s.vm){toastWarn('Pick the bike brand and the model');return;}go('findpart',{v:'fit',k,vb:s.vb,vm:s.vm});}
+function fitSzGo(){const i=document.getElementById('fit-q'),q=i?i.value.trim():'';if(!q){if(i)i.focus();return;}go('findpart',{v:'fitsz',k:fitK(),q});}
+function fitHome(k){const ix=fitIx(k),s=fitSt(),w=fitW(k);
+ if(ix.busy)return `<div class="card"><div class="cap">Loading the ${w} list…</div></div>`;
+ if(ix.err)return `<div class="card"><div class="errmsg">${esc(ix.err)}</div><button class="btn line sm" onclick="delete FIT.ix['${k}'];refresh()">Try again</button></div>`;
+ const brands=Object.keys(ix.brands||{}).filter(b=>(ix.brands[b]||[]).length);if(!brands.length)return `<div class="card"><div class="h3">No catalogue is read yet</div><div class="cap">The ${w} list is made from the brand catalogues on the server. It fills by itself after the catalogues are built.</div></div>`;
+ if(s.vb&&!brands.includes(s.vb)){s.vb='';s.vm='';}const ms=s.vb?ix.brands[s.vb]:[];if(s.vm&&!ms.includes(s.vm))s.vm='';
+ const mks=['All',...(s.vb?[s.vb+' genuine']:[]),...(ix.makers||[])];if(!mks.includes(s.mk))s.mk='All';
+ const pick=(n,lab,f,opts,dis)=>`<label class="fit-pick${dis?' off':''}"><span class="fit-no">${n}</span><span class="grow"><span class="cap">${lab}</span><select onchange="fitSet('${f}',this.value)"${dis?' disabled':''} aria-label="${lab}">${opts}</select></span></label>`;
+ const o=(v,l,sel)=>`<option value="${esc(v)}"${sel?' selected':''}>${esc(l)}</option>`;
+ return `<div class="h2">Which bike is the ${w} for?</div>
+ ${pick(1,'Bike brand','vb',o('','Select brand',!s.vb)+brands.map(b=>o(b,b,s.vb===b)).join(''))}
+ ${pick(2,'Model','vm',o('',s.vb?'Select model':'Select brand first',!s.vm)+ms.map(m=>o(m,m,s.vm===m)).join(''),!s.vb)}
+ ${pick(3,k==='b'?'Battery brand':'Tyre brand','mk',mks.map(m=>o(m,m==='All'?(k==='b'?'All battery brands':'All tyre brands'):m,s.mk===m)).join(''))}
+ <button class="btn y" onclick="fitGo()">${k==='b'?'Show batteries':'Show tyres'}</button>
+ <div class="fp9-or"><span>or</span></div>
+ <div class="fp-in" style="max-width:none"><input id="fit-q" class="fit-q" placeholder="${k==='b'?'Type the battery, like 12 V 5 Ah':'Type a tyre size, like 90/90-12'}" aria-label="${k==='b'?'Battery volt and Ah':'Tyre size'}" autocomplete="off" onkeydown="if(event.key==='Enter')fitSzGo()"><button class="btn y sm" onclick="fitSzGo()">Find</button></div>
+ <div class="cap">${ix.have} of ${ix.all} bikes have the ${k==='b'?'battery':'tyre size'} in the list.</div>`;}
+const fitRow=(x,i,sub)=>`<button class="fit-row"${x[7]?' disabled':` onclick="fitOpen(${i})"`}><span class="grow"><b>${esc(x[2]||x[1])}</b><span class="cap">${esc(x[1])} · ${esc(x[0])} ${x[7]?'list':'catalogue'}${sub?' · '+esc(sub):''}</span></span><span class="fit-mrp">${x[3]?`<b>${inr(x[3])}</b><span class="cap">MRP</span>`:'<span class="cap">MRP not listed</span>'}</span></button>`;
+function fitOpen(i){const x=(FIT.cur||[])[i];if(x)xrGo(x[0],x[1]);}
+function fitList(title,L,mk,sub,side){const a=L.filter(x=>(mk==='All'||fitMk(x)===mk)&&!(side&&x[6]&&x[6]!==side));if(!a.length)return `<div class="card"><div class="micro muted">${esc(title)}</div><div class="cap">No ${mk==='All'?'part':esc(mk)+' part'} in this size in the catalogues yet.</div></div>`;
+ return `<div class="card fit-list"><div class="micro muted">${esc(title)}</div>${a.map(x=>{FIT.cur.push(x);return fitRow(x,FIT.cur.length-1,sub&&x[5]?x[5]:'');}).join('')}</div>`;}
+function fitV(p){const k=p.k==='b'?'b':'t',w=fitW(k),key=k+'|'+p.vb+'|'+p.vm,d=fitGet(FIT.bk,key,'/api/fit?k='+k+'&vb='+encodeURIComponent(p.vb)+'&vm='+encodeURIComponent(p.vm)),s=fitSt(),mg=vinMgr();FIT.cur=[];
+ if(d.busy)return fitSeg(k)+`<div class="card"><div class="cap">Reading the ${w} of this bike…</div></div>`;
+ if(d.err)return fitSeg(k)+`<div class="card"><div class="errmsg">${esc(d.err)}</div><button class="btn line sm" onclick="delete FIT.bk['${m2Q(key)}'];refresh()">Try again</button></div>`;
+ const e=d.e,man=d.man,mks=['All',...(d.makers||[])];if(!mks.includes(s.mk))s.mk='All';
+ const tile=(lab,a)=>`<div class="fit-tile"><span class="micro muted">${lab}</span><b>${esc(a[0]||'Not listed')}</b>${a.length>1?`<span class="cap">or ${a.slice(1).map(esc).join(', ')}</span>`:''}</div>`;
+ const addBtn=mg?`<button class="btn k" onclick="fitAdd('${k}')">${man?'Change the '+(k==='b'?'battery':'size'):'Add the '+(k==='b'?'battery':'size')}</button>`:'';
+ const chips=mks.length>2?`<div class="micro muted">${k==='b'?'Battery brand':'Tyre brand'}</div><div class="row wrap" style="gap:8px">${mks.map(m=>`<button class="chip ${s.mk===m?'on':''}" onclick="fitSt().mk='${m2Q(m)}';refresh()">${esc(m)}</button>`).join('')}</div>`:'';
+ let top,lists='';
+ if(k==='t'){const F=[...new Set([...(man&&man.f?[man.f]:[]),...(e?e.F:[])])],R=[...new Set([...(man&&man.r?[man.r]:[]),...(e?e.R:[])])],U=e?e.U:[],kind=(man&&man.kind)||(e&&e.kind)||'';
+  if(!F.length&&!R.length&&!U.length){top=`<div class="card"><div class="row" style="justify-content:space-between;gap:8px"><div class="h3">Tyre size of this bike</div><span class="pill">Size not found</span></div><div class="cap">${e&&e.ns.length?`The ${esc(p.vb)} catalogue has the tyre part for this bike, but its name does not say the size.`:`The ${esc(p.vb)} catalogue has no tyre part for this bike.`}</div>${e?e.ns.map(x=>{const r=[p.vb,x[0],x[1],x[3]];FIT.cur.push(r);return fitRow(r,FIT.cur.length-1);}).join(''):''}${addBtn||'<div class="cap">Admin or Manager can add the size.</div>'}</div><div class="cap">Once the size is added, the tyres of every brand in that size show here, for all staff.</div>`;}
+  else{const both=F.length&&R.length;if(!both)s.side=F.length?'F':'R';
+   top=`<div class="card"><div class="row" style="justify-content:space-between;gap:8px"><div class="h3">Tyre size of this bike</div>${kind?`<span class="pill">${esc(kind)}</span>`:''}</div><div class="fit-two">${tile('Front',F)}${tile('Rear',R)}</div>${U.length?`<div class="cap">Also in the catalogue, front or rear not said: ${U.map(esc).join(', ')}</div>`:''}<div class="cap">${man?`Size typed by ${esc(man.by||'Admin')}.`:`From the ${esc(p.vb)} catalogue.`}${F.length>1||R.length>1?' More than one size = different variants of this bike: check the tyre on the bike.':''}</div>${man||(!F.length||!R.length)?addBtn:''}</div>`;
+   const side=both?`<div class="row" style="gap:8px"><button class="chip ${s.side==='F'?'on':''}" onclick="fitSt().side='F';refresh()">Front</button><button class="chip ${s.side==='R'?'on':''}" onclick="fitSt().side='R';refresh()">Rear</button></div>`:'';
+   const show=F.length||R.length?(s.side==='F'?F:R).map(z=>[(s.side==='F'?'Front':'Rear')+' · '+z,z]):U.map(z=>['Size '+z,z]);
+   lists=chips+side+show.map(([t,z])=>z.includes('?')?`<div class="card"><div class="micro muted">${esc(t)}</div><div class="cap">The catalogue does not print the full size. Check the tyre on the bike.</div></div>`:fitList(t,d.fits[z]||[],s.mk,1,F.length||R.length?s.side:'')).join('');}}
+ else{const S2=[...new Set([...(man&&man.s?[man.s]:[]),...(e?e.S:[])])],type=(man&&man.type)||(e&&e.type)||'';
+  if(!S2.length){top=`<div class="card"><div class="row" style="justify-content:space-between;gap:8px"><div class="h3">Battery of this bike</div><span class="pill">Not found</span></div><div class="cap">${e&&e.ns.length?`The ${esc(p.vb)} catalogue has the battery part for this bike, but its name does not say the volt and Ah.`:`The ${esc(p.vb)} catalogue has no battery part for this bike.`}</div>${e?e.ns.map(x=>{const r=[p.vb,x[0],x[1],x[3]];FIT.cur.push(r);return fitRow(r,FIT.cur.length-1);}).join(''):''}${addBtn||'<div class="cap">Admin or Manager can add the battery.</div>'}</div>`;}
+  else{const v=(/^(\d+) V/.exec(S2[0])||[])[1],ah=S2.map(z=>(/([\d.]+) Ah/.exec(z)||[])[1]).filter(Boolean);
+   top=`<div class="card"><div class="row" style="justify-content:space-between;gap:8px"><div class="h3">Battery of this bike</div>${type?`<span class="pill">${esc(type)}</span>`:''}</div><div class="fit-two">${tile('Volt',[v?v+' V':''])}${tile('Capacity',ah.map(a=>a+' Ah'))}</div><div class="cap">${man?`Typed by ${esc(man.by||'Admin')}.`:`From the ${esc(p.vb)} catalogue.`}</div>${man?addBtn:''}</div>`;
+   lists=chips+S2.map(z=>fitList('Batteries · '+z,d.fits[z]||[],s.mk,1)).join('');}}
+ return fitSeg(k)+top+lists;}
+function fitSzV(p){const k=p.k==='b'?'b':'t',key=k+'|'+p.q,d=fitGet(FIT.sz,key,'/api/fit?k='+k+'&size='+encodeURIComponent(p.q));FIT.cur=[];
+ if(d.busy)return fitSeg(k)+`<div class="card"><div class="cap">Searching…</div></div>`;
+ if(d.err)return fitSeg(k)+`<div class="card"><div class="errmsg">${esc(d.err)}</div></div>`;
+ if(!d.size)return fitSeg(k)+`<div class="card"><div class="h3">“${esc(p.q)}” is not a ${k==='b'?'battery':'tyre size'}</div><div class="cap">${k==='b'?'Type it like 12 V 5 Ah.':'Type it like 90/90-12, 110/70 R17 or 2.75-18.'}</div></div>`;
+ return fitSeg(k)+`<div class="h2">${esc(d.size)}</div>${fitList(k==='b'?'Batteries':'Tyres in this size',d.fits||[],'All',1)}
+ <div class="card fit-list"><div class="micro muted">Bikes that use it</div>${(d.bikes||[]).length?d.bikes.map(b=>`<button class="fit-row" onclick="go('findpart',{v:'fit',k:'${k}',vb:'${m2Q(b[0])}',vm:'${m2Q(b[1])}'})"><span class="grow"><b>${esc(b[0]+' '+b[1])}</b>${b[2]?`<span class="cap">${esc(b[2])}</span>`:''}</span>${ic('chevR','s16')}</button>`).join(''):'<div class="cap">No bike in the catalogues prints this size.</div>'}</div>`;}
+function fitAdd(k){const p=cur().p||{},d=FIT.bk[k+'|'+p.vb+'|'+p.vm]||{},m=d.man||{};
+ const inp=(id,lab,ph,val)=>`<label class="m2-sel"><span class="cap">${lab}</span><input id="${id}" class="fit-q" placeholder="${ph}" value="${esc(val||'')}" autocomplete="off"></label>`;
+ sheet(`<div class="h2">${esc(p.vb+' '+p.vm)}</div><div class="cap">${k==='b'?'Battery of this bike, from the old battery or the owner’s manual.':'Tyre size of this bike, from the tyre’s side wall or the owner’s manual.'}</div>
+ ${k==='b'?`<div class="fit-two">${inp('fit-v','Volt','12',m.s?(/^(\d+)/.exec(m.s)||[])[1]:'12')}${inp('fit-ah','Capacity (Ah)','5',m.s?(/([\d.]+) Ah/.exec(m.s)||[])[1]:'')}</div><label class="m2-sel"><span class="cap">Type</span><select id="fit-kd"><option value="">Not known</option><option${m.type==='Maintenance free'?' selected':''}>Maintenance free</option><option${m.type==='Lithium'?' selected':''}>Lithium</option></select></label>`
+ :`<div class="fit-two">${inp('fit-f','Front','80/100-18',m.f)}${inp('fit-r','Rear','100/80-18',m.r)}</div><label class="m2-sel"><span class="cap">Tube or tubeless</span><select id="fit-kd"><option value="">Not known</option><option${m.kind==='Tubeless'?' selected':''}>Tubeless</option><option${m.kind==='Tube type'?' selected':''}>Tube type</option></select></label>`}
+ <div id="fit-err" class="errmsg" hidden></div><button class="btn y" onclick="fitSave('${k}')">Save</button>${d.man?`<button class="btn line" onclick="fitSave('${k}',1)">Remove what was typed</button>`:''}`);}
+async function fitSave(k,del){const p=cur().p||{},g=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
+ const b={k,vb:p.vb,vm:p.vm};if(del)b.del=1;else if(k==='b'){b.v=g('fit-v');b.ah=g('fit-ah');b.type=g('fit-kd');}else{b.f=g('fit-f');b.r=g('fit-r');b.kind=g('fit-kd');}
+ const j=await api('POST','/api/fit',b);if(!j||j.error){const e=document.getElementById('fit-err');if(e){e.hidden=false;e.textContent=(j&&j.error)||'Could not save';}return;}
+ delete FIT.bk[k+'|'+p.vb+'|'+p.vm];FIT.ix={};FIT.sz={};closeSheet();toast(del?'Removed':'Saved');refresh();}
+function m2Home(f){const fk=fitK();if(fk!=='s')return `<div class="fp-home fp9">${fitSeg(fk)}${fitHome(fk)}</div>`;
+ return `<div class="fp-home fp9">${fitSeg('s')}<p class="fp-sub">Type a part name or number, or pick the bike.</p>${fpVia()}
  ${m2Bar('Part name or number (e.g. clutch plate, 39166005)',S.ui.fpT!=null?S.ui.fpT:'')}
  <div class="fp9-or"><span>or pick the bike</span></div>
  <div class="fp9-card">${m2Form(f)}${VIN_ON?`<div class="fp9-reg"><b>Have the bike number?</b><div class="fp-in"><input id="fp-reg" placeholder="KA 01 AB 1234 or chassis no." aria-label="Registration or chassis number" autocomplete="off" autocapitalize="characters" spellcheck="false" onkeydown="if(event.key==='Enter')fpGoVin('fp-reg')"><button class="btn y sm" onclick="fpGoVin('fp-reg')">Find</button></div></div>`:''}</div>
@@ -4757,7 +4836,7 @@ function fpFChips(list,p){const c=FP_FF.map(([k,l,fn])=>[k,l,fn?list.filter(fn).
 /* the bike found from the bike number / chassis number, on top of every page */
 function fpBikeBar(p,v){const b=S.ui.fpBike;if(!b&&['sec','res'].includes(v)&&p.vb&&p.vb!=='Any'&&p.vm&&p.vm!=='Any'){const cc=MODEL_CC[p.vm],ed=p.ed&&p.ed!=='Any'?p.ed:p.yr&&p.yr!=='Any'?p.yr:'';
   return `<div class="fp-bike"><div class="grow"><b>${esc([p.vb+' '+p.vm,ed,cc?cc+'cc':''].filter(Boolean).join(' · '))}</b><div class="cap">Picked by brand, model and year</div></div><button class="btn y sm" onclick="go('findpart',{v:'brand',vb:'${m2Q(p.vb)}'})">Change bike</button></div>`;}
- if(!b||v==='home'||v==='vin'||v==='brand')return '';if(p.vb&&p.vb!=='Any'&&p.vb!==b.vb)return '';
+ if(!b||v==='home'||v==='vin'||v==='brand'||v==='fit'||v==='fitsz')return '';if(p.vb&&p.vb!=='Any'&&p.vb!==b.vb)return '';
  /* 19w (Sam 2026-11-11 'royal enfield classic q dikh raha he'): a search this bike does not have (a Yamaha number while an RE bike is remembered) shows the
     part where the catalogue lists it: the remembered bike's bar is not put on top of that */
  if(v==='res'&&p.q&&!p.cat){try{const c=m2Res(p).c;if(c&&c.wide)return '';}catch(e){}}
@@ -4955,8 +5034,8 @@ SCREENS.findpart=()=>{altListLoad();const f=S.ui.fp||(S.ui.fp=FP0());const p=cur
  /* 11v: a part opened from a link or after a reload: its catalogue, its diagram page and its bike come in first */
  const spw=v==='part'&&p.vb?(e=>{if(!e)return '';if(e.st<2){if(catRows().some(r=>r.vb===p.vb&&r.page===p.pg&&(r.pk||'')===(p.pk||'')))return '';catLoad(p.vb);return e.st===3?m2Err(p.vb):m2Wait(p.vb);}if(!e.split)return '';
   const a=[p.pg?catSplitQ(e,'pg:'+p.pg,{pg:[p.pg],pn:p.pk&&p.pk.length>=3?p.pk:''}):2,p.vm&&p.vm!=='Any'?catSplitM(e,p.vm):2];return a.includes(1)?m2Wait(p.vb):a.includes(3)&&!catRows().some(r=>r.vb===p.vb&&r.page===p.pg&&(r.pk||'')===(p.pk||''))?m2Err(p.vb):'';})(CAT_ALL.find(e=>e.vb===p.vb)):'';
- const body=spw?spw:v==='vin'?vinV(p):v==='brand'?m2Brand(p):v==='fam'?m2FamV(p):v==='year'?m2Year(p):v==='secs'?m2SecsV(p):v==='sec'?m2SecV(p):v==='res'?m2ResView(p):v==='part'?m2PartV(p):m2Home(f);
- const title=v==='vin'?'Chassis number':v==='home'?'Find Part':v==='brand'?p.vb:v==='fam'?p.fam:v==='year'||v==='secs'?p.vm:v==='sec'?'Section':v==='res'?'Results':'Part';
+ const body=spw?spw:v==='vin'?vinV(p):v==='brand'?m2Brand(p):v==='fam'?m2FamV(p):v==='year'?m2Year(p):v==='secs'?m2SecsV(p):v==='sec'?m2SecV(p):v==='res'?m2ResView(p):v==='part'?m2PartV(p):v==='fit'?fitV(p):v==='fitsz'?fitSzV(p):m2Home(f);
+ const title=v==='vin'?'Chassis number':v==='home'?'Find Part':v==='brand'?p.vb:v==='fam'?p.fam:v==='year'||v==='secs'?p.vm:v==='sec'?'Section':v==='res'?'Results':v==='fit'?p.vb+' '+p.vm:v==='fitsz'?(p.k==='b'?'Battery':'Tyre size'):'Part';
  return bar(esc(title),{back:S.stack.length>1,action:v==='home'?'':`<button class="iconbtn" onclick="fpClear()" aria-label="New search">${ic('search')}</button>`})+`<div class="scroll"><div class="pad m2">${(v==='secs'||v==='year')&&(p.vin||p.rcn)||String(body).startsWith('<div class="m3')?'':fpBikeBar(p,v)}${body}</div></div>`;};
 function rackEdit(id){const x=P(id);const cur=binOf(id);const [r,sh,bn]=cur==='Not set'?['A','1','01']:cur.split('-');
  const opt=(arr,v)=>arr.map(a=>`<option ${a===v?'selected':''}>${a}</option>`).join('');

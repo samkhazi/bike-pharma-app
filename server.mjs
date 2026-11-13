@@ -25,6 +25,7 @@ import { makeAlt } from './lib/altagent.mjs';
 import { pnLookup } from './lib/pnlook.mjs';
 import { startMirror } from './lib/mysqlmirror.mjs';
 import { sameReport } from './lib/samereport.mjs';
+import { fitApi } from './lib/fit.mjs';
 import { catGuard } from './lib/catguard.mjs';
 import { spawn } from 'node:child_process';
 import { HERO_RAW, HERO_OPT, HERO_XL } from './lib/herobuild.mjs';
@@ -62,6 +63,7 @@ const store = openStore(DATA_DIR);
 const SYNC_SEEN = new Map();   // 13f: each login's last push ids and their answers
 const MIRROR = startMirror(store, process.env);   // MySQL copy for phpMyAdmin (10m), off unless MYSQL_* are in .env
 const SAMEREP = sameReport({ file: path.join(DATA_DIR, 'xref-pairs.json'), store });
+const FIT = fitApi({ file: path.join(DATA_DIR, 'fit.json'), store, listDir: path.join(DATA_DIR, 'fit-lists') });   // 21t: Find Part > Tyre / Battery
 const CATG = catGuard(store, DATA_DIR, env); CATG.tidy(); setInterval(() => CATG.tidy(), 86400e3).unref();   // catalogue limits + log (11h)
 // Hero made on the server from Sam's Raw Data upload (11k) and the PDF > Models index (11m: hero_pdf_index.json, its parts + diagram pages): DATA_DIR/cat/hero.json, hero-dg.json and app.html (its Hero part number line)
 // are served instead of the public ones; made again when the Raw Data or the app's own Hero files are newer
@@ -339,6 +341,13 @@ async function api(req, res, url, user) {
   }
   if (p === '/api/alt') return ALT.api(m, body, user, res);
   // 19y (Sam 2026-11-11): two part numbers of different brands that staff mark as the same part (RE 585643/A = Yamaha 93315-317Y4); every staff login
+  if (p === '/api/fit') {   // 21t (Sam 2026-11-13): tyre size and battery of a bike; staff only, MRP only
+    if (roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: user ? 'Staff login needed' : 'Please log in again' });
+    const g = k => String(url.searchParams.get(k) || '').slice(0, 80);
+    if (m === 'GET') { const k = g('k') === 'b' ? 'b' : 't'; if (g('size')) return json(res, 200, FIT.size(k, g('size'))); if (g('vb') && g('vm')) return json(res, 200, FIT.bike(k, g('vb'), g('vm'))); return json(res, 200, FIT.index(k)); }
+    if (m === 'POST') { if (!['admin', 'manager'].includes(user.role)) return json(res, 403, { error: 'Only Admin or Manager can add a size' });
+      const b = body || {}, r = FIT.set(b.k === 'b' ? 'b' : 't', b.vb, b.vm, b, user); return json(res, r.error ? 400 : 200, r); }
+  }
   if (p === '/api/samereport' && m === 'GET') {   // 21n: Admin > Same parts
     if (!user || user.role !== 'admin') return json(res, user ? 403 : 401, { error: 'Only Admin' });
     const g = k => String(url.searchParams.get(k) || '').slice(0, 80), tab = ['c', 'k', 's'].includes(g('tab')) ? g('tab') : 'c';

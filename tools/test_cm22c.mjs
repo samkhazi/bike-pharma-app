@@ -11,7 +11,7 @@ await p.fill('#pw1', 'Test@1234'); await p.evaluate(() => pwGo()); await p.waitF
 const pid = await p.evaluate(() => { let x = PRODUCTS.find(x => x.id === 'TP22B'); if (!x) { x = { id: 'TP22B', name: 'Test brake shoe', pn: 'TP-22B-001', brand: 'Hero', mrp: 100, price: 95, mp: 80, stock: 5, gst: 18, cat: 'Brakes', fits: '' }; DB.newProducts = DB.newProducts || []; DB.newProducts.push(x); PRODUCTS.push(x); } DB.stock[x.id] = 9; x.mrp = 100; x.price = 95; x.mp = 80; return x.id; });
 const mc = await p.evaluate(() => { let m = MECHS_R()[0]; if (!m) { DB.accounts['9000000001'] = { role: 'mechanic', name: 'Test Mech', shop: 'Test Garage', code: 'BPM-T1', status: 'active', joined: today() }; m = MECHS_R()[0]; } return m && m.code; });
 ok(!!mc, 'a mechanic to pick (' + mc + ')');
-await p.evaluate(() => { S.user.role = 'billing'; S.ui.inv = null; reset('invoice'); }); await p.waitForSelector('#inv-bc');
+await p.evaluate(() => { S.user = { ...S.user, role: 'billing' }; S.ui.inv = null; reset('invoice'); }); await p.waitForSelector('#inv-bc');
 const chips = await p.evaluate(() => { S.ui.inv.party = 'mech'; refresh(); return [...document.querySelectorAll('.grid4 .chip')].map(e => e.textContent.trim()).join(); });
 ok(/^Cash,UPI,Split,Udhaar$/i.test(chips), 'pay options, Udhaar last (' + chips + ')'); ok(await p.evaluate(() => S.ui.inv.pm === 'Cash'), 'Cash is the default');
 await p.evaluate(([id, mc]) => { S.ui.inv.party = 'cxm'; S.ui.inv.via = mc; S.ui.inv.mob = '9876501234'; S.ui.inv.items[id] = 1; S.ui.inv.pm = 'Cash'; refresh(); }, [pid, mc]);

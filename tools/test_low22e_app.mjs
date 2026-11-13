@@ -6,7 +6,7 @@ await p.goto('http://127.0.0.1:3033/app.html'); await p.fill('#loginId', 'sam@bi
 await p.fill('#pw1', 'Test@1234'); await p.evaluate(() => pwGo()); await p.waitForFunction(() => S.user); await p.evaluate(() => reset(HOME[S.user.role]));
 const pid = await p.evaluate(() => { let x = PRODUCTS.find(x => x.id === 'TP22B'); if (!x) { x = { id: 'TP22B', name: 'Test brake shoe', pn: 'TP-22B-001', brand: 'Hero', mrp: 100, price: 95, mp: 80, stock: 5, gst: 18, cat: 'Brakes', fits: '' }; DB.newProducts = DB.newProducts || []; DB.newProducts.push(x); PRODUCTS.push(x); } DB.stock[x.id] = 2; DB.lowAsk = {}; if (!MECHS_R()[0]) DB.accounts['9000000001'] = { role: 'mechanic', name: 'Test Mech', shop: 'Test Garage', code: 'BPM-T1', status: 'active', joined: today() }; return x.id; });
 const na = await p.evaluate(() => DB.approvals.length);
-await p.evaluate(() => { S.user.role = 'inventory'; reset('ihome'); }); await p.waitForTimeout(300);
+await p.evaluate(() => { S.user = { ...S.user, role: 'inventory' }; reset('ihome'); }); await p.waitForTimeout(300);
 ok(/Low stock alerts \(\d+\)/i.test(await p.evaluate(() => document.querySelector('#vp').innerText)) && /only 2 left/i.test(await p.evaluate(() => document.querySelector('#vp').innerText)), 'Inventory home: Low stock alerts with what is left');
 if (process.argv[2]) await p.screenshot({ path: process.argv[2] + '/low-alerts.png', fullPage: true });
 await p.evaluate(id => lowAsk(id), pid); await p.waitForTimeout(300);
@@ -14,7 +14,7 @@ ok(await p.evaluate(([n, id]) => DB.approvals.length === n + 1 && DB.approvals[0
 await p.evaluate(id => lowAsk(id), pid); ok(await p.evaluate(n => DB.approvals.length === n + 1, na), 'not asked twice');
 ok(await p.evaluate(id => { DB.stock[id] = 50; return !lowAsked(id); }, pid), 'after stock comes in it can be asked again later');
 const mc = await p.evaluate(() => MECHS_R()[0].code);
-await p.evaluate(mc => { S.user.role = 'billing'; reset('bhome'); crLimEdit(mc); }, mc); await p.waitForSelector('#cl-lim'); await p.fill('#cl-lim', '20000'); await p.evaluate(mc => crLimSave(mc), mc);
+await p.evaluate(mc => { S.user = { ...S.user, role: 'billing' }; reset('bhome'); crLimEdit(mc); }, mc); await p.waitForSelector('#cl-lim'); await p.fill('#cl-lim', '20000'); await p.evaluate(mc => crLimSave(mc), mc);
 ok(/up to ₹15,000/.test(await p.evaluate(() => document.getElementById('cl-err').textContent)), 'Billing: 20,000 refused'); await p.fill('#cl-lim', '15000'); if (process.argv[2]) await p.screenshot({ path: process.argv[2] + '/crlim.png' }); await p.evaluate(mc => crLimSave(mc), mc);
-ok(await p.evaluate(mc => vInfo(mc).limit === 15000, mc), 'Billing: 15,000 saved'); ok(await p.evaluate(() => { S.user.role = 'manager'; const m = crCap(); S.user.role = 'sales'; const s = crCap(); S.user.role = 'admin'; return m === 50000 && s === 0 && crCap() === Infinity; }), 'caps: Manager 50,000, Sales none, Admin any');
+ok(await p.evaluate(mc => vInfo(mc).limit === 15000, mc), 'Billing: 15,000 saved'); ok(await p.evaluate(() => { S.user = { ...S.user, role: 'manager' }; const m = crCap(); S.user = { ...S.user, role: 'sales' }; const s = crCap(); S.user = { ...S.user, role: 'admin' }; return m === 50000 && s === 0 && crCap() === Infinity; }), 'caps: Manager 50,000, Sales none, Admin any');
 ok(!errs.length, 'no page errors ' + errs.join(' | ')); await b.close(); process.exit(fails ? 1 : 0);

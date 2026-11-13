@@ -7,7 +7,7 @@ await p.fill('#pw1', 'Test@1234'); await p.evaluate(() => pwGo()); await p.waitF
 const pid = await p.evaluate(() => { let x = PRODUCTS.find(x => DB.stock[x.id] > 1 && x.pn); if (!x) { x = { id: 'TP22B', name: 'Test brake shoe', pn: 'TP-22B-001', brand: 'Hero', mrp: 100, price: 95, mp: 80, stock: 5, gst: 18, cat: 'Brakes', fits: '' }; DB.newProducts = DB.newProducts || []; DB.newProducts.push(x); PRODUCTS.push(x); DB.stock[x.id] = 5; DB.prices = DB.prices || {}; save(); } return x.id; }); await p.waitForTimeout(1500);
 ok(!!pid, 'a product in stock (' + pid + ')'); if (!pid) { await b.close(); process.exit(1); }
 const n0 = await p.evaluate(() => (DB.pushed || []).length);
-await p.evaluate(() => { S.user.role = 'sales'; S.ui.inv = null; reset('snew'); }); await p.waitForSelector('#sn-reg');
+await p.evaluate(() => { S.user = { ...S.user, role: 'sales' }; S.ui.inv = null; reset('snew'); }); await p.waitForSelector('#sn-reg');
 ok(await p.evaluate(() => document.querySelectorAll('.nav button, nav button').length >= 0 && NAVS.sales.map(x => x[1]).join() === 'New bill,Pushed,Target,Account'), 'Sales nav: New bill, Pushed, Target, Account');
 ok(await p.evaluate(() => document.querySelector('.foot .btn').disabled), 'Push is off with no parts');
 await p.evaluate(id => invAddId(id), pid); await p.evaluate(() => pushInv()); await p.waitForTimeout(200);
@@ -17,7 +17,7 @@ const id = await p.evaluate(() => DB.pushed[0].id); ok(await p.evaluate(n => DB.
 ok(/Waiting at billing/i.test(await p.evaluate(() => document.querySelector('#vp').innerText)), 'Pushed list shows Waiting at billing');
 if (process.argv[2]) await p.screenshot({ path: process.argv[2] + '/push-pushed.png' });
 await p.evaluate(() => { S.ui.inv = null; tab('snew'); }); await p.waitForSelector('#sn-reg'); if (process.argv[2]) await p.screenshot({ path: process.argv[2] + '/push-new.png', fullPage: true });
-await p.evaluate(() => { S.user.role = 'billing'; reset('bhome'); }); await p.waitForTimeout(300);
+await p.evaluate(() => { S.user = { ...S.user, role: 'billing' }; reset('bhome'); }); await p.waitForTimeout(300);
 ok(/Pending invoices \(\d+\)/i.test(await p.evaluate(() => document.querySelector('#vp').innerText)), 'Billing home shows Pending invoices'); if (process.argv[2]) await p.screenshot({ path: process.argv[2] + '/push-billing.png' });
 await p.evaluate(id => pushOpen(id), id); await p.waitForTimeout(300);
 ok(await p.evaluate(id => S.ui.inv && S.ui.inv.pushId === id && S.ui.inv.mob === '9876501234', id), 'Make bill opens the invoice with the parts and mobile');
@@ -25,6 +25,6 @@ const nb = await p.evaluate(() => DB.bills.length); await p.evaluate(() => { S.u
 const r = await p.evaluate(id => { const x = DB.pushed.find(q => q.id === id), bl = DB.bills.find(q => q.id === x.bill); return { n: DB.bills.length, bill: x.bill, by: bl && bl.pushBy, amt: bl && bl.amt, ach: bl ? stgtAch(bl.pushBy) : 0 }; }, id);
 ok(r.n === nb + 1 && !!r.bill && !!r.by, 'invoice made: ' + r.bill + ', counted for the pushing staff'); ok(r.ach >= r.amt && r.amt > 0, 'target counts it after billing (' + r.ach + ')');
 ok(await p.evaluate(id => !pushWait().some(x => x.id === id), id), 'it leaves Pending invoices');
-await p.evaluate(() => { S.user.role = 'sales'; reset('starget'); }); await p.waitForTimeout(200); ok(/My target/i.test(await p.evaluate(() => document.querySelector('#vp').innerText)), 'Target screen opens'); if (process.argv[2]) await p.screenshot({ path: process.argv[2] + '/push-target.png' });
-await p.evaluate(() => { S.user.role = 'admin'; reset('atargets'); }); await p.waitForTimeout(200); ok(!errs.length, 'no page errors ' + errs.join(' | '));
+await p.evaluate(() => { S.user = { ...S.user, role: 'sales' }; reset('starget'); }); await p.waitForTimeout(200); ok(/My target/i.test(await p.evaluate(() => document.querySelector('#vp').innerText)), 'Target screen opens'); if (process.argv[2]) await p.screenshot({ path: process.argv[2] + '/push-target.png' });
+await p.evaluate(() => { S.user = { ...S.user, role: 'admin' }; reset('atargets'); }); await p.waitForTimeout(200); ok(!errs.length, 'no page errors ' + errs.join(' | '));
 await b.close(); process.exit(fails ? 1 : 0);

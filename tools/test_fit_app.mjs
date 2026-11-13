@@ -26,7 +26,7 @@ execFileSync(process.execPath, ['lib/xrefbuild.mjs', cat, path.join(tmp, 'none.j
 const fit = JSON.parse(fs.readFileSync(path.join(tmp, 'fit.json'), 'utf8')); fs.copyFileSync(path.join(tmp, 'fit.json'), path.join(DATA, 'fit.json'));
 ok(fit.tyre.Hero['Splendor Plus'].F.join() === '2.75-18,80/100-18' && fit.tyre.Hero['Splendor Plus'].R.join() === '3.00-18', 'build: Splendor front and rear sizes');
 ok(fit.tsz['2.75-18'].length === 2 && fit.batt.Hero['Splendor Plus'].S[0] === '12 V 3 Ah' && fit.bsz['12 V 3 Ah'].length === 2, 'build: tyres and batteries by size across brands');
-fs.mkdirSync(path.join(DATA, 'fit-lists'), { recursive: true }); fs.writeFileSync(path.join(DATA, 'fit-lists', 'testy.json'), JSON.stringify({ brand: 'Testy', kind: 't', rows: [['900001', '2.75-18 TESTY GRIP F TL 42P', '2.75-18', 'TL', 'F', 0], ['900002', '3.00-18 TESTY GRIP TT 52P', '3.00-18', 'TT', '', 1400]] }));
+fs.mkdirSync(path.join(DATA, 'fit-lists'), { recursive: true }); const LISTF = path.join(DATA, 'fit-lists', 'testy.json'); try { fs.rmSync(LISTF); } catch {}
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 const p = await (await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: SHOT ? 2 : 1 })).newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
 await p.goto('http://127.0.0.1:3033/app.html', { waitUntil: 'load' });
@@ -42,11 +42,9 @@ await p.evaluate(() => fitGo()); await p.waitForTimeout(300); ok((await p.evalua
 await p.selectOption('select[aria-label="Bike brand"]', 'Hero'); await p.waitForTimeout(300); await p.selectOption('select[aria-label="Model"]', 'Splendor Plus'); await p.waitForTimeout(300);
 await p.evaluate(() => fitGo()); await p.waitForTimeout(1000); t = await txt(); console.log(t.slice(0, 400));
 ok(/FRONT 2\.75-18 or 80\/100-18/i.test(t) && /REAR 3\.00-18/i.test(t) && /44711-KCC-901S/.test(t) && /44711-K0L-D01 · Honda catalogue/i.test(t) && /₹1,450/.test(t), 'Splendor: sizes, and the tyres of both brands in the front size with MRP');
-ok(/2\.75-18 TESTY GRIP F TL 42P/i.test(t) && /900001 · Testy list · Tubeless/i.test(t) && !/MRP not listed/i.test(t), 'a tyre maker list shows in its size, with no price line (Sam: tyre rates are not fixed)');
 if (SHOT) await p.screenshot({ path: path.join(SHOT, 'fit2.png') });
 await p.evaluate(() => { fitSt().mk = 'CEAT'; refresh(); }); await p.waitForTimeout(400); t = await txt(); ok(/44711-K0L-D01/.test(t) && !/44711-KCC-901S ·/.test(t), 'tyre brand chip filters');
 await p.evaluate(() => { fitSt().mk = 'All'; fitSt().side = 'R'; refresh(); }); await p.waitForTimeout(400); t = await txt(); ok(/Rear · 3\.00-18/i.test(t) && /42711-KCC-901S/.test(t), 'Rear chip shows the rear size');
-ok(/900002/.test(t) && /₹1,400/.test(t) && !/900001/.test(t), 'rear list: the maker list with MRP, not its front tyre');
 await p.evaluate(() => fitMode('b')); await p.waitForTimeout(1000); t = await txt(); ok(/Battery of this bike/i.test(t) && /VOLT 12 V/i.test(t) && /CAPACITY 3 Ah/i.test(t) && /31500-K0L-D01/.test(t) && /Maintenance free/i.test(t), 'Battery of the same bike: volt, Ah, batteries of both brands');
 if (SHOT) await p.screenshot({ path: path.join(SHOT, 'fit4.png') });
 await p.evaluate(() => { S.ui.fpm = 't'; go('findpart', { v: 'fit', k: 't', vb: 'Hero', vm: 'Glamour Xtec' }); }); await p.waitForTimeout(1000); t = await txt();
@@ -62,4 +60,16 @@ ok(/2\.75-18/.test(t) && /Hero Splendor Plus/i.test(t) && /Honda Shine 100/i.tes
 const r = await p.evaluate(async () => { const x = await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => null); const y = await fetch('/api/fit?k=t', { credentials: 'same-origin' }); return y.status; });
 ok(r === 401 || r === 403, 'logged out: the list is refused (' + r + ')');
 ok(!errs.length, 'no page errors ' + errs.join(' | ').slice(0, 200));
-fs.rmSync(path.join(DATA, 'fit-lists', 'testy.json')); await b.close(); console.log(fails ? fails + ' FAILED' : 'all pass'); process.exit(fails ? 1 : 0);
+// a tyre maker's list comes in: only that maker shows (Sam: only the brands whose catalogue he has)
+fs.writeFileSync(LISTF, JSON.stringify({ brand: 'Testy', kind: 't', rows: [['900001', '2.75-18 TESTY GRIP F TL 42P', '2.75-18', 'TL', 'F', 0], ['900002', '3.00-18 TESTY GRIP TT 52P', '3.00-18', 'TT', '', 0]] }));
+await p.evaluate(async () => { await api('GET', '/api/me').catch(() => 0); }); 
+await p.goto('http://127.0.0.1:3033/app.html', { waitUntil: 'load' }); await p.waitForFunction(() => typeof S !== 'undefined' && S.stack && S.stack.length && cur().s !== 'boot', null, { timeout: 15000 });
+await p.fill('#loginId', 'sam@bikepharma.com'); await p.evaluate(() => sendOtp()); await p.waitForTimeout(500); await p.fill('#pw1', 'Test@1234'); await p.evaluate(() => pwGo()); await p.waitForTimeout(900);
+await p.evaluate(() => { S.ui.fpm = 't'; reset('findpart'); }); await p.waitForTimeout(900);
+const opts = await p.evaluate(() => [...document.querySelector('select[aria-label="Tyre brand"]').options].map(o => o.textContent).join('|')); ok(opts === 'All tyre brands|Testy', 'with a maker list in, Tyre brand lists only that maker (' + opts + ')');
+await p.evaluate(() => { fitSt().side = 'F'; go('findpart', { v: 'fit', k: 't', vb: 'Hero', vm: 'Splendor Plus' }); }); await p.waitForTimeout(1000); t = await txt();
+ok(/2\.75-18 TESTY GRIP F TL 42P/i.test(t) && /900001 · Testy list · Tubeless/i.test(t) && !/MRP not listed/i.test(t) && !/44711-K0L-D01/.test(t), 'the size lists the maker list only, with no price line, not other bike makers\' parts');
+ok(/own tyre part · Hero catalogue/i.test(t) && /44711-KCC-901S/.test(t) && /₹1,450/.test(t), 'the bike\'s own tyre part stays in its own card with MRP');
+if (SHOT) await p.screenshot({ path: path.join(SHOT, 'fit5.png'), fullPage: false });
+await p.evaluate(() => { fitSt().side = 'R'; refresh(); }); await p.waitForTimeout(400); t = await txt(); ok(/900002/.test(t) && !/900001/.test(t) && /42711-KCC-901S/.test(t), 'rear: the maker\'s rear tyre and the bike\'s own rear part');
+fs.rmSync(LISTF); await b.close(); console.log(fails ? fails + ' FAILED' : 'all pass'); process.exit(fails ? 1 : 0);

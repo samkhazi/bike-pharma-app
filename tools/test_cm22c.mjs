@@ -1,0 +1,23 @@
+// 22c: Customer + mechanic bill, commission to the mechanic's wallet, Udhaar last. Needs a server on 3033 (admin sam@bikepharma.com / Test@1234).
+import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+import { mechView } from '../lib/merge.mjs';
+let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
+const V = mechView(k => ({ mwl: { M1: [{ d: '13 Nov', t: 'Commission · INV-1', cr: 15, bill: 'INV-1' }], M2: [{ d: 'x', t: 'y', cr: 99 }] }, bills: [], omech: {}, orec: [] })[k], { id: '9000000001', code: 'M1' });
+ok(V.wl.length === 1 && V.wl[0].cr === 15 && !('bill' in V.wl[0]), 'server: a mechanic sees only the own wallet rows');
+ok(mechView(k => ({})[k], { id: '9', code: '' }).wl.length === 0, 'server: no code, empty wallet');
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' }), p = await b.newPage({ viewport: { width: 420, height: 900 } }); const errs = []; p.on('pageerror', e => errs.push(e.message));
+await p.goto('http://127.0.0.1:3033/app.html'); await p.fill('#loginId', 'sam@bikepharma.com'); await p.evaluate(() => sendOtp()); await p.waitForSelector('#pw1');
+await p.fill('#pw1', 'Test@1234'); await p.evaluate(() => pwGo()); await p.waitForFunction(() => S.user); await p.evaluate(() => reset(HOME[S.user.role]));
+const pid = await p.evaluate(() => { let x = PRODUCTS.find(x => x.id === 'TP22B'); if (!x) { x = { id: 'TP22B', name: 'Test brake shoe', pn: 'TP-22B-001', brand: 'Hero', mrp: 100, price: 95, mp: 80, stock: 5, gst: 18, cat: 'Brakes', fits: '' }; DB.newProducts = DB.newProducts || []; DB.newProducts.push(x); PRODUCTS.push(x); } DB.stock[x.id] = 9; x.mrp = 100; x.price = 95; x.mp = 80; return x.id; });
+const mc = await p.evaluate(() => { let m = MECHS_R()[0]; if (!m) { DB.accounts['9000000001'] = { role: 'mechanic', name: 'Test Mech', shop: 'Test Garage', code: 'BPM-T1', status: 'active', joined: today() }; m = MECHS_R()[0]; } return m && m.code; });
+ok(!!mc, 'a mechanic to pick (' + mc + ')');
+await p.evaluate(() => { S.user.role = 'billing'; S.ui.inv = null; reset('invoice'); }); await p.waitForSelector('#inv-bc');
+const chips = await p.evaluate(() => { S.ui.inv.party = 'mech'; refresh(); return [...document.querySelectorAll('.grid4 .chip')].map(e => e.textContent.trim()).join(); });
+ok(/^Cash,UPI,Split,Udhaar$/i.test(chips), 'pay options, Udhaar last (' + chips + ')'); ok(await p.evaluate(() => S.ui.inv.pm === 'Cash'), 'Cash is the default');
+await p.evaluate(([id, mc]) => { S.ui.inv.party = 'cxm'; S.ui.inv.via = mc; S.ui.inv.mob = '9876501234'; S.ui.inv.items[id] = 1; S.ui.inv.pm = 'Cash'; refresh(); }, [pid, mc]);
+ok(await p.evaluate(() => invCom(S.ui.inv)) === 15, 'MRP 100: customer pays 95, mechanic price 80, commission 15'); if (process.argv[2]) await p.screenshot({ path: process.argv[2] + '/cm-invoice.png', fullPage: true });
+const w0 = await p.evaluate(mc => mwBal(mc), mc); await p.evaluate(() => document.querySelector('.foot > .btn').click()); await p.waitForTimeout(500);
+const r = await p.evaluate(mc => ({ b: DB.bills[0], w: mwBal(mc) }), mc); ok(r.b.kind === 'cxm' && r.b.amt === 95 && r.b.com === 15 && r.w === w0 + 15, 'bill 95, wallet +15 (' + r.w + ')');
+await p.evaluate(() => { closeSheet(); const b = DB.bills[0]; comBack(b, null, b.id); }); ok(await p.evaluate(mc => mwBal(mc), mc) === w0, 'commission comes back when the bill is cancelled');
+await p.evaluate(() => { const b = DB.bills[0]; comBack(b, null, b.id); }); ok(await p.evaluate(mc => mwBal(mc), mc) === w0, 'never taken back twice');
+ok(!errs.length, 'no page errors ' + errs.join(' | ')); await b.close(); process.exit(fails ? 1 : 0);

@@ -302,11 +302,15 @@ h1,h2,h3,h4{margin:0;font-family:var(--head);font-weight:800;font-stretch:125%;l
 .visit .about{grid-column:1/-1;max-width:720px;margin-bottom:8px}
 .visit .about h2{font-size:28px;margin-bottom:10px}
 .visit .about p{margin:0;color:var(--muted)}
-.tile{border:2px dashed var(--line);border-radius:12px;padding:18px;display:flex;gap:14px;align-items:flex-start;transition:border-color .3s,transform .3s var(--ease)}
+.tile{border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;gap:14px;align-items:flex-start;transition:border-color .3s,transform .3s var(--ease)}
 .tile:hover{border-color:var(--yellow);transform:translateY(-3px)}
 .tile svg{width:26px;height:26px;flex:none;color:var(--yellow)}
 .tile b{display:block;font-family:var(--head);font-weight:800;font-stretch:125%;font-size:12px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px}
 .tile .tba{display:inline-block;font-size:12px;color:var(--muted);background:var(--surface);border-radius:4px;padding:3px 8px;border:1px dashed var(--line)}
+.tile .val{display:block;font-size:15px;line-height:1.5;color:var(--text);font-weight:600}.tile .val a{color:var(--text);text-decoration:none;white-space:nowrap}.tile .val a:hover{text-decoration:underline;text-decoration-color:var(--yellow);text-decoration-thickness:2px}
+.tile .vlink{display:inline-block;margin-top:6px;font-size:13px;font-weight:700;color:var(--text);text-decoration:underline;text-decoration-color:var(--yellow);text-decoration-thickness:2px;text-underline-offset:3px}.tile .vnote{display:block;margin-top:4px;font-size:12px;color:var(--muted)}
+.visit .about p a{color:var(--text);text-decoration-color:var(--yellow);text-decoration-thickness:2px;text-underline-offset:3px}
+.tba-line.on{border-style:solid;color:var(--text)}
 @media (max-width:900px){.visit .wrap{grid-template-columns:1fr 1fr}}
 @media (max-width:480px){.visit .wrap{grid-template-columns:1fr}}
 
@@ -1123,11 +1127,11 @@ footer .logo img{height:40px}
 </div></section>
 
 <section class="sec visit" id="contact"><div class="wrap">
-  <div class="about reveal" id="about"><h2>Visit Bike Pharma</h2><p>A two-wheeler spare parts shop run by people who ride. Genuine parts for Honda, Hero, Bajaj, TVS, Yamaha, Royal Enfield, Suzuki, KTM and Jawa, with mechanics who tell you exactly what fits. Shop details are being added.</p></div>
-  <div class="tile reveal"><svg><use href="#i-pin"/></svg><div><b>Address</b><span class="tba">To be added</span></div></div>
-  <div class="tile reveal d1"><svg><use href="#i-clock"/></svg><div><b>Timings</b><span class="tba">To be added</span></div></div>
-  <div class="tile reveal d2"><svg><use href="#i-phone"/></svg><div><b>Phone</b><span class="tba">To be added</span></div></div>
-  <div class="tile reveal d3"><svg><use href="#i-wa"/></svg><div><b>WhatsApp</b><span class="tba">To be added</span></div></div>
+  <div class="about reveal" id="about"><h2>Visit Bike Pharma</h2><p>A two-wheeler spare parts shop run by people who ride. Genuine parts for Honda, Hero, Bajaj, TVS, Yamaha, Royal Enfield, Suzuki, KTM and Jawa, with mechanics who tell you exactly what fits. Email: <a href="mailto:samkhazi@bikepharma.com">samkhazi@bikepharma.com</a></p></div>
+  <div class="tile reveal"><svg><use href="#i-pin"/></svg><div><b>Address</b><span class="val">1st Cross Road, Mrutunjaya Nagar, Ranebennur, Karnataka 581115</span><a class="vlink" href="https://www.google.com/maps/search/?api=1&amp;query=Bike+Pharma+Automobiles%2C+1st+Cross+Road%2C+Mrutunjaya+Nagar%2C+Ranebennur+581115" target="_blank" rel="noopener">Get directions</a></div></div>
+  <div class="tile reveal d1"><svg><use href="#i-clock"/></svg><div><b>Timings</b><span class="val">10:00 AM – 8:30 PM</span><span class="vnote">Open every day, Monday to Sunday</span></div></div>
+  <div class="tile reveal d2"><svg><use href="#i-phone"/></svg><div><b>Phone</b><span class="val"><a href="tel:+916361444960">+91 63614 44960</a><br><a href="tel:+918951860708">+91 89518 60708</a></span></div></div>
+  <div class="tile reveal d3"><svg><use href="#i-wa"/></svg><div><b>WhatsApp</b><span class="val"><a href="https://wa.me/916361444960" target="_blank" rel="noopener">+91 63614 44960</a></span><span class="vnote">Order parts or ask about a part</span></div></div>
 </div></section>
 
 <footer><div class="wrap">
@@ -1139,7 +1143,7 @@ footer .logo img{height:40px}
         <a href="#top" aria-label="Facebook"><svg><use href="#i-fb"/></svg></a>
         <a href="#top" aria-label="Instagram"><svg><use href="#i-ig"/></svg></a>
         <a href="#top" aria-label="YouTube"><svg><use href="#i-yt"/></svg></a>
-        <a href="#contact" aria-label="WhatsApp"><svg><use href="#i-wa"/></svg></a>
+        <a href="https://wa.me/916361444960" target="_blank" rel="noopener" aria-label="WhatsApp"><svg><use href="#i-wa"/></svg></a>
       </div>
     </div>
     <div><h4>Shop</h4><ul id="footShop"></ul></div>
@@ -1147,7 +1151,7 @@ footer .logo img{height:40px}
       <li><a href="#contact">Help centre</a></li><li><a href="#contact">Track your order</a></li><li><a href="#contact">Returns &amp; exchange</a></li><li><a href="#top">Fitment guide</a></li><li><a href="#contact">Contact us</a></li>
     </ul></div>
     <div><h4>Company</h4><ul>
-      <li><a href="#about">About us</a></li><li><a href="#mechanics">Mechanics</a></li><li><a href="#contact">Careers</a></li><li><a href="#contact">Privacy policy</a></li><li><a href="#contact">Terms &amp; conditions</a></li>
+      <li><a href="#about">About us</a></li><li><a href="#mechanics">Mechanics</a></li><li><a href="#contact">Careers</a></li><li><a href="/privacy">Privacy policy</a></li><li><a href="#contact">Terms &amp; conditions</a></li>
     </ul></div>
     <div class="news"><h4>Stay in the loop</h4><p>Get offers on WhatsApp. New stock, deals and fitting tips, straight to your phone.</p>
       <form id="newsForm" novalidate><input type="tel" id="newsNum" inputmode="numeric" placeholder="WhatsApp number" aria-label="WhatsApp number"><button class="btn btn-y" type="submit">Subscribe</button></form>
@@ -1172,9 +1176,9 @@ footer .logo img{height:40px}
 <dialog id="waDlg" aria-labelledby="waTitle">
   <div class="dhead"><h3 id="waTitle">Order on WhatsApp</h3><button class="x" data-close type="button" aria-label="Close"><svg><use href="#i-x"/></svg></button></div>
   <div class="dbody">
-    <div class="tba-line"><svg><use href="#i-wa"/></svg><span>The shop's WhatsApp number will be added here. This is the message that will be sent:</span></div>
+    <div class="tba-line on"><svg><use href="#i-wa"/></svg><span>Your order goes to Bike Pharma on WhatsApp, +91 63614 44960. This is the message:</span></div>
     <pre class="msgbox" id="waMsg"></pre>
-    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-k" id="waCopy" type="button"><svg style="width:16px;height:16px"><use href="#i-copy"/></svg>Copy message</button><button class="btn btn-ol" data-close type="button">Close</button></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn wa" id="waOpen" href="https://wa.me/916361444960" target="_blank" rel="noopener"><svg><use href="#i-wa"/></svg>Open WhatsApp</a><button class="btn btn-k" id="waCopy" type="button"><svg style="width:16px;height:16px"><use href="#i-copy"/></svg>Copy message</button><button class="btn btn-ol" data-close type="button">Close</button></div>
   </div>
 </dialog>
 
@@ -1322,8 +1326,8 @@ $('#cartItems').addEventListener('click',function(e){var q=e.target.closest('[da
 renderCart();
 
 /* ---------- WhatsApp panels ---------- */
-var waDlg=$('#waDlg');
-function showWa(title,msg){$('#waTitle').textContent=title;$('#waMsg').textContent=msg;if(typeof waDlg.showModal==='function'){if(!waDlg.open)waDlg.showModal()}else{waDlg.setAttribute('open','')}}
+var waDlg=$('#waDlg'),SHOP_WA='916361444960';   /* 21q: the shop's WhatsApp (business card) */
+function showWa(title,msg){$('#waTitle').textContent=title;$('#waMsg').textContent=msg;$('#waOpen').href='https://wa.me/'+SHOP_WA+'?text='+encodeURIComponent(msg);if(typeof waDlg.showModal==='function'){if(!waDlg.open)waDlg.showModal()}else{waDlg.setAttribute('open','')}}
 function orderMessage(){var lines=['Hi Bike Pharma, I want to order:'];Object.keys(state.cart).forEach(function(k){var p=PRODUCTS[k-1];lines.push('- '+state.cart[k]+' x '+p.name+' (₹'+fmt(p.price)+')')});lines.push('Bike: '+(state.bike?bikeLabel(state.bike):'not saved yet'));lines.push('Total: ₹'+fmt(cartTotal()));return lines.join('\n')}
 $('#orderBtn').addEventListener('click',function(){if(!cartCount()){toast('Add a part first');return}showWa('Order on WhatsApp',orderMessage())});
 $('#findMech').addEventListener('click',function(){toast('The mechanic finder opens soon')});

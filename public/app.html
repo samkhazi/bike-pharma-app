@@ -1349,9 +1349,9 @@ SCREENS.acremind=()=>{const L=MECHS_R().filter(m=>mechDue(m.code)>0).sort((a,b)=
  return bar('Credit reminders')+`<div class="scroll"><div class="pad"><p class="cap">Tap Send: WhatsApp opens with the message ready; press send there.</p>
  ${L.length?`<div class="card flush">${L.map(m=>{const r=(DB.remind||{})[m.code],od=mechInvs(m.code).filter(v=>v.amt>v.paid&&isOverdue(v)).length;return `<div class="li"><div class="grow"><div class="t">${esc(m.n)} · ${inr(mechDue(m.code))}</div><div class="s">${od?od+' overdue · ':''}${r?'last reminder '+esc(fmtD(r.d)):'no reminder yet'}</div></div><button class="btn sm" onclick="acRemind('${esc(m.code)}')">${ic('chat','s16')} Send</button></div>`;}).join('')}</div>`:'<div class="empty">No mechanic has credit due.</div>'}
 </div></div>`;};
-const LG_TX={en:{hi:'Welcome! 👋',t:'Login to Bike Pharma',s:'Log in or register with your mobile number. We’ll send a one-time password.',l:'Mobile number or staff email',btn:'Get OTP',em:'Use email instead',ph:'Use mobile number instead'},
- kn:{hi:'ನಮಸ್ಕಾರ! 👋',t:'Bike Pharma ಗೆ ಲಾಗಿನ್ ಮಾಡಿ',s:'ನಿಮ್ಮ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯಿಂದ ಲಾಗಿನ್ ಅಥವಾ ನೋಂದಣಿ ಮಾಡಿ. ನಾವು OTP ಕಳುಹಿಸುತ್ತೇವೆ.',l:'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಅಥವಾ ಸಿಬ್ಬಂದಿ ಇಮೇಲ್',btn:'OTP ಪಡೆಯಿರಿ',em:'ಇಮೇಲ್ ಬಳಸಿ',ph:'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಬಳಸಿ'},
- hi:{hi:'नमस्ते! 👋',t:'Bike Pharma में लॉगिन करें',s:'अपने मोबाइल नंबर से लॉगिन या रजिस्टर करें। हम OTP भेजेंगे।',l:'मोबाइल नंबर या स्टाफ ईमेल',btn:'OTP पाएं',em:'ईमेल से लॉगिन करें',ph:'मोबाइल नंबर से लॉगिन करें'}};
+const LG_TX={en:{hi:'Welcome! 👋',t:'Login to Bike Pharma',s:'Log in or register with your mobile number. We’ll send a one-time password.',l:'Mobile number or staff email',h:'Enter your mobile number',hm:'Enter your staff email',f:'We send a 6-digit OTP by SMS. It fills in by itself.',fm:'Staff and Admin log in with their password.',btn:'Get OTP',em:'Use email instead',ph:'Use mobile number instead'},
+ kn:{hi:'ನಮಸ್ಕಾರ! 👋',t:'Bike Pharma ಗೆ ಲಾಗಿನ್ ಮಾಡಿ',s:'ನಿಮ್ಮ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯಿಂದ ಲಾಗಿನ್ ಅಥವಾ ನೋಂದಣಿ ಮಾಡಿ. ನಾವು OTP ಕಳುಹಿಸುತ್ತೇವೆ.',l:'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಅಥವಾ ಸಿಬ್ಬಂದಿ ಇಮೇಲ್',h:'ನಿಮ್ಮ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ',hm:'ಸಿಬ್ಬಂದಿ ಇಮೇಲ್ ನಮೂದಿಸಿ',f:'ನಾವು SMS ಮೂಲಕ 6 ಅಂಕಿಯ OTP ಕಳುಹಿಸುತ್ತೇವೆ. ಅದು ತಾನಾಗಿಯೇ ತುಂಬುತ್ತದೆ.',fm:'ಸಿಬ್ಬಂದಿ ಮತ್ತು Admin ಪಾಸ್‌ವರ್ಡ್‌ನಿಂದ ಲಾಗಿನ್ ಮಾಡುತ್ತಾರೆ.',btn:'OTP ಪಡೆಯಿರಿ',em:'ಇಮೇಲ್ ಬಳಸಿ',ph:'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಬಳಸಿ'},
+ hi:{hi:'नमस्ते! 👋',t:'Bike Pharma में लॉगिन करें',s:'अपने मोबाइल नंबर से लॉगिन या रजिस्टर करें। हम OTP भेजेंगे।',l:'मोबाइल नंबर या स्टाफ ईमेल',h:'अपना मोबाइल नंबर डालें',hm:'स्टाफ ईमेल डालें',f:'हम SMS से 6 अंकों का OTP भेजते हैं। वह अपने आप भर जाता है।',fm:'स्टाफ और Admin पासवर्ड से लॉगिन करते हैं।',btn:'OTP पाएं',em:'ईमेल से लॉगिन करें',ph:'मोबाइल नंबर से लॉगिन करें'}};
 const lgT=()=>LG_TX[S.ui.lgLang||'en'];
 function lgKind(v){v=String(v||'').trim();if(!v)return {k:'none'};if(/[a-z@]/i.test(v)){return {k:'email',ok:/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(v)};}const d=v.replace(/\D/g,'').replace(/^(91|0)(?=\d{10}$)/,'');return {k:'phone',d,ok:d.length===10&&/^[6-9]/.test(d)};}
 function lgInput(el){S.ui.loginVal=el.value;S.ui.loginErr=null;const k=lgKind(el.value);const box=el.closest('.inp');box.classList.remove('err');const e=document.getElementById('lg-err');if(e)e.textContent='';
@@ -1360,22 +1360,22 @@ function lgInput(el){S.ui.loginVal=el.value;S.ui.loginErr=null;const k=lgKind(el
  const btn=document.getElementById('lg-btn');btn.disabled=!k.ok;
  if(k.k==='phone'&&k.d&&k.d.length<=10){const f=k.d.length>5?k.d.slice(0,5)+' '+k.d.slice(5):k.d;if(el.value!==f&&!/[^\d\s+]/.test(el.value)){el.value=f;S.ui.loginVal=f;}}}
 const ROLE_IC={customer:['user','y'],mechanic:['wrench','k'],billing:['receipt','b'],sales:['trend','g'],manager:['chart','a'],inventory:['package','n'],accountant:['rupee','g'],admin:['shield','r']};
-SCREENS.login=()=>{const e=S.ui.loginErr;const T=lgT();const k=lgKind(S.ui.loginVal||'');const ch=S.ui.otpCh||'SMS';const mail=!!S.ui.lgMail||k.k==='email';
- return `<div class="hero"><div class="lg-lang">${[['en','EN'],['kn','KN'],['hi','HI']].map(([c,l])=>`<button class="${(S.ui.lgLang||'en')===c?'on':''}" onclick="setLang('${c}')" aria-label="Language ${l}">${l}</button>`).join('')}</div><button class="lg-theme" type="button" onclick="toggleTheme()" aria-label="${document.documentElement.dataset.theme==='dark'?'Light mode':'Dark mode'}">${ic(document.documentElement.dataset.theme==='dark'?'sun':'moon','s18')}</button><svg class="heroMark idle" viewBox="0 0 370 190" role="img" aria-label="Bike Pharma Automobiles"><use href="#logoMark"/></svg><div class="lg-tagline">${['Genuine spares','Trusted mechanics','Warranty tracked'].map(t=>`<span>${t}</span>`).join('')}</div><div class="lg-road"><i></i><span class="lg-bike">${ic('bike','s20')}</span></div></div>
-<div class="sheet-card scroll lg-sheet">
- <div class="stack g6"><div class="lg-hi">${T.hi}</div><h1 class="h1" style="font-size:28px;line-height:1.15">${T.t}</h1><p class="cap">${T.s}</p></div>
- <form class="field" onsubmit="event.preventDefault();sendOtp()" novalidate>
-  <label for="loginId">${T.l}</label>
-  <div class="inp lg-inp ${e?'err':''}" style="gap:8px"><span id="lg-ic">${ic(mail?'user':'phone','s18')}</span><b id="lg-pre" style="${(k.k==='phone'||k.k==='none')&&!mail?'':'display:none'};border-right:1px solid var(--line);padding-right:8px">+91</b><input id="loginId" autocomplete="username" inputmode="${mail?'email':'tel'}" ${mail?'autocapitalize="none" autocorrect="off" spellcheck="false" ':''}placeholder="${mail?'name@bikepharma.com':'98450 12345'}" value="${esc(S.ui.loginVal||'')}" oninput="lgInput(this)" style="min-width:0;flex:1"><span id="lg-tag">${k.ok?(k.k==='email'?'<span class="pill b">Staff login</span>':`<span style="color:var(--g)">${ic('checkC','s18')}</span>`):''}</span></div>
+SCREENS.login=()=>{const e=S.ui.loginErr;const T=lgT();const k=lgKind(S.ui.loginVal||'');const mail=!!S.ui.lgMail||k.k==='email';const dk=document.documentElement.dataset.theme==='dark';
+ /* 22r (Sam 13 Nov "login page bhi update nhi kiye"): the approved login design: white screen, logo on top, white sheet "Enter your mobile number", +91 field with the yellow line, round yellow arrow button. Every function is as before. */
+ return `<div class="hero lgn-hero"><div class="lg-lang">${[['en','EN'],['kn','KN'],['hi','HI']].map(([c,l])=>`<button class="${(S.ui.lgLang||'en')===c?'on':''}" onclick="setLang('${c}')" aria-label="Language ${l}">${l}</button>`).join('')}</div><button class="lg-theme" type="button" onclick="toggleTheme()" aria-label="${dk?'Light mode':'Dark mode'}">${ic(dk?'sun':'moon','s18')}</button><svg class="heroMark idle" viewBox="0 0 370 190" role="img" aria-label="Bike Pharma Automobiles"><use href="#logoMark"/></svg></div>
+<div class="sheet-card scroll lg-sheet lgn">
+ <svg class="heroMark lgn-dlogo" viewBox="0 0 370 190" aria-hidden="true"><use href="#logoMark"/></svg>
+ <h1 class="lgn-h">${mail?T.hm:T.h}</h1>
+ <form class="lgn-form" onsubmit="event.preventDefault();sendOtp()" novalidate>
+  <label for="loginId" class="lgn-sr">${T.l}</label>
+  <div class="inp lgn-field ${e?'err':''}"><span id="lg-ic" hidden>${ic(mail?'user':'phone','s18')}</span><b id="lg-pre" style="${(k.k==='phone'||k.k==='none')&&!mail?'':'display:none'}">+91</b><input id="loginId" autocomplete="username" inputmode="${mail?'email':'tel'}" ${mail?'autocapitalize="none" autocorrect="off" spellcheck="false" ':''}placeholder="${mail?'name@bikepharma.com':'98450 12345'}" value="${esc(S.ui.loginVal||'')}" oninput="lgInput(this)"><span id="lg-tag">${k.ok?(k.k==='email'?'<span class="pill b">Staff login</span>':`<span style="color:var(--g)">${ic('checkC','s18')}</span>`):''}</span></div>
   <div id="lg-err" class="errmsg" role="alert">${e?esc(e):''}</div>
-  <button type="button" id="lg-mode" class="link" style="align-self:flex-end;font-size:12px;margin-top:-2px" onclick="lgMode()">${mail?T.ph:T.em}</button>
-  ${''/* overnight review 2026-10-23: the "Send OTP on SMS / WhatsApp" choice is gone: the code always comes by SMS (Renflair), WhatsApp never sent it */}
-  <button id="lg-btn" class="btn lg-go" style="margin-top:8px" type="submit" ${k.ok?'':'disabled'}>${T.btn} <span class="lg-arr">${ic('chevR','s18')}</span></button>
+  <div class="lgn-row"><p class="lgn-fine">${mail?T.fm:T.f}</p><button id="lg-btn" class="lgn-go" type="submit" aria-label="${T.btn}" ${k.ok?'':'disabled'}>${ic('chevR','s20')}</button></div>
+  <button type="button" id="lg-mode" class="lgn-man" onclick="lgMode()"><b>${mail?T.ph:T.em}</b></button>
  </form>
- 
- <div class="lg-trust">${[['shield','100% genuine'],['wrench','Verified mechanics'],['award','Warranty in app']].map(([i,t])=>`<span>${ic(i,'s16')}${t}</span>`).join('')}</div>
- <p class="cap" style="text-align:center;font-size:11px">By continuing you agree to our <button class="link" style="font-size:11px" onclick="legalSheet('terms')">Terms</button> & <button class="link" style="font-size:11px" onclick="legalSheet('privacy')">Privacy Policy</button> · <button class="link" style="font-size:11px" onclick="extOpen('tel:'+telOf(SHOP.ph),'Calling Bike Pharma support…')">Help</button><br><span style="color:var(--ink5)">v1.0 · Bike Pharma Automobiles, Ranebennur</span></p>
+ <p class="lgn-legal">By continuing you agree to our <button class="link" onclick="legalSheet('terms')">Terms</button> & <button class="link" onclick="legalSheet('privacy')">Privacy Policy</button> · <button class="link" onclick="extOpen('tel:'+telOf(SHOP.ph),'Calling Bike Pharma support…')">Help</button><br>v1.0 · Bike Pharma Automobiles, Ranebennur</p>
 </div>`;};
+const lgnHead=()=>`<div class="lgn-head"><button class="iconbtn" onclick="back()" aria-label="Back">${ic('chevL')}</button><svg class="heroMark" viewBox="0 0 370 190" role="img" aria-label="Bike Pharma Automobiles"><use href="#logoMark"/></svg></div>`;
 function lgMode(){S.ui.lgMail=!(S.ui.lgMail||lgKind(S.ui.loginVal||'').k==='email');S.ui.loginVal='';S.ui.loginErr=null;refresh();const i=document.getElementById('loginId');if(i)i.focus();}
 function fillLogin(k){S.ui.loginVal=k;S.ui.loginErr=null;refresh();const i=document.getElementById('loginId');if(i){i.focus();lgInput(i);}}
 function sendOtp(){const v=document.getElementById('loginId').value;S.ui.loginVal=v;const id=normId(v);
@@ -1387,14 +1387,14 @@ function sendOtp(){const v=document.getElementById('loginId').value;S.ui.loginVa
   S.ui.otpTries=0;S.ui.otpSent=Date.now();
   if(r.signup){S.ui.signup={id,role:'customer',name:'',shop:'',area:''};return go('signup');}
   S.ui.signup=null;S.ui.pending=id;S.ui.after=()=>{const f=document.querySelector('.otp input');if(f)f.focus();};go('otp');}).catch(()=>{S.ui.lgBusy=0;S.ui.loginErr='Could not reach the server. Try again.';refresh();});}
-SCREENS.signup=()=>{const s=S.ui.signup;const m=s.role==='mechanic';return bar('Create account')+`<div class="scroll"><div class="pad">
- <div class="stack g6"><h1 class="h1">Register as a customer</h1><p class="cap">+91 ${esc(s.id.slice(0,5))} ${esc(s.id.slice(5))} isn’t registered yet. Create your customer account in a minute.</p></div>
- <div class="field"><label for="su-name">Your name</label><div class="inp">${ic('user','s18')}<input id="su-name" value="${esc(s.name)}" placeholder="Full name" oninput="S.ui.signup.name=this.value"></div></div>
- ${m?`<div class="field"><label for="su-shop">Workshop / garage name</label><div class="inp">${ic('store','s18')}<input id="su-shop" value="${esc(s.shop)}" placeholder="e.g. Sri Ganesh Auto Works" oninput="S.ui.signup.shop=this.value"></div></div>
- <div class="field"><label for="su-area">Area</label><div class="inp">${ic('pin','s18')}<input id="su-area" value="${esc(s.area)}" placeholder="e.g. Vijayanagar, Bengaluru" oninput="S.ui.signup.area=this.value"></div></div>
- <div class="hint">${ic('shield','s16')} Mechanic accounts are verified by Bike Pharma before first login.</div>`:''}
+SCREENS.signup=()=>{const s=S.ui.signup;return lgnHead()+`<div class="scroll"><div class="pad lgn-pad">
+ <div class="lgn-prog"><i class="on"></i><i></i></div>
+ <h1 class="lgn-h big">Welcome! What is your name?</h1><p class="lgn-sub">+91 ${esc(s.id.slice(0,5))} ${esc(s.id.slice(5))} is new here · <button class="lgn-man" onclick="back()"><b>Change</b></button></p>
+ <label for="su-name" class="lgn-sr">Your name</label><div class="inp lgn-field"><input id="su-name" value="${esc(s.name)}" placeholder="Full name" autocomplete="name" oninput="S.ui.signup.name=this.value" onkeydown="if(event.key==='Enter')signupNext()"></div>
  ${S.ui.suErr?`<div class="errmsg">${esc(S.ui.suErr)}</div>`:''}
-</div></div><div class="foot"><button class="btn" onclick="signupNext()">Send OTP ${ic('chevR','s18')}</button></div>`;};
+ <button class="lgn-cta" onclick="signupNext()">Continue</button>
+ <p class="lgn-note">Customer only. Mechanic and staff logins are made by the shop.</p>
+</div></div>`;};
 function signupNext(){const s=S.ui.signup;if(!s.name.trim()){S.ui.suErr='Enter your name.';return refresh();}if(s.role==='mechanic'&&!s.shop.trim()){S.ui.suErr='Enter your workshop name.';return refresh();}
  S.ui.suErr=null;S.ui.pending=s.id;S.ui.after=()=>{const f=document.querySelector('.otp input');if(f)f.focus();};go('otp');}
 SCREENS.submitted=()=>{const s=S.ui.done||{};return `<div class="scroll"><div class="pad" style="padding-top:48px;gap:20px">
@@ -1402,15 +1402,15 @@ SCREENS.submitted=()=>{const s=S.ui.done||{};return `<div class="scroll"><div cl
  <div class="stack g6"><h1 class="h1">Application submitted</h1><p class="cap">Thanks, ${esc(s.name||'')}. Bike Pharma will verify ${esc(s.shop||'your workshop')} and assign your mechanic code. You can log in once Admin approves it.</p></div>
  <div class="card"><div class="kv"><span>Mobile</span><span>+91 ${esc(s.id||'')}</span></div><div class="kv"><span>Status</span><span style="color:var(--amber)">Pending verification</span></div></div>
  <button class="btn" onclick="reset('login')">Back to login</button></div></div>`;};
-SCREENS.otp=()=>{const id=S.ui.pending;const masked=id.includes('@')?id:'+91 '+id.slice(0,5)+' '+id.slice(5);return bar('')+`<div class="scroll"><div class="pad" style="gap:22px">
- <div class="stack g6"><h1 class="h1">Enter OTP</h1><p class="cap">6-digit code sent ${id.includes('@')?'by email':'by SMS'} to <b style="color:var(--ink)">${esc(masked)}</b> · <button class="link" onclick="back()">Edit</button></p></div>
- <div class="otp" role="group" aria-label="6 digit OTP">${[0,1,2,3,4,5].map(i=>`<input id="otp${i}" inputmode="numeric" ${i?'maxlength="1" autocomplete="off"':'maxlength="6" autocomplete="one-time-code"'} aria-label="Digit ${i+1}" oninput="otpIn(this,${i})" onkeydown="otpKey(event,${i})">`).join('')}</div>${otpWebSoon()}
+SCREENS.otp=()=>{const id=S.ui.pending;const masked=id.includes('@')?id:'+91 '+id.slice(0,5)+' '+id.slice(5);const lock=(S.ui.otpTries||0)>=3;return lgnHead()+`<div class="scroll"><div class="pad lgn-pad">
+ <h1 class="lgn-h big">Enter the OTP</h1><p class="lgn-sub">Sent ${id.includes('@')?'by email':'by SMS'} to ${esc(masked)} · <button class="lgn-man" onclick="back()"><b>Change</b></button></p>
+ <div class="otp lgn-boxes" role="group" aria-label="6 digit OTP">${[0,1,2,3,4,5].map(i=>`<input id="otp${i}" placeholder=" " inputmode="numeric" ${i?'maxlength="1" autocomplete="off"':'maxlength="6" autocomplete="one-time-code"'} aria-label="Digit ${i+1}" oninput="otpIn(this,${i})" onkeydown="otpKey(event,${i})">`).join('')}</div>${otpWebSoon()}
  ${S.ui.otpErr?`<div class="errmsg">${S.ui.otpErr}</div>`:''}
  ${SRV.cfg.otpHint?`<div class="hint">${ic('lock','s16')} Test OTP (SMS not set up yet): ${SRV.cfg.otpHint}</div>`:''}
- ${(S.ui.otpTries||0)>=3?`<div class="row cap" style="background:var(--r-soft);color:var(--r);border-radius:12px;padding:10px;gap:8px">${ic('lock','s16')}<span class="grow">Too many wrong tries. Tap Resend OTP to get a new one.</span></div>`:''}
- <button class="btn" onclick="verify()" ${(S.ui.otpTries||0)>=3?'disabled':''}>Verify &amp; continue ${ic('chevR','s18')}</button>
- <div class="row cap" style="justify-content:center;gap:6px" id="otp-rs">${otpResendHtml()}</div>
- ${SRV.cfg.otpHint?`<button class="link" style="text-align:center" onclick="fillOtp()">Auto-fill OTP</button>`:''}
+ ${lock?`<div class="row cap" style="background:var(--r-soft);color:var(--r);border-radius:12px;padding:10px;gap:8px">${ic('lock','s16')}<span class="grow">Too many wrong tries. Tap Resend OTP to get a new one.</span></div>`:''}
+ <div class="row lgn-sub" style="gap:6px" id="otp-rs">${otpResendHtml()}</div>
+ <button class="lgn-cta" onclick="verify()" ${lock?'disabled':''}>Verify &amp; continue</button>
+ ${SRV.cfg.otpHint?`<button class="lgn-man" style="align-self:center" onclick="fillOtp()"><b>Auto-fill OTP</b></button>`:''}
 </div></div>`;};
 function otpIn(el,i){const v=el.value.replace(/\D/g,'');if(v.length>1)return otpPut(v.slice(0,6),i);el.value=v;if(el.value&&i<5)document.getElementById('otp'+(i+1)).focus();if(i===5&&el.value)verify();}
 // a whole code at once (phone keyboard OTP suggestion, paste, Android reading the SMS): spread it over the boxes and verify
@@ -6330,10 +6330,10 @@ function mOrderWa(){const p=telOf(SHOP.ph).replace(/\D/g,'');if(p.length<10){toa
 function mPayInfo(amt){sheet(`<div class="tile r round" style="width:64px;height:64px">${ic('rupee','s28')}</div><h3 class="h2">Pay at Bike Pharma</h3><p class="cap">Pay ${inr(amt)} at the Bike Pharma counter, or by UPI and show it at the counter. Bike Pharma records it and your outstanding updates here.</p><div class="card"><div class="kv"><span>Shop UPI</span><span>${esc(SHOP.upi)}</span></div><div class="kv"><span>Your code</span><span>${myCode()}</span></div></div><button class="btn" onclick="closeSheet()">OK</button>`);}
 function genPw(){const A='abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';const b=new Uint8Array(10);crypto.getRandomValues(b);return Array.from(b,x=>A[x%A.length]).join('');}
 function srvNewPw(id){const pw=genPw();api('POST','/api/users/password',{id,password:pw}).then(r=>{if(r.error)toast('Password not saved · '+r.error);}).catch(()=>toast('Password not saved · server unreachable'));return pw;}
-SCREENS.pw=()=>{const id=S.ui.pending||'';return bar('')+`<div class="scroll"><div class="pad" style="gap:22px">
- <div class="stack g6"><h1 class="h1">Enter password</h1><p class="cap">Staff login for <b style="color:var(--ink)">${esc(id)}</b> · <button class="link" onclick="back()">Edit</button></p></div>
- <form class="field" onsubmit="event.preventDefault();pwGo()" novalidate><label for="pw1">Password</label><div class="inp ${S.ui.pwErr?'err':''}">${ic('lock','s18')}<input id="pw1" type="password" autocomplete="current-password" placeholder="Password"></div>${S.ui.pwErr?`<div class="errmsg">${esc(S.ui.pwErr)}</div>`:''}<button class="btn" type="submit" style="margin-top:12px">Log in ${ic('chevR','s18')}</button></form>
- <div class="hint">${ic('shield','s16')} Forgot it? The Bike Pharma Admin can set a new password for you.</div></div></div>`;};
+SCREENS.pw=()=>{const id=S.ui.pending||'';return lgnHead()+`<div class="scroll"><div class="pad lgn-pad">
+ <h1 class="lgn-h big">Enter password</h1><p class="lgn-sub">Staff login for ${esc(id)} · <button class="lgn-man" onclick="back()"><b>Change</b></button></p>
+ <form class="lgn-form" onsubmit="event.preventDefault();pwGo()" novalidate><label for="pw1" class="lgn-sr">Password</label><div class="inp lgn-field ${S.ui.pwErr?'err':''}"><input id="pw1" type="password" autocomplete="current-password" placeholder="Password"></div>${S.ui.pwErr?`<div class="errmsg">${esc(S.ui.pwErr)}</div>`:''}<button class="lgn-cta" type="submit" style="margin-top:14px">Log in</button></form>
+ <p class="lgn-note">Forgot it? The Bike Pharma Admin can set a new password for you.</p></div></div>`;};
 function pwGo(){const el=document.getElementById('pw1');const pw=el?el.value:'';if(!pw){S.ui.pwErr='Enter your password.';return refresh();}if(S.ui.pwBusy)return;S.ui.pwBusy=1;api('POST','/api/login',{id:S.ui.pending,password:pw}).then(r=>{S.ui.pwBusy=0;if(r.error){S.ui.pwErr=r.error;return refresh();}srvLogin(r);}).catch(()=>{S.ui.pwBusy=0;S.ui.pwErr='Could not reach the server.';refresh();});}
 /* diagrams and photos: the app reads them through a "files" object; here it is this server's /api/files (staff only) */
 const FILES_SHIM={list:async o=>{const r=await fetch('/api/files/list?path='+encodeURIComponent((o&&o.path)||''),{credentials:'same-origin'});if(!r.ok)throw{code:r.status===401||r.status===403?'not_granted':r.status===404?'not_found':'unavailable'};return r.json();},
@@ -8890,6 +8890,50 @@ html.wv-login .screen:has(>.hero+.sheet-card)>.hero .lg-tagline span{font-size:1
 html.wv-login .screen:has(>.hero+.sheet-card)>.hero .lg-road{bottom:44px;height:30px}
 html.wv-login .screen>.hero+.sheet-card{flex:1 1 100%;margin:0;border-radius:0;padding:max(56px,10vh) 0 56px;overflow-y:auto;gap:18px}html.wv-login .screen>.hero+.sheet-card>.lg-lang{position:absolute;top:16px;left:16px;width:auto;margin:0;background:var(--line)}html.wv-login .screen>.hero+.sheet-card>.lg-lang button{color:var(--ink);opacity:.65}html.wv-login .screen>.hero+.sheet-card>.lg-lang button.on{opacity:1;color:var(--k)}
 html.wv-login .screen>.hero+.sheet-card>*{width:min(460px,100% - 72px);margin-inline:auto;flex:none}
+/* 22r login like the approved design */
+.lgn-hero{background:var(--card)!important;color:var(--ink)!important;padding:56px 24px 64px!important;flex:1 1 30%!important;justify-content:center;min-height:170px}
+.lgn-hero::before,.lgn-hero::after{display:none}
+.lgn-hero .heroMark{width:min(210px,58%);color:var(--ink)}
+.lgn-hero .lg-lang{background:var(--nhg,#f1f1f1)}.lgn-hero .lg-lang button{color:var(--ink7)}.lgn-hero .lg-lang button.on{color:var(--k)}
+.lgn-hero .lg-theme{background:var(--nhg,#f1f1f1);color:var(--ink)}
+[data-theme=dark] .lgn-hero .lg-lang,[data-theme=dark] .lgn-hero .lg-theme{background:#2a2a2a}
+.sheet-card.lgn{flex:1 1 62%;margin-top:-28px;border-radius:28px 28px 0 0;box-shadow:0 -10px 30px rgba(0,0,0,.08);padding:24px 20px 18px;gap:14px;animation:lgnUp .55s cubic-bezier(.2,.9,.25,1) both}
+.sheet-card.lgn>*{animation:none}
+@keyframes lgnUp{from{transform:translateY(40%);opacity:0}to{transform:none;opacity:1}}
+.lgn-dlogo{display:none}
+.lgn-h{margin:0;font-size:19px;font-weight:800;line-height:1.2;color:var(--ink)}.lgn-h.big{font-size:24px}
+.lgn-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.lgn-form{display:flex;flex-direction:column;gap:12px}
+.inp.lgn-field{display:flex;align-items:center;gap:10px;border:0!important;border-bottom:2px solid var(--line)!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;padding:0 0 8px!important;min-height:44px;font-family:'Space Grotesk',var(--f,inherit);font-size:19px;font-weight:600}
+.inp.lgn-field:focus-within,.inp.lgn-field:has(input:not(:placeholder-shown)){border-bottom-color:var(--y)!important}
+.inp.lgn-field.err{border-bottom-color:var(--r)!important}
+.inp.lgn-field input{flex:1;min-width:0;font:inherit;letter-spacing:.3px;background:transparent;border:0;outline:0;color:var(--ink)}
+.inp.lgn-field input::placeholder{color:var(--ink5);font-weight:500}
+.lgn-row{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.lgn-fine{margin:0;font-size:11.5px;color:var(--ink7);line-height:1.4;max-width:17em}
+.lgn-go{width:50px;height:50px;border-radius:50%;background:var(--y);color:var(--k);display:grid;place-items:center;flex:none;transition:transform .15s,opacity .2s}
+.lgn-go:active{transform:scale(.88)}.lgn-go:disabled{opacity:.4}
+.lgn-man{font-size:12.5px;color:var(--ink7);align-self:flex-start;padding:4px 0}.lgn-man b{color:var(--ink);font-weight:700;text-decoration:underline;text-decoration-color:var(--y);text-decoration-thickness:3px;text-underline-offset:3px}
+.lgn-legal{margin:auto 0 0;font-size:11px;color:var(--ink5);text-align:center;line-height:1.6}.lgn-legal .link{font-size:11px}
+.lgn-head{display:flex;align-items:center;gap:8px;padding:14px 16px 6px;flex:none}.lgn-head .heroMark{width:112px;color:var(--ink)}
+.screen:has(>.lgn-head){background:var(--card)}
+.lgn-pad{gap:14px!important;padding-top:18px!important}
+.lgn-sub{margin:0;font-size:12.5px;color:var(--ink7)}.lgn-sub .lgn-man{display:inline;padding:0}
+.lgn-boxes{gap:7px;margin-top:6px}
+.lgn-boxes input{flex:1;width:auto;min-width:0;height:54px;border:2px solid var(--line);border-radius:12px;font-family:'Space Grotesk',var(--f,inherit);font-size:24px;font-weight:700;background:var(--card);color:var(--ink)}
+.lgn-boxes input:focus{border-color:var(--ink);box-shadow:none}
+.lgn-boxes input:not(:placeholder-shown){border-color:var(--y);background:#fff8e1;color:#121212;animation:lgnPop .25s cubic-bezier(.3,1.6,.5,1)}
+@keyframes lgnPop{from{transform:scale(.86)}to{transform:none}}
+.lgn-cta{background:var(--k);color:var(--y);border-radius:16px;padding:15px;text-align:center;font-weight:700;font-size:15px;width:100%;transition:transform .15s}
+[data-theme=dark] .lgn-cta{background:var(--y);color:var(--k)}
+.lgn-cta:active{transform:scale(.96)}.lgn-cta:disabled{opacity:.4}
+.lgn-prog{display:flex;gap:6px}.lgn-prog i{flex:1;height:4px;border-radius:2px;background:var(--line)}.lgn-prog i.on{background:var(--y)}
+.lgn-note{margin:0;font-size:12.5px;color:var(--ink7);border-top:1px solid var(--line);padding-top:12px;line-height:1.5}
+html.wv-login .screen>.hero+.sheet-card.lgn{box-shadow:none;animation:none;justify-content:center;padding:40px 0}
+html.wv-login .sheet-card.lgn>.lgn-dlogo{display:block;width:230px;color:var(--ink);margin:0 auto 26px}
+html.wv-login .sheet-card.lgn>.lgn-legal{margin-top:26px}
+html.wv-login .screen:has(>.lgn-head) .lgn-head,html.wv-login .screen:has(>.lgn-head) .lgn-pad{width:min(460px,100% - 72px);margin-inline:auto;padding-inline:0}
+html.wv-login .screen:has(>.lgn-head) .lgn-head{padding-top:max(40px,9vh)}
 .wv-lgh{display:none}
 html.wv-login .wv-lgh{display:block;color:#fff;font-size:clamp(30px,3.2vw,46px);font-weight:800;line-height:1.08;text-align:center;letter-spacing:-.5px;position:relative;z-index:1;animation:wvUp .8s .5s cubic-bezier(.2,.8,.2,1) both}
 html.wv-login .wv-lgh em{font-style:normal;color:#FFC20E}

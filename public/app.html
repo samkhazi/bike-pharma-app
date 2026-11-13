@@ -5760,10 +5760,8 @@ SCREENS.mgmargin=()=>{const per=S.ui.mgp||'today';const m=mgMargin(per);
  ${(()=>{const lo=m.rows.slice().sort((a,b)=>a.m-b.m)[0];return lo&&m.rows.length>1?`<div class="row cap" style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px">${ic('alert','s16')}<span class="grow">${esc(lo.c)} has the lowest margin (${lo.m}%).</span></div>`:'';})()}
 </div></div>`;};
 function mgBranch(){sheet(`<h3 class="h2">Branch</h3>${MG_BRANCHES.map((b,i)=>`<div class="card" style="${i?'opacity:.75':'border:1.5px solid var(--y)'}"><div class="row"><div class="tile ${i?'n':'y'} round">${ic(i?'lock':'store','s18')}</div><div class="grow"><div class="h3">${b.n}</div><div class="cap">${esc(b.a)}</div></div>${i?'<span class="pill">Admin only</span>':'<span class="pill g">Your branch</span>'}</div>${i?'':`<div class="grid3" style="gap:8px">${[['Staff',b.st],['Open',b.h.split(' – ')[0]],['Close',b.h.split(' – ')[1]]].map(([k,v])=>`<div><div class="micro muted">${k}</div><b>${v}</b></div>`).join('')}</div><button class="btn line sm" style="width:100%" onclick="closeSheet();tab('team')">View team & attendance</button>`}</div>`).join('')}<div class="cap">Managers see only their own branch. Other branches are visible to Admin.</div><button class="btn" onclick="closeSheet()">Done</button>`);}
-SCREENS.mghome=()=>{const per=S.ui.mgp||'today';const d=MG_DATA[per];const pend=DB.approvals.filter(a=>a.st==='pending').length;const dues=allDues();const od=dues.filter(isOverdue);const mx=Math.max(...d.chart.v)||1;
- return `<div class="scroll"><div class="pad">${staffHead()}
- <div class="chips">${[['today','Today'],['month','This month']].map(([k,l])=>`<button class="chip ${per===k?'on':''}" aria-pressed="${per===k}" onclick="S.ui.mgp='${k}';refresh()">${l}</button>`).join('')}</div>
- <div class="grid2">${tileBtn('y',per==='today'?"Today's sales":'Sales this month',per==='today'?inr(d.sales):'₹'+(d.sales/1e5).toFixed(1)+' L',d.bills.toLocaleString('en-IN')+' bills · '+(per==='month'?'Target '+inrS(tgtRow('sales').t)+' · '+tgtRow('sales').pct+'%':d.chg),"go('mgsales')")}${(()=>{const m=mgMargin(per);return tileBtn('g','Purchase orders',String((DB.pos||[]).filter(o=>o.d===today()&&o.status!=='Draft').length),'today · limit '+inrS(poLim())+' each',"S.ui.mgot='Orders';go('mgorders')");})()}${tileBtn('r','Outstanding',inr(allOut()),od.length?od.length+' invoice'+(od.length>1?'s':'')+' overdue':'none overdue',"go('mgdues')")}${tileBtn('','Pending approvals',String(pend),pend?'tap to review':'all clear',"tab('approvals')")}</div>
+SCREENS.mghome=()=>{const per=(S.ui.nhp||'today')==='today'?'today':'month';const d=MG_DATA[per];const pend=DB.approvals.filter(a=>a.st==='pending').length;const dues=allDues();const od=dues.filter(isOverdue);const mx=Math.max(...d.chart.v)||1;
+ return `<div class="scroll"><div class="pad">${nhTop(nhMgr)}
  ${moneyToday()}${ooCard()}${dsCard()}
  ${(()=>{const c=omAll();const cnt=k=>c.filter(x=>omStatus(x)===k).length;const C=[['Top performers','Top','#6CC896'],['Regular','Regular','#8CC4CB'],['Needs attention','Attention','#FFD54A'],['Credit blocked','Blocked','#E8836F'],['Not buying','Not buying','#F5B000'],['New','New','#8CC4CB']].map(([k,l,col])=>({k,l,col,n:cnt(k)})).filter(x=>x.n);
  return `<button class="card" style="text-align:left;width:100%;gap:14px;background:var(--k);border:0" onclick="S.ui.omBy='Status';S.ui.omq='';go('ourmech')">
@@ -5782,7 +5780,6 @@ SCREENS.mghome=()=>{const per=S.ui.mgp||'today';const d=MG_DATA[per];const pend=
  
  ${sec('Team & money')}
  <div class="grid3">${[['Staff performance','users',"go('mgstaff')",''],['Other brand not added','grid',"S.ui.xm=null;S.ui.xmMsg='';go('axmiss')",''],['Inventory','package',"S.ui.rq='';go('stocklist')",''],['Stock in','down',"go('grn')",'g'],['Add product','plus',"S.ui.ap=null;S.ui.apErr=null;go('addproduct')",''],['Waiting for photos','camera',"go('invwait')",''],['Warranty claims','repeat',"S.ui.wcq='';S.ui.wcf='Open';go('wclaim')",''],['WhatsApp summary','chat',"go('mgsummary')",''],['Day closing','lock',"go('dayclose')",(DB.closings||[]).some(x=>(x.iso?x.iso===isoToday():x.d===today()))?'':'a'],['Expiry alerts','clock',"go('batches')",batches().some(b=>b.q>0&&expDays(b.exp)<=30)?'r':''],['Cycle count','clipboard',"S.ui.cc={};go('ccount')",'']].map(([l,i,o,t])=>`<button class="qa2" onclick="${o}"><span class="tile sm ${t}">${ic(i,'s20')}</span>${l}</button>`).join('')}</div>
- <div class="card"><div class="sec"><span class="h3">Sales</span><span class="cap">${d.chart.t}</span></div><div class="cbars">${d.chart.v.map((v,i)=>`<div><span class="num">${v}</span><i style="height:${v/mx*80}%"></i>${d.chart.l[i]}</div>`).join('')}</div></div>
  <button class="card" style="flex-direction:row;align-items:center;text-align:left" onclick="S.ui.wf='All';go('warreg')"><div class="tile g">${ic('shield','s20')}</div><div class="grow"><div class="h3">Warranty Check</div><div class="cap">${DB.warranties.length} warranties issued</div></div>${ic('chevR','s18')}</button>
  ${(()=>{const pk=per==='today'?'d':'m';const dr=mbDropped(pk);return `<div class="sec"><h3 class="h2">Top mechanics · ${per==='today'?'today':'this month'}</h3><button class="link" onclick="S.ui.mbp='${pk}';go('mgmech')">Full report</button></div>
  <div class="card flush">${mbTop(per).map(x=>li(esc(x.m.n)+vTick(x.code),x.code+' · '+inr(x.c),chg(x),'wrench',`go('mgmechd',{code:'${x.code}'})`)).join('')}</div>
@@ -5829,12 +5826,27 @@ const brSel=()=>S.ui.abr||'All branches';
 const brData=()=>{const b=brSel();const l=b==='All branches'?BRANCHES:BRANCHES.filter(x=>x.n===b);const s=k=>l.reduce((a,x)=>a+x[k],0);return {l,sales:s('sales'),purch:s('purch'),gp:s('gp'),out:s('out'),stock:s('stock'),cust:s('cust'),mech:s('mech'),staff:s('staff'),orders:s('orders'),ret:s('ret'),claims:s('claims')};};
 const L=v=>v>=1e7?'₹'+(v/1e7).toFixed(2)+' Cr':v>=1e5?'₹'+(v/1e5).toFixed(1)+' L':inr(v);
 const SEC_ALERTS=[];
+/* 22m: home top like the redesign previews: greeting, Today / This week / This month, 4 number tiles, sales chart, alerts */
+function nhBills(p){if(p!=='week')return perBills(p);const td=isoToday(),f=addDays(td,-6);return (DB.bills||[]).filter(b=>!b.cancel&&String(b.iso||'')>=f&&String(b.iso||'')<=td);}
+function nhProfit(L){let v=0,k=0;L.forEach(b=>(b.items||[]).forEach(i=>{const q=+i.q||0;v+=(+i.r||0)*q;k+=itemCost(i)*q;}));return {p:v-k,pct:v?Math.round((v-k)/v*100):0};}
+function nhChart(p,L){let l,v,t,hi,note='';
+ if(p==='today'){const h1=Math.max(13,Math.min(20,new Date().getHours())),H=[];for(let h=Math.max(9,h1-6);h<=h1;h++)H.push(h);v=H.map(()=>0);L.forEach(b=>{v[Math.min(H.length-1,Math.max(0,billHr(b)-H[0]))]+=+b.amt||0;});l=H.map(h=>(h>12?h-12:h)+(h<12?'a':'p'));t='Sales by hour';hi=H.length-1;}
+ else if(p==='week'){const td=isoToday(),D=[];for(let n=6;n>=0;n--)D.push(addDays(td,-n));v=D.map(d=>L.filter(b=>b.iso===d).reduce((a,b)=>a+(+b.amt||0),0));l=D.map(d=>new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short'}));t='Sales by day';hi=6;}
+ else{v=[0,0,0,0,0];L.forEach(b=>{const d=+String(b.iso).slice(8,10)||1;v[Math.min(4,Math.floor((d-1)/7))]+=+b.amt||0;});l=['Wk 1','Wk 2','Wk 3','Wk 4','Wk 5'];hi=Math.min(4,Math.floor((new Date().getDate()-1)/7));if(!v[4]&&hi<4){v.pop();l.pop();}t='Sales by week';try{const tg=+((DB.targets||tgtSeed()).v.sales)||0;if(tg)note='Target '+inr(tg);}catch(e){}}
+ const mx=Math.max(...v)||1,k=x=>x>=100000?(x/100000).toFixed(1)+'L':x>=1000?Math.round(x/1000)+'k':String(Math.round(x));
+ return `<div class="nh-chart"><div class="hd"><b>${t}</b><span>${note}</span></div><div class="bars">${v.map((x,i)=>`<div><span class="b"><em>${x?k(x):''}</em><i class="${i===hi?'on':''}" style="height:${Math.max(2,Math.round(x/mx*82))}%"></i></span><small>${l[i]}</small></div>`).join('')}</div></div>`;}
+function nhTop(tiles,alerts){const p=S.ui.nhp||'today',L=nhBills(p),u=S.user,h=new Date().getHours(),al=(alerts||'').trim();
+ return `<div class="nh"><div class="nh-top"><div class="nh-hi">${h<12?'Good morning':h<17?'Good afternoon':'Good evening'}<b>${esc(u.name)} · ${esc(u.label||'')}</b></div><button class="iconbtn line" onclick="supBellOn()" aria-label="Notifications">${ic('bell','s20')}${supBellDot('cnt')}</button></div>
+ <div class="nh-seg">${[['today','Today'],['week','This week'],['month','This month']].map(([k,l])=>`<button class="${p===k?'on':''}" aria-pressed="${p===k}" onclick="S.ui.nhp='${k}';refresh()">${l}</button>`).join('')}</div>
+ <div class="nh-tl">${tiles(p,L).map(([l,v,n,on,tone])=>`<button onclick="${on}"><span>${l}</span><b class="${tone||''}">${v}</b><small>${n}</small></button>`).join('')}</div>${nhChart(p,L)}${al?`<div class="nh-sec">Alerts for you</div><div class="nh-al">${al}</div>`:''}</div>`;}
+function nhAdmin(p,L){const pr=nhProfit(L),od=allDues().filter(isOverdue).reduce((a,v)=>a+(v.amt-v.paid),0),d=brData();
+ return [['Sales',inr(sumAmt(L)),L.length+' bill'+(L.length===1?'':'s'),"go('asales')"],['Profit',inr(pr.p),pr.pct+'% margin',`S.ui.mgp='${p==='today'?'today':'month'}';go('mgmargin')`,'g'],['Udhaar to collect',inr(allOut()+custOut()),od?inr(od)+' overdue':'none overdue',"go('mgdues')",'o'],['Stock value',(v=>v>=1e7?'₹'+(v/1e7).toFixed(2)+' Cr':v>=1e5?'₹'+(v/1e5).toFixed(1)+' lakh':inr(v))(d.stock),'At purchase price',"go('astock')"]];}
+function nhMgr(p,L){const dues=allDues().filter(isOverdue),od=dues.reduce((a,v)=>a+(v.amt-v.paid),0),col=L.reduce((a,b)=>a+acBillIn(b).filter(x=>x.m==='Cash'||x.m==='UPI').reduce((s,x)=>s+x.amt,0),0),pend=DB.approvals.filter(a=>a.st==='pending').length,nm=new Set(dues.map(v=>v.m.code)).size;
+ return [['Sales',inr(sumAmt(L)),L.length+' bill'+(L.length===1?'':'s'),"go('mgsales')"],['Collected',inr(col),'Cash + UPI',"go('dayclose')"],['Approvals',String(pend),pend?'Waiting for you':'All clear',"tab('approvals')"],['Udhaar overdue',inr(od),nm+' mechanic'+(nm===1?'':'s'),"go('mgdues')",od?'o':'']];}
 SCREENS.ahome=()=>{const d=brData();const br=brSel();const sec_=(DB.secDone||[]);const openSec=SEC_ALERTS.filter(a=>!sec_.includes(a.id)).length;
- return `<div class="scroll"><div class="pad">${staffHead()}${palCard()}${supDueCard()}${poDayCard()}${dsCard()}
- <div class="chips">${['All branches',...BRANCHES.map(b=>b.n)].map(b=>`<button class="chip ${br===b?'on':''}" onclick="S.ui.abr='${b}';refresh()">${b==='All branches'?ic('globe','s16'):ic('store','s16')}${b}</button>`).join('')}</div>
- <button class="dark-card" style="text-align:left" onclick="go('asales')"><div class="sec"><span class="micro" style="color:var(--ink3)">Total sales · ${moName()} · ${br}</span>${ic('chevR','s18')}</div><div class="row" style="gap:10px;align-items:baseline"><span class="amt" style="color:#fff">${L(d.sales)}</span><span class="cap" style="color:#7CD4A2">${chgTxt(d.sales,sumAmt(perBills('prevmonth')),moName(-1,1))}</span></div></button>
+ return `<div class="scroll"><div class="pad">${nhTop(nhAdmin,palCard()+supDueCard()+poDayCard()+dsCard())}
+ <div class="chips"${BRANCHES.length>1?'':' hidden'}>${['All branches',...BRANCHES.map(b=>b.n)].map(b=>`<button class="chip ${br===b?'on':''}" onclick="S.ui.abr='${b}';refresh()">${b==='All branches'?ic('globe','s16'):ic('store','s16')}${b}</button>`).join('')}</div>
  ${(()=>{const T=DB.targets||tgtSeed();const rows=tgtKeys().map(k=>tgtRow(k));const on=rows.filter(r=>r.st[1]==='g').length;return `<button class="card" style="text-align:left;width:100%;gap:10px;border:1.5px solid var(--y)" onclick="go('mgtarget')"><div class="row"><div class="tile y">${ic('award','s20')}</div><div class="grow"><div class="h3">Targets</div><div class="cap">${T.month} · ${on}/${rows.length} on track · ${rows[0].left} days left</div></div><span class="link" onclick="event.stopPropagation();S.ui.te=null;go('atargets')">Edit</span></div>${['sales','collect'].map(k=>tgtCard(k,1)).join('')}</button>`;})()}
- <div class="grid2">${tileBtn('','Total purchases',L(d.purch),sups().length+' supplier'+(sups().length===1?'':'s'),"go('apurch')")}${tileBtn('g','Gross profit',L(d.gp),(d.sales?(d.gp/d.sales*100).toFixed(1):'0.0')+'% margin',"S.ui.mgp='month';go('mgmargin')")}${tileBtn('r','Total outstanding',L(d.out),'mechanics + customers',"go('mgdues')")}${tileBtn('b','Stock value',L(d.stock),d.l.length+' branch'+(d.l.length>1?'es':''),"go('astock')")}</div>
  <div class="card" style="flex-direction:row;justify-content:space-around;text-align:center">${[[d.cust.toLocaleString('en-IN'),'Customers','Customers'],[d.mech.toLocaleString('en-IN'),'Mechanics','Mechanics'],[d.staff,'Staff','Staff']].map(([v,l,t])=>`<button onclick="S.ui.ut='${t}';tab('users')"><div class="h2 num">${v}</div><div class="micro muted">${l}</div></button>`).join('')}</div>
  ${sec('Mechanics')}
  <div class="grid3">${[['Our Mechanics','wrench',"S.ui.omBy='Status';S.ui.omq='';go('ourmech')",omAll().length,''],['Verified','checkC',"S.ui.vt='Verified';go('mgver')",Object.keys(MB).filter(c=>vInfo(c)).length,'b'],['Report cards','award',"go('mgcards')",'',''],['Business report','chart',"S.ui.mbp='m';go('mgmech')",mbDropped('m').length?mbDropped('m').length+' down':'','r'],['Not buying','clock',"go('mginact')",inactiveM().length,'r'],['First-time buyers','users',"go('mgnew')",newToday().length,'']].map(([l,i,o,b,t])=>`<button class="qa2" onclick="${o}"><span class="tile sm ${t||''}">${ic(i,'s20')}</span>${l}${b?`<span class="pill ${t==='r'?'r':'y'}">${b}</span>`:''}</button>`).join('')}</div>
@@ -5843,7 +5855,7 @@ SCREENS.ahome=()=>{const d=brData();const br=brSel();const sec_=(DB.secDone||[])
  ${sec('Stock & operations')}
  <div class="grid3">${[['Stock alerts','alert',"S.ui.mgk='out';S.ui.mgSel=[];go('mgstock',{kind:'out'})",outList().length+lowList().length,'r'],['Orders & tasks','clip',"go('mgorders')",(DB.tasks||[]).filter(t=>t.st==='open').length||'',''],['Part orders','package',"S.ui.sof='Open';go('partorders')",soList().filter(o=>soStage(o)<4).length||'',''],['Approvals','checkC',"go('approvals')",DB.approvals.filter(a=>a.st==='pending').length||'','r'],['Team','users',"go('team')",'',''],['Sales detail','trend',"S.ui.mgp='month';go('mgsales')",'','']].map(([l,i,o,b,t])=>`<button class="qa2" onclick="${o}"><span class="tile sm ${t||''}">${ic(i,'s20')}</span>${l}${b?`<span class="pill ${t==='r'?'r':'y'}">${b}</span>`:''}</button>`).join('')}</div>
  ${fpEntry()}${tbEntry()}
- <div class="grid2">${tileBtn('','Orders',d.orders.toLocaleString('en-IN'),(DB.orders||[]).filter(o=>!/Delivered|Cancel/i.test(o.st||'')).length+' pending',"S.ui.oof=ooNew()?'New':'All';go('oorders')")}${tileBtn('y','Returns',String(d.ret),'all time',"go('areturns')")}${tileBtn('b','Warranties',String((DB.warranties||[]).length),'issued',"S.ui.wf='All';go('warreg')")}${tileBtn('r','Security alerts',String(openSec),openSec?'review now':'all clear',"go('asecurity')")}</div>
+ <div class="grid2">${tileBtn('','Total purchases',L(d.purch),sups().length+' supplier'+(sups().length===1?'':'s'),"go('apurch')")}${tileBtn('','Orders',d.orders.toLocaleString('en-IN'),(DB.orders||[]).filter(o=>!/Delivered|Cancel/i.test(o.st||'')).length+' pending',"S.ui.oof=ooNew()?'New':'All';go('oorders')")}${tileBtn('y','Returns',String(d.ret),'all time',"go('areturns')")}${tileBtn('b','Warranties',String((DB.warranties||[]).length),'issued',"S.ui.wf='All';go('warreg')")}${tileBtn('r','Security alerts',String(openSec),openSec?'review now':'all clear',"go('asecurity')")}</div>
  ${sec('Admin tools')}
  <div class="grid3">${[['Master pricing','tag',"S.ui.mpq='';S.ui.mpf='All';go('masterprice')",PRODUCTS.filter(x=>x.pending).length||'',''],['Business settings','sliders',"S.ui.st=null;go('asettings')",'',''],['Send offer','bell',"S.ui.cp=null;go('acampaign')",'',''],['Branch targets','award',"S.ui.te=null;go('atargets')",'',''],['Staff','users',"go('staff')",staffAccs().filter(([,a])=>a.role!=='admin').length||'',''],['Same parts','check',"spOpen()",'',''],['Create staff','user',"S.ui.ns=null;go('newstaff')",'',''],['Roles & access','lock',"go('rbac')",'',''],['Suppliers','truck',"go('asupp')",'',''],['Schemes & loyalty','gift',"S.ui.sch=null;go('ascheme')",(DB.schemes||[]).filter(x=>x.on).length||'',''],['KYC approvals','checkC',"go('approvals')",DB.approvals.filter(a=>a.kyc&&a.st==='pending').length||'','r']].map(([l,i,o,b,t])=>`<button class="qa2" onclick="${o}"><span class="tile sm ${t||''}">${ic(i,'s20')}</span>${l}${b?`<span class="pill ${t==='r'?'r':'y'}">${b}</span>`:''}</button>`).join('')}</div>
  ${sec('Reports & data')}
@@ -8720,6 +8732,36 @@ html.wv .wv-acts .qa{background:var(--paper);border-radius:16px;padding:14px 4px
 html.wv .wv-acts .qa .tile{width:48px;height:48px}
 .wv-tools{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:22px;align-items:start}
 html.wv .wv-side-col>button.card,html.wv .wv-side-col>.dark-card{width:100%}
+/* 22m: new home top (redesign previews) */
+.nh{display:flex;flex-direction:column;gap:14px}
+.nh-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.nh-hi{font-size:14px;color:var(--ink5);display:flex;flex-direction:column;gap:2px;min-width:0}
+.nh-hi b{font-size:20px;font-weight:700;color:var(--ink);letter-spacing:-.2px}
+.nh-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:12px;background:var(--line2)}
+.nh-seg button{height:40px;border-radius:9px;font-size:14px;font-weight:600;color:var(--ink5)}
+.nh-seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.nh-tl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.nh-tl button{display:flex;flex-direction:column;gap:3px;text-align:left;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--card);min-width:0}
+.nh-tl span{font-size:13px;color:var(--ink5)}
+.nh-tl b{font-size:20px;font-weight:700;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.nh-tl b.g{color:var(--g)}.nh-tl b.o{color:#c2410c}
+.nh-tl small{font-size:12px;color:var(--ink5)}
+.nh-chart{border:1px solid var(--line);border-radius:14px;background:var(--card);padding:16px}
+.nh-chart .hd{display:flex;justify-content:space-between;align-items:baseline;font-size:14.5px}
+.nh-chart .hd span{font-size:12px;color:var(--ink5)}
+.nh-chart .bars{display:flex;align-items:stretch;gap:8px;height:150px;margin-top:12px}
+.nh-chart .bars>div{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px}
+.nh-chart .b{flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px;min-height:0}
+.nh-chart em{font-style:normal;font-size:11.5px;font-weight:600}
+.nh-chart i{display:block;width:100%;border-radius:5px 5px 0 0;background:var(--line2)}
+.nh-chart i.on{background:var(--y)}
+.nh-chart small{font-size:11px;color:var(--ink5)}
+.nh-sec{font-size:17px;font-weight:700;margin-top:4px}
+.nh-al{display:flex;flex-direction:column;gap:10px}
+html.wv .nh{gap:18px}html.wv .nh-top .iconbtn{display:none}html.wv .nh-hi b{font-size:24px}
+html.wv .nh-tl{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}html.wv .nh-tl button{padding:18px 20px}html.wv .nh-tl b{font-size:24px}
+html.wv .nh-tl button:hover{border-color:var(--ink5)}
+html.wv .nh-chart{padding:20px}html.wv .nh-chart .bars{height:200px;gap:14px}
 /* 22l (Sam 13 Nov, his screenshot of the Admin preview desktop): white page, cards with a thin line and no shadow, plain greeting instead of the dark banner, calm tiles, only the 5 tabs in the side menu, no title strip on top */
 html.wv:not([data-theme=dark]){--paper:#fff}
 html.wv .wv-top{height:64px;border-bottom:0;background:var(--paper);padding:0 28px;animation:none}
@@ -8882,7 +8924,7 @@ const isAct=el=>isGrid(el)&&[...el.children].every(k=>k.matches('.qa,.qa2'));
 const isSide=el=>el.matches('button.card')&&!el.matches('.dark-card');
 function panel(sec,items,cls){const p=document.createElement('section');p.className='wv-panel'+(cls?' '+cls:'');if(sec)p.append(sec);p.append(...items);return p;}
 function secEl(t){const s=document.createElement('div');s.className='sec';s.innerHTML=`<h3 class="h2">${t}</h3>`;return s;}
-function dash(pad,anim){const kids=[...pad.children];if(!kids.length)return [];
+function dash(pad,anim){const kids=[...pad.children];if(!kids.length)return [];let nh=null;if(kids[0].matches('.nh'))nh=kids.shift();
  let hero=null;if(kids[0].matches('.row')&&kids[0].querySelector('.h1,.h2')){hero=kids.shift();}
  const blocks=[];
  for(let i=0;i<kids.length;i++){const el=kids[i];
@@ -8901,7 +8943,7 @@ function dash(pad,anim){const kids=[...pad.children];if(!kids.length)return [];
   else if(!b.sec&&e.matches('.search'))search=e;
   else if(!b.sec&&isSide(e))sideTop.push(e);
   else mainB.push(b);}
- const out=[];
+ const out=[];if(nh)out.push(nh);
  if(hero){hero.classList.add('wv-hero');const g=hero.querySelector('.grow');const h=new Date().getHours();
   if(g&&!g.querySelector('.wv-greet')){const d=document.createElement('div');d.className='wv-greet';d.innerHTML=`<i>👋</i>${h<12?'Good morning':h<17?'Good afternoon':'Good evening'} · ${DAYS[new Date().getDay()]}, ${new Date().getDate()} ${MON[new Date().getMonth()]}`;g.prepend(d);}
   hero.querySelectorAll('.iconbtn').forEach(x=>{if(/notifs|'cart'|No new notif/.test(x.getAttribute('onclick')||''))x.remove();});

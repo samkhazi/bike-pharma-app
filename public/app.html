@@ -8345,7 +8345,8 @@ start();
 <style>
 html,body{height:100%}
 .stage{display:block;height:100%;padding:0;gap:0}
-.aside,.status,#splash,.lg-theme{display:none!important}
+.aside,.status{display:none!important}
+.splash.wsp{background:var(--paper)}.splash.wsp .lg{color:var(--ink);width:min(250px,64%)}.splash.wsp .st,.splash.wsp .skip{display:none}
 html,body{background:var(--paper)!important;background-image:none!important}.stage::before,.stage::after{display:none!important}
 .device{width:min(100%,480px)!important;height:100%!important;max-height:none!important;margin:0 auto;border-radius:0!important;box-shadow:none!important}
 @media (min-width:520px){.device{border-inline:1px solid var(--line)}}
@@ -8359,7 +8360,7 @@ html[data-scr=findpart] .device{width:100%!important;border-inline:0}
 @media (max-width:760px){.fpw{grid-template-columns:minmax(0,1fr);padding:12px 14px 24px}.fpw-l{position:static}.fpw-r .stack.g8:has(>.fpc){grid-template-columns:minmax(0,1fr)}}
 </style><script>
 /* website mode: the app without the prototype frame, the website's light or dark theme, the old Find Part form */
-(()=>{try{endSplash();const sp=document.getElementById('splash');if(sp)sp.remove();}catch(e){}
+(()=>{try{/* 22s: not logged in = the logo builds on a white screen, then the login page (the approved login design); logged in = no wait */let inn=false;try{inn=localStorage.getItem('bp_in')==='1';}catch(e){}const sp=document.getElementById('splash');if(inn||matchMedia('(prefers-reduced-motion:reduce)').matches){endSplash();if(sp)sp.remove();}else if(sp){sp.classList.add('wsp');clearTimeout(S.ui.splashT);S.ui.splashT=setTimeout(endSplash,3500);}}catch(e){}
  
  const R=document.documentElement,_render=render;
  render=function(){const r=_render.apply(this,arguments);try{const c=S.stack[S.stack.length-1];let k=c?c.s:'';if(k==='findpart'){try{if(!allowed(k))k='denied';}catch(e){k='denied';}}R.dataset.scr=k;}catch(e){}return r;};

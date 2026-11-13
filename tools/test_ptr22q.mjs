@@ -2,7 +2,7 @@
 import { chromium, devices } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; }; const OUT = process.argv[2];
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
-const login = async p => { await p.goto('http://127.0.0.1:3033/app.html'); await p.fill('#loginId', 'sam@bikepharma.com'); await p.evaluate(() => sendOtp()); await p.waitForSelector('#pw1'); await p.fill('#pw1', 'Test@1234'); await p.evaluate(() => pwGo()); await p.waitForFunction(() => S.user); };
+const login = async p => { await p.goto('http://127.0.0.1:3033/app.html'); await p.fill('#loginId', 'sam@bikepharma.com'); await p.evaluate(() => sendOtp()); await p.waitForSelector('#pw1'); await p.fill('#pw1', 'Test@1234'); await p.evaluate(() => pwGo()); await p.waitForFunction(() => S.user); await p.waitForSelector('#bpOpen', { state: 'detached', timeout: 9000 }); };
 const hidden = p => p.evaluate(() => !document.querySelector('.bp-ptrk,.bp-ptr,.bp-dent') && !document.querySelector('#vp .scroll[style*="translate"]') && !document.querySelector('.bp-pull'));
 const ROLES = [['admin', 'ahome'], ['manager', 'mghome'], ['billing', 'bhome'], ['sales', 'snew'], ['inventory', 'ihome'], ['accountant', 'achome'], ['mechanic', 'mhome'], ['customer', 'home']];
 { const cx = await b.newContext({ ...devices['Pixel 7'] }), p = await cx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message)); await login(p);

@@ -8720,6 +8720,32 @@ html.wv .wv-acts .qa{background:var(--paper);border-radius:16px;padding:14px 4px
 html.wv .wv-acts .qa .tile{width:48px;height:48px}
 .wv-tools{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:22px;align-items:start}
 html.wv .wv-side-col>button.card,html.wv .wv-side-col>.dark-card{width:100%}
+/* 22l (Sam 13 Nov, his screenshot of the Admin preview desktop): white page, cards with a thin line and no shadow, plain greeting instead of the dark banner, calm tiles, only the 5 tabs in the side menu, no title strip on top */
+html.wv:not([data-theme=dark]){--paper:#fff}
+html.wv .wv-top{height:64px;border-bottom:0;background:var(--paper);padding:0 28px;animation:none}
+html.wv .wv-crumb{display:none}
+html.wv .wv-search{flex:0 1 320px;background:var(--card)}
+html.wv :is(.card,.stat,.money,.pcard,.qa2,.wv-panel){border:1px solid var(--line);box-shadow:none;border-radius:16px}
+html.wv :is(button.card,.pcard,.qa2,button.stat,button.money,button.dark-card):hover{transform:none;box-shadow:none;border-color:var(--ink5)}
+html.wv button.li:hover{background:var(--line2);padding-left:20px}
+html.wv .btn:not([disabled]):hover{transform:none}
+html.wv .btn::after{display:none!important}
+html.wv .wv-hero{background:none;color:var(--ink);box-shadow:none;border:0!important;border-radius:0;padding:4px 0 0;gap:14px;overflow:visible}
+html.wv .wv-hero::before,html.wv .wv-hero::after,html.wv .wv-hero .wv-spark,html.wv .wv-hero>.tile{display:none!important}
+html.wv .wv-hero .h1,html.wv .wv-hero .h2{color:var(--ink);font-size:24px;letter-spacing:-.2px}
+html.wv .wv-hero .cap{color:var(--ink5)}
+html.wv .wv-hero .iconbtn{background:var(--card)!important;border:1px solid var(--line)!important;color:var(--ink);width:42px;height:42px}
+html.wv .wv-hero .search{background:var(--card);border-color:var(--line);color:var(--ink5)}
+html.wv .wv-greet{color:var(--ink5);font-size:14px;font-weight:500;letter-spacing:0;text-transform:none}
+html.wv .wv-greet i{display:none}
+html.wv .wv-kpis{gap:14px}
+html.wv .wv-kpis .stat,html.wv .wv-kpis .money{background:var(--card)!important;padding:18px 20px;min-height:104px;gap:4px}
+html.wv .wv-kpis .stat::after{display:none}
+html.wv .wv-kpis .stat .v,html.wv .wv-kpis .money .amt{font-size:26px;letter-spacing:-.3px}
+html.wv .wv-kpis .stat>.cap:first-child{color:var(--ink5)!important}
+html.wv .wv-panel{padding:18px 20px}
+html.wv .wv-panel>.card.flush .li:last-child{border-radius:0 0 16px 16px}
+html.wv .qa2:hover .tile{transform:none}
 html.wv .wv-main-col>.wv-panel>.grid2:has(.pcard){grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
 html.wv .wv-full.wv-panel .grid2:has(.pcard){grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
 html.wv .cbars{height:180px}
@@ -8822,7 +8848,7 @@ function buildSide(){const u=S.user,r=u.role,k=r+'|'+u.name+'|'+LANG+'|'+JSON.st
  const acc=nav[nav.length-1];
  side.innerHTML=`<svg class="wv-logo" viewBox="0 0 370 190" role="img" aria-label="Bike Pharma Automobiles"><use href="#logoMark" width="370" height="190"/></svg>
  <div class="wv-lab">Menu</div><nav class="wv-menu"><i class="wv-ind" aria-hidden="true"></i>${nav.map(n=>mBtn(n[0],n[1],n[2],`tab('${n[0]}')`)).join('')}</nav>
- ${x.length?`<div class="wv-lab">Shortcuts</div><nav class="wv-menu"><i class="wv-ind" aria-hidden="true"></i>${x.map(e=>mBtn(e[0],e[1],e[2],e[3],1)).join('')}</nav>`:''}
+ ${0&&x.length?`<div class="wv-lab">Shortcuts</div><nav class="wv-menu"><i class="wv-ind" aria-hidden="true"></i>${x.map(e=>mBtn(e[0],e[1],e[2],e[3],1)).join('')}</nav>`:''}
  <div class="wv-foot"><button class="wv-user" title="${esc(u.name)} · ${esc(u.label||ROLE[r]||r)}${u.sid?' · '+esc(u.sid):''}" onclick="tab('${acc[0]}')"><span class="wv-av">${esc(initials(u.name))}</span></button><button class="wv-out" title="Log out" onclick="logout()">${ic('logout','s20')}<span>Log out</span></button></div>`;
  translateSide();}
 function translateSide(){try{if(LANG==='en')return;const k=LIDX[LANG];side.querySelectorAll('.wv-menu span,.wv-lab,.wv-out span').forEach(e=>{const t=e.textContent.trim();if(TR[t]&&TR[t][k])e.textContent=TR[t][k];});}catch(e){}}

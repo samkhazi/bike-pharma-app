@@ -42,7 +42,7 @@ await p.evaluate(() => fitGo()); await p.waitForTimeout(300); ok((await p.evalua
 await p.selectOption('select[aria-label="Bike brand"]', 'Hero'); await p.waitForTimeout(300); await p.selectOption('select[aria-label="Model"]', 'Splendor Plus'); await p.waitForTimeout(300);
 await p.evaluate(() => fitGo()); await p.waitForTimeout(1000); t = await txt(); console.log(t.slice(0, 400));
 ok(/FRONT 2\.75-18 or 80\/100-18/i.test(t) && /REAR 3\.00-18/i.test(t) && /44711-KCC-901S/.test(t) && /44711-K0L-D01 · Honda catalogue/i.test(t) && /₹1,450/.test(t), 'Splendor: sizes, and the tyres of both brands in the front size with MRP');
-ok(/2\.75-18 TESTY GRIP F TL 42P/i.test(t) && /900001 · Testy list · Tubeless/i.test(t) && /MRP not listed/i.test(t), 'a tyre maker list shows in its size, without a price when none is given');
+ok(/2\.75-18 TESTY GRIP F TL 42P/i.test(t) && /900001 · Testy list · Tubeless/i.test(t) && !/MRP not listed/i.test(t), 'a tyre maker list shows in its size, with no price line (Sam: tyre rates are not fixed)');
 if (SHOT) await p.screenshot({ path: path.join(SHOT, 'fit2.png') });
 await p.evaluate(() => { fitSt().mk = 'CEAT'; refresh(); }); await p.waitForTimeout(400); t = await txt(); ok(/44711-K0L-D01/.test(t) && !/44711-KCC-901S ·/.test(t), 'tyre brand chip filters');
 await p.evaluate(() => { fitSt().mk = 'All'; fitSt().side = 'R'; refresh(); }); await p.waitForTimeout(400); t = await txt(); ok(/Rear · 3\.00-18/i.test(t) && /42711-KCC-901S/.test(t), 'Rear chip shows the rear size');

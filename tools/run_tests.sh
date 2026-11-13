@@ -19,6 +19,7 @@ node tools/test_9c.mjs || r=1
 node tools/test_back.mjs || r=1
 node tools/test_otp10t.mjs || r=1   # update 10t: real OTP by Renflair SMS (own server on 3018, mock Renflair on 3031)
 node tools/test_play21p.mjs || r=1   # 21p: Google Play pages (privacy, delete account), reviewers' test login, account deletion (own server on 3035, mock SMS on 3036)
+node tools/test_ret21r.mjs || r=1   # 21r: counter return or exchange only within 7 days of the bill (own server on 3038)
 node tools/test_catguard.mjs || r=1   # update 11h: catalogue guard (daily amount per login, log, Admin unlock; own server on 3019)
 node tools/test_herobuild.mjs || r=1   # update 11k: Hero made on the server from the Raw Data upload (own server on 3018)
 node tools/test_hondabuild.mjs || r=1   # update 11z: Honda made on the server from the whole Honda Catalogue folder (own server on 3026)

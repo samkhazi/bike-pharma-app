@@ -4579,7 +4579,7 @@ async function rcGo(reg){const s=S.ui.vin;s.rc={busy:1,reg};s.c='';s.look=null;s
  /* else the maker and model the RC names ("HERO MOTOCORP LTD" "SPLENDOR PLUS") */
  const v=vqParse((r.maker||'')+' '+(r.model||''),{}).set;if(v.vb&&BRANDS_V[v.vb]&&v.vm&&v.vm!=='Any')return rcOpen(reg,v.vb,v.vm);
  s.rcb=v.vb&&BRANDS_V[v.vb]?v.vb:'';s.mf='';refresh();}
-function rcOpen(reg,vb,vm){const r=RC_SEEN[reg]||{};S.ui.fpBike={reg,vb,vm,vin:'',yr:r.year||''};catLoad(vb);go('findpart',{v:'year',vb,vm,yr:'Any',rcn:reg,vy:+r.year||0,vsrc:'RC: '+[r.maker,r.model].filter(Boolean).join(' ')});}
+function rcOpen(reg,vb,vm){if(fitBike(vb,vm,'',reg))return;const r=RC_SEEN[reg]||{};S.ui.fpBike={reg,vb,vm,vin:'',yr:r.year||''};catLoad(vb);go('findpart',{v:'year',vb,vm,yr:'Any',rcn:reg,vy:+r.year||0,vsrc:'RC: '+[r.maker,r.model].filter(Boolean).join(' ')});}
 const RC_ROWS=[['owner','Owner'],['maker','Maker'],['model','Model'],['mfg','Made'],['regDate','Registered'],['fuel','Fuel'],['colour','Colour'],['cc','Engine cc'],['chassis','Chassis no.'],['engine','Engine no.'],['insurer','Insurance'],['insUpto','Insurance till'],['pucUpto','PUC till'],['status','RC status']];
 const rcTable=(r,dark)=>`<div class="stack" style="gap:2px">${RC_ROWS.filter(([k])=>r[k]).map(([k,l])=>`<div class="row" style="gap:8px;align-items:baseline"><span class="cap" style="min-width:96px${dark?';color:var(--ink3)':''}">${l}</span><span class="grow" style="overflow-wrap:anywhere;font-weight:600${dark?';color:#fff':''}">${esc(r[k])}</span></div>`).join('')}</div>`;
 function rcV(s){const r=s.rc;if(!r)return '';
@@ -4599,7 +4599,7 @@ function vinFind(){const s=S.ui.vin||(S.ui.vin={q:''});const i=document.getEleme
  const bs=vinBrands(c);s.pick=true;s.vb=bs.length===1?bs[0]:'';s.mf='';refresh();}
 function vinOpen(c,vb,vm,src){catLoad(vb);const rc=S.ui.vin&&S.ui.vin.rc&&S.ui.vin.rc.found?S.ui.vin.rc:null;
  /* 21x: the number was typed on the Tyre / Battery page: the bike's tyre size (battery) opens, not its part sections */
- if(S.ui.fitVin){const k=S.ui.fitVin;S.ui.fitVin='';fitSt().side='F';fitSt().vb=vb;fitSt().vm=vm;go('findpart',{v:'fit',k,vb,vm,...(c?{vin:c}:{}),...(rc?{rcn:rc.reg}:{})});return;}
+ if(fitBike(vb,vm,c,rc?rc.reg:''))return;
 S.ui.fpBike={vin:c,vb,vm,reg:rc?rc.reg:'',yr:vinYear(c)||''};const l=S.ui.vin&&S.ui.vin.look;const vnm=src&&l&&l.found?[l.name,l.model].filter(Boolean).join('|'):'';go('findpart',{v:'year',vb,vm,yr:'Any',vin:c,vy:vinYear(c),...(src?{vsrc:vb+' site: '+src}:{}),...(vnm?{vnm}:{}),...(rc?{rcn:rc.reg}:{})});}
 function vinSet(vb,vm){const s=S.ui.vin;const c=s&&s.c;if(!c)return;if(vinSite(c)){const l=s.look||{};return vinOpen(c,vb,vm,l.found?l.name:'');}const k=vinKey(c);DB.vinMap=DB.vinMap||{};const old=DB.vinMap[k];
  if(old&&(old.vb!==vb||old.vm!==vm)){if(!vinMgr()){toast('Only Manager or Admin can change a chassis code’s model');return;}audit('Chassis code model changed',k,old.vb+' '+old.vm,vb+' '+vm);}
@@ -4623,7 +4623,7 @@ function vinBanner(p){const c=p.vin||'',rc=p.rcn?RC_SEEN[p.rcn]:null;return `<di
 /* Sam 2026-10-30: recent searches (last 10 searches and bikes) as chips on the first screen, one tap back; kept on this device only */
 const FP_REC='bp_fp_recent';const fpRecGet=()=>{try{const a=JSON.parse(localStorage.getItem(FP_REC)||'[]');return Array.isArray(a)?a:[];}catch{return [];}};
 function fpRecAdd(it){if(!it)return;const k=JSON.stringify([it.t,it.q||'',it.vb||'',it.vm||'',it.yr||'',it.ed||'']);let a=fpRecGet().filter(x=>JSON.stringify([x.t,x.q||'',x.vb||'',x.vm||'',x.yr||'',x.ed||''])!==k);a.unshift(it);a=a.slice(0,10);try{localStorage.setItem(FP_REC,JSON.stringify(a));}catch{}}
-function fpRecGo(i){const it=fpRecGet()[i];if(!it)return;const f=S.ui.fp||(S.ui.fp=FP0());if(it.t==='reg'){S.ui.fitVin='';S.ui.vin={q:it.q};go('findpart',{v:'vin'});rcGo(it.q);return;}if(it.t==='bike'){catLoad(it.vb);f.vb=it.vb;f.vm=it.vm;f.yr=it.yr||'Any';f.ed=it.ed||'Any';f.cc=MODEL_CC[it.vm]?String(MODEL_CC[it.vm]):'Any';go('findpart',{v:'secs',vb:it.vb,vm:it.vm,yr:it.yr||'Any',ed:it.ed||'Any'});return;}
+function fpRecGo(i){const it=fpRecGet()[i];if(!it)return;const f=S.ui.fp||(S.ui.fp=FP0());if(it.t==='reg'){S.ui.vin={q:it.q};go('findpart',{v:'vin'});rcGo(it.q);return;}if(it.t==='bike'){catLoad(it.vb);f.vb=it.vb;f.vm=it.vm;f.yr=it.yr||'Any';f.ed=it.ed||'Any';f.cc=MODEL_CC[it.vm]?String(MODEL_CC[it.vm]):'Any';go('findpart',{v:'secs',vb:it.vb,vm:it.vm,yr:it.yr||'Any',ed:it.ed||'Any'});return;}
  if(it.vb&&it.vb!=='Any')catLoad(it.vb);f.q=it.q;f.vb=it.vb||'Any';f.vm=it.vm||'Any';f.yr='Any';f.ed='Any';f.cc=f.vm!=='Any'&&MODEL_CC[f.vm]?String(MODEL_CC[f.vm]):'Any';go('findpart',{v:'res',q:it.q,vb:it.vb||'Any',vm:it.vm||'Any',cc:'Any',bs:'Any',yr:'Any',ed:'Any',sort:'best',n:30});}
 function fpRecClear(){try{localStorage.removeItem(FP_REC);}catch{}refresh();}
 const fpRecRow=()=>{const a=fpRecGet();if(!a.length)return '';return `<div class="sec"><h3 class="h2">Recent searches</h3><button class="chip" onclick="fpRecClear()">Clear</button></div><div class="row wrap" style="gap:8px">${a.map((it,i)=>`<button class="chip" onclick="fpRecGo(${i})">${ic(it.t==='bike'?'bike':it.t==='reg'?'scan':'search','s16')} ${esc(it.t==='reg'?it.q:it.t==='bike'?it.vb+' '+it.vm+(it.ed&&it.ed!=='Any'?' '+it.ed:it.yr&&it.yr!=='Any'?' '+it.yr:''):it.q+(it.vb&&it.vb!=='Any'?' · '+it.vb+(it.vm&&it.vm!=='Any'?' '+it.vm:''):''))}</button>`).join('')}</div>`;};
@@ -4635,6 +4635,10 @@ var FIT={ix:{},bk:{},sz:{},cur:null};
 const fitK=()=>S.ui.fpm==='t'||S.ui.fpm==='b'?S.ui.fpm:'s';
 const fitW=k=>k==='b'?'battery':'tyre';
 const fitSt=()=>S.ui.fit||(S.ui.fit={vb:'',vm:'',mk:'All',side:'F'});
+/* 21y: the number search started on the Tyre / Battery page (its screen carries fk): the found bike shows only its tyre size or battery,
+   in place of the number screen, so Back goes to the Tyre page. Every way the number search opens a bike comes through here. */
+function fitBike(vb,vm,vin,reg){const c=cur(),k=c&&c.s==='findpart'&&c.p&&c.p.v==='vin'?c.p.fk:'';if(k!=='t'&&k!=='b')return false;
+ const s=fitSt();s.side='F';s.vb=vb;s.vm=vm;S.ui.fpm=k;S.stack[S.stack.length-1]={s:'findpart',p:{v:'fit',k,vb,vm,...(vin?{vin}:{}),...(reg?{rcn:reg}:{})}};navSave(false);render();return true;}
 function fitSeg(k){return `<div class="fit-seg">${[['s','Spares'],['t','Tyre'],['b','Battery']].map(([v,l])=>`<button class="${k===v?'on':''}" onclick="fitMode('${v}')">${l}</button>`).join('')}</div>`;}
 function fitMode(v){const p=cur().p||{};S.ui.fpm=v;fitSt().mk='All';if(p.v==='fit'&&v!=='s'){S.stack[S.stack.length-1]={s:'findpart',p:{...p,v:'fit',k:v}};navSave(false);render();return;}if(p.v==='fit'||p.v==='fitsz'){back();return;}refresh();}
 function fitGet(store,key,url){const c=store[key];if(c)return c;store[key]={busy:1};api('GET',url).then(j=>{store[key]=j&&!j.error?j:{err:(j&&j.error)||'Could not load'};refresh();}).catch(()=>{store[key]={err:'No network'};refresh();});return store[key];}
@@ -4711,7 +4715,7 @@ function m2Home(f){const fk=fitK();if(fk!=='s')return `<div class="fp-home fp9">
  <div class="fp9-or"><span>or pick the bike</span></div>
  <div class="fp9-card">${m2Form(f)}${VIN_ON?`<div class="fp9-reg"><b>Have the bike number?</b><div class="fp-in"><input id="fp-reg" placeholder="KA 01 AB 1234 or chassis no." aria-label="Registration or chassis number" autocomplete="off" autocapitalize="characters" spellcheck="false" onkeydown="if(event.key==='Enter')fpGoVin('fp-reg')"><button class="btn y sm" onclick="fpGoVin('fp-reg')">Find</button></div></div>`:''}</div>
  ${fpRecRow()}</div>`;}
-function fpGoVin(id){const i=document.getElementById(id),q=i?i.value.trim():'';if(!q){if(i)i.focus();return;}S.ui.fitVin=id==='fit-reg'?fitK():'';S.ui.vin={q};go('findpart',{v:'vin'});setTimeout(()=>{try{const x=document.getElementById('vin-q');if(x)x.value=q;vinFind();}catch(e){console.error(e);}},60);}
+function fpGoVin(id){const i=document.getElementById(id),q=i?i.value.trim():'';if(!q){if(i)i.focus();return;}const fk=id==='fit-reg'?fitK():'';S.ui.vin={q};go('findpart',fk&&fk!=='s'?{v:'vin',fk}:{v:'vin'});setTimeout(()=>{try{const x=document.getElementById('vin-q');if(x)x.value=q;vinFind();}catch(e){console.error(e);}},60);}
 /* ----- brand > model > engine size > year ----- */
 function m2Brand(p){const vb=p.vb;catLoad(vb);const ld=m2Ld(vb);const ms=BRANDS_V[vb]||[];const fams=[],by=new Map();ms.forEach(m=>{const F=m2Fam(m);let a=by.get(F);if(!a){by.set(F,a=[]);fams.push(F);}a.push(m);});
  const row=F=>{const a=by.get(F);const st=ld==='ok'?a.map(m=>m2Stat(vb,m)):null;const ys=st?[...new Set(st.flatMap(s=>s.ys))].sort((x,y)=>x-y):[];const pn=st?st.reduce((t,s)=>t+s.pn,0):0;const ccs=[...new Set(a.map(m=>MODEL_CC[m]).filter(Boolean))].sort((x,y)=>x-y);

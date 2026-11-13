@@ -5753,9 +5753,8 @@ SCREENS.mgmargin=()=>{const per=S.ui.mgp||'today';const m=mgMargin(per);
  ${(()=>{const lo=m.rows.slice().sort((a,b)=>a.m-b.m)[0];return lo&&m.rows.length>1?`<div class="row cap" style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px">${ic('alert','s16')}<span class="grow">${esc(lo.c)} has the lowest margin (${lo.m}%).</span></div>`:'';})()}
 </div></div>`;};
 function mgBranch(){sheet(`<h3 class="h2">Branch</h3>${MG_BRANCHES.map((b,i)=>`<div class="card" style="${i?'opacity:.75':'border:1.5px solid var(--y)'}"><div class="row"><div class="tile ${i?'n':'y'} round">${ic(i?'lock':'store','s18')}</div><div class="grow"><div class="h3">${b.n}</div><div class="cap">${esc(b.a)}</div></div>${i?'<span class="pill">Admin only</span>':'<span class="pill g">Your branch</span>'}</div>${i?'':`<div class="grid3" style="gap:8px">${[['Staff',b.st],['Open',b.h.split(' – ')[0]],['Close',b.h.split(' – ')[1]]].map(([k,v])=>`<div><div class="micro muted">${k}</div><b>${v}</b></div>`).join('')}</div><button class="btn line sm" style="width:100%" onclick="closeSheet();tab('team')">View team & attendance</button>`}</div>`).join('')}<div class="cap">Managers see only their own branch. Other branches are visible to Admin.</div><button class="btn" onclick="closeSheet()">Done</button>`);}
-SCREENS.mghome=()=>{const per=(S.ui.nhp||'today')==='today'?'today':'month';const d=MG_DATA[per];const pend=DB.approvals.filter(a=>a.st==='pending').length;const dues=allDues();const od=dues.filter(isOverdue);const mx=Math.max(...d.chart.v)||1;
- return `<div class="scroll"><div class="pad">${nhTop(nhMgr)}
- ${moneyToday()}${ooCard()}${dsCard()}
+SCREENS.mgopts=()=>{const per=(S.ui.nhp||'today')==='today'?'today':'month';const d=MG_DATA[per];const pend=DB.approvals.filter(a=>a.st==='pending').length;const dues=allDues();const od=dues.filter(isOverdue);const mx=Math.max(...d.chart.v)||1;
+ return bar('All options')+`<div class="scroll"><div class="pad"> ${moneyToday()}${ooCard()}${dsCard()}
  ${(()=>{const c=omAll();const cnt=k=>c.filter(x=>omStatus(x)===k).length;const C=[['Top performers','Top','#6CC896'],['Regular','Regular','#8CC4CB'],['Needs attention','Attention','#FFD54A'],['Credit blocked','Blocked','#E8836F'],['Not buying','Not buying','#F5B000'],['New','New','#8CC4CB']].map(([k,l,col])=>({k,l,col,n:cnt(k)})).filter(x=>x.n);
  return `<button class="card" style="text-align:left;width:100%;gap:14px;background:var(--k);border:0" onclick="S.ui.omBy='Status';S.ui.omq='';go('ourmech')">
  <div class="row"><div class="tile y">${ic('wrench','s20')}</div><div class="grow"><div class="h3" style="color:#fff">Our Mechanics</div><div class="cap" style="color:#9a9a9a">${c.length} mechanics · tap to see by category</div></div><span style="color:#fff">${ic('chevR','s18')}</span></div>
@@ -5831,14 +5830,13 @@ function nhChart(p,L){let l,v,t,hi,note='';
 function nhTop(tiles,alerts,o){o=o||{};const plain=o.plain,p=plain?'today':S.ui.nhp||'today',L=nhBills(p),u=S.user,h=new Date().getHours(),al=(alerts||'').trim();
  return `<div class="nh"><div class="nh-top"><div class="nh-hi">${h<12?'Good morning':h<17?'Good afternoon':'Good evening'}<b>${esc(u.name)} · ${esc(u.label||'')}</b></div><button class="iconbtn line" onclick="supBellOn()" aria-label="Notifications">${ic('bell','s20')}${supBellDot('cnt')}</button></div>
  ${plain?'':`<div class="nh-seg">${[['today','Today'],['week','This week'],['month','This month']].map(([k,l])=>`<button class="${p===k?'on':''}" aria-pressed="${p===k}" onclick="S.ui.nhp='${k}';refresh()">${l}</button>`).join('')}</div>`}
- <div class="nh-tl">${tiles(p,L).map(([l,v,n,on,tone])=>`<button onclick="${on}"><span>${l}</span><b class="${tone||''}">${v}</b><small>${n}</small></button>`).join('')}</div>${plain?'':nhChart(p,L)}${al?`${plain?'':'<div class="nh-sec">Alerts for you</div>'}<div class="nh-al">${al}</div>`:''}${o.cta?`<button class="nh-cta" onclick="${o.cta[1]}">${ic('plus','s20')}${o.cta[0]}</button>`:''}</div>`;}
+ <div class="nh-tl">${tiles(p,L).map(([l,v,n,on,tone])=>`<button onclick="${on}"><span>${l}</span><b class="${tone||''}">${v}</b><small>${n}</small></button>`).join('')}</div>${plain?'':nhChart(p,L)}${al?`${plain?'':'<div class="nh-sec">Alerts for you</div>'}<div class="nh-al">${al}</div>`:''}${o.al?`<div class="nh-sec">${o.alT}</div><div class="nh-l">${o.al}</div>`:''}${o.qa?`<div class="nh-sec">Quick actions</div>${nhQa(o.qa)}`:''}${o.cta?`<button class="nh-cta" onclick="${o.cta[1]}">${ic('plus','s20')}${o.cta[0]}</button>`:''}</div>`;}
 function nhAdmin(p,L){const pr=nhProfit(L),od=allDues().filter(isOverdue).reduce((a,v)=>a+(v.amt-v.paid),0),d=brData();
  return [['Sales',inr(sumAmt(L)),L.length+' bill'+(L.length===1?'':'s'),"go('asales')"],['Profit',inr(pr.p),pr.pct+'% margin',`S.ui.mgp='${p==='today'?'today':'month'}';go('mgmargin')`,'g'],['Udhaar to collect',inr(allOut()+custOut()),od?inr(od)+' overdue':'none overdue',"go('mgdues')",'o'],['Stock value',(v=>v>=1e7?'₹'+(v/1e7).toFixed(2)+' Cr':v>=1e5?'₹'+(v/1e5).toFixed(1)+' lakh':inr(v))(d.stock),'At purchase price',"go('astock')"]];}
 function nhMgr(p,L){const dues=allDues().filter(isOverdue),od=dues.reduce((a,v)=>a+(v.amt-v.paid),0),col=L.reduce((a,b)=>a+acBillIn(b).filter(x=>x.m==='Cash'||x.m==='UPI').reduce((s,x)=>s+x.amt,0),0),pend=DB.approvals.filter(a=>a.st==='pending').length,nm=new Set(dues.map(v=>v.m.code)).size;
  return [['Sales',inr(sumAmt(L)),L.length+' bill'+(L.length===1?'':'s'),"go('mgsales')"],['Collected',inr(col),'Cash + UPI',"go('dayclose')"],['Approvals',String(pend),pend?'Waiting for you':'All clear',"tab('approvals')"],['Udhaar overdue',inr(od),nm+' mechanic'+(nm===1?'':'s'),"go('mgdues')",od?'o':'']];}
-SCREENS.ahome=()=>{const d=brData();const br=brSel();const sec_=(DB.secDone||[]);const openSec=SEC_ALERTS.filter(a=>!sec_.includes(a.id)).length;
- return `<div class="scroll"><div class="pad">${nhTop(nhAdmin,palCard()+supDueCard()+poDayCard()+dsCard())}
- <div class="chips"${BRANCHES.length>1?'':' hidden'}>${['All branches',...BRANCHES.map(b=>b.n)].map(b=>`<button class="chip ${br===b?'on':''}" onclick="S.ui.abr='${b}';refresh()">${b==='All branches'?ic('globe','s16'):ic('store','s16')}${b}</button>`).join('')}</div>
+SCREENS.aopts=()=>{const d=brData();const br=brSel();const sec_=(DB.secDone||[]);const openSec=SEC_ALERTS.filter(a=>!sec_.includes(a.id)).length;
+ return bar('All options')+`<div class="scroll"><div class="pad"> <div class="chips"${BRANCHES.length>1?'':' hidden'}>${['All branches',...BRANCHES.map(b=>b.n)].map(b=>`<button class="chip ${br===b?'on':''}" onclick="S.ui.abr='${b}';refresh()">${b==='All branches'?ic('globe','s16'):ic('store','s16')}${b}</button>`).join('')}</div>
  ${(()=>{const T=DB.targets||tgtSeed();const rows=tgtKeys().map(k=>tgtRow(k));const on=rows.filter(r=>r.st[1]==='g').length;return `<button class="card" style="text-align:left;width:100%;gap:10px;border:1.5px solid var(--y)" onclick="go('mgtarget')"><div class="row"><div class="tile y">${ic('award','s20')}</div><div class="grow"><div class="h3">Targets</div><div class="cap">${T.month} · ${on}/${rows.length} on track · ${rows[0].left} days left</div></div><span class="link" onclick="event.stopPropagation();S.ui.te=null;go('atargets')">Edit</span></div>${['sales','collect'].map(k=>tgtCard(k,1)).join('')}</button>`;})()}
  <div class="card" style="flex-direction:row;justify-content:space-around;text-align:center">${[[d.cust.toLocaleString('en-IN'),'Customers','Customers'],[d.mech.toLocaleString('en-IN'),'Mechanics','Mechanics'],[d.staff,'Staff','Staff']].map(([v,l,t])=>`<button onclick="S.ui.ut='${t}';tab('users')"><div class="h2 num">${v}</div><div class="micro muted">${l}</div></button>`).join('')}</div>
  ${sec('Mechanics')}
@@ -5876,6 +5874,26 @@ SCREENS.astock=()=>{const tot=BRANCHES.reduce((a,b)=>a+b.stock,0);return bar('St
  ${dsCard()}${sec('Dead stock (no sale 60+ days)')}<div class="card flush">${mgList('slow').map(x=>li(esc(x.name),esc(x.pn)+' · '+DB.stock[x.id]+' pcs · last sold '+lastSold(x)+' days ago',`<b class="num">${inr(DB.stock[x.id]*poCost(x))}</b>`,x.ic,'','a')).join('')||'<div class="empty">None</div>'}</div>
  <button class="btn line" onclick="go('stocklist')">Open full stock list</button>
 </div></div>`;};
+/* 22o (Sam 13 Nov "poora same nhi he", "jo UI design diya he waise hi chahiye poora"): Admin and Manager home are the preview's blocks only: tiles, chart, alerts, quick actions. Everything the old home had is under All options. */
+const nhRb=(i,t,sub,on,cls)=>`<button class="nh-rb ${cls||''}" onclick="${on}"><span class="ic">${ic(i,'s20')}</span><span class="gr"><b>${t}</b><span class="s">${sub}</span></span>${ic('chevR','s18')}</button>`;
+const nhAr=(i,t,sub,on)=>`<button class="nh-ar" onclick="${on}"><span class="ic">${ic(i,'s18')}</span><span class="gr"><b>${t}</b><span class="s">${sub}</span></span>${ic('chevR','s18')}</button>`;
+const nhQa=L=>`<div class="nh-qa">${L.filter(q=>{try{return !q[3]||allowed(q[3]);}catch(e){return true;}}).map(q=>`<button onclick="${q[2]}"><span class="ic">${ic(q[0],'s20')}</span>${q[1]}${q[4]?`<em>${q[4]}</em>`:''}</button>`).join('')}</div>`;
+const nhPl=(n,w)=>n+' '+w+(n===1?'':'s');
+SCREENS.apal=()=>bar('Alerts')+`<div class="scroll"><div class="pad"><p class="cap">Every Manager price change, supplier bill to pay, purchase of today and stock that is stuck.</p>${(palCard()+supDueCard()+poDayCard()+dsCard())||'<div class="empty">No alert now.</div>'}</div></div>`;
+SCREENS.ahome=()=>{const pal=palOpen(),ap=DB.approvals.filter(a=>a.st==='pending'),sa=supAlerts(),rk=riskRows().length,low=outList().length+lowList().length;
+ const al=(pal.length?nhRb('bell',nhPl(pal.length,'alert')+' · MRP changed by Manager',esc(pal[0].name||pal[0].pn||'')+(pal[0].o&&pal[0].n?' '+inr(pal[0].o.mrp)+' → '+inr(pal[0].n.mrp):'')+(pal[0].byN?' · '+esc(pal[0].byN):''),"go('apal')"):'')
+  +(ap.length?nhAr('checkC',nhPl(ap.length,'approval')+' waiting',ap[0].t||'Tap to review',"go('approvals')"):'')
+  +(sa.length?nhAr('rupee','Supplier payments due',inr(sa.reduce((a,x)=>a+x.bal,0))+' · '+nhPl(sa.length,'bill'),"go('apal')"):'')
+  +(rk?nhAr('alert',nhPl(rk,'thing')+' to check in Risk watch','Cash short, many cancels, count short, udhaar above limit',"go('arisk')"):'')
+  +(low?nhAr('package',nhPl(low,'part')+' low or out of stock','Order before they run out',"S.ui.mgk='out';S.ui.mgSel=[];go('mgstock',{kind:'out'})"):'');
+ return `<div class="scroll"><div class="pad">${nhTop(nhAdmin,'',{al,alT:'Alerts for you',qa:[['users','Staff',"go('staff')",'staff'],['checkC','Approvals',"go('approvals')",'approvals',ap.length||''],['rupee','Finance',"tab('afinance')"],['tag','MRP & discount',"S.ui.mpq='';S.ui.mpf='All';go('masterprice')",'masterprice'],['receipt','Billing',"S.ui.bf=null;go('bills',{f:'All'})",'bills'],['package','Inventory',"go('ainv')",'ainv'],['pin','Find Part',"go('findpart')",'findpart'],['grid','All options',"go('aopts')"]]})}</div></div>`;};
+SCREENS.mghome=()=>{const ap=DB.approvals.filter(a=>a.st==='pending'),pw=pushWait(),low=outList().length+lowList().length,ina=inactiveM().length;
+ const al=(ap.length?nhRb('checkC',nhPl(ap.length,'approval')+' waiting',ap.slice(0,3).map(a=>a.t).join(' · '),"tab('approvals')"):'')
+  +(pw.length?nhRb('file',nhPl(pw.length,'pending invoice'),'Pushed by sales staff, waiting at billing',"S.ui.bf=null;go('bills',{f:'All'})",'w'):'')
+  +(low?nhAr('package',nhPl(low,'part')+' low or out of stock','Order before they run out',"S.ui.mgk='out';S.ui.mgSel=[];go('mgstock',{kind:'out'})"):'')
+  +(ina?nhAr('wrench',nhPl(ina,'mechanic')+' not buying','No bill in 30 days',"go('mginact')"):'');
+ return `<div class="scroll"><div class="pad">${nhTop(nhMgr,'',{al,alT:'Needs attention',qa:[['trend','Sales report',"S.ui.mgp='month';go('mgsales')",'mgsales'],['wallet','Expenses',"go('mgexp')",'mgexp'],['lock','Day closing',"go('dayclose')",'dayclose'],['award','Targets',"go('mgtarget')",'mgtarget'],['clip','Orders & tasks',"go('mgorders')",'mgorders'],['truck','Part orders',"S.ui.sof='Open';go('partorders')",'partorders'],['package','Inventory',"S.ui.rq='';go('stocklist')",'stocklist'],['tag','MRP & discount',"S.ui.mpq='';S.ui.mpf='All';go('masterprice')",'masterprice'],['wrench','Our mechanics',"S.ui.omBy='Status';S.ui.omq='';go('ourmech')",'ourmech'],['shield','Warranty',"S.ui.wf='All';go('warreg')",'warreg'],['pin','Find Part',"go('findpart')",'findpart'],['link','Other brand not added',"S.ui.xm=null;S.ui.xmMsg='';go('axmiss')",'axmiss'],['disc','Tyre & Battery',"go('tyrebat')",'tyrebat'],['chat','WhatsApp summary',"go('mgsummary')",'mgsummary'],['users','Staff work',"go('mgstaff')",'mgstaff'],['grid','All options',"go('mgopts')"]]})}</div></div>`;};
+ACCESS.admin.push('aopts','apal','bills');ACCESS.manager.push('mgopts');
 SCREENS.adeliv=adelivScr;SCREENS.aupim=aupimScr;ACCESS.admin.push('aupim');ACCESS.accountant.push('aupim');
 SCREENS.oorders=()=>{const f=S.ui.oof||'New',all=DB.orders||[],cnt=k=>all.filter(o=>k==='All'||ooSt(o)===k).length;const L=all.filter(o=>f==='All'||ooSt(o)===f);
  return bar('Online orders')+`<div class="scroll"><div class="pad">
@@ -8728,43 +8746,70 @@ html.wv .wv-side-col>button.card,html.wv .wv-side-col>.dark-card{width:100%}
 /* 22n: phone look like the previews too: white page, cards with a thin line, no shadow */
 html:not([data-theme=dark]){--paper:#fff}
 .screen :is(.card,.stat,.money,.pcard,.qa2){border:1px solid var(--line);box-shadow:none}
-/* 22m: new home top (redesign previews) */
-.nh{display:flex;flex-direction:column;gap:14px}
+/* 22m + 22o: home like the redesign previews (their sizes and greys) */
+.screen,.sheet{--nhg:#f1f1f1;--nhi:#f3f3f3;--nhb:#e9e9e9}
+[data-theme=dark] :is(.screen,.sheet){--nhg:var(--line2);--nhi:var(--line2);--nhb:var(--line)}
+.nh{display:flex;flex-direction:column;gap:12px}
 .nh-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-.nh-hi{font-size:14px;color:var(--ink5);display:flex;flex-direction:column;gap:2px;min-width:0}
-.nh-hi b{font-size:20px;font-weight:700;color:var(--ink);letter-spacing:-.2px}
-.nh-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:12px;background:var(--line2)}
-.nh-seg button{height:40px;border-radius:9px;font-size:14px;font-weight:600;color:var(--ink5)}
-.nh-seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.nh-hi{font-size:13px;color:var(--ink5);display:flex;flex-direction:column;min-width:0}
+.nh-hi b{font-size:18px;font-weight:600;color:var(--ink)}
+.nh-seg{display:flex;padding:4px;border-radius:12px;background:var(--nhg)}
+.nh-seg button{flex:1;height:38px;border-radius:9px;font-size:13.5px;font-weight:600;color:var(--ink5)}
+.nh-seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .nh-tl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.nh-tl button{display:flex;flex-direction:column;gap:3px;text-align:left;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--card);min-width:0}
-.nh-tl span{font-size:13px;color:var(--ink5)}
-.nh-tl b{font-size:20px;font-weight:700;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.nh-tl button{display:flex;flex-direction:column;gap:2px;text-align:left;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:var(--card);min-width:0}
+.nh-tl span{font-size:12px;color:var(--ink5)}
+.nh-tl b{font-size:20px;font-weight:700;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .nh-tl b.g{color:var(--g)}.nh-tl b.o{color:#c2410c}
-.nh-tl small{font-size:12px;color:var(--ink5)}
-.nh-chart{border:1px solid var(--line);border-radius:14px;background:var(--card);padding:16px}
-.nh-chart .hd{display:flex;justify-content:space-between;align-items:baseline;font-size:14.5px}
-.nh-chart .hd span{font-size:12px;color:var(--ink5)}
-.nh-chart .bars{display:flex;align-items:stretch;gap:8px;height:150px;margin-top:12px}
+.nh-tl small{font-size:11.5px;color:var(--ink5)}
+.nh-chart{border:1px solid var(--line);border-radius:16px;background:var(--card);padding:14px 14px 10px}
+.nh-chart .hd{display:flex;justify-content:space-between;align-items:baseline}
+.nh-chart .hd b{font-size:14.5px;font-weight:600}.nh-chart .hd span{font-size:12px;color:var(--ink5)}
+.nh-chart .bars{display:flex;align-items:stretch;gap:8px;height:140px;margin-top:10px}
 .nh-chart .bars>div{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px}
 .nh-chart .b{flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px;min-height:0}
-.nh-chart em{font-style:normal;font-size:11.5px;font-weight:600}
-.nh-chart i{display:block;width:100%;border-radius:5px 5px 0 0;background:var(--line2)}
-.nh-chart i.on{background:var(--y)}
+.nh-chart em{font-style:normal;font-size:11px;font-weight:600}
+.nh-chart i{display:block;width:100%;border-radius:4px 4px 0 0;background:var(--nhb)}
+.nh-chart i.on{background:#FEBE10}
 .nh-chart small{font-size:11px;color:var(--ink5)}
-.nh-sec{font-size:17px;font-weight:700;margin-top:4px}
-.nh-cta{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;border-radius:14px;background:#141414;color:#fff;font-size:15px;font-weight:600}
-html.wv .nh-cta{max-width:320px;height:48px}
+.nh-sec{font-size:15px;font-weight:600;margin-top:8px}
 .nh-al{display:flex;flex-direction:column;gap:10px}
-html.wv .nh{gap:18px}html.wv .nh-top .iconbtn{display:none}html.wv .nh-hi b{font-size:24px}
-html.wv .nh-tl{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}html.wv .nh-tl button{padding:18px 20px}html.wv .nh-tl b{font-size:24px}
-html.wv .nh-tl button:hover{border-color:var(--ink5)}
-html.wv .nh-chart{padding:20px}html.wv .nh-chart .bars{height:200px;gap:14px}
+.nh-l{display:flex;flex-direction:column}
+.nh-rb{display:flex;gap:12px;align-items:center;text-align:left;width:100%;border-radius:16px;background:#141414;color:#fff;padding:14px;margin-bottom:8px;border:1.5px solid #141414}
+.nh-rb.w{background:var(--card);color:var(--ink)}
+.nh-rb .ic{width:40px;height:40px;border-radius:12px;background:#FEBE10;color:#141414;display:grid;place-items:center;flex:none}
+.nh-rb .gr,.nh-ar .gr{flex:1;min-width:0;display:flex;flex-direction:column}
+.nh-rb b{font-size:14.5px;font-weight:600}.nh-rb .s{font-size:12px;color:#bdbdbd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nh-rb.w .s{color:var(--ink5)}
+.nh-ar{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid var(--line);width:100%;text-align:left}
+.nh-ar .ic{width:38px;height:38px;border-radius:50%;background:var(--nhi);display:grid;place-items:center;flex:none}
+.nh-ar b{font-size:14px;font-weight:600}.nh-ar .s{font-size:12px;color:var(--ink5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nh-ar>svg{color:var(--ink5);flex:none}
+.nh-qa{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 8px}
+.nh-qa button{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11.5px;font-weight:500;text-align:center;line-height:1.25;padding:4px 0;position:relative;min-width:0}
+.nh-qa .ic{width:48px;height:48px;border-radius:14px;background:var(--nhi);display:grid;place-items:center}
+.nh-qa em{position:absolute;top:0;left:calc(50% + 12px);min-width:18px;height:18px;border-radius:9px;background:#FEBE10;color:#141414;font-style:normal;font-size:11px;font-weight:700;display:grid;place-items:center;padding:0 4px}
+.nh-cta{display:flex;align-items:center;justify-content:center;gap:8px;height:50px;border-radius:14px;background:#141414;color:#fff;font-size:15px;font-weight:600}
+html.wv .nh-top .iconbtn{display:none}
+html.wv .nh-tl{grid-template-columns:repeat(4,minmax(0,1fr))}
+html.wv .nh-tl button:hover,html.wv .nh-qa button:hover .ic{border-color:var(--ink5);background:var(--nhg)}
+html.wv .nh-qa{grid-template-columns:repeat(8,minmax(0,1fr))}
+html.wv .nh-cta{max-width:320px}
+html.wv .screen .pad:has(>.nh){max-width:980px}
+/* 22o: quick action tiles everywhere like the previews: grey icon square with the name under it, no card */
+.screen .qa2,html.wv .screen .qa2{border:0!important;background:none;box-shadow:none;padding:4px 0;gap:6px;font-size:11.5px;font-weight:500;line-height:1.25}
+.screen .qa2 .tile{width:48px;height:48px;border-radius:14px;background:var(--nhi)!important;color:var(--ink)!important;box-shadow:none}
+.screen .qa2:hover .tile{background:var(--nhg)!important}
+.pad:has(>.nh) :is(.grid3,.grid4):has(>.qa2){grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 8px}
+html.wv .pad:has(>.nh) :is(.grid2,.grid3,.grid4):has(>.qa2){grid-template-columns:repeat(8,minmax(0,1fr))}
+.pad:has(>.nh)>.sec .h2{font-size:15px;font-weight:600}
+html.wv .pad:has(>.nh)>.card{border-radius:16px}
 /* 22l (Sam 13 Nov, his screenshot of the Admin preview desktop): white page, cards with a thin line and no shadow, plain greeting instead of the dark banner, calm tiles, only the 5 tabs in the side menu, no title strip on top */
 html.wv:not([data-theme=dark]){--paper:#fff}
 html.wv .wv-top{height:64px;border-bottom:0;background:var(--paper);padding:0 28px;animation:none}
 html.wv .wv-crumb{display:none}
-html.wv .wv-search{flex:0 1 320px;background:var(--card)}
+html.wv .wv-search{flex:0 0 42px;min-width:42px;width:42px;padding:0 11px;background:var(--card);overflow:hidden;margin-left:auto;cursor:text}
+html.wv .wv-search:focus-within{flex:0 1 360px;padding:0 12px}
+html.wv .wv-search:not(:focus-within) kbd{display:none}
 html.wv :is(.card,.stat,.money,.pcard,.qa2,.wv-panel){border:1px solid var(--line);box-shadow:none;border-radius:16px}
 html.wv :is(button.card,.pcard,.qa2,button.stat,button.money,button.dark-card):hover{transform:none;box-shadow:none;border-color:var(--ink5)}
 html.wv button.li:hover{background:var(--line2);padding-left:20px}
@@ -8922,7 +8967,7 @@ const isAct=el=>isGrid(el)&&[...el.children].every(k=>k.matches('.qa,.qa2'));
 const isSide=el=>el.matches('button.card')&&!el.matches('.dark-card');
 function panel(sec,items,cls){const p=document.createElement('section');p.className='wv-panel'+(cls?' '+cls:'');if(sec)p.append(sec);p.append(...items);return p;}
 function secEl(t){const s=document.createElement('div');s.className='sec';s.innerHTML=`<h3 class="h2">${t}</h3>`;return s;}
-function dash(pad,anim){const kids=[...pad.children];if(!kids.length)return [];let nh=null;if(kids[0].matches('.nh'))nh=kids.shift();
+function dash(pad,anim){const kids=[...pad.children];if(!kids.length)return [];if(kids[0].matches('.nh'))return kids;let nh=null;
  let hero=null;if(kids[0].matches('.row')&&kids[0].querySelector('.h1,.h2')){hero=kids.shift();}
  const blocks=[];
  for(let i=0;i<kids.length;i++){const el=kids[i];

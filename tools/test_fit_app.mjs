@@ -72,4 +72,13 @@ ok(/2\.75-18 TESTY GRIP F TL 42P/i.test(t) && /900001 · Testy list · Tubeless/
 ok(/own tyre part · Hero catalogue/i.test(t) && /44711-KCC-901S/.test(t) && /₹1,450/.test(t), 'the bike\'s own tyre part stays in its own card with MRP');
 if (SHOT) await p.screenshot({ path: path.join(SHOT, 'fit5.png'), fullPage: false });
 await p.evaluate(() => { fitSt().side = 'R'; refresh(); }); await p.waitForTimeout(400); t = await txt(); ok(/900002/.test(t) && !/900001/.test(t) && /42711-KCC-901S/.test(t), 'rear: the maker\'s rear tyre and the bike\'s own rear part');
+// 21x: a bike found from its number on the Tyre page opens the tyre size, on the Spares page the part sections as before
+await p.evaluate(() => { S.ui.fpm = 't'; reset('findpart'); }); await p.waitForTimeout(900); t = await txt(); ok(/Have the bike number/i.test(t) && await p.evaluate(() => !!document.getElementById('fit-reg')), 'Tyre page has the bike number box');
+await p.fill('#fit-reg', 'MBLHAW264RHK01290'); await p.evaluate(() => fpGoVin('fit-reg')); await p.waitForTimeout(500);
+ok(await p.evaluate(() => S.ui.fitVin === 't' && cur().p.v === 'vin'), 'the number goes to the usual bike search');
+await p.evaluate(() => vinOpen('MBLHAW264RHK01290', 'Hero', 'Splendor Plus', '')); await p.waitForTimeout(1000); t = await txt();
+ok(await p.evaluate(() => cur().p.v === 'fit' && cur().p.k === 't') && /Bike found from the chassis number MBLHAW264RHK01290/i.test(t) && /FRONT 2\.75-18/i.test(t), 'the found bike opens its tyre size');
+await p.evaluate(() => fitMode('b')); await p.waitForTimeout(900); t = await txt(); ok(/Battery of this bike/i.test(t) && /MBLHAW264RHK01290/.test(t), 'Battery of the same found bike');
+await p.evaluate(() => { S.ui.fpm = 's'; reset('findpart'); }); await p.waitForTimeout(600); await p.fill('#fp-reg', 'MBLHAW264RHK01290'); await p.evaluate(() => fpGoVin('fp-reg')); await p.waitForTimeout(400);
+await p.evaluate(() => vinOpen('MBLHAW264RHK01290', 'Hero', 'Splendor Plus', '')); await p.waitForTimeout(600); ok(await p.evaluate(() => cur().p.v !== 'fit'), 'on Spares the number still opens the part sections');
 fs.rmSync(LISTF); await b.close(); console.log(fails ? fails + ' FAILED' : 'all pass'); process.exit(fails ? 1 : 0);

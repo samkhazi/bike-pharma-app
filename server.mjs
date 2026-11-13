@@ -355,6 +355,12 @@ async function api(req, res, url, user) {
       res.writeHead(200, { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Length': b.length, 'Content-Disposition': 'attachment; filename="same-parts-' + ({ c: 'catalogue', k: 'to-check', s: 'staff' })[tab] + '.csv"', 'Cache-Control': 'no-store' }); return res.end(b); }
     return json(res, 200, SAMEREP.page(tab === 's' ? 'c' : tab, g('q'), g('bp'), Math.max(0, +g('off') || 0), 50));
   }
+  // 22i: the garages a customer may have an order delivered to: the shop's active mechanics, garage name + area + code only (no phone, no dues)
+  if (p === '/api/garages' && m === 'GET') {
+    if (!user) return json(res, 401, { error: 'Please log in again' });
+    const off = new Set(stateVal('staffOff') || []);
+    return json(res, 200, { list: Object.entries(accounts()).filter(([k, a]) => a && a.role === 'mechanic' && a.code && a.status !== 'pending' && !off.has(k)).map(([, a]) => ({ code: String(a.code), n: String(a.shop || a.name || '').slice(0, 60), area: String(a.area || '').slice(0, 60) })).filter(g => g.n).sort((x, y) => x.n.localeCompare(y.n)).slice(0, 500) });
+  }
   if (p === '/api/same') {
     if (roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: user ? 'Staff login needed' : 'Please log in again' });
     if (m === 'GET') return json(res, 200, { list: store.kvAll('samepart').map(([, v]) => v), wrong: store.kvAll('samewrong').map(([k]) => k) });

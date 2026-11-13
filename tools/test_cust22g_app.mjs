@@ -1,0 +1,20 @@
+// 22g: Recently viewed + return / replace request in the app. Needs a server on 3033 (admin sam@bikepharma.com / Test@1234).
+import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; }; const OUT = process.argv[2];
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' }), p = await b.newPage({ viewport: { width: 420, height: 900 } }); const errs = []; p.on('pageerror', e => errs.push(e.message));
+await p.goto('http://127.0.0.1:3033/app.html'); await p.fill('#loginId', 'sam@bikepharma.com'); await p.evaluate(() => sendOtp()); await p.waitForSelector('#pw1');
+await p.fill('#pw1', 'Test@1234'); await p.evaluate(() => pwGo()); await p.waitForFunction(() => S.user); await p.evaluate(() => reset(HOME[S.user.role]));
+await p.evaluate(() => { let x = PX('TP22B'); if (!x) { x = { id: 'TP22B', name: 'Test brake shoe', pn: 'TP-22B-001', brand: 'Hero', mrp: 100, price: 95, mp: 80, stock: 5, gst: 18, cat: 'Brakes', fits: ['Universal'] }; DB.newProducts = DB.newProducts || []; DB.newProducts.push(x); PRODUCTS.push(x); } DB.stock.TP22B = 5; localStorage.removeItem('bp_rv');
+  S.user = { ...S.user, role: 'customer' }; S.uid = '9876501234'; DB.rreq = []; DB.orders = [{ id: 'BP-ORD-2026-0000001', mob: '9876501234', d: '10 Nov 2026', items: 1, amt: 95, pm: 'UPI', st: 'Delivered', list: [['TP22B', 1, 95]] }]; });
+await p.evaluate(() => reset('home')); ok(!/Recently viewed/i.test(await p.innerText('#vp')), 'home: no Recently viewed before a part is opened');
+await p.evaluate(() => go('product', { id: 'TP22B' })); await p.waitForTimeout(300); await p.evaluate(() => reset('home')); await p.waitForTimeout(300);
+ok(/Recently viewed/i.test(await p.innerText('#vp')) && /Test brake shoe/.test(await p.innerText('#vp')), 'home: Recently viewed shows the opened part'); if (OUT) await p.screenshot({ path: OUT + '/rv-home.png', fullPage: true });
+await p.evaluate(() => reset('orders')); ok(/Return \/ replace/i.test(await p.innerText('#vp')), 'delivered order has Return / replace');
+await p.evaluate(() => rreqAsk('BP-ORD-2026-0000001')); await p.waitForSelector('#rr-txt'); if (OUT) await p.screenshot({ path: OUT + '/rreq-sheet.png' });
+await p.evaluate(() => { S.ui.rr.kind = 'Replace'; S.ui.rr.why = 'Damaged'; rreqSend(); }); await p.waitForTimeout(300);
+ok(await p.evaluate(() => DB.rreq.length === 1 && DB.rreq[0].st === 'Sent' && DB.rreq[0].kind === 'Replace' && DB.rreq[0].who === 'Customer'), 'request saved as Sent'); ok(/Replace asked/i.test(await p.innerText('#vp')), 'the order shows its request');
+await p.evaluate(() => { rreqAsk('BP-ORD-2026-0000001'); }); ok(await p.evaluate(() => DB.rreq.length === 1), 'not asked twice');
+await p.evaluate(() => { S.user = { ...S.user, role: 'billing' }; S.uid = 'sam@bikepharma.com'; reset('bhome'); }); await p.waitForTimeout(300);
+ok(/Order returns \(1\)/i.test(await p.innerText('#vp')), 'Billing home shows Order returns'); if (OUT) await p.screenshot({ path: OUT + '/rreq-billing.png' });
+await p.evaluate(() => rreqDecide(DB.rreq[0].id, 1)); ok(await p.evaluate(() => DB.rreq[0].st === 'Accepted' && !rreqOpen().length), 'Accept closes it');
+await p.evaluate(() => { DB.rreq = []; DB.orders = []; }); ok(!errs.length, 'no page errors ' + errs.join(' | ')); await b.close(); process.exit(fails ? 1 : 0);

@@ -3834,8 +3834,10 @@ const catBelt=rows=>rows.some(catBeltRow)&&!rows.some(r=>catKitRank(r)===0);
    For a chain kit ask on a bike, the kits of that list that are this bike's come first: the note names the bike, or a sprocket inside
    the kit is one of the bike's own sprocket numbers. Another bike's kit is never shown. */
 const CAT_SVC='Service kits',catSvcPn=t=>[...new Set((String(t||'').toUpperCase().match(/\b\d{5}-?[A-Z0-9]{3}-?[A-Z0-9]{3,4}\b/g)||[]).map(catPk))];
-const catSvcFits=(rem,vm)=>{const f=(/\bFITS\s*:?\s*([^;]*)/i.exec(String(rem||''))||[])[1];if(!f)return false;const m=catNorm(String(vm).replace(/\(.*?\)/g,' ')).trim();if(!m)return false;
- return f.split(/[,\/&]|\band\b/i).some(x=>{x=catNorm(x).trim();if(x===m)return true;if(!x.startsWith(m+' '))return false;return x.slice(m.length+1).split(' ').every(w=>/^(BS\d?|BSVI|BSIV|BS6|BS4|VI|IV|OBD\d?[A-Z]?|DISC|DRUM|CBS|NEW|DLX|STD|\d{4})$/.test(w));});};
+const catSvcFits=(rem,vm,nm)=>{const f=(/\bFITS\s*:?\s*([^;]*)/i.exec(String(rem||''))||[])[1];if(!f)return false;const m=catNorm(String(vm).replace(/\(.*?\)/g,' ')).trim();if(!m)return false;
+ return f.split(/[,\/&]|\band\b/i).some(x=>{x=catNorm(x).trim();if(x===m)return true;if(!x.startsWith(m+' '))return false;const t=x.slice(m.length+1).split(' ');if(!t.every(w=>/^(BS\d?|BSVI|BSIV|BS6|BS4|VI|IV|OBD\d?[A-Z]?|DISC|DRUM|CBS|NEW|DLX|STD|\d{4})$/.test(w)))return false;
+  /* update 23e: 'LIVO BSIV' is not a BS6 Livo (the bike's norm, or its year, when known) */
+  const k=t.join(' '),f=/BS ?(VI|6)\b|^VI$| VI\b/.test(k)?'BS6':/BS ?(IV|4)\b|^IV$| IV\b/.test(k)?'BS4':'';return !nm||!f||nm===f;});};
 /* update 23b (Sam's screenshot 2026-11-14: 8 kits of Dream Yuga, Dream Neo, CB Twister on a Livo, which share its 14T front sprocket):
    one sprocket in common is not enough. Every sprocket inside the kit must be the bike's own (23c: its fixing plate and bolts, shared by many bikes, are not counted:
    Sam's 02380-KWB-600 page, the Livo's real kit). */
@@ -3845,10 +3847,13 @@ function catSvcKits(A,rows){try{if(!A.vm||A.vm==='Any'||XR_NOBIKE.test(A.vm))ret
   if(e.split&&catSplitM(e,CAT_SVC)!==2)return [];
   const sc=catScope({vb:A.vb,vm:CAT_SVC,vv:'Any',cc:'Any',bs:'Any',yr:'Any',ed:'Any'});if(!sc||!sc.rows)return [];
   const sp=new Set(rows.filter(r=>catKitRank(r)>0).map(r=>catPk(r.part)));
+  const y=+A.yr||0,nm=A.bs&&A.bs!=='Any'?A.bs:y>=2021?'BS6':y&&y<=2019?'BS4':'';
   return catDedupe(sc.rows.filter(r=>r.dw.includes('CHAIN')&&r.dw.some(w=>/^(KIT|SET)S?$/.test(w))&&!r.dw.some(w=>CAT_ENGW.has(w))).map(r=>{const it=catSvcItems(r.rem).filter(x=>/^[^A-Z0-9]*SPROCKET/.test(x[1])),hit=it.length&&it.every(x=>sp.has(x[0]))?it.length:0;
    /* update 23d (Sam 2026-11-14: on his 2021 Livo only 02380-KWB-600/601 are right, not the Dream Yuga kits): when the kit says which
       sprockets are inside and the bike's catalogue has its sprockets, they decide; the note's bike name counts only when they cannot */
-   return hit||(!it.length||!sp.size)&&catSvcFits(r.rem,A.vm)?[hit,r]:null;}).filter(Boolean).sort((a,b)=>b[0]-a[0]||a[1].i-b[1].i).map(x=>x[1]));}catch(x){return [];}}
+   /* update 23e (Sam's 02380-KWB-601 page: its list has only the front sprocket, which other bikes share): a kit that lists both sprockets
+      is decided by them; one that lists a single sprocket also needs the note to name this bike */
+   const fit=catSvcFits(r.rem,A.vm,nm);return (hit>=2||hit===1&&fit)||(!it.length||!sp.size)&&fit?[hit,r]:null;}).filter(Boolean).sort((a,b)=>b[0]-a[0]||a[1].i-b[1].i).map(x=>x[1]));}catch(x){return [];}}
 /* update 23a (Sam 2026-11-14 "kit search karta hun toh kit show hona he", "sabhi ke liye"): the same for every other kit asked by name
    (piston kit, gasket kit, clutch kit): the Service kits lines with the asked words that are this bike's: the note names the bike, or
    at least half of the part numbers inside the kit are in the bike's own catalogue */

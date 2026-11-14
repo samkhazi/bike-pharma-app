@@ -35,6 +35,9 @@ fs.writeFileSync(H + '/honda_extras.json', JSON.stringify({ v: 2, xl: {}, acc: [
     ['02380-K14-910', 'KIT, CHAIN SPROCKET- DREAM YUGA (HET)', 822, '', '40530-K14-900 · CHAIN, DRIVE · 1 23801-KWB-600 · SPROCKET, DRIVE(14T) · 1 41201-K14-900 · SPROCKET, FINAL DRIVEN(41T) · 1'],
     ['02380-K14-900', 'CHAIN SPROCKET KIT', 822, 'DREAM YUGA, LIVO', '23801-KWB-600 · SPROCKET, DRIVE(14T) · 1 41201-K14-900 · SPROCKET, FINAL DRIVEN(41T) · 1'],
     ['02380-KWB-601', 'CHAIN SPROCKET KIT', 888, 'LIVO BSVI', '23801-KWB-600 · SPROCKET, DRIVE(14T) · 1 41201-K1C-D00 · SPROCKET, FINAL DRIVEN(42T) · 1'],
+    ['02380-K14-901', 'CHAIN SPROCKET KIT SEALED CHAIN TYPE', 700, 'DREAM YUGA', '23801-KWB-600 · SPROCKET, DRIVE(14T) · 1 40530-K55-951 · CHAIN, DRIVE(DAIDO) · 1'],
+    ['02380-K14-902', 'CHAIN SPROCKET KIT SEALED CHAIN TYPE', 888, 'LIVO BSIV', '23801-KWB-600 · SPROCKET, DRIVE(14T) · 1'],
+    ['02380-KWB-602', 'CHAIN SPROCKET KIT', 888, 'CD 110 DREAM BSVI, LIVO BSVI', '23801-KWB-600 · SPROCKET, DRIVE(14T) · 1 23802-GN5-910 · PLATE, FIXING · 1 40530-K55-951 · CHAIN, DRIVE(DAIDO) (DID420ADV-118LE) · 1'],
     ['06406-K1D-T05', 'CHAIN KIT,DRIVE(428-14&44T)', 1700, 'LIVON X', '']] }));
 await new Promise(r => { const a = spawn('node', ['--no-warnings', 'admin.mjs', 'add-admin', 'sam@bikepharma.com', 'Sam', '--password', 'Test@1234'], { env: { ...process.env, DATA_DIR: T + '/data' } }); a.on('exit', r); });
 const srv = spawn('node', ['--no-warnings', 'server.mjs'], { env: { ...process.env, PORT: '3027', DATA_DIR: T + '/data', FILES_DIR: T + '/pf', PHOTO_AI: 'off' }, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -52,10 +55,13 @@ try {
   ok(r.pns[0] === '06406-K1C-T01', 'Livo: the kit whose sprockets are the Livo\'s own comes first (its note names another bike): ' + r.pns[0]);
   ok(!r.pns.includes('02380-K14-910'), 'Livo: the Dream Yuga kit that shares only the front sprocket is not shown');
   ok(!r.pns.includes('02380-K14-900') && r.pns.includes('02380-KWB-601'), 'Livo: a kit whose note says LIVO but whose rear sprocket (41T) is not this Livo\'s is not shown; 02380-KWB-601 is');
+  ok(!r.pns.includes('02380-K14-901') && r.pns.includes('02380-KWB-602'), 'Livo: a kit that lists only the shared front sprocket shows only when its note names the Livo (KWB-602 yes, Dream Yuga K14-901 no)');
   ok(r.pns.includes('06406-K1C-T02'), 'Livo: a kit with no list of what is inside, whose note says "LIVO BS6", is there too');
   ok(!r.pns.includes('06406-KWF-P01') && !r.pns.includes('06406-KSP-T03') && !r.pns.includes('06406-K1D-T05'), 'Livo: the Stunner, Unicorn and "LIVON X" kits are not shown');
   ok(!r.pns.includes('06141-K1C-T04') && !r.pns.includes('14321-KYY-900'), 'Livo: no cam chain kit, no cam sprocket');
   ok(['40530-K55-951', '23801-KWB-600', '41201-K1C-601'].every(x => r.pns.includes(x)) && /kit for this bike is first/.test(r.txt), 'Livo: the chain and sprockets follow, and the note says so');
+  await p.evaluate(() => { reset('findpart'); go('findpart', { v: 'res', q: 'chain kit', vb: 'Honda', vm: 'Livo', yr: '2021', bs: 'Any', sort: 'best', n: 30 }); }); await p.waitForTimeout(4000);
+  { const t = await p.evaluate(() => document.querySelector('#vp .screen:last-child').innerText); ok(!/02380-K14-902/.test(t) && /02380-KWB-602/.test(t) && /02380-KWB-601/.test(t), 'Livo 2021: the kit noted "LIVO BSIV" is not shown, the BSVI ones are'); }
   r = await run('chain ki sprocket', 'CBF Stunner'); console.log(JSON.stringify(r.pns));
   ok(r.pns[0] === '06406-KWF-P01' && !r.pns.includes('06406-K1C-T01'), 'CBF Stunner: its own kit first, not the Livo\'s');
   r = await run('chain sprocket kit', 'Unicorn'); ok(r.pns[0] === '06406-KSP-T03', 'Unicorn: its own kit first: ' + r.pns[0]);

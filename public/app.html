@@ -3829,6 +3829,19 @@ const catKitRank=r=>{if(r.hw.some(x=>CAT_ENGW.has(x)))return -1;const c=r.dw.inc
 /* a scooter's drive belt, and no drive chain */
 const catBeltRow=r=>r.dw.includes('VBELT')||r.dw.includes('BELT')&&r.dw.some(x=>/^(DRIVE|DRIVING|CVT|V)$/.test(x));
 const catBelt=rows=>rows.some(catBeltRow)&&!rows.some(r=>catKitRank(r)===0);
+/* update 22z (Sam 2026-11-14, Honda Livo KA17HJ8791: "is bike number ko match hone wala chahiye"): Honda's own chain kits (06406-...) are not
+   in a bike's diagrams but in the brand's "Service kits" list, each with a note "Fits: CBF STUNNER; Kit has: 23801-KWF-940 SPROCKET ...".
+   For a chain kit ask on a bike, the kits of that list that are this bike's come first: the note names the bike, or a sprocket inside
+   the kit is one of the bike's own sprocket numbers. Another bike's kit is never shown. */
+const CAT_SVC='Service kits',catSvcPn=t=>[...new Set((String(t||'').toUpperCase().match(/\b\d{5}-?[A-Z0-9]{3}-?[A-Z0-9]{3,4}\b/g)||[]).map(catPk))];
+const catSvcFits=(rem,vm)=>{const f=(/\bFITS\s*:?\s*([^;]*)/i.exec(String(rem||''))||[])[1];if(!f)return false;const m=catNorm(String(vm).replace(/\(.*?\)/g,' ')).trim();if(!m)return false;
+ return f.split(/[,\/&]|\band\b/i).some(x=>{x=catNorm(x).trim();if(x===m)return true;if(!x.startsWith(m+' '))return false;return x.slice(m.length+1).split(' ').every(w=>/^(BS\d?|BSVI|BSIV|BS6|BS4|VI|IV|OBD\d?[A-Z]?|DISC|DRUM|CBS|NEW|DLX|STD|\d{4})$/.test(w));});};
+function catSvcKits(A,rows){try{if(!A.vm||A.vm==='Any'||XR_NOBIKE.test(A.vm))return [];const e=CAT_ALL.find(x=>x.vb===A.vb);if(!e||e.st!==2||!e.d||!Object.values(e.d.vmod||{}).includes(CAT_SVC))return [];
+  if(e.split&&catSplitM(e,CAT_SVC)!==2)return [];
+  const sc=catScope({vb:A.vb,vm:CAT_SVC,vv:'Any',cc:'Any',bs:'Any',yr:'Any',ed:'Any'});if(!sc||!sc.rows)return [];
+  const sp=new Set(rows.filter(r=>catKitRank(r)>0).map(r=>catPk(r.part)));
+  return catDedupe(sc.rows.filter(r=>r.dw.includes('CHAIN')&&r.dw.some(w=>/^(KIT|SET)S?$/.test(w))&&!r.dw.some(w=>CAT_ENGW.has(w))).map(r=>{const inn=catSvcPn((/KIT HAS\s*:?(.*)$/i.exec(String(r.rem||''))||[])[1]),hit=inn.filter(x=>sp.has(x)).length;
+   return hit||catSvcFits(r.rem,A.vm)?[hit,r]:null;}).filter(Boolean).sort((a,b)=>b[0]-a[0]||a[1].i-b[1].i).map(x=>x[1]));}catch(x){return [];}}
 const catKitParts=rows=>rows.map(r=>[catKitRank(r),r]).filter(x=>x[0]>=0).sort((a,b)=>a[0]-b[0]||a[1].i-b[1].i).map(x=>x[1]);
 /* drum brakes only / disc brakes only, worked out once per scope (brake fluid and caliper grease in a consumables list are not brakes) */
 const CAT_BRK=new WeakMap();const catBrakes=rows=>{if(!CAT_BRK.has(rows)){const t=r=>' '+catNorm(r.desc+' '+(r.asm||''))+' ';const big=rows.filter(r=>r.kind==='d').length>=200;
@@ -3896,6 +3909,7 @@ function catSearch(A){const sc=catScope(A);if(!sc)return null;const q=A.q.trim()
  const dch=/(^| )(DRIVE CHAIN|CHAIN DRIVE)( |$)/.test(qn);if(dch){list=list.filter(r=>!r.hw.some(x=>CAT_ENGW.has(x)));list=list.filter(r=>catKitRank(r)===0).concat(list.filter(r=>catKitRank(r)!==0));}
  const none=!list.length&&!out.other&&!out.nopn;
  if(!out.other&&!out.nopn&&catKitQ(qn)&&!list.some(catKitRow)){const kp=catKitParts(sc.rows);if(kp.length){list=kp;out.fuzzy=true;out.kit=1;}}
+ if(!out.other&&!out.nopn&&catKitQ(qn)){const sk=catSvcKits(A,sc.rows);if(sk.length){list=sk.concat(list.filter(r=>!sk.some(k=>k.pk===r.pk)));out.fuzzy=true;out.kit=2;}}   /* update 22z */
  /* drum: why this bike's catalogue has none of it (drum brakes only, disc brakes only, a part number no book has); the Find Part
     screen then shows this note in place of its name-wording tip */
  if(none&&!list.length&&CAT_PAD.test(qn)&&catDrum(sc.rows))out.drum='drum';
@@ -5104,7 +5118,7 @@ function m2ResView(p){xrLoad();altLoad();amLoad();const A=m2A(p);m2AllLoad(A,p);
  if(amOwn&&(!list.length||c&&c.fuzzy))body=`<div class="cap">No original catalogue line has this number. The aftermarket part is above.</div>`;
  else if(!list.length){const tip=c&&c.drum?' '+catDrumTxt(c,A):c&&c.other?` The ${esc(c.label)} catalogue has it for ${esc(c.other)} only.`:'';
   body=`<div class="empty">No ${p.cat?esc(p.cat)+' parts':'“'+esc(p.q)+'”'} found ${scope}.${tip}<br>${!p.cat&&CAT_TIP[A.vb]?esc(CAT_TIP[A.vb])+' ':''}${p.cat?'':'Try another name (brake liner, clutch plate), the mechanic’s name, or the part number.'}</div>${!p.cat&&fpIsPn(p.q)&&!(c&&(c.pend||[]).length)?altNote(p.q,'findpart'):''}${c&&(c.pend||[]).length?`<div class="cap">${catPendTxt(c.pend)}</div>`:''}${chips}`;}
- else body=`${c&&c.fuzzy?`<div class="row cap" style="background:var(--blue-soft);border-radius:10px;padding:10px">${ic('search','s16')}<span class="grow" style="overflow-wrap:anywhere">${c.kit?'No chain sprocket kit in this catalogue: it lists the chain and the sprockets as separate parts. Showing those.':c.partial?`Not every word of “${esc(c.q)}” matched. Showing the closest parts.`:`No exact match for “${esc(c.q)}”. Showing close matches.`}</span></div>`:''}${c&&c.wide?`<div class="row cap" style="background:var(--amber-soft);border-radius:10px;padding:10px">${ic('alert','s16')}<span class="grow">${esc(c.q)} is not listed for ${esc(c.label)}. Showing where the catalogue lists it.</span></div>`:''}${c&&(c.pend||[]).length?`<div class="cap">${catPendTxt(c.pend)}</div>`:''}
+ else body=`${c&&c.fuzzy?`<div class="row cap" style="background:var(--blue-soft);border-radius:10px;padding:10px">${ic('search','s16')}<span class="grow" style="overflow-wrap:anywhere">${c.kit===2?'The kit for this bike is first (from the brand’s service kits list). Its chain and sprockets as separate parts follow.':c.kit?'No chain sprocket kit in this catalogue: it lists the chain and the sprockets as separate parts. Showing those.':c.partial?`Not every word of “${esc(c.q)}” matched. Showing the closest parts.`:`No exact match for “${esc(c.q)}”. Showing close matches.`}</span></div>`:''}${c&&c.wide?`<div class="row cap" style="background:var(--amber-soft);border-radius:10px;padding:10px">${ic('alert','s16')}<span class="grow">${esc(c.q)} is not listed for ${esc(c.label)}. Showing where the catalogue lists it.</span></div>`:''}${c&&(c.pend||[]).length?`<div class="cap">${catPendTxt(c.pend)}</div>`:''}
   ${fpResBody(list,n,p)}${n<list.length?`<button class="btn line" onclick="m2More()">Show more (${m2N(list.length-n)} left)</button>`:''}${A.vb==='Any'&&!p.cat?chips:''}`;
  const spellH=R.spell?`<div class="row cap fp-via">${ic('search','s16')}<span class="grow" style="overflow-wrap:anywhere">Understood “${esc(R.spell.fix.map(f=>f[0].toLowerCase()).join(', '))}” as <b>${esc(R.spell.fix.map(f=>f[1].toLowerCase()).join(', '))}</b></span></div>`:'';
  /* update 22y (Sam 2026-11-14 "after market ka pehle dikh raha he aur OE neeche"): when the catalogue has original parts for the search,

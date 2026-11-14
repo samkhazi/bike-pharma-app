@@ -6633,7 +6633,7 @@ async function apScanCam(){const o=APS;if(!o)return;
  catch(e){if(APS===o)apScanMsg('Camera not allowed. Allow the camera for this site, or use Take photo instead.');return;}
  if(APS!==o){o.st.getTracks().forEach(t=>t.stop());return;}
  let v=document.getElementById('aps-v');if(!v){apScanStop();return;}v.srcObject=o.st;try{await v.play();}catch(e){}o.scr=cur().s;
- apScanMsg('Hold the barcode or QR code inside the box.');
+ apScanMsg('Hold the barcode or QR code inside the box. No code on the box (Rolon)? Hold its label with the Part No here.');
  /* the phone's own reader when it has one (fast), else ZXing; a reader that fails hands over to ZXing */
  let bd=null;if('BarcodeDetector' in window){try{const f=await BarcodeDetector.getSupportedFormats();if(f&&f.length)bd=new BarcodeDetector();}catch(e){}}
  let Z=bd?null:await scZXing();const c=document.createElement('canvas');
@@ -6675,8 +6675,53 @@ async function apScanCam(){const o=APS;if(!o)return;
     if(done||APS!==o)return;}
    o.t=setTimeout(tick,qp?(o.hn>=3?2500:600):300);return;}
   if(codes.length&&apScanUse(codes))return;
+  /* 22v: no code in the picture for 2 seconds: a Rolon box has none, its label's text is read (every 2.5 seconds) */
+  if(!codes.length){const now=Date.now();o.t0=o.t0||now;if(now-o.t0>2000&&now-(o.rl||0)>2500){o.rl=now;o.re=1;let done=false;try{done=await apRolonCam(v,o);}catch(e){try{console.warn('apRolonCam',e);}catch(x){}}if(done||APS!==o)return;o.rl=Date.now();}}
   o.t=setTimeout(tick,bd?150:400);};
  tick();}
+/* 22v (Sam 2026-11-14 "Rolon chain sprocket me na QR code he na hi Bar code… part number mention he photo me se isko capture karna he"):
+   a Rolon (LGB) kit box has only a printed label: Model, Part No (KIT HPXR 206), Commodity, MRP. The label's text is read from the
+   camera picture or the photo (never saved), the piece after "Part No" is looked up in the Rolon list, and the label's Model and MRP
+   are checked against the list. Filled only when the list knows the kit and nothing disagrees; otherwise only shown. */
+function apRolonLbl(lines){const U=lines.map(l=>String(l).toUpperCase()),all=U.join(' ');let code='',model='',mrpL='';
+ const kc=t=>{t=String(t).replace(/[^A-Z0-9 ]+/g,' ').replace(/\s+/g,' ').trim().replace(/^K[I1L|]T\b/,'KIT').replace(/^K[I1L]T(?=[A-Z0-9])/,'KIT');return /^KIT\s*[A-Z0-9]/.test(t)?t.split(' ').slice(0,4).join(' '):'';};
+ U.forEach((l,n)=>{let m=l.match(/PART\s*N[O0Q]\b[^A-Z0-9]*(.+)$/);
+  /* the reader sometimes gives the label's two columns as separate lines: the value is then the next line */
+  if(!m&&/PART\s*N[O0Q]\W*$/.test(l)&&U[n+1])m=[0,U[n+1]];if(!model&&/^\W*M[O0]DEL\W*$/.test(l)&&U[n+1]&&!/PART|COMMODITY|MRP/.test(U[n+1]))model=U[n+1].replace(/[^A-Z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();
+  if(m&&!code)code=kc(m[1]);
+  m=l.match(/M[O0]DEL\b[^A-Z0-9]*(.+)$/);if(m&&!model)model=m[1].replace(/[^A-Z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();
+  if(/\bM\.?R\.?P\b/.test(l)&&!mrpL)mrpL=l;});
+ const ctx=/COMMODITY|SPROCKET|BALAKRISHNAN|L\.?G\.?B\b|ROLON/.test(all);
+ /* "Part No" itself not read (its column lost): on a Rolon label a line that is only a kit code counts */
+ if(!code&&ctx){const l=U.map(x=>x.replace(/^[^A-Z0-9]+/,'')).find(x=>/^KIT\s+[A-Z0-9]{1,6}(?:\s+[A-Z0-9]{1,5})?\s*$/.test(x)&&/\d/.test(x));if(l)code=kc(l);}
+ if(!code||!ctx)return null;
+ return {code,model,mrpL};}
+function apRolonFind(code){if(!AM)return {n:0};const cn=x=>String(x).toUpperCase().replace(/[^A-Z0-9]/g,''),lk=x=>cn(x).replace(/[OQD]/g,'0').replace(/[IL]/g,'1').replace(/S/g,'5').replace(/B/g,'8').replace(/Z/g,'2').replace(/G/g,'6');
+ const R=AM.p.map((_,i)=>i).filter(i=>AM.b[AM.p[i][0]]==='Rolon'),keys=i=>[AM.p[i][1],...String(AM.p[i][2]).split('·').slice(1)].map(x=>x.trim()).filter(x=>/^KIT/i.test(x)).map(cn);
+ const c=cn(code);let hit=R.filter(i=>keys(i).includes(c));
+ /* the reader may join the next word to the number or lose its last piece: the list's printed codes the read text starts with */
+ if(!hit.length)hit=R.filter(i=>keys(i).some(k=>k.length>=5&&c.startsWith(k)));
+ if(!hit.length){const l=lk(code);hit=R.filter(i=>keys(i).some(k=>lk(k)===l));}
+ hit=[...new Set(hit)];return hit.length===1?{n:1,p:amP(hit[0])}:{n:hit.length};}
+/* 0: not a Rolon label · 1: filled · 2: a Rolon label, shown but not filled */
+function apRolonUse(lines){const a=S.ui.ap;if(!a)return 0;const L=apRolonLbl(lines);if(!L)return 0;try{amLoad();}catch(e){}
+ if(AM_ST!==2){apScanMsg('Rolon label seen (“'+L.code+'”). Loading the Rolon list…');return 2;}
+ const f=apRolonFind(L.code);
+ if(f.n!==1){apScanMsg(f.n?'Read “'+L.code+'” on the Rolon label, but '+f.n+' kits in the list look like it. Check the box and type the number.':'Read “'+L.code+'” on the Rolon label, but the Rolon list has no such kit. Check it on the box and type it, or hold closer.');return 2;}
+ const p=f.p,tk=x=>new Set(String(x||'').toUpperCase().replace(/(\d)CC\b/g,'$1').replace(/[^A-Z0-9]+/g,' ').split(' ').filter(w=>w.length>=2&&!/^(CC|THE|AND|NEW|OLD|MODEL)$/.test(w)));
+ const lm=tk(L.model),fm=tk([p.fit,p.nm].join(' ')),sh=[...lm].filter(w=>fm.has(w)).length,modelBad=lm.size>0&&sh<Math.min(2,lm.size);
+ const dg=String(L.mrpL||'').replace(/[^0-9.]/g,''),mrpBad=!!(p.mrp&&dg.length>=3&&!dg.includes(String(Math.round(p.mrp))));
+ const kc=(String(p.nm).split('·').map(x=>x.trim()).find(x=>/^KIT/i.test(x))||L.code);
+ if(modelBad||mrpBad){apScanMsg('Rolon '+kc+' is in the list, but '+(modelBad?'the box says model “'+L.model+'” and the list says “'+String(p.fit||'').slice(0,60)+'”':'the MRP on the box is not the list’s '+inr(p.mrp))+'. Check the box, then type the number.');return 2;}
+ try{navigator.vibrate&&navigator.vibrate(80);}catch(e){}
+ apScanClose();a.pn=p.pn;const el=document.getElementById('ap-pn');if(el)el.value=p.pn;apLookNow();toast('Rolon '+kc+' read from the label');return 1;}
+/* the live camera, when no barcode or QR is in the picture: the picture's text is read now and then for a Rolon label */
+async function apRolonCam(v,o){const k=Math.min(1,(o.rn%2?1200:1600)/Math.max(v.videoWidth,v.videoHeight)),c=document.createElement('canvas');c.width=Math.round(v.videoWidth*k);c.height=Math.round(v.videoHeight*k);c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+ /* loose pieces of text first (a label among pictures and other print), every second try as a page */
+ try{const w=await apOcrW();if(APS!==o)return true;o.rn=(o.rn||0)+1;const psm=o.rn%2?'11':'3';if(w.psm!==psm){await w.setParameters({tessedit_pageseg_mode:psm});w.psm=psm;}
+  const r=await w.recognize(c);if(w.psm!=='3'){try{await w.setParameters({tessedit_pageseg_mode:'3'});w.psm='3';}catch(e){}}if(APS!==o)return true;const lines=String(r.data&&r.data.text||'').split(/\r?\n/).filter(l=>l.trim());
+  const u=apRolonUse(lines);if(u===2)o.msg=(document.getElementById('aps-msg')||{}).textContent||'';return u===1;}
+ finally{c.width=c.height=0;}}
 async function apScanPhoto(file){if(!file||!APS)return;apScanMsg('Reading the photo…');let codes=[];
  try{codes=await scBarcodes(await scCanvas(file,2000));}catch(e){}
  if(!APS)return;if(codes.length&&apScanUse(codes,{min:70}))return;
@@ -6699,12 +6744,16 @@ async function apScanPhoto(file){if(!file||!APS)return;apScanMsg('Reading the ph
    /* update 10l: a reading turned on its side also gives the label's other text upside down ("ION 1318319"): from those readings only
       a catalogue number counts, not a piece that merely looks like one */
    if(Math.abs(deg)<45)lines0=lines0.concat(got);
+   /* 22v: a Rolon label (no code on the box): its Part No is looked up in the Rolon list */
+   if(deg===0&&apRolonLbl(got)){if(AM_ST!==2){try{amLoad();}catch(e){}for(let i=0;i<40&&APS&&AM_ST!==2;i++)await new Promise(r=>setTimeout(r,250));}if(!APS)return;if(apRolonUse(got)){c.width=c.height=0;return;}}
    if(deg===0){const nd=apScanNeed(lines);if(nd.length){try{catNeed(nd);}catch(e){}for(let i=0;i<60&&APS&&nd.some(e=>e.st===0||e.st===1);i++)await new Promise(r=>setTimeout(r,250));}
    }
    if(apScanUse(lines,{ocr:1,rank:1}).some(x=>x[0]>=95))break;}
   if(w.psm!=='3'){await w.setParameters({tessedit_pageseg_mode:'3'});w.psm='3';}c.width=c.height=0;}
  catch(e){if(APS)apScanMsg(String(e&&e.message||'The label could not be read.').slice(0,120));if(!codes.length)return;}
  if(!APS)return;
+ /* 22v: a Rolon label that only the turned or loose-piece readings caught */
+ if(apRolonLbl(lines)){if(AM_ST!==2){try{amLoad();}catch(e){}for(let i=0;i<40&&APS&&AM_ST!==2;i++)await new Promise(r=>setTimeout(r,250));}if(!APS)return;if(apRolonUse(lines))return;}
  /* the brands the best pieces look like are loaded, so a number in their catalogue wins over a pin code or phone number */
  const need=apScanNeed(lines);
  if(need.length){apScanMsg('Checking the '+need.map(e=>e.vb).join(', ')+' catalogue…');try{catNeed(need);}catch(e){}

@@ -5103,6 +5103,8 @@ function m2ResView(p){xrLoad();altLoad();amLoad();const A=m2A(p);m2AllLoad(A,p);
 let AM=null,AM_ST=0,AM_PK=null,AM_OE=null,AM_TY=null,AM_NR=null;
 function amLoad(){if(AM_ST===0){AM_ST=1;fetch('cat/am.json').then(r=>r.ok?r.json():Promise.reject(r.status)).then(d=>{AM=d;AM_PK=new Map();AM_OE=new Map();
   AM_NR=new Map();d.p.forEach((p,i)=>{(p[10]||[]).forEach(o=>{const q=catPk(o);(AM_NR.get(q)||AM_NR.set(q,[]).get(q)).push(i);});const k=catPk(p[1]);(AM_PK.get(k)||AM_PK.set(k,[]).get(k)).push(i);p[6].forEach(o=>{const q=catPk(o);if(q)(AM_OE.get(q)||AM_OE.set(q,[]).get(q)).push(i);});});
+  /* 22u (Sam 14 Nov, Honda box 32100-K14-600 vs Spark Minda's printed 32100-K14-6000): some lists print a Honda number with one more 0 at the end; the number without that 0 finds the part too, shown as "almost the same, check the last digit" */
+  d.p.forEach((p,i)=>p[6].forEach(o=>{const q=catPk(o);if(/^\d{5}[A-Z0-9]{6}0$/.test(q)){const s=q.slice(0,-1);if(!AM_OE.has(s)){const L=AM_NR.get(s)||AM_NR.set(s,[]).get(s);if(!L.includes(i))L.push(i);}}}));
   AM_TY=d.ty.map(([n,x])=>[n,new RegExp(x)]);AM_ST=2;refresh();},()=>{AM_ST=3;refresh();});}return AM;}
 const amP=i=>{const p=AM.p[i];return {img:p[11]||'',i,b:AM.b[p[0]],pn:p[1],nm:p[2],g:p[3],mrp:p[4],fit:p[5],oem:p[6],same:p[7],ty:p[8],fm:p[9].map(([b,m])=>[AM.ob[b],m]),near:p[10]||[]};};
 function amType(...ss){if(!AM_TY)return '';for(const s of ss){const u=String(s||'').toUpperCase();for(const [n,x] of AM_TY)if(x.test(u))return n;}return '';}

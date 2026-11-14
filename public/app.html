@@ -3813,6 +3813,9 @@ function catDedupe(list){const seen=new Map(),out=[];
  return out;}
 /* chain sprocket kit / chain kit / chain set: Hero lists the drive chain and both sprockets one by one */
 const CAT_KIT=/^(CHAIN(AND)?((SPROCKET|SOCKET)S?)?(KIT|SET)S?|CHAIN(AND)?(SPROCKET|SOCKET)S?|SPROCKETKITS?)$/,CAT_KITP=['CHAIN DRIVE','CHAIN TRANSMISSION','SPROCKET FINAL DRIVE','SPROCKET DRIVE','ENGINE SPROCKET','REAR SPROCKET','FRONT SPROCKET'];
+/* 22w (Sam 14 Nov, Honda Livo "Kit chain sprocket" gave 0 genuine parts): the same ask in any word order (kit chain sprocket, sprocket chain set, chain n sprocket full kit) */
+const catKitQ=qn=>{if(CAT_KIT.test(qn.replace(/ /g,'')))return true;const w=qn.split(' ').filter(Boolean),ch=w.some(x=>/^CHAINS?$/.test(x)),sp=w.some(x=>/^(SPROCKETS?|SPROKETS?|SPROCKIT|SOCKETS?)$/.test(x)),kt=w.some(x=>/^(KITS?|SETS?)$/.test(x));
+ return w.length>=2&&w.length<=6&&(ch||sp)&&(kt||ch&&sp)&&w.every(x=>/^(CHAINS?|SPROCKETS?|SPROKETS?|SPROCKIT|SOCKETS?|KITS?|SETS?|AND|N|FULL|COMPLETE|DRIVE)$/.test(x));};
 const CAT_PAD=/^((DIS[CK]|BRAKE|FRONT|REAR|FR|RR) )*PADS?( (SET|KIT|FRONT|REAR|FR|RR))*$/,CAT_SHOE=/^((BRAKE|FRONT|REAR|FR|RR) )*SHOES?( (SET|KIT|BRAKE|FRONT|REAR|FR|RR))*$/;
 const CAT_ENGW=new Set(['CAM','CAMSHAFT','CAMCHAIN','TIMING','BALANCER','BALANCE','BALANCING','CRANKSHAFT','CRANK','STARTING','STARTER','PUMP','VALVE']);
 const CAT_KITX=/^(ROLLER|DRIVE|DRIVEN|FINAL|TRANSMISSION|ENGINE|OUTPUT|COUNTER|COUNTERSHAFT|WHEEL|HUB)$/,CAT_KITZ=/^(NT|T|Z|TEETH|TOOTH|LINKS?|H|O|RING|RINGS|X|SEALED|DAIDO|DID|LGB|RK|ROLON|EK|REGINA|TIDC|IFB)$/;
@@ -3892,12 +3895,12 @@ function catSearch(A){const sc=catScope(A);if(!sc)return null;const q=A.q.trim()
  /* the drive chain is not the cam chain */
  const dch=/(^| )(DRIVE CHAIN|CHAIN DRIVE)( |$)/.test(qn);if(dch){list=list.filter(r=>!r.hw.some(x=>CAT_ENGW.has(x)));list=list.filter(r=>catKitRank(r)===0).concat(list.filter(r=>catKitRank(r)!==0));}
  const none=!list.length&&!out.other&&!out.nopn;
- if(!out.other&&!out.nopn&&CAT_KIT.test(qn.replace(/ /g,''))&&!list.some(catKitRow)){const kp=catKitParts(sc.rows);if(kp.length){list=kp;out.fuzzy=true;out.kit=1;}}
+ if(!out.other&&!out.nopn&&catKitQ(qn)&&!list.some(catKitRow)){const kp=catKitParts(sc.rows);if(kp.length){list=kp;out.fuzzy=true;out.kit=1;}}
  /* drum: why this bike's catalogue has none of it (drum brakes only, disc brakes only, a part number no book has); the Find Part
     screen then shows this note in place of its name-wording tip */
  if(none&&!list.length&&CAT_PAD.test(qn)&&catDrum(sc.rows))out.drum='drum';
  if(none&&!list.length&&CAT_SHOE.test(qn)&&catDisc(sc.rows))out.drum='disc';
- if(!list.length&&!out.drum&&!out.other&&!out.nopn&&(dch||CAT_KIT.test(qn.replace(/ /g,'')))&&catBelt(sc.rows))out.drum='belt';
+ if(!list.length&&!out.drum&&!out.other&&!out.nopn&&(dch||catKitQ(qn))&&catBelt(sc.rows))out.drum='belt';
  if(none&&!list.length&&!out.drum){list=catPartial(sc.rows,g);if(pad)list=list.filter(catPadReal);if(list.length){out.fuzzy=true;out.partial=true;}}
  if(!list.length&&out.nopn&&!out.other&&!(out.pend||[]).length)out.drum='pn';
  if(!list.length)out.fuzzy=false;

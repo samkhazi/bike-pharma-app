@@ -4127,6 +4127,12 @@ async function scBarcodes(c){const out=[];
   /* a sticker photographed at an angle: try a few turns before giving up */
   for(const deg of [-9,9,90]){if(out.length)break;await new Promise(r=>setTimeout(r,0));scZXRead(Z,scTurn(c,deg,1400)).forEach(t=>t&&out.push(t));}}}
  return [...new Set(out)];}
+/* update 22x: a small QR or barcode in a photo taken from far (Sam's TVS box photo: the QR is a ninth of the picture's width): the
+   picture is also read in 9 overlapping pieces, each made larger */
+async function scTiles(c){const Z=await scZXing();if(!Z)return [];const out=[],w=c.width/2,h=c.height/2,k=Math.min(2.5,1500/Math.max(w,h));
+ for(let j=0;j<3&&!out.length;j++)for(let i=0;i<3&&!out.length;i++){await new Promise(r=>setTimeout(r,0));const t=document.createElement('canvas');t.width=Math.round(w*k);t.height=Math.round(h*k);
+  t.getContext('2d').drawImage(c,i*w/2,j*h/2,w,h,0,0,t.width,t.height);scZXRead(Z,t).forEach(x=>x&&out.push(x));}
+ return [...new Set(out)];}
 const SC_PROMPT=`This photo shows the label or sticker on a spare-part box from a two-wheeler parts shop in India (often TVS, Bajaj, Hero, Honda, Yamaha, Suzuki or Royal Enfield genuine parts). Read the PART NUMBER printed on it: it is usually next to "Part No", "P/N", "Part Number" or under a barcode, for example P6040220 or N9180840. Copy each character exactly as printed; do not correct, complete or guess. Reply with only this JSON: {"part_numbers": ["..."], "name": "part name if printed, else empty", "mrp": "MRP if printed, else empty", "other_codes": ["any other codes or barcode digits you can read"], "readable": true}. If there is no label or the part number cannot be read, reply {"part_numbers": [], "name": "", "mrp": "", "other_codes": [], "readable": false}.`;
 async function scAsk(c){const smp=await scSample();if(!smp)return {why:'na'};const lim=await smp.limits().catch(()=>null);if(!lim||!lim.images)return {why:'noimg'};
  const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',.92));if(!blob)return {why:'image_rejected'};
@@ -6615,12 +6621,17 @@ function invApNew(){const a=apNew();a.warDays='0';a.cat='OEM Parts';a.type='Genu
 let AP_T=0;
 function apClearHit(a){if(a.hit){a.name='';a.brand='';a.mrp='';a.fits=[];a.cat='OEM Parts';}a.hit=null;a.picked='';a.mrpEd=false;}
 function apLookSoon(){clearTimeout(AP_T);AP_T=setTimeout(()=>{const a=S.ui.ap;if(!a||cur().s!=='addproduct')return;const pk=catPk(a.pn);if(pk!==a.look){apClearHit(a);a.look=pk;invRefresh();}},450);}
-function apLookNow(){clearTimeout(AP_T);const a=S.ui.ap;const pk=catPk(a.pn);if(pk!==a.look){apClearHit(a);a.look=pk;}invRefresh();}
+function apLookNow(){clearTimeout(AP_T);const a=S.ui.ap;const pk=catPk(a.pn);if(pk!==a.look){apClearHit(a);if(a.boxMrp&&a.boxMrp.pk!==pk){if(a.mrp===a.boxMrp.v)a.mrp='';a.boxMrp=null;}a.look=pk;}invRefresh();}
 /* update 9y (Sam 2026-10-20): Add product > Scan: the phone camera reads the box's barcode or QR code live and fills the part number.
    The code's text goes through scMatch (the photo scanner's matcher), so a QR full of other text (Hero's) still gives just the part number.
    No camera (blocked, or no https): Take photo, read by the same reader. */
 /* Hero's box QR: D/<serial>/<code>/<part no.>/<qty>/<MRP>/... (Sam 2026-10-20: 'D/FJBG0000218367/JCFMVZNMS4JY/16450ACK000S /000001/0001200.00/AAE/...').
    The serial (FJBG...) is not the part no.: field 4 is. Returns the fields, or null. */
+/* update 22x (Sam 2026-11-14 "TVS ka abhi hi karo"): a TVS genuine box QR is a link to TVS's check page with the box's own text in it
+   (iRcode = "250936530569 - 00017934P7320170 - 5877.00": box serial - 8 digits + part number - MRP). The part number and the box's MRP
+   are taken from that text; the link is never opened and nothing is sent to TVS. */
+const tvsQR=c=>{const s=String(c||'');if(!/advantagetvs\.[a-z.]+\//i.test(s))return null;const m=s.match(/[?&]iRcode=([^&#]*)/i);if(!m)return null;let d=m[1];try{d=decodeURIComponent(d.replace(/\+/g,' '));}catch(e){}
+ const f=d.split(/\s+-\s+/).map(x=>x.trim().toUpperCase());const q=(f[1]||'').match(/^\d{8}([A-Z0-9]{5,14})$/);if(!q)return null;return {pn:q[1],mrp:/^\d{1,7}(\.\d+)?$/.test(f[2]||'')?+f[2]:0,sn:f[0]};};
 const heroQR=c=>{const f=String(c||'').toUpperCase().split('/').map(x=>x.trim());return f.length>=5&&f[0]==='D'&&/^[0-9][0-9A-Z]{7,15}$/.test(f[3]||'')?f:null;};
 let APS=null;
 function apScanOpen(){apScanStop();APS={job:0};apScanSheet();apScanCam();setTimeout(()=>{if(APS)apOcrW().catch(()=>{});},1500);}
@@ -6727,6 +6738,7 @@ async function apRolonCam(v,o){const k=Math.min(1,(o.rn%2?1200:1600)/Math.max(v.
  finally{c.width=c.height=0;}}
 async function apScanPhoto(file){if(!file||!APS)return;apScanMsg('Reading the photo…');let codes=[];
  try{codes=await scBarcodes(await scCanvas(file,2000));}catch(e){}
+ if(!codes.length&&APS){try{codes=await scTiles(await scCanvas(file,2400));}catch(e){}}   /* update 22x */
  if(!APS)return;if(codes.length&&apScanUse(codes,{min:70}))return;
  /* update 10k: a QR was read but holds no part number (Honda): a barcode on a sticker turned on its side is looked for too */
  if(codes.length){try{const c=await scCanvas(file,2000);for(const deg of [90,-90]){const more=await scBarcodes(scTurn(c,deg,2000));codes=[...new Set(codes.concat(more))];if(more.length&&apScanUse(more,{min:70}))return;}}catch(e){}if(!APS)return;}
@@ -6812,6 +6824,7 @@ let AP_OCR=null;
 function apOcrW(){return AP_OCR||(AP_OCR=ocrWorker(()=>{}).then(async w=>{await w.setParameters({tessedit_pageseg_mode:'3'});return w;}).catch(e=>{AP_OCR=null;throw e;}));}
 /* the codes read: a catalogue number in them wins; else the code itself (a shop's own barcode) */
 function apScanUse(codes,opt){opt=opt||{};const a=S.ui.ap;if(!a)return false;let pn='';
+ const tq=codes.map(tvsQR).find(Boolean);if(tq)codes=[tq.pn];   /* update 22x: only the part number of a TVS box QR counts, not its serial */
  /* the pieces of the code's text that look like a part number (letters and digits, 5-18 long), Hero's 'S' ending also without it */
  const toks=[...new Set(codes.flatMap(c=>String(c).toUpperCase().replace(/(?:M\.?R\.?P\.?|RS|INR|₹)[\s.:\/-]*(?:RS\.?\s*)?\d[\d,]*(?:\.\d+)?/g,' ').replace(/\b(?:MFD|MFG|MFG\.? ?DT|PKD|PACKED|EXP|DATE|BATCH DT)?[\s.:]*\b\d{1,2}[\/.-](?:19|20)?\d{2}(?:[\/.-]\d{2,4})?\b(?![\/.-]?[A-Z0-9])/g,m=>/^\s*\d{1,2}[\/.-](?:19|20)\d\d\s*$|MFD|MFG|PKD|PACKED|EXP|DATE/.test(m)?' ':m).split(/[^A-Z0-9\/.-]+/).flatMap(w=>{w=w.replace(/^[.\/-]+|[.\/-]+$/g,'');return w.includes('.')?[w,...w.split('.')]:[w];}).flatMap(ch=>{const q=ch.split('/'),o=q.length>2?[ch]:[];q.forEach((x,i)=>{if(/^[A-Z]$/.test(q[i+1]||''))o.push(x+'/'+q[i+1]);o.push(x);});return o;})).map(t=>t.replace(/^-+|-+$/g,'')).flatMap(t=>{const q=t.split('-'),o=[t];for(let i=1;i<q.length;i++)o.push(q.slice(0,i).join('-'),q[i]);return o;}).filter(t=>/\d/.test(t)&&t.replace(/[-\/.]/g,'').length>=4&&t.length<=32))];
  /* update 10k (Sam's video 2026-10-21): the reader breaks a number at its dashes ("02380 — KON — D01"): the pieces are also tried
@@ -6833,7 +6846,7 @@ function apScanUse(codes,opt){opt=opt||{};const a=S.ui.ap;if(!a)return false;let
  const sc=t=>{if(J.has(t)&&!known(t))return 0;
   if(opt.ocr&&/^\d{1,5}$/.test(t)&&!lab.has(t))return 0;   /* update 10l: a short plain number on a label photo (a bearing no. 6202 in a list) only after "Part No" */
  const v=[t];if(/^[0-9A-Z-]{6,}S$/.test(t))v.push(t.slice(0,-1));else v.push(t+'S');
-  if(v.some(known))return 100+Math.min(catPk(t).length,20)/100;   /* two known pieces: the longer, more exact one */if(catPk(t).length<5)return 0;if(opt.ocr&&/^\d{6}$/.test(t))return 50;if(opt.ocr&&/^\d{10,}$/.test(t))return 0;   /* a phone or toll-free number on the label (+919649012777 read as 19649012777) */   /* a pin code on the label (Pune-411035) */if(hq&&t===hq[3])return 90;if(v.some(shaped))return 70+(/[A-Z]/.test(t)&&/\d/.test(t)?5:0);
+  if(v.some(known))return 100+Math.min(catPk(t).length,20)/100;   /* two known pieces: the longer, more exact one */if(catPk(t).length<5)return 0;if(opt.ocr&&/^\d{6}$/.test(t))return 50;if(opt.ocr&&/^\d{10,}$/.test(t))return 0;   /* a phone or toll-free number on the label (+919649012777 read as 19649012777) */   /* a pin code on the label (Pune-411035) */if(hq&&t===hq[3])return 90;if(tq&&t===tq.pn)return 90;if(v.some(shaped))return 70+(/[A-Z]/.test(t)&&/\d/.test(t)?5:0);
   if(/^[0-9]/.test(t)&&/[A-Z]/.test(t))return 40;if(/[A-Z]/.test(t))return 30;return /^\d{8,14}$/.test(t)?20:10;};
  /* text read off a printed label: some letters and digits look alike (O/0, I/1, B/8/3 at a cut edge, S/5, Z/2, G/6), so they are also
     tried the other way; each swap costs a point */
@@ -6862,10 +6875,13 @@ function apScanUse(codes,opt){opt=opt||{};const a=S.ui.ap;if(!a)return false;let
   try{const m=scMatch([pn]);if(m.exact.length===1)pn=m.exact[0].pn;}catch(e){}}
  if(!pn){apScanMsg('Read “'+String(codes[0]).slice(0,40)+'”, but no part number in it. Keep scanning or type it.');return false;}
  try{navigator.vibrate&&navigator.vibrate(80);}catch(e){}
- apScanClose();a.pn=pn;const el=document.getElementById('ap-pn');if(el)el.value=pn;apLookNow();toast('Scanned '+pn);return true;}
+ apScanClose();a.pn=pn;const el=document.getElementById('ap-pn');if(el)el.value=pn;apLookNow();
+ /* update 22x: the MRP printed in a TVS box QR is kept for this number; it fills the MRP only when no list gives one */
+ const bm=tq&&tq.mrp&&catPk(pn)===catPk(tq.pn)?String(tq.mrp):'';a.boxMrp=bm?{pk:catPk(pn),v:bm}:null;if(bm&&!a.hit&&!a.mrp){a.mrp=bm;invRefresh();}
+ toast('Scanned '+pn+(bm?' · box MRP ₹'+(+bm).toLocaleString('en-IN'):''));return true;}
 function apScanStop(){if(!APS)return;clearTimeout(APS.t);if(APS.st)APS.st.getTracks().forEach(t=>t.stop());APS=null;}
 function apScanClose(){apScanStop();closeSheet();}
-function apUse(a,h){a.hit=h;a.picked=h.vb;a.name=h.name;a.brand=h.vb;a.cat=h.cat;a.type=h.am?'Aftermarket':'Genuine';if(h.am)a.pack=h.vb;a.fits=h.fits.slice();a.universal=false;a.pn=h.pn;a.mrp=h.mrp?String(h.mrp):'';a.mrpEd=false;a.unit='pcs';}
+function apUse(a,h){a.hit=h;a.picked=h.vb;a.name=h.name;a.brand=h.vb;a.cat=h.cat;a.type=h.am?'Aftermarket':'Genuine';if(h.am)a.pack=h.vb;a.fits=h.fits.slice();a.universal=false;a.pn=h.pn;a.mrp=h.mrp?String(h.mrp):(a.boxMrp&&a.boxMrp.pk===catPk(h.pn)?a.boxMrp.v:'');a.mrpEd=false;a.unit='pcs';}
 function apPick(vb){const a=S.ui.ap;const o=INV_LK.get(a.look);const h=o&&o.hits.find(x=>x.vb===vb);if(h)apUse(a,h);refresh();}
 function invStockIn(pid){const g=S.ui.ge&&S.ui.ge.status!=='posted'?S.ui.ge:geState('new');S.ui.ge=g;const it=g.items.find(i=>i.pid===pid);if(it)it.q=(+it.q||0)+1;else g.items.push({pid,exp:null,q:1,rate:''});S.ui.ap=null;go('grnedit',{id:g.id});}
 /* what the part number says: already in the list / waiting / looking / found / pick the brand / not found */

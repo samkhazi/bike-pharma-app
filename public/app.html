@@ -3842,6 +3842,15 @@ function catSvcKits(A,rows){try{if(!A.vm||A.vm==='Any'||XR_NOBIKE.test(A.vm))ret
   const sp=new Set(rows.filter(r=>catKitRank(r)>0).map(r=>catPk(r.part)));
   return catDedupe(sc.rows.filter(r=>r.dw.includes('CHAIN')&&r.dw.some(w=>/^(KIT|SET)S?$/.test(w))&&!r.dw.some(w=>CAT_ENGW.has(w))).map(r=>{const inn=catSvcPn((/KIT HAS\s*:?(.*)$/i.exec(String(r.rem||''))||[])[1]),hit=inn.filter(x=>sp.has(x)).length;
    return hit||catSvcFits(r.rem,A.vm)?[hit,r]:null;}).filter(Boolean).sort((a,b)=>b[0]-a[0]||a[1].i-b[1].i).map(x=>x[1]));}catch(x){return [];}}
+/* update 23a (Sam 2026-11-14 "kit search karta hun toh kit show hona he", "sabhi ke liye"): the same for every other kit asked by name
+   (piston kit, gasket kit, clutch kit): the Service kits lines with the asked words that are this bike's: the note names the bike, or
+   at least half of the part numbers inside the kit are in the bike's own catalogue */
+function catSvcNamed(A,rows,g,q){try{if(!A.vm||A.vm==='Any'||XR_NOBIKE.test(A.vm))return [];const e=CAT_ALL.find(x=>x.vb===A.vb);if(!e||e.st!==2||!e.d||!Object.values(e.d.vmod||{}).includes(CAT_SVC))return [];
+  if(e.split&&catSplitM(e,CAT_SVC)!==2)return [];
+  const sc=catScope({vb:A.vb,vm:CAT_SVC,vv:'Any',cc:'Any',bs:'Any',yr:'Any',ed:'Any'});if(!sc||!sc.rows||!sc.rows.length)return [];
+  const [h,fz]=catFind(sc.rows,g,q);if(fz||!h.length)return [];const own=new Set(rows.map(r=>catPk(r.part)));
+  return catDedupe(h.map(r=>{const inn=catSvcPn((/KIT HAS\s*:?(.*)$/i.exec(String(r.rem||''))||[])[1]),hit=inn.filter(x=>own.has(x)).length;
+   return hit&&hit*2>=inn.length||catSvcFits(r.rem,A.vm)?[hit,r]:null;}).filter(Boolean).sort((a,b)=>b[0]-a[0]||a[1].i-b[1].i).map(x=>x[1]));}catch(x){return [];}}
 const catKitParts=rows=>rows.map(r=>[catKitRank(r),r]).filter(x=>x[0]>=0).sort((a,b)=>a[0]-b[0]||a[1].i-b[1].i).map(x=>x[1]);
 /* drum brakes only / disc brakes only, worked out once per scope (brake fluid and caliper grease in a consumables list are not brakes) */
 const CAT_BRK=new WeakMap();const catBrakes=rows=>{if(!CAT_BRK.has(rows)){const t=r=>' '+catNorm(r.desc+' '+(r.asm||''))+' ';const big=rows.filter(r=>r.kind==='d').length>=200;
@@ -3910,6 +3919,7 @@ function catSearch(A){const sc=catScope(A);if(!sc)return null;const q=A.q.trim()
  const none=!list.length&&!out.other&&!out.nopn;
  if(!out.other&&!out.nopn&&catKitQ(qn)&&!list.some(catKitRow)){const kp=catKitParts(sc.rows);if(kp.length){list=kp;out.fuzzy=true;out.kit=1;}}
  if(!out.other&&!out.nopn&&catKitQ(qn)){const sk=catSvcKits(A,sc.rows);if(sk.length){list=sk.concat(list.filter(r=>!sk.some(k=>k.pk===r.pk)));out.fuzzy=true;out.kit=2;}}   /* update 22z */
+ else if(!out.other&&!out.nopn&&/(^| )KITS?( |$)/.test(qn)){const sk=catSvcNamed(A,sc.rows,g,q);if(sk.length){list=sk.concat(list.filter(r=>!sk.some(k=>k.pk===r.pk)));out.svc=sk.length;}}   /* update 23a */
  /* drum: why this bike's catalogue has none of it (drum brakes only, disc brakes only, a part number no book has); the Find Part
     screen then shows this note in place of its name-wording tip */
  if(none&&!list.length&&CAT_PAD.test(qn)&&catDrum(sc.rows))out.drum='drum';

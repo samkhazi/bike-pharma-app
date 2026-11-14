@@ -14,6 +14,9 @@ const rows = [
   row('Livo', 'CB110MT', 8, 'TRANSMISSION', 66, 'E-12', '23801-KWB-600', 'SPROCKET, DRIVE(14T)', 1, 127),
   row('Livo', 'CB110MT', 8, 'REAR WHEEL', 67, 'F-15', '41201-K1C-601', 'SPROCKET, FINAL DRIVEN(42T) (IFB)', 1, 316),
   row('Livo', 'CB110MT', 8, 'CAM CHAIN/TENSIONER', 68, 'E-5', '14321-KYY-900', 'SPROCKET, CAM(32T)', 1, 75),
+  row('Livo', 'CB110MT', 8, 'PISTON', 69, 'E-7', '13101-K1C-000', 'PISTON', 1, 800),
+  row('Livo', 'CB110MT', 8, 'PISTON', 69, 'E-7', '13011-K1C-000', 'RING SET, PISTON', 1, 600),
+  row('Livo', 'CB110MT', 8, 'CYLINDER', 70, 'E-6', '06111-K1C-000', 'GASKET KIT A', 1, 166),
   row('CBF Stunner', 'CBF125M', 9, 'REAR WHEEL', 67, 'F-15', '41200-KWF-950', 'SPROCKET COMP., FINAL DRIVEN (42T)', 1, 900),
   row('CBF Stunner', 'CBF125M', 9, 'TRANSMISSION', 66, 'E-12', '23801-KWF-940', 'SPROCKET, DRIVE(16T)', 1, 300),
   row('Unicorn', 'CB160', 10, 'REAR WHEEL', 67, 'F-15', '41201-KSP-900', 'SPROCKET, FINAL DRIVEN(40T)', 1, 500),
@@ -25,6 +28,9 @@ fs.writeFileSync(H + '/honda_extras.json', JSON.stringify({ v: 2, xl: {}, acc: [
     ['06406-K1C-T02', 'CHAIN KIT,DRIVE(420-14&41T)', 1500, 'LIVO BS6, CD 110', '23801-AAA-000 · SPROCKET, DRIVE(14T) · 1'],
     ['06406-KSP-T03', 'CHAIN KIT,DRIVE(428-15&40T)', 1900, 'UNICORN', '41201-KSP-900 · SPROCKET, FINAL DRIVEN(40T) · 1'],
     ['06141-K1C-T04', 'CAM CHAIN KIT', 700, 'LIVO', '14321-KYY-900 · SPROCKET, CAM(32T) · 1'],
+    ['01210-K1C-T06', 'KIT, PISTON CYLINDER', 2854, 'ACTIVA 125', '13101-K1C-000 · PISTON · 1 13011-K1C-000 · RING SET, PISTON · 1 12191-ZZZ-900 · GASKET, CYLINDER · 1'],
+    ['01210-KSP-T07', 'KIT, PISTON CYLINDER', 3100, 'UNICORN', '13101-KSP-000 · PISTON · 1'],
+    ['01210-K1C-T08', 'PISTON KIT (0.25)', 990, 'LIVO', ''],
     ['06406-K1D-T05', 'CHAIN KIT,DRIVE(428-14&44T)', 1700, 'LIVON X', '']] }));
 await new Promise(r => { const a = spawn('node', ['--no-warnings', 'admin.mjs', 'add-admin', 'sam@bikepharma.com', 'Sam', '--password', 'Test@1234'], { env: { ...process.env, DATA_DIR: T + '/data' } }); a.on('exit', r); });
 const srv = spawn('node', ['--no-warnings', 'server.mjs'], { env: { ...process.env, PORT: '3027', DATA_DIR: T + '/data', FILES_DIR: T + '/pf', PHOTO_AI: 'off' }, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -48,6 +54,10 @@ try {
   ok(r.pns[0] === '06406-KWF-P01' && !r.pns.includes('06406-K1C-T01'), 'CBF Stunner: its own kit first, not the Livo\'s');
   r = await run('chain sprocket kit', 'Unicorn'); ok(r.pns[0] === '06406-KSP-T03', 'Unicorn: its own kit first: ' + r.pns[0]);
   r = await run('brake shoe', 'Livo'); ok(!r.pns.some(x => /^06406/.test(x)), 'another search on the Livo shows no chain kit');
+  r = await run('piston kit', 'Livo'); console.log(JSON.stringify(r.pns));
+  ok(r.pns.includes('01210-K1C-T06') && r.pns.includes('01210-K1C-T08') && !r.pns.includes('01210-KSP-T07'), 'piston kit on the Livo: its two kits (2 of 3 inside parts are the Livo\'s; note says LIVO), not the Unicorn\'s');
+  r = await run('gasket kit', 'Livo'); ok(r.pns.includes('06111-K1C-000') && !r.pns.some(x => /^01210|^06406/.test(x)), 'gasket kit on the Livo: its own catalogue kit, no other kit: ' + r.pns);
+  r = await run('piston', 'Livo'); ok(!r.pns.some(x => /^01210/.test(x)), 'piston (no "kit") on the Livo: as before');
   ok(!errs.length, 'no page errors ' + errs.join(';'));
 } finally { if (b) await b.close(); srv.kill(); }
 console.log(fails ? fails + ' FAILED' : 'all passed'); process.exit(fails ? 1 : 0);

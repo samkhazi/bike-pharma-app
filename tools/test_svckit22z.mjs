@@ -13,6 +13,7 @@ const rows = [
   row('Livo', 'CB110MT', 8, 'SWINGARM', 65, 'F-20', '40530-K55-951', 'CHAIN, DRIVE(DAIDO) (DID420ADV-118LE)', 1, 560),
   row('Livo', 'CB110MT', 8, 'TRANSMISSION', 66, 'E-12', '23801-KWB-600', 'SPROCKET, DRIVE(14T)', 1, 127),
   row('Livo', 'CB110MT', 8, 'REAR WHEEL', 67, 'F-15', '41201-K1C-601', 'SPROCKET, FINAL DRIVEN(42T) (IFB)', 1, 316),
+  row('Livo', 'CB110MT', 8, 'REAR WHEEL', 67, 'F-15', '41201-K1C-D00', 'SPROCKET, FINAL DRIVEN(42T)', 1, 340),
   row('Livo', 'CB110MT', 8, 'CAM CHAIN/TENSIONER', 68, 'E-5', '14321-KYY-900', 'SPROCKET, CAM(32T)', 1, 75),
   row('Livo', 'CB110MT', 8, 'PISTON', 69, 'E-7', '13101-K1C-000', 'PISTON', 1, 800),
   row('Livo', 'CB110MT', 8, 'PISTON', 69, 'E-7', '13011-K1C-000', 'RING SET, PISTON', 1, 600),
@@ -25,13 +26,15 @@ fs.writeFileSync(H + '/honda_search_all.json.gz', zlib.gzipSync(JSON.stringify({
 fs.writeFileSync(H + '/honda_extras.json', JSON.stringify({ v: 2, xl: {}, acc: [], kit: {}, gasket: [], site: [], other: [], refs: {},
   svc: [['06406-KWF-P01', 'CHAIN KIT,DRIVE(428-16&42T)', 4267, 'CBF STUNNER', '23801-KWF-940 · SPROCKET, DRIVE(16T) · 1 41200-KWF-950 · SPROCKET COMP., FINAL DRIVEN (42T) · 1'],
     ['06406-K1C-T01', 'CHAIN KIT,DRIVE(420-14&42T)', 1650, 'DREAM YUGA', '23801-KWB-600 · SPROCKET, DRIVE(14T) · 1 23802-GN5-910 · PLATE, FIXING · 1 90084-KRM-840 · BOLT, DRIVE SPROCKET FIXING · 2 40530-K55-951 · CHAIN, DRIVE(DAIDO) (DID420ADV-118LE) · 1 41201-K1C-601 · SPROCKET, FINAL DRIVEN(42T) (IFB) · 1'],
-    ['06406-K1C-T02', 'CHAIN KIT,DRIVE(420-14&41T)', 1500, 'LIVO BS6, CD 110', '23801-AAA-000 · SPROCKET, DRIVE(14T) · 1'],
+    ['06406-K1C-T02', 'CHAIN KIT,DRIVE(420-14&41T)', 1500, 'LIVO BS6, CD 110', ''],
     ['06406-KSP-T03', 'CHAIN KIT,DRIVE(428-15&40T)', 1900, 'UNICORN', '41201-KSP-900 · SPROCKET, FINAL DRIVEN(40T) · 1'],
     ['06141-K1C-T04', 'CAM CHAIN KIT', 700, 'LIVO', '14321-KYY-900 · SPROCKET, CAM(32T) · 1'],
     ['01210-K1C-T06', 'KIT, PISTON CYLINDER', 2854, 'ACTIVA 125', '13101-K1C-000 · PISTON · 1 13011-K1C-000 · RING SET, PISTON · 1 12191-ZZZ-900 · GASKET, CYLINDER · 1'],
     ['01210-KSP-T07', 'KIT, PISTON CYLINDER', 3100, 'UNICORN', '13101-KSP-000 · PISTON · 1'],
     ['01210-K1C-T08', 'PISTON KIT (0.25)', 990, 'LIVO', ''],
     ['02380-K14-910', 'KIT, CHAIN SPROCKET- DREAM YUGA (HET)', 822, '', '40530-K14-900 · CHAIN, DRIVE · 1 23801-KWB-600 · SPROCKET, DRIVE(14T) · 1 41201-K14-900 · SPROCKET, FINAL DRIVEN(41T) · 1'],
+    ['02380-K14-900', 'CHAIN SPROCKET KIT', 822, 'DREAM YUGA, LIVO', '23801-KWB-600 · SPROCKET, DRIVE(14T) · 1 41201-K14-900 · SPROCKET, FINAL DRIVEN(41T) · 1'],
+    ['02380-KWB-601', 'CHAIN SPROCKET KIT', 888, 'LIVO BSVI', '23801-KWB-600 · SPROCKET, DRIVE(14T) · 1 41201-K1C-D00 · SPROCKET, FINAL DRIVEN(42T) · 1'],
     ['06406-K1D-T05', 'CHAIN KIT,DRIVE(428-14&44T)', 1700, 'LIVON X', '']] }));
 await new Promise(r => { const a = spawn('node', ['--no-warnings', 'admin.mjs', 'add-admin', 'sam@bikepharma.com', 'Sam', '--password', 'Test@1234'], { env: { ...process.env, DATA_DIR: T + '/data' } }); a.on('exit', r); });
 const srv = spawn('node', ['--no-warnings', 'server.mjs'], { env: { ...process.env, PORT: '3027', DATA_DIR: T + '/data', FILES_DIR: T + '/pf', PHOTO_AI: 'off' }, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -48,7 +51,8 @@ try {
   let r = await run('Kit chain sprocket', 'Livo'); console.log(JSON.stringify(r));
   ok(r.pns[0] === '06406-K1C-T01', 'Livo: the kit whose sprockets are the Livo\'s own comes first (its note names another bike): ' + r.pns[0]);
   ok(!r.pns.includes('02380-K14-910'), 'Livo: the Dream Yuga kit that shares only the front sprocket is not shown');
-  ok(r.pns.includes('06406-K1C-T02'), 'Livo: the kit whose note says "LIVO BS6" is there too');
+  ok(!r.pns.includes('02380-K14-900') && r.pns.includes('02380-KWB-601'), 'Livo: a kit whose note says LIVO but whose rear sprocket (41T) is not this Livo\'s is not shown; 02380-KWB-601 is');
+  ok(r.pns.includes('06406-K1C-T02'), 'Livo: a kit with no list of what is inside, whose note says "LIVO BS6", is there too');
   ok(!r.pns.includes('06406-KWF-P01') && !r.pns.includes('06406-KSP-T03') && !r.pns.includes('06406-K1D-T05'), 'Livo: the Stunner, Unicorn and "LIVON X" kits are not shown');
   ok(!r.pns.includes('06141-K1C-T04') && !r.pns.includes('14321-KYY-900'), 'Livo: no cam chain kit, no cam sprocket');
   ok(['40530-K55-951', '23801-KWB-600', '41201-K1C-601'].every(x => r.pns.includes(x)) && /kit for this bike is first/.test(r.txt), 'Livo: the chain and sprockets follow, and the note says so');

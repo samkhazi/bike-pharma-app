@@ -3846,7 +3846,9 @@ function catSvcKits(A,rows){try{if(!A.vm||A.vm==='Any'||XR_NOBIKE.test(A.vm))ret
   const sc=catScope({vb:A.vb,vm:CAT_SVC,vv:'Any',cc:'Any',bs:'Any',yr:'Any',ed:'Any'});if(!sc||!sc.rows)return [];
   const sp=new Set(rows.filter(r=>catKitRank(r)>0).map(r=>catPk(r.part)));
   return catDedupe(sc.rows.filter(r=>r.dw.includes('CHAIN')&&r.dw.some(w=>/^(KIT|SET)S?$/.test(w))&&!r.dw.some(w=>CAT_ENGW.has(w))).map(r=>{const it=catSvcItems(r.rem).filter(x=>/^[^A-Z0-9]*SPROCKET/.test(x[1])),hit=it.length&&it.every(x=>sp.has(x[0]))?it.length:0;
-   return hit||catSvcFits(r.rem,A.vm)?[hit,r]:null;}).filter(Boolean).sort((a,b)=>b[0]-a[0]||a[1].i-b[1].i).map(x=>x[1]));}catch(x){return [];}}
+   /* update 23d (Sam 2026-11-14: on his 2021 Livo only 02380-KWB-600/601 are right, not the Dream Yuga kits): when the kit says which
+      sprockets are inside and the bike's catalogue has its sprockets, they decide; the note's bike name counts only when they cannot */
+   return hit||(!it.length||!sp.size)&&catSvcFits(r.rem,A.vm)?[hit,r]:null;}).filter(Boolean).sort((a,b)=>b[0]-a[0]||a[1].i-b[1].i).map(x=>x[1]));}catch(x){return [];}}
 /* update 23a (Sam 2026-11-14 "kit search karta hun toh kit show hona he", "sabhi ke liye"): the same for every other kit asked by name
    (piston kit, gasket kit, clutch kit): the Service kits lines with the asked words that are this bike's: the note names the bike, or
    at least half of the part numbers inside the kit are in the bike's own catalogue */

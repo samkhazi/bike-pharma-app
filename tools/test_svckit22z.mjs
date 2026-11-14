@@ -31,6 +31,7 @@ fs.writeFileSync(H + '/honda_extras.json', JSON.stringify({ v: 2, xl: {}, acc: [
     ['01210-K1C-T06', 'KIT, PISTON CYLINDER', 2854, 'ACTIVA 125', '13101-K1C-000 · PISTON · 1 13011-K1C-000 · RING SET, PISTON · 1 12191-ZZZ-900 · GASKET, CYLINDER · 1'],
     ['01210-KSP-T07', 'KIT, PISTON CYLINDER', 3100, 'UNICORN', '13101-KSP-000 · PISTON · 1'],
     ['01210-K1C-T08', 'PISTON KIT (0.25)', 990, 'LIVO', ''],
+    ['02380-K14-910', 'KIT, CHAIN SPROCKET- DREAM YUGA (HET)', 822, '', '40530-K14-900 · CHAIN, DRIVE · 1 23801-KWB-600 · SPROCKET, DRIVE(14T) · 1 41201-K14-900 · SPROCKET, FINAL DRIVEN(41T) · 1'],
     ['06406-K1D-T05', 'CHAIN KIT,DRIVE(428-14&44T)', 1700, 'LIVON X', '']] }));
 await new Promise(r => { const a = spawn('node', ['--no-warnings', 'admin.mjs', 'add-admin', 'sam@bikepharma.com', 'Sam', '--password', 'Test@1234'], { env: { ...process.env, DATA_DIR: T + '/data' } }); a.on('exit', r); });
 const srv = spawn('node', ['--no-warnings', 'server.mjs'], { env: { ...process.env, PORT: '3027', DATA_DIR: T + '/data', FILES_DIR: T + '/pf', PHOTO_AI: 'off' }, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -46,6 +47,7 @@ try {
     return p.evaluate(() => { const t = document.querySelector('#vp .screen:last-child'); return { pns: (t.innerText.match(/\b\d{5}-[A-Z0-9]{3}-[A-Z0-9]{3,4}\b/g) || []), txt: t.innerText.replace(/\s+/g, ' ').slice(0, 500), split: !!(CAT_ALL.find(e => e.vb === 'Honda') || {}).split }; }); };
   let r = await run('Kit chain sprocket', 'Livo'); console.log(JSON.stringify(r));
   ok(r.pns[0] === '06406-K1C-T01', 'Livo: the kit whose sprockets are the Livo\'s own comes first (its note names another bike): ' + r.pns[0]);
+  ok(!r.pns.includes('02380-K14-910'), 'Livo: the Dream Yuga kit that shares only the front sprocket is not shown');
   ok(r.pns.includes('06406-K1C-T02'), 'Livo: the kit whose note says "LIVO BS6" is there too');
   ok(!r.pns.includes('06406-KWF-P01') && !r.pns.includes('06406-KSP-T03') && !r.pns.includes('06406-K1D-T05'), 'Livo: the Stunner, Unicorn and "LIVON X" kits are not shown');
   ok(!r.pns.includes('06141-K1C-T04') && !r.pns.includes('14321-KYY-900'), 'Livo: no cam chain kit, no cam sprocket');

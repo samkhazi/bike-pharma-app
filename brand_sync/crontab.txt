@@ -2,7 +2,7 @@
 # This file IS the site user's crontab. After changing it, put it in place as root with:
 #   bash /home/bikepharma/htdocs/bikepharma.com/brand_sync/install_cron.sh
 # (on the server it then lives at /var/spool/cron/crontabs/bikepharma; never edit that copy by hand)
-# Times are server time. One line per brand, in the order they run. Everything is logged to one file ($LOG).
+# Times are server time (UTC). Update 23f (Sam 2026-11-14): every brand starts together at 18:30 UTC Saturday = exactly 12:00 midnight India (Saturday night, Sunday 00:00 IST). One line per brand. Everything is logged to one file ($LOG).
 # Logins, passwords and keys are only in brand_sync/.env, never here.
 #
 # Yamaha's number places (YPEC, lib/ypecsync.mjs) are not here: the website itself starts that once a week at night.
@@ -11,25 +11,23 @@ BS=/home/bikepharma/htdocs/bikepharma.com/brand_sync
 LOG=/home/bikepharma/htdocs/bikepharma.com/data/project-files/catalogues/hero-sync/logs/cron.log
 
 # m  h  dom mon dow   command
-# --- Saturday ---
 # Hero DMS (prices)
-0 21 * * 6 cd $BS && .venv/bin/python sync.py hero_dms >> $LOG 2>&1
-# Rolon: fresh data (rolon_fetch.py), then the catalogue PDF (Sam's own script in the site user's home; 21:30 UTC = Sunday 3 am India; own log in ~/rolon_dump/logs)
-30 21 * * 6 ROLON_FETCH=$BS/rolon_fetch.py /bin/bash /home/bikepharma/rolon_dump/rolon_weekly.sh
-# --- Sunday ---
+30 18 * * 6 cd $BS && .venv/bin/python sync.py hero_dms >> $LOG 2>&1
+# Rolon: fresh data (rolon_fetch.py), then the catalogue PDF (Sam's own script in the site user's home; own log in ~/rolon_dump/logs)
+30 18 * * 6 ROLON_FETCH=$BS/rolon_fetch.py /bin/bash /home/bikepharma/rolon_dump/rolon_weekly.sh
 # Hero
-0 1 * * 0 cd $BS && .venv/bin/python sync.py hero >> $LOG 2>&1
+30 18 * * 6 cd $BS && .venv/bin/python sync.py hero >> $LOG 2>&1
 # TVS (guest catalogue)
-0 2 * * 0 cd $BS && TVS_IGNORE_ROBOTS=1 TVS_GUEST_DELAY=3 .venv/bin/python sync.py tvs_guest >> $LOG 2>&1
+30 18 * * 6 cd $BS && TVS_IGNORE_ROBOTS=1 TVS_GUEST_DELAY=3 .venv/bin/python sync.py tvs_guest >> $LOG 2>&1
 # Bajaj
-0 3 * * 0 cd $BS && .venv/bin/python sync.py bajaj >> $LOG 2>&1
+30 18 * * 6 cd $BS && .venv/bin/python sync.py bajaj >> $LOG 2>&1
 # Honda (login code: link comes by email)
-30 4 * * 0 cd $BS && .venv/bin/python sync.py honda >> $LOG 2>&1
+30 18 * * 6 cd $BS && .venv/bin/python sync.py honda >> $LOG 2>&1
 # Royal Enfield (spares store + EPC)
-0 5 * * 0 cd $BS && ./run_re_weekly.sh >> $LOG 2>&1
+30 18 * * 6 cd $BS && ./run_re_weekly.sh >> $LOG 2>&1
 # KTM
-30 6 * * 0 cd $BS && .venv/bin/python sync.py ktm >> $LOG 2>&1
+30 18 * * 6 cd $BS && .venv/bin/python sync.py ktm >> $LOG 2>&1
 # TVS (dealer login; OTP: link comes by email)
-30 8 * * 0 cd $BS && .venv/bin/python sync.py tvs >> $LOG 2>&1
+30 18 * * 6 cd $BS && .venv/bin/python sync.py tvs >> $LOG 2>&1
 # Yamaha (Pymidol: MRP, old/new numbers, books)
-0 19 * * 0 cd $BS && .venv/bin/python sync.py yamaha >> $LOG 2>&1
+30 18 * * 6 cd $BS && .venv/bin/python sync.py yamaha >> $LOG 2>&1

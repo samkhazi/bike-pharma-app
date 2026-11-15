@@ -77,6 +77,23 @@ try {
       && yd.mrp['B0T-E1102-11'] === 5600 && Y.info.newPlaced === pl.length && !yd.d.some(r => r[5] === 'BX9-F0001-00' && r[2] !== 'MRP list'),
       "19u: the new number of a book part shows in that part's model and diagram too (" + pl.length + ' places); a part with no book part stays under the price list only');
   }
+  { // 23h: a part only the MRP list has is listed under the bike its number's first three characters name (model code family, or the old-bike list)
+    const s2 = JSON.parse(fs.readFileSync(SY + '/yamaha/state.json', 'utf8'));
+    Object.assign(s2.mrp, { '4TLF41000600': { name: 'FUEL TANK (BLACK)', mrp: 12910 }, '36LF4100B000': { name: 'FUEL TANK(NEW BLACK)', mrp: 4513 }, DM4F83H00000: { name: 'PANEL', mrp: 700 },
+      '903871234500': { name: 'COLLAR', mrp: 20 }, '4TLF41000700': { name: 'FUEL TANK (RED)', mrp: 12910 } });
+    s2.sup.push(['36LF4100B000', '4TLF41000600']);
+    fs.writeFileSync(SY + '/yamaha/state.json', JSON.stringify(s2));
+    const W = buildYamaha(D, 'catalogues/yamaha', { sync: SY }), wd = W.cat, row = pn => wd.d.filter(r => r[5] === pn), vn = r => wd.vars[r[11][0]];
+    const tk = row('4TL-F4100-06'), t7 = row('4TL-F4100-07'), rx = row('36L-F4100-B0'), pa = row('DM4-F83H0-00'), col = wd.d.filter(r => /^90387/.test(r[5])), mir = row('BX9-F0001-00');
+    ok(tk.length === 1 && vn(tk[0]) === 'RX135 · parts by number code 4TL (Yamaha MRP list, not in a parts book)' && wd.vmod[vn(tk[0])] === 'RX135' && wd.models.includes('RX135') && wd.cc.RX135 === 132
+      && /Bike from the number's code 4TL: RX135 \(not in a Yamaha parts book, check before fitting\)/.test(tk[0][8]) && /Old no\. 36L-F4100-B0/.test(tk[0][8]) && wd.mrp['4TL-F4100-06'] === 12910
+      && t7.length === 1 && t7[0][11][0] === tk[0][11][0] && wd.asm[tk[0][3]] === 'RX135 · BY NUMBER CODE 4TL (MRP LIST, NOT IN A PARTS BOOK)', '23h: a 4TL part of the MRP list is listed under RX135 (one edition for the code), with its old number and MRP');
+    ok(rx.length === 1 && vn(rx[0]).startsWith('RX100 · parts by number code 36L') && wd.cc.RX100 === 98, '23h: a 36L part is listed under RX100');
+    ok(pa.length === 1 && vn(pa[0]) === 'R15 V4 · parts by number code DM4 (Yamaha MRP list, not in a parts book)' && wd.models.filter(m => m === 'R15 V4').length === 1, '23h: a code that model codes of a book start with takes that bike (DM4 -> R15 V4), no second model');
+    ok(col.length === 1 && vn(col[0]) === 'Other Yamaha (no model name) · Yamaha MRP list (weekly sync)' && mir.length === 1 && vn(mir[0]) === vn(col[0])
+      && wd.models.indexOf('RX135') < wd.models.indexOf('Other Yamaha (no model name)') && W.info.byCode === 4, '23h: a standard 9.... part and a code no bike is known for stay under no model; the code bikes come before it');
+    fs.writeFileSync(SY + '/yamaha/state.json', JSON.stringify({ ...s2, mrp: Object.fromEntries(Object.entries(s2.mrp).filter(([k]) => !/^(4TL|36L|DM4|9038)/.test(k))), sup: s2.sup.slice(0, -1) }));
+  }
   ok(!buildYamaha(D).info.sync, 'no sync data: nothing changes');
   // 16i: a model catalogue the sync downloaded and read: a new model code becomes an edition, its diagram is the downloaded PDF's page
   const st = JSON.parse(fs.readFileSync(SY + '/yamaha/state.json', 'utf8')), NB = 'DM4C YZF155D-B (2026-10-25).pdf';

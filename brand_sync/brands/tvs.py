@@ -18,7 +18,7 @@ Server update: TVS_MRP_WEBHOOK (+ TVS_MRP_WEBHOOK_TOKEN) gets MRP changes as JSO
 """
 import os, io, re, csv, json, gzip, time, html, hashlib, secrets, logging, threading
 from notify import send_code_link
-from common import env, data_dir, load_json, save_json, today, Report
+from common import env, data_dir, load_json, save_json, today, Report, mrp_guard
 UA = env('TVS_UA', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36')
 
 log = logging.getLogger('brand_sync.tvs')
@@ -699,6 +699,7 @@ class TVS:
         if old:
             for pn, v in sorted(mrp.items()):
                 o = old.get(pn)
+                if o: v['mrp'] = mrp_guard(self.state, rep, pn, o.get('mrp'), v['mrp'], v['desc'])
                 if not o:
                     rep.add('Naya part (NDP-MRP list)', f"{pn} {v['desc']} MRP {v['mrp']}")
                 elif v['mrp'] is not None and o.get('mrp') is not None and abs(v['mrp'] - o['mrp']) >= 0.01:

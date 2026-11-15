@@ -69,6 +69,47 @@ def run_brand(name, full=False, rebuild=False):
     return rep
 
 
+def mrp_cmd(name, ok, recheck):
+    """23g: Sam's word on the doubtful MRPs (common.mrp_guard). Works on the saved lists only, no site is opened."""
+    import csv
+    from common import mrp_guard, save_json
+    b = brand_cls(name)(); st = b.state
+    parts = getattr(b, 'parts', None)                       # hero_dms keeps its list beside the state
+    def rec(pn):
+        for m in (st.get('mrp'), st.get('parts'), parts):
+            if isinstance(m, dict) and pn in m: return m, m[pn]
+        return None, None
+    def put(pn, val):
+        m, r = rec(pn)
+        if m is None: return False
+        if isinstance(r, dict): r['mrp'] = val
+        else: m[pn] = val
+        return True
+    def cur(pn):
+        m, r = rec(pn)
+        return r.get('mrp') if isinstance(r, dict) else r
+    n = 0
+    if recheck:
+        for row in csv.DictReader(open(recheck, encoding='utf-8')):
+            pn, old, new = row['part_no'], row['old_mrp'], row['new_mrp']
+            try: o, v, c = float(old), float(new), float(cur(pn))
+            except (TypeError, ValueError): continue
+            if abs(c - v) >= 0.01: continue                 # the list has moved on since that run
+            if mrp_guard(st, None, pn, o, v, row.get('name', '')) == o and put(pn, o):
+                n += 1; print(f'{pn} {row.get("name", "")}: Rs {v:g} hataya, purana Rs {o:g} wapas (shak wali list me)')
+        print(f'{name}: {n} MRP purane par wapas')
+    else:
+        held = st.get('mrp_hold') or {}
+        for pn in (sorted(held) if ok.strip().lower() == 'all' else [x.strip().upper() for x in ok.split(',') if x.strip()]):
+            h = held.get(pn)
+            if not h: print(f'{pn}: shak wali list me nahi hai'); continue
+            st.setdefault('mrp_ok', {})[pn] = h['new']; put(pn, h['new']); held.pop(pn); n += 1
+            print(f'{pn} {h.get("name", "")}: naya MRP Rs {h["new"]} maan liya (pehle Rs {h["old"]})')
+        print(f'{name}: {n} MRP maane; {len(held)} abhi bhi ruke hein')
+    save_json(b.state_path, st)
+    if parts is not None and hasattr(b, 'parts_path'): save_json(b.parts_path, parts)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('brand')
@@ -76,6 +117,8 @@ def main():
     ap.add_argument('--rebuild', action='store_true')
     ap.add_argument('--compare-old', action='store_true', help='tvs only: compare the saved NDP-MRP list with the old MRP on the server')
     ap.add_argument('--sn', action='store_true', help='bajaj only: read the diagram numbers (S.No.) of every diagram page into the saved BOMs')
+    ap.add_argument('--mrp-ok', metavar='PN,PN|all', help='23g: accept the held (doubtful, fell over 80%%) MRP of these parts; they are listed in the report under Shak wala MRP')
+    ap.add_argument('--mrp-recheck', metavar='CSV', help="23g: a past run's mrp_changes CSV: any fall over 80%% it applied is put back to the old MRP and held")
     ap.add_argument('--probe', action='store_true', help='honda, tvs: what the site sends to light a part on its diagram (read only, one diagram)')
     ap.add_argument('--labels', action='store_true', help="honda only: every downloaded diagram's number places (part lists asked again, no pictures)")
     ap.add_argument('--part', help='hero_dms only: live MRP of one part, e.g. 12310AAM000S')
@@ -94,6 +137,8 @@ def main():
         print(json.dumps(HeroDMS().check_part(a.part.strip().upper()), ensure_ascii=False)); return
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(name)s %(message)s',
                         handlers=[logging.StreamHandler(), logging.FileHandler(os.path.join(data_dir('logs'), 'sync.log'))])
+    if a.mrp_ok or a.mrp_recheck:
+        return mrp_cmd(a.brand, a.mrp_ok, a.mrp_recheck)
     if a.labels:                            # 19c: Honda number places for the diagrams downloaded before
         from brands.honda import Honda
         logging.info('Honda: %d diagrams have number places', Honda().fill_labels()); return

@@ -18,7 +18,7 @@ Server update: YAMAHA_MRP_WEBHOOK (+ YAMAHA_MRP_WEBHOOK_TOKEN) gets MRP changes 
 """
 import os, re, csv, json, gzip, time, html, base64, secrets, logging, threading, collections
 from notify import send_code_link
-from common import env, data_dir, load_json, save_json, today, Report
+from common import env, data_dir, load_json, save_json, today, Report, mrp_guard
 
 log = logging.getLogger('brand_sync.yamaha')
 BASE = os.environ.get('YAMAHA_BASE', 'https://www.pymidol.com')
@@ -359,6 +359,7 @@ class Yamaha:
                 rep.add('Naya part number', f"{pn} {new[pn]['name']} MRP {new[pn]['mrp']}")
             for pn, v in sorted(new.items()):
                 o = st['mrp'].get(pn)
+                if o: v['mrp'] = mrp_guard(st, rep, pn, o.get('mrp'), v['mrp'], v['name'])
                 if o and v['mrp'] is not None and o.get('mrp') is not None and abs(v['mrp'] - o['mrp']) >= 0.5:
                     self.changes.append({'part_no': pn, 'old_mrp': o['mrp'], 'new_mrp': v['mrp'], 'name': v['name']})
             for c in self.changes[:300]:

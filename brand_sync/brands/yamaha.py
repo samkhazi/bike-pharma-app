@@ -83,7 +83,7 @@ window.yKits = async () => {
   }
   return out;
 };
-window.yPI = async to => (await yCall('/spare-parts/spm1301/retrieve', {sysOwnerCd: 'IYM', modelCd: null, releaseDate: '19900101', releaseDateTo: to, user: yUser()})).data || [];
+window.yPI = async to => (await yCall('/spare-parts/spm1301/retrieve', {sysOwnerCd: 'IYM', modelCd: null, releaseDate: '19000101', releaseDateTo: to, user: yUser()})).data || [];
 window.yCirc = async () => (await yCall('/spare-parts/pza0301/initial', {sysOwnerCd: 'IYM', moduleCd: '2', userModel: yUser()})).data || [];
 window.yDSA = async () => (await yCall('/spare-parts/svt0801/retrieve', {user: yUser(), serviceDaNo: null, modelCd: null, fromDate: null,
   toDate: null, priority: null, serviceActionType: null, status: null})).data || [];
@@ -417,7 +417,19 @@ class Yamaha:
             if not known('pi', k, d, k in sb or f"{row['model']}|{d}" in sm):
                 todo['pi|' + k] = row
                 rep.add('Naya model catalogue (PDF)' if cat else 'Naya Part Information bulletin', f"{row['model']} {row['name']} {row['title']} ({d})")
+            if (st['pi'].get(k) or {}).get('gone'): row['gone'] = 1
             st['pi'][k] = row
+        # 23l (Sam 2026-11-16: pymidol has the catalogues back to 1986, ours are not all there): the first run took every catalogue older than the
+        # seed day as already in the Mac folder, and the list was asked only from 1990. A model catalogue that is neither in the seed (the Mac
+        # folder) nor in output/Yamaha/PDF/Models is downloaded now, old ones too.
+        if seed is not None or st.get('last_run') or full:
+            have = set(os.listdir(self.out('PDF', 'Models')))
+            for k, row in st['pi'].items():
+                if not row.get('cat') or not row.get('file') or 'pi|' + k in todo or row.get('gone'): continue
+                if k in sb or f"{row['model']}|{row['date']}" in sm: continue
+                if safe(f"{row['model']} {row['name']} ({row['date']})") + (os.path.splitext(row['file'])[1] or '.pdf') in have: continue
+                todo['pi|' + k] = row
+                rep.add('Purana model catalogue (PDF) jo hamare paas nahi tha', f"{row['model']} {row['name']} {row['title']} ({row['date']})")
         sc = set(seed['circulars']) if seed else set()
         for r in circ:
             k = f"{r.get('description') or ''}|{r.get('publishDate') or ''}"
@@ -503,6 +515,7 @@ class Yamaha:
                         'dsa': f"DSA {key.split('|', 1)[1]}: {', '.join(f[0] for f in row.get('files', []))}"}[kind]
                 if row['tries'] >= 3:
                     todo.pop(key, None)
+                    if kind == 'pi' and key.split('|', 1)[1] in st['pi']: st['pi'][key.split('|', 1)[1]]['gone'] = 1   # 23l: not asked again by the old-catalogue check
                     bad.append(f'{what} (3 baar try kiya, pymidol file nahi de raha)')
                 else:
                     bad.append(f'{what} (agle run me dobara)')

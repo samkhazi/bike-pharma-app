@@ -116,6 +116,14 @@ try {
     && Q.dg.f[Q.dg.p[String(Q.cat.vars.findIndex(v => v.includes(' · DM4A ')))]['1']].startsWith('pdf:'), "YPEC: a fig with YPEC's places shows YPEC's picture; other figs, older books and other codes keep the PDF page");
   const hj = await (await get('/api/dghot?u=' + encodeURIComponent(yref))).json();
   ok(hj.site === 1 && hj.toks.length === 2 && hj.toks[0].join() === ['1', 0.3359, 0.6332, 0.3661, 0.6545, 1].join(), "YPEC: /api/dghot gives YPEC's own place of every number");
+  // 23p: the colour types of a model code (YPEC sync): a YPEC-only model lists the other colour's own part in its diagram, and its edition carries
+  // per colour the parts to hide and the parts that are that colour's own
+  fs.writeFileSync(YP + '/models/ZQ11.json', JSON.stringify({ code: 'ZQ11', year: '2021', name: 'TESTBIKE', catalogNo: 'X', color: 'A',
+    figs: [{ no: '24', br: '1', name: 'FUEL TANK', ill: '', parts: [['9', 'B9D-XF412-20-P0', 'TANK SIDE COVER', 1, '', ''], ['2', '90480-13003', 'GROMMET', 1, '', '']] }],
+    colors: [{ t: 'A', name: 'BLACK METALLIC X', base: true, products: ['010'] }, { t: 'B', name: 'BLACK METALLIC X', products: ['010'], figs: { '24/1': [['9', 'B9D-XF412-30-P0', 'TANK SIDE COVER', 1, '', ''], ['2', '90480-13003', 'GROMMET', 1, '', '']] } }] }));
+  const C2 = buildYamaha(D, 'catalogues/yamaha', { sync: SY }).cat, cv = C2.vars.findIndex(v => v.includes(' · ZQ11 ')), cr = C2.d.filter(r => r[11].includes(cv)), vc = (C2.vcol || {})[String(cv)];
+  ok(cv >= 0 && cr.length === 3 && cr.some(r => r[5] === 'B9D-XF412-30-P0' && r[8].includes('Colour B · BLACK METALLIC X')), 'colours: a YPEC-only model lists the other colour type\'s own part, named by colour');
+  ok(vc && vc.length === 2 && vc[0][0] === 'A' && vc[0][2].join() === 'B9DXF41230P0' && vc[0][3].join() === 'B9DXF41220P0' && vc[1][2].join() === 'B9DXF41220P0' && vc[1][3].join() === 'B9DXF41230P0' && !(C2.vcol[String(C2.vars.findIndex(v => v.includes(' · DM49 ')))]), 'colours: the edition carries per colour type the parts to hide and its own parts; a code with one colour has none');
 } catch (e) { ok(false, 'error ' + e.stack); }
 finally { srv.kill(); }
 if (fails) console.log(log.slice(-3000));

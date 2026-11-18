@@ -18,7 +18,7 @@ Server update: if HERO_MRP_WEBHOOK is set, the MRP changes are POSTed there as J
   with header Authorization: Bearer <HERO_MRP_WEBHOOK_TOKEN> (if set).
 """
 import os, io, re, csv, json, datetime, logging
-from common import env, data_dir, load_json, save_json, today, Report
+from common import env, data_dir, load_json, save_json, today, Report, mrp_guard
 
 log = logging.getLogger('brand_sync.hero_dms')
 BASE = 'https://connect.heromotocorp.biz/siebel/app/edealerpd/enu/'
@@ -258,6 +258,7 @@ class HeroDMS:
             rec = {**d, 'mrp': o.get('mrp'), 'eff_from': o.get('eff_from', ''), 'models': o.get('models', [])}
             if pn in latest:
                 m, ef = latest[pn]
+                if o and mrp_guard(self.state, None if first else rep, pn, rec['mrp'], m, d['name']) is not m: m, ef = rec['mrp'], rec['eff_from']
                 if rec['mrp'] != m and m is not None:
                     changes.append({'part_no': pn, 'old_mrp': rec['mrp'], 'new_mrp': m, 'effective_from': ef, 'name': d['name']})
                 rec['mrp'], rec['eff_from'] = m, ef
@@ -270,6 +271,7 @@ class HeroDMS:
         for pn in set(latest) - set(prod):          # priced but missing in product master
             m, ef = latest[pn]
             o = old.get(pn, {})
+            if o and mrp_guard(self.state, None if first else rep, pn, o.get('mrp'), m, o.get('name', '')) is not m: m, ef = o.get('mrp'), o.get('eff_from', '')
             if o.get('mrp') != m:
                 changes.append({'part_no': pn, 'old_mrp': o.get('mrp'), 'new_mrp': m, 'effective_from': ef, 'name': o.get('name', '')})
             parts[pn] = {**o, 'mrp': m, 'eff_from': ef}

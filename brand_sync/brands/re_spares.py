@@ -9,7 +9,7 @@ Our real name is sent (BikePharmaSync), requests are slow and one at a time. Onl
 lib/rebuild.mjs reads data/re_spares/state.json: MRP, new parts under their model, new model categories as new models.
 """
 import re, logging, urllib.robotparser
-from common import Http, env, data_dir, load_json, save_json, today, Report
+from common import Http, env, data_dir, load_json, save_json, today, Report, mrp_guard
 
 log = logging.getLogger('brand_sync.re_spares')
 BASE = 'https://spares.royalenfield.com'
@@ -80,6 +80,8 @@ class RESpares:
             new = sorted(set(parts) - set(st['parts']))
             for pn in new[:500]:
                 rep.add('Naya part number', f"{pn} {parts[pn]['name']} MRP {parts[pn]['mrp']}")
+            for pn, v in sorted(parts.items()):
+                if pn in st['parts']: v['mrp'] = mrp_guard(st, rep, pn, st['parts'][pn].get('mrp'), v['mrp'], v['name'])
             ch = [(pn, st['parts'][pn]['mrp'], v['mrp'], v['name']) for pn, v in sorted(parts.items())
                   if pn in st['parts'] and v['mrp'] and st['parts'][pn].get('mrp') and abs(v['mrp'] - st['parts'][pn]['mrp']) >= 0.5]
             for pn, a, b, nm in ch[:300]:

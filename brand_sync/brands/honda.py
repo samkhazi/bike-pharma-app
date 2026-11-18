@@ -20,7 +20,7 @@ Server update: HONDA_MRP_WEBHOOK (+ HONDA_MRP_WEBHOOK_TOKEN) gets MRP changes as
 """
 import os, re, csv, json, gzip, time, html, hashlib, secrets, logging, threading, datetime, collections
 from notify import send_code_link
-from common import env, data_dir, load_json, save_json, today, Report
+from common import env, data_dir, load_json, save_json, today, Report, mrp_guard
 
 log = logging.getLogger('brand_sync.honda')
 BASE = 'https://honda2wheelerparts.com'
@@ -745,6 +745,7 @@ class Honda:
         self.changes = []
         for pn, v in sorted(mrp.items()):
             o = st['mrp'].get(pn)
+            if o: v['mrp'] = mrp_guard(st, rep, pn, o.get('mrp'), v['mrp'], v['desc'])
             if o and v['mrp'] is not None and o.get('mrp') is not None and abs(v['mrp'] - o['mrp']) >= 0.5:
                 self.changes.append({'part_no': pn, 'old_mrp': o['mrp'], 'new_mrp': v['mrp'], 'name': v['desc']})
         for c in self.changes[:300]:
@@ -787,6 +788,7 @@ class Honda:
         if st['acc']:
             for k, a in sorted(new.items(), key=lambda kv: kv[1]['pn']):
                 o = st['acc'].get(k)
+                if o: a['mrp'] = mrp_guard(st, rep, a['pn'], o.get('mrp'), a['mrp'], a['desc'])
                 if not o:
                     rep.add('Naya accessory / kit', f"{a['pn']} {a['desc']} ({a['sec']}: {', '.join(a['models'][:4])}) MRP {a['mrp']}")
                 elif a['mrp'] is not None and o.get('mrp') is not None and abs(a['mrp'] - o['mrp']) >= 0.5:

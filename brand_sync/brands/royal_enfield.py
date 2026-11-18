@@ -16,7 +16,7 @@ Only reads: no cart, order or save button is ever touched. Other regions are nev
 """
 from pathlib import Path
 import os, re, csv, json, gzip, glob, html, time, hashlib, logging, collections
-from common import env, data_dir, load_json, save_json, today, Report
+from common import env, data_dir, load_json, save_json, today, Report, mrp_guard
 
 log = logging.getLogger('brand_sync.royal_enfield')
 BASE = os.environ.get('RE_EPC_BASE', 'https://epc.royalenfield.com')
@@ -616,6 +616,7 @@ class RoyalEnfield:
             rep.add('MRP list padhi nahi gayi', f'{os.path.basename(f)}: sirf {len(new)} parts'); return
         for pn, v in sorted(new.items()):
             o = st['mrp'].get(pn)
+            if o: v['mrp'] = mrp_guard(st, rep, pn, o.get('mrp'), v['mrp'], v['name'] or o.get('name', ''))
             if o and v['mrp'] is not None and o.get('mrp') is not None and abs(v['mrp'] - o['mrp']) >= 0.5:
                 self.changes.append({'part_no': pn, 'old_mrp': o['mrp'], 'new_mrp': v['mrp'], 'name': v['name'] or o.get('name', '')})
         st['mrp_log'] = ([dict(c, date=today()) for c in self.changes] + st.get('mrp_log', []))[:5000]

@@ -11,7 +11,7 @@ Change check: a model is rebuilt when it is new or any of its diagrams' part lin
 """
 import os, re, json, hashlib, logging, itertools
 from concurrent.futures import ThreadPoolExecutor
-from common import Http, env, data_dir, load_json, save_json, today, Report
+from common import Http, env, data_dir, load_json, save_json, today, Report, mrp_guard
 
 log = logging.getLogger('brand_sync.hero')
 BASE = 'https://ecatalogue.heromotocorp.biz:8080/HeroeCat/'
@@ -150,6 +150,8 @@ class Hero:
             if pn not in old_mrp:
                 if old_mrp: rep.add('Naye part number', f'{pn}  MRP {p}')
             elif str(old_mrp[pn]) != str(p):
+                p = new_mrp[pn] = mrp_guard(self.state, rep, pn, old_mrp[pn], p)
+                if str(old_mrp[pn]) == str(p): continue
                 rep.add('MRP badla', f'{pn}: {old_mrp[pn]} -> {p}')
         self.state['mrp'] = {**old_mrp, **new_mrp}
         self.write_mrp_csv()

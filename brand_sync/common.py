@@ -77,6 +77,28 @@ def today():
     return datetime.date.today().isoformat()
 
 
+def mrp_guard(state, rep, pn, old, new, name=''):
+    """23g (Sam 2026-11-15): a brand's own list sometimes carries a wrong MRP (Yamaha B4GXF41350P0: Rs 1675 -> Rs 35.64, below its
+    dealer price). When a part's MRP falls by more than MRP_DROP_PCT (80) % in one run, the old MRP stays and the part is listed
+    under 'Shak wala MRP' until Sam accepts it (sync.py <brand> --mrp-ok PN,PN or all). Returns the MRP to keep."""
+    try:
+        o, n = float(old), float(new)
+    except (TypeError, ValueError):
+        return new
+    held = state.setdefault('mrp_hold', {})
+    if o >= float(env('MRP_DROP_MIN', '20')) and n < o * (1 - float(env('MRP_DROP_PCT', '80')) / 100):
+        ok = (state.get('mrp_ok') or {}).get(pn)
+        if ok is not None and abs(float(ok) - n) < 0.01:
+            held.pop(pn, None)
+            return new
+        held[pn] = {'old': old, 'new': new, 'name': name, 'since': (held.get(pn) or {}).get('since') or today()}
+        if rep is not None:
+            rep.add('Shak wala MRP (purana rakha)', f'{pn} {name}: Rs {o:g} -> Rs {n:g} (brand ki list me {round(100 - 100 * n / o)}% gira; app me Rs {o:g} hi rahega jab tak aap haan na bolein)')
+        return old
+    held.pop(pn, None)
+    return new
+
+
 class Report:
     def __init__(self, brand):
         self.brand = brand

@@ -1,5 +1,5 @@
 // update 23f (Sam 2026-11-14 'sabhi'): every detail of Bajaj's dealer system (DMS) Part List reaches the Bajaj catalogue: HSN, GST, part group and
-// 'not serviceable' in a catalogue line's remarks, the list's own alternate column as alternates, and parts no edition has as 'Bajaj DMS parts (not in catalogue)'
+// 'not serviceable' in a catalogue line's remarks, the list's own alternate column as alternates, (parts no edition has are listed by 23k)
 // usage: node tools/test_bajajdms.mjs   (no server: bajajDms + buildBajaj on a small made-up Bajaj folder)
 import fs from 'node:fs'; import zlib from 'node:zlib';
 import { bajajDms, buildBajaj } from '../lib/bajajbuild.mjs';
@@ -34,7 +34,7 @@ const { cat: d } = buildBajaj(D);
 const row = pn => d.d.filter(r => r[5] === pn);
 ok(/HSN 87141090; GST 28%; Group BAL Parts/.test(row('PD511536')[0][8]) && !/Not serviceable/.test(row('PD511536')[0][8]), 'a catalogue line shows its HSN, GST and group');
 ok(/New no\. DK101099/.test(row('DK101010')[0][8]), 'the alternates list still gives the new number');
-const v = d.vars.indexOf('Bajaj DMS parts (not in catalogue)'), plug = row('01100314')[0];
-ok(v > 0 && d.vmod[d.vars[v]] === 'Other Bajaj (no model name)' && plug && plug[11][0] === v && d.desc[plug[6]] === 'PLUG' && /Not serviceable \(Bajaj DMS\)/.test(plug[8]) && d.mrp['01100314'] === 0.57, 'a part only the DMS has: listed with its name, MRP, details, under Other Bajaj');
-ok(/Alternate no\. JL171099/.test(row('JL171023')[0][8]) && !row('PD511536').some(r => r[11].includes(v)), "the Part List's own alternate column is an alternate; a catalogue part is not listed again");
+const plug = row('01100314')[0], v = plug && plug[11][0];
+ok(plug && d.vmod[d.vars[v]] === 'Other Bajaj (no model name)' && /dealer part list/.test(d.vars[v]) && d.desc[plug[6]] === 'PLUG' && /Not serviceable \(Bajaj DMS\)/.test(plug[8]) && /HSN 87081090; GST 18%/.test(plug[8]) && d.mrp['01100314'] === 0.57, "a part only the DMS has (23k's dealer part list lines): name, MRP and the 23f details, under Other Bajaj");
+ok(/Alternate no\. JL171099/.test(row('JL171023')[0][8]) && row('PD511536').every(r => r[11][0] !== v) && row('01100314').length === 1, "the Part List's own alternate column is an alternate; a catalogue part is not listed again; a DMS-only part once");
 console.log(fails ? fails + ' failed' : 'all passed'); process.exit(fails ? 1 : 0);

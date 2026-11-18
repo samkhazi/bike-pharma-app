@@ -18,7 +18,7 @@ Server update: YAMAHA_MRP_WEBHOOK (+ YAMAHA_MRP_WEBHOOK_TOKEN) gets MRP changes 
 """
 import os, re, csv, json, gzip, time, html, base64, secrets, logging, threading, collections
 from notify import send_code_link
-from common import env, data_dir, load_json, save_json, today, Report
+from common import env, data_dir, load_json, save_json, today, Report, mrp_guard
 
 log = logging.getLogger('brand_sync.yamaha')
 BASE = os.environ.get('YAMAHA_BASE', 'https://www.pymidol.com')
@@ -83,7 +83,7 @@ window.yKits = async () => {
   }
   return out;
 };
-window.yPI = async to => (await yCall('/spare-parts/spm1301/retrieve', {sysOwnerCd: 'IYM', modelCd: null, releaseDate: '19900101', releaseDateTo: to, user: yUser()})).data || [];
+window.yPI = async to => (await yCall('/spare-parts/spm1301/retrieve', {sysOwnerCd: 'IYM', modelCd: null, releaseDate: '19000101', releaseDateTo: to, user: yUser()})).data || [];
 window.yCirc = async () => (await yCall('/spare-parts/pza0301/initial', {sysOwnerCd: 'IYM', moduleCd: '2', userModel: yUser()})).data || [];
 window.yDSA = async () => (await yCall('/spare-parts/svt0801/retrieve', {user: yUser(), serviceDaNo: null, modelCd: null, fromDate: null,
   toDate: null, priority: null, serviceActionType: null, status: null})).data || [];
@@ -359,6 +359,7 @@ class Yamaha:
                 rep.add('Naya part number', f"{pn} {new[pn]['name']} MRP {new[pn]['mrp']}")
             for pn, v in sorted(new.items()):
                 o = st['mrp'].get(pn)
+                if o: v['mrp'] = mrp_guard(st, rep, pn, o.get('mrp'), v['mrp'], v['name'])
                 if o and v['mrp'] is not None and o.get('mrp') is not None and abs(v['mrp'] - o['mrp']) >= 0.5:
                     self.changes.append({'part_no': pn, 'old_mrp': o['mrp'], 'new_mrp': v['mrp'], 'name': v['name']})
             for c in self.changes[:300]:
@@ -416,7 +417,19 @@ class Yamaha:
             if not known('pi', k, d, k in sb or f"{row['model']}|{d}" in sm):
                 todo['pi|' + k] = row
                 rep.add('Naya model catalogue (PDF)' if cat else 'Naya Part Information bulletin', f"{row['model']} {row['name']} {row['title']} ({d})")
+            if (st['pi'].get(k) or {}).get('gone'): row['gone'] = 1
             st['pi'][k] = row
+        # 23l (Sam 2026-11-16: pymidol has the catalogues back to 1986, ours are not all there): the first run took every catalogue older than the
+        # seed day as already in the Mac folder, and the list was asked only from 1990. A model catalogue that is neither in the seed (the Mac
+        # folder) nor in output/Yamaha/PDF/Models is downloaded now, old ones too.
+        if seed is not None or st.get('last_run') or full:
+            have = set(os.listdir(self.out('PDF', 'Models')))
+            for k, row in st['pi'].items():
+                if not row.get('cat') or not row.get('file') or 'pi|' + k in todo or row.get('gone'): continue
+                if k in sb or f"{row['model']}|{row['date']}" in sm: continue
+                if safe(f"{row['model']} {row['name']} ({row['date']})") + (os.path.splitext(row['file'])[1] or '.pdf') in have: continue
+                todo['pi|' + k] = row
+                rep.add('Purana model catalogue (PDF) jo hamare paas nahi tha', f"{row['model']} {row['name']} {row['title']} ({row['date']})")
         sc = set(seed['circulars']) if seed else set()
         for r in circ:
             k = f"{r.get('description') or ''}|{r.get('publishDate') or ''}"
@@ -502,6 +515,7 @@ class Yamaha:
                         'dsa': f"DSA {key.split('|', 1)[1]}: {', '.join(f[0] for f in row.get('files', []))}"}[kind]
                 if row['tries'] >= 3:
                     todo.pop(key, None)
+                    if kind == 'pi' and key.split('|', 1)[1] in st['pi']: st['pi'][key.split('|', 1)[1]]['gone'] = 1   # 23l: not asked again by the old-catalogue check
                     bad.append(f'{what} (3 baar try kiya, pymidol file nahi de raha)')
                 else:
                     bad.append(f'{what} (agle run me dobara)')

@@ -31,7 +31,7 @@ import { spawn } from 'node:child_process';
 import { HERO_RAW, HERO_OPT, HERO_XL } from './lib/herobuild.mjs';
 import { HONDA_RAW } from './lib/hondabuild.mjs';
 import { BAJAJ_RAW, BAJAJ_ALT, isBajajDms, bajajDmsFiles } from './lib/bajajbuild.mjs';
-import { YAMAHA_RAW } from './lib/yamahabuild.mjs';
+import { YAMAHA_RAW, isYamahaExtra, extraFiles, isYamahaExtraDg, extraDgFiles } from './lib/yamahabuild.mjs';
 import { RE_RAW } from './lib/rebuild.mjs';
 import { TVS_RAW, TVS_ZIP, TVS_MORE } from './lib/tvsbuild.mjs';
 import { KTM_RAW, KTM_MRP } from './lib/ktmbuild.mjs';
@@ -112,7 +112,7 @@ function bajajBuild(why) {
 }
 function yamahaBuild(why) {
   if (!YAMAHA_RAW.every(f => fs.existsSync(path.join(YAMAHA_DIR, f)))) return false;
-  const src = [...YAMAHA_RAW.map(f => path.join(YAMAHA_DIR, f)), path.join(PUBLIC_DIR, 'app.html'), path.join(ROOT, 'lib', 'yamahabuild.mjs'), path.join(ROOT, 'lib', 'herobuild.mjs'), path.join(HERO_SYNC_DIR, 'yamaha', 'state.json'), path.join(HERO_SYNC_DIR, 'yamaha', 'ypec', 'done.json')];   // 19l: + YPEC's number places
+  const src = [...[...YAMAHA_RAW, ...extraFiles(YAMAHA_DIR), ...extraDgFiles(YAMAHA_DIR)].map(f => path.join(YAMAHA_DIR, f)), path.join(PUBLIC_DIR, 'app.html'), path.join(ROOT, 'lib', 'yamahabuild.mjs'), path.join(ROOT, 'lib', 'herobuild.mjs'), path.join(HERO_SYNC_DIR, 'yamaha', 'state.json'), path.join(HERO_SYNC_DIR, 'yamaha', 'ypec', 'done.json')];   // 19l: + YPEC's number places
   if (why === 'sync' && catQ.some(q => q[0] === 'yamaha')) return false;
   if ((why === 'start' || why === 'sync') && mtime(path.join(HERO_OUT, 'yamaha.json')) > Math.max(...src.map(mtime))) return false;
   catBuild('yamaha', why, [path.join(ROOT, 'lib', 'yamahabuild.mjs'), PUBLIC_DIR, YAMAHA_DIR, HERO_OUT, HERO_SYNC_DIR]);
@@ -683,7 +683,7 @@ async function catUpload(req, res, url, user) {
   catBusy.delete(abs);
   let have = sizeOf(part);
   if (have !== off + len) { try { fs.truncateSync(part, off); } catch (x) {} return json(res, 400, { error: 'The piece did not arrive whole, sending it again', have: off }); }
-  if (have === size) { fs.renameSync(part, abs); console.log(new Date().toISOString(), 'catalogue file uploaded', rel, size, 'by', user.id); if (abs.startsWith(HERO_RAW_DIR + path.sep) || abs.startsWith(HERO_XL_DIR + path.sep) || abs === path.join(HERO_PDF_DIR, 'hero_pdf_index.json')) heroBuild('upload'); if (path.dirname(abs) === HONDA_DIR && HONDA_RAW.includes(path.basename(abs))) hondaBuild('upload'); if (path.dirname(abs) === BAJAJ_DIR && [...BAJAJ_RAW, BAJAJ_ALT].includes(path.basename(abs))) bajajBuild('upload'); if (path.dirname(abs) === BAJAJ_DIR && path.basename(abs) === BAJAJ_ALT) ktmBuild('upload'); if (path.dirname(abs) === BAJAJ_DIR && isBajajDms(path.basename(abs))) { bajajBuild('upload'); ktmBuild('upload'); xrefBuild('upload'); } if (path.dirname(abs) === YAMAHA_DIR && YAMAHA_RAW.includes(path.basename(abs))) yamahaBuild('upload'); if (path.dirname(abs) === RE_DIR && RE_RAW.includes(path.basename(abs))) reBuild('upload'); if (path.dirname(abs) === TVS_DIR && [...TVS_RAW, TVS_ZIP, ...TVS_MORE].includes(path.basename(abs))) tvsBuild('upload'); if (path.dirname(abs) === KTM_DIR && [...KTM_RAW, KTM_MRP].includes(path.basename(abs))) ktmBuild('upload'); return json(res, 200, { have, done: true }); }
+  if (have === size) { fs.renameSync(part, abs); console.log(new Date().toISOString(), 'catalogue file uploaded', rel, size, 'by', user.id); if (abs.startsWith(HERO_RAW_DIR + path.sep) || abs.startsWith(HERO_XL_DIR + path.sep) || abs === path.join(HERO_PDF_DIR, 'hero_pdf_index.json')) heroBuild('upload'); if (path.dirname(abs) === HONDA_DIR && HONDA_RAW.includes(path.basename(abs))) hondaBuild('upload'); if (path.dirname(abs) === BAJAJ_DIR && [...BAJAJ_RAW, BAJAJ_ALT].includes(path.basename(abs))) bajajBuild('upload'); if (path.dirname(abs) === BAJAJ_DIR && path.basename(abs) === BAJAJ_ALT) ktmBuild('upload'); if (path.dirname(abs) === BAJAJ_DIR && isBajajDms(path.basename(abs))) { bajajBuild('upload'); ktmBuild('upload'); xrefBuild('upload'); } if (path.dirname(abs) === YAMAHA_DIR && (YAMAHA_RAW.includes(path.basename(abs)) || isYamahaExtra(path.basename(abs)) || isYamahaExtraDg(path.basename(abs)))) yamahaBuild('upload'); if (path.dirname(abs) === RE_DIR && RE_RAW.includes(path.basename(abs))) reBuild('upload'); if (path.dirname(abs) === TVS_DIR && [...TVS_RAW, TVS_ZIP, ...TVS_MORE].includes(path.basename(abs))) tvsBuild('upload'); if (path.dirname(abs) === KTM_DIR && [...KTM_RAW, KTM_MRP].includes(path.basename(abs))) ktmBuild('upload'); return json(res, 200, { have, done: true }); }
   return json(res, 200, { have, done: false });
 }
 
@@ -782,7 +782,18 @@ function hotYpec(u) {
   return c[2].filter(p => Array.isArray(p) && /^[A-Z0-9-]{1,8}$/i.test(String(p[0])) && p.slice(1, 5).every(v => typeof v === 'number'))
     .map(([t, x0, y0, x1, y1]) => [String(t).toUpperCase(), q(x0 / w), q(y0 / h), q(x1 / w), q(y1 / h), 1]);
 }
+// 23u: a Yamaha book read from its PDF's own text carries the checked place of every number on its diagrams (the Yamaha build keeps them in
+// cat/yamaha-hot.json {diagram: [[number, x0, y0, x1, y1]]}, fractions of the diagram)
+let HOT_YB = { m: -1, d: {} };
+function hotYamahaBook(u) {
+  const f = path.join(HERO_OUT, 'yamaha-hot.json'); let t = 0; try { t = fs.statSync(f).mtimeMs; } catch (e) { return null; }
+  if (t !== HOT_YB.m) { try { HOT_YB = { m: t, d: JSON.parse(fs.readFileSync(f, 'utf8')) || {} }; } catch (e) { HOT_YB = { m: t, d: {} }; } }
+  const c = HOT_YB.d[u]; if (!Array.isArray(c) || !c.length) return null;
+  const q = v => Math.round(Math.min(1, Math.max(0, v)) * 1e4) / 1e4;
+  return c.filter(p => Array.isArray(p) && p.length >= 5 && /^[A-Z0-9-]{1,8}$/i.test(String(p[0])) && p.slice(1, 5).every(v => typeof v === 'number' && v >= 0 && v <= 1)).map(([t, x0, y0, x1, y1]) => [String(t).toUpperCase(), q(x0), q(y0), q(x1), q(y1), 1]);
+}
 function hotSite(u) {
+  if (u.startsWith('pdf:catalogues/yamaha/') || u.startsWith('pf:catalogues/yamaha/yamaha_extra')) return hotYamahaBook(u);
   if (/^pf:catalogues\/hero-sync\/yamaha\/ypec\/img\//.test(u)) return hotYpec(u);
   if (!/^pf:catalogues\/hero-sync\/bajaj\/img\//.test(u)) return hotHonda(u);
   const m = /^pf:catalogues\/hero-sync\/bajaj\/img\/([^/:]+):\d+:\d+$/.exec(u); if (!m) return null;

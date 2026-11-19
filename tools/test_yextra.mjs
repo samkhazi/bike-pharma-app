@@ -63,6 +63,12 @@ try {
   const yc = buildYamaha(D), v7 = String(yc.cat.vars.findIndex(x => x.includes(' · KEY7 ')));
   ok(yc.dg.f[yc.dg.p[v7]['1']] === v && yc.dg.p[v7]['2'] == null && yc.dg.f[yc.dg.p[v7]['3']] === 'pdf:catalogues/hero-sync/yamaha/ypec/pdf/K7.PDF:0:5:4:0,0,0.5,1' && yc.cat.d.some(r => r[5] === 'KEY-E4711-00' && r[1] === -2),
     'a second book shares the zip: drawing-only fig shows it, a fig with no diagram is a list, a page-only fig shows its page in the YPEC folder');
+  // 23w: YPEC's own list (pdfbooks.json) says which model codes a book belongs to, and names a code the files do not
+  const SY = T + '/sync23w'; fs.mkdirSync(SY + '/yamaha/ypec', { recursive: true });
+  fs.writeFileSync(SY + '/yamaha/ypec/pdfbooks.json', JSON.stringify({ books: { K7: { file: 'K7.PDF', size: 5, pages: 9 } }, models: { KEY8: { name: 'YD9 / RX135', year: 2002, cats: ['K7'] }, KEY9: { name: 'ZZ1 / NEWBIKE', year: 2003, cats: ['OTHER'] } } }));
+  const yw = buildYamaha(D, 'catalogues/yamaha', { sync: SY }), v8 = yw.cat.vars.findIndex(x => x.includes(' · KEY8 '));
+  ok(v8 >= 0 && /^RX135 · KEY8 /.test(yw.cat.vars[v8]) && yw.cat.d.some(r => r[5] === 'KEY-E4711-00' && r[11].includes(v8)) && yw.info.extraCodes === 1 && !yw.cat.vars.some(x => x.includes(' · KEY9 ')) && yc.info.extraCodes == null,
+    "23w: a code YPEC lists for the book's catalogue no. gets the book and the bike's name; a code of another book does not");
   fs.rmSync(D + '/yamaha_extra_rx135_456.json');
   const mf = JSON.parse(fs.readFileSync('public/cat/more-files.json', 'utf8')).sets.find(s => s.dir === 'catalogues/yamaha');
   ok(mf.files.some(f => f[0] === 'yamaha_extra_rx135.json' && f[1] === 113707) && mf.files.some(f => f[0] === 'yamaha_extra_rx135_dg.zip' && f[1] === 18625200) && mf.files.some(f => f[0] === 'yamaha_extra_rx135_456.json' && f[1] === 292133) && mf.files.some(f => f[0] === 'yamaha rx135.pdf' && f[1] === 1744328), 'upload card lists the RX135 book and its file');

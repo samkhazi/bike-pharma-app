@@ -98,6 +98,8 @@ function vl_me() {
                 $me = array('name' => (string)$x['n'], 'role' => 'mechanic', 'admin' => false, 'pin' => true);
         }
     }
+    // No PIN set = the page is open: anyone with the link can enter prices.
+    if (!$me && !vl_get('pin')) $me = array('name' => 'Mechanic', 'role' => 'mechanic', 'admin' => false, 'pin' => false);
     return $me;
 }
 function vl_cookie($val, $exp) {

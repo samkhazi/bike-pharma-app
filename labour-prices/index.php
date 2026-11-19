@@ -148,10 +148,10 @@ function home(v){
   v.appendChild(g);
   const p=el('div','tools');
   const a=el('button','btn','+ Add vehicle');a.onclick=()=>go({v:'add'});p.appendChild(a);
-  if(ME&&ME.admin){const k=el('button','btn',PINSET?'Change mechanic PIN':'Set mechanic PIN');k.onclick=()=>{S.panel=S.panel==='pin'?null:'pin';render()};p.appendChild(k)}
+  if(ME&&ME.admin){const k=el('button','btn',PINSET?'Change or remove PIN':'Lock with a PIN');k.onclick=()=>{S.panel=S.panel==='pin'?null:'pin';render()};p.appendChild(k)}
   v.appendChild(p);
   if(S.panel==='pin')v.appendChild(pPin());
-  if(ME&&ME.admin&&!PINSET&&S.panel!=='pin')v.appendChild(el('div','note','The mechanic PIN is not set. Tap "Set mechanic PIN", then give the mechanic this page link and the PIN.'));
+  if(ME&&ME.admin&&!PINSET&&S.panel!=='pin')v.appendChild(el('div','note','This page is open: anyone with the link can enter prices without a login.'));
   v.appendChild(el('div','note',done+' of '+all.length+' vehicles have your prices. The others keep the old cc-wise price until you change them.'));
 }
 function brand(v){
@@ -258,11 +258,11 @@ $('expBtn').onclick=()=>{if(S.v!=='export')go({v:'export',from:S.v==='edit'?'bra
 $('saveBtn').onclick=()=>{if(dirty)flush();else if(!saved[S.vid]){dirty=true;flush()}else status('Saved ✓','ok')};
 $('nextBtn').onclick=async()=>{if(!saved[S.vid])dirty=true;await flush();const l=byBrand(S.brand),i=l.findIndex(x=>x.id===S.vid),n=l[i+1];if(n)open(n.id);else go({v:'brand'})};
 document.addEventListener('visibilitychange',()=>{if(document.hidden)flush()});
-function pPin(){const p=el('div','panel');p.append(el('h3',null,'Mechanic PIN'),el('p',null,'The mechanic opens this page link, types a name and this PIN, and can then enter prices. Changing the PIN logs out everyone who used the old one.'));
+function pPin(){const p=el('div','panel');p.append(el('h3',null,'Lock with a PIN'),el('p',null,'Without a PIN the page is open to anyone with the link. With a PIN, the mechanic types a name and the PIN first.'));
   const i=el('input');i.type='text';i.inputMode='numeric';i.maxLength=8;i.placeholder='New PIN (4 to 8 digits)';i.autocomplete='off';
   const er=el('p'),g=el('button','btn y','Save PIN');
   g.onclick=async()=>{try{await api('setpin',{pin:i.value.trim()});PINSET=true;S.panel=null;render();note('PIN saved. Give the mechanic this page link and the PIN.')}catch(e){er.textContent=e.message}};
-  p.append(i,er,g);return p}
+  p.append(i,er,g);if(PINSET){const x=el('button','btn','Remove PIN (open page)');x.style.marginLeft='8px';x.onclick=async()=>{try{await api('setpin',{pin:''});PINSET=false;S.panel=null;render()}catch(e){er.textContent=e.message}};p.appendChild(x)}return p}
 function showLogin(){clearTimeout(timer);S.v='login';$('foot').classList.add('hide');$('back').classList.add('hide');$('expBtn').classList.add('hide');$('who').classList.add('hide');
   const t=$('ttl');t.textContent='';t.append('Labour Prices',el('small',null,'Bike Surgeon'));note('');
   const v=$('view');v.textContent='';const p=el('div','panel');p.append(el('h3',null,'Login'),el('p',null,'Type your name and the PIN given by the owner.'));

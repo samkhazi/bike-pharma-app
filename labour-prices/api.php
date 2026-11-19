@@ -99,6 +99,7 @@ if ($a === 'addveh') {
 if ($a === 'setpin') {
     if (!$me['admin']) vl_fail(403, 'Only the owner can set the PIN.');
     $pin = isset($in['pin']) ? trim((string)$in['pin']) : '';
+    if ($pin === '') { $d->q("DELETE FROM vehicle_labour_settings WHERE k='pin'"); out(array()); }
     if (!preg_match('/^\d{4,8}$/', $pin)) vl_fail(400, 'The PIN must be 4 to 8 digits.');
     vl_set('pin', password_hash($pin, PASSWORD_DEFAULT));
     out(array());

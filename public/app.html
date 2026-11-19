@@ -5043,11 +5043,14 @@ function m2FamV(p){const {vb,fam}=p;catLoad(vb);const ld=m2Ld(vb);const a=(BRAND
  return `${m2Head(esc(fam)+' — choose engine size',a.length+' '+esc(vb)+' '+esc(fam)+' models in the catalogue.')}${ld==='wait'?m2Wait(vb):ld==='err'?m2Err(vb):''}<div class="stack g8 m2-cards">${a.map(row).join('')}</div>`;}
 function m2Year(p){const {vb,vm}=p;catLoad(vb);const ld=m2Ld(vb,vm);const head=m2Head(esc(vb)+' '+esc(vm)+' Spare Parts — choose model year','');
  if(ld==='wait')return head+m2Wait(vb);if(ld==='err')return head+m2Err(vb);
- const V=fpVers(vb,vm);const ys=V==='wait'||V==='err'?[]:V.map(g=>g.lab);
+ const V=fpVers(vb,vm);let ys=V==='wait'||V==='err'?[]:V.map(g=>g.lab);
  /* 23p: Yamaha's chassis search names the model code and the colour type: that code's book opens with that colour picked */
  if(p.vmc&&V!=='wait'&&V!=='err'){const has=v=>String(v).includes(' · '+p.vmc+' '),g=V.find(g=>g.vs.some(has));if(g){const v=g.vs.find(has);if(!p.ycd){p.ycd=1;S.ui.ycv=v;const c=ycCols(vb,v);if(p.vct&&c&&c.some(x=>x[0]===p.vct))S.ui.ycol={...(S.ui.ycol||{}),[v]:p.vct};}Object.assign(p,{v:'secs',yr:'Any',ed:g.lab});return m2SecsV(p);}}
  /* 23q: a bike with a scanned book: the book is listed with the bike's part lists (alone, it opens straight away) */
  const sb=V==='wait'||V==='err'?[]:ysBooks(vb,vm);
+ /* 23s (Sam 2026-11-19, RX135 '2014 · 4TL5 RX 135 4 GEAR ( -12)' opened with 0 sections, 0 parts and hid the scanned book): a book with no part
+    list in it is not offered when the bike has a scanned book or another book with parts */
+ {const full=ys.filter(y=>{const sc=catScope(m2A({vb,vm,ed:y}));return !!sc&&(sc.loading||sc.rows.length>0);});if(full.length<ys.length&&(full.length||sb.length))ys=full;}
  if(sb.length&&p.vmc){const x=sb.find(x=>x[1]===p.vmc);if(x)return m2ScanV({...p,sc:x[1]});}
  if(sb.length&&!p.vin&&!p.rcn){if(!ys.length&&sb.length===1&&sb[0][4].length===1)return m2ScanV({...p,sc:sb[0][1]});
   const go1=(a,h,c)=>`<button class="m2-row" onclick="go('findpart',${a})"><div class="grow"><div class="h3">${h}</div><div class="cap">${c}</div></div>${ic('chevR','s18')}</button>`;

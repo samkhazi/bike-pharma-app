@@ -3,9 +3,9 @@ import { spawn } from 'node:child_process'; import fs from 'node:fs';
 let fails=0; const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m); if(!c)fails++;};
 const R='/home/user/bike-pharma-app', T='/tmp/claude-0/bptest-ys'; fs.rmSync(T,{recursive:true,force:true});
 const D=T+'/pf/catalogues/yamaha', YP=T+'/pf/catalogues/hero-sync/yamaha/ypec'; fs.mkdirSync(D,{recursive:true}); fs.mkdirSync(YP+'/models',{recursive:true}); fs.mkdirSync(YP+'/pdf',{recursive:true});
-const NEW="DM49 YZF155D-A (2026-09-12).pdf"; fs.writeFileSync(D+'/'+NEW,'%PDF-1.4 test');
-fs.writeFileSync(D+'/yamaha_build.json',JSON.stringify({v:1,books:[{file:NEW,size:13,date:'2026-09-12',title:'YZF155D-A',codes:['DM49'],figs:[{fig:'1',name:'CYLINDER HEAD',page:7,crop:'0,0,0.48,1',codes:['DM49'],rows:[['1','B0T-E1102-10','CYLINDER HEAD ASSY',{DM49:'1'},'']]}]}],
- names:{DM49:'R15 V4'},mrp:{B0TE11021000:5290},sup:[],kits:[],colours:{}}));
+const NEW="DM49 YZF155D-A (2026-09-12).pdf"; fs.writeFileSync(D+'/'+NEW,'%PDF-1.4 test'); fs.writeFileSync(D+'/4TL5 RX 135 4 GEAR ( -12) (2014).pdf','%PDF-1.4 test');
+fs.writeFileSync(D+'/yamaha_build.json',JSON.stringify({v:1,books:[{file:NEW,size:13,date:'2026-09-12',title:'YZF155D-A',codes:['DM49'],figs:[{fig:'1',name:'CYLINDER HEAD',page:7,crop:'0,0,0.48,1',codes:['DM49'],rows:[['1','B0T-E1102-10','CYLINDER HEAD ASSY',{DM49:'1'},'']]}]},{file:'4TL5 RX 135 4 GEAR ( -12) (2014).pdf',size:13,date:'2014',title:'RX 135 4 GEAR ( -12)',codes:['4TL5'],figs:[]}],
+ names:{DM49:'R15 V4','4TL5':'RX135'},mrp:{B0TE11021000:5290},sup:[],kits:[],colours:{}}));
 fs.writeFileSync(YP+'/coords.json','{}');
 const b0=await chromium.launch();{const p=await b0.newPage();
  for(const [n,k] of [['1436L470E1',3],['1036L470E1',2],['104TL470E1',2]]){await p.setContent(Array.from({length:k},(_,i)=>'<div style="page-break-after:always;font:40px sans-serif"><h1>BOOK '+n+' PAGE '+(i+1)+'</h1><p>1 36L-11111-00 CYLINDER HEAD</p></div>').join(''));await p.pdf({path:YP+'/pdf/'+n+'.PDF',format:'A4'});}await p.close();}

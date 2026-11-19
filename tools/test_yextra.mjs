@@ -55,7 +55,16 @@ try {
   ok(h3.site === 1 && !h3.need && h3.toks.length === 2 && h3.toks[0].join() === '1,0.1,0.1,0.15,0.14,1', 'the drawing answers with the checked places');
   const pfr = await fetch(BASE + '/api/files/read?path=' + encodeURIComponent('catalogues/yamaha/yamaha_extra_rx135_dg.zip') + '&offset=' + pad.length + '&length=' + svg.length, { headers: { cookie } });
   ok(pfr.status === 200 && (await pfr.text()) === svg, 'the app reads the drawing out of the zip');
+  // 23v: another book (its PDF in the YPEC folder) shares that zip; a fig with only the drawing (no page of its own) still shows it
+  fs.writeFileSync(D + '/yamaha_extra_rx135_456.json', JSON.stringify({ v: 1, names: { KEY7: 'RX135' }, books: [{ file: 'K7.PDF', rel: 'catalogues/hero-sync/yamaha/ypec/pdf', size: 5, date: '2001', title: 'RX 135 PARTS CATALOGUE', codes: ['KEY7'], all: 1, dg: X.books[0].dg, figs: [
+    { fig: '1', name: 'CYLINDER', codes: ['KEY7'], svg: [pad.length, svg.length], hot: [['1', 0.1, 0.1, 0.15, 0.14]], rows: [['1', 'KEY-E1111-20', 'CYLINDER HEAD', { KEY7: '1' }, '']] },
+    { fig: '2', name: 'EXHAUST', codes: ['KEY7'], rows: [['1', 'KEY-E4711-00', 'MUFFLER', { KEY7: '1' }, '']] },
+    { fig: '3', name: 'CLUTCH', codes: ['KEY7'], page: 4, crop: '0,0,0.5,1', rows: [['1', 'KEY-E6111-00', 'GEAR', { KEY7: '1' }, '']] }] }] }));
+  const yc = buildYamaha(D), v7 = String(yc.cat.vars.findIndex(x => x.includes(' · KEY7 ')));
+  ok(yc.dg.f[yc.dg.p[v7]['1']] === v && yc.dg.p[v7]['2'] == null && yc.dg.f[yc.dg.p[v7]['3']] === 'pdf:catalogues/hero-sync/yamaha/ypec/pdf/K7.PDF:0:5:4:0,0,0.5,1' && yc.cat.d.some(r => r[5] === 'KEY-E4711-00' && r[1] === -2),
+    'a second book shares the zip: drawing-only fig shows it, a fig with no diagram is a list, a page-only fig shows its page in the YPEC folder');
+  fs.rmSync(D + '/yamaha_extra_rx135_456.json');
   const mf = JSON.parse(fs.readFileSync('public/cat/more-files.json', 'utf8')).sets.find(s => s.dir === 'catalogues/yamaha');
-  ok(mf.files.some(f => f[0] === 'yamaha_extra_rx135.json' && f[1] === 113707) && mf.files.some(f => f[0] === 'yamaha_extra_rx135_dg.zip' && f[1] === 18625200) && mf.files.some(f => f[0] === 'yamaha rx135.pdf' && f[1] === 1744328), 'upload card lists the RX135 book and its file');
+  ok(mf.files.some(f => f[0] === 'yamaha_extra_rx135.json' && f[1] === 113707) && mf.files.some(f => f[0] === 'yamaha_extra_rx135_dg.zip' && f[1] === 18625200) && mf.files.some(f => f[0] === 'yamaha_extra_rx135_456.json' && f[1] === 292133) && mf.files.some(f => f[0] === 'yamaha rx135.pdf' && f[1] === 1744328), 'upload card lists the RX135 book and its file');
 } finally { srv.kill(); }
 console.log(fails ? `\n${fails} FAILED` : '\nall passed'); process.exit(fails ? 1 : 0);

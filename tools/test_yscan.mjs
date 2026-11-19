@@ -4,7 +4,7 @@ let fails=0; const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m); if(!c)fails++;
 const R='/home/user/bike-pharma-app', T='/tmp/claude-0/bptest-ys'; fs.rmSync(T,{recursive:true,force:true});
 const D=T+'/pf/catalogues/yamaha', YP=T+'/pf/catalogues/hero-sync/yamaha/ypec'; fs.mkdirSync(D,{recursive:true}); fs.mkdirSync(YP+'/models',{recursive:true}); fs.mkdirSync(YP+'/pdf',{recursive:true});
 const NEW="DM49 YZF155D-A (2026-09-12).pdf"; fs.writeFileSync(D+'/'+NEW,'%PDF-1.4 test'); fs.writeFileSync(D+'/4TL5 RX 135 4 GEAR ( -12) (2014).pdf','%PDF-1.4 test');
-fs.writeFileSync(D+'/yamaha_build.json',JSON.stringify({v:1,books:[{file:NEW,size:13,date:'2026-09-12',title:'YZF155D-A',codes:['DM49'],figs:[{fig:'1',name:'CYLINDER HEAD',page:7,crop:'0,0,0.48,1',codes:['DM49'],rows:[['1','B0T-E1102-10','CYLINDER HEAD ASSY',{DM49:'1'},'']]}]},{file:'4TL5 RX 135 4 GEAR ( -12) (2014).pdf',size:13,date:'2014',title:'RX 135 4 GEAR ( -12)',codes:['4TL5'],figs:[]}],
+fs.writeFileSync(D+'/yamaha_build.json',JSON.stringify({v:1,books:[{file:NEW,size:13,date:'2026-09-12',title:'YZF155D-A',codes:['DM49'],figs:[{fig:'1',name:'CYLINDER HEAD',page:7,crop:'0,0,0.48,1',codes:['DM49'],rows:[['1','B0T-E1102-10','CYLINDER HEAD ASSY',{DM49:'1'},'']]}]},{file:'4TL5 RX 135 4 GEAR ( -12) (2014).pdf',size:13,date:'2014',title:'RX 135 4 GEAR ( -12)',codes:['4TL5','KEY1'],figs:[{fig:'1',name:'CYLINDER',page:3,crop:'0,0,1,1',codes:['4TL5'],rows:[]},{fig:'2',name:'CRANKCASE',page:4,crop:'0,0,1,1',codes:['4TL5'],rows:[]}]}],
  names:{DM49:'R15 V4','4TL5':'RX135'},mrp:{B0TE11021000:5290},sup:[],kits:[],colours:{}}));
 fs.writeFileSync(YP+'/coords.json','{}');
 const b0=await chromium.launch();{const p=await b0.newPage();
@@ -36,6 +36,9 @@ try{
  await p.waitForFunction(()=>{const e=document.querySelector('#vp .ysb-view .dg');return e&&e.classList.contains('on');},null,{timeout:60000}).then(()=>ok(true,W+'the page is drawn from the PDF'),()=>ok(false,W+'the page is drawn from the PDF'));
  const ar=await p.evaluate(()=>+getComputedStyle(document.querySelector('#vp .ysb-view .dg')).getPropertyValue('--ar'));
  ok(ar>0.6&&ar<0.8,W+'the whole A4 page is shown (ratio '+ar+')');
+ // 23t: the empty book opened by itself (the screen the app comes back to after a refresh) shows the bike's scanned book
+ await p.evaluate(()=>{reset(HOME[S.user.role]);go('findpart',{v:'secs',vb:'Yamaha',vm:'RX135',yr:'Any',ed:'2014 · 4TL5 RX 135 4 GEAR ( -12)'});});await p.waitForTimeout(1500);
+ t=await TX(); ok(/Scanned book/.test(t)&&/Page 1 of 2/.test(t)&&!/0 sections/.test(t),W+'the empty RX135 book opened by itself shows the scanned book '+t.slice(0,120));
  // RX100: two books: a list to choose from, then the book; pages, next, zoom
  await p.evaluate(()=>{reset(HOME[S.user.role]);go('findpart',{v:'year',vb:'Yamaha',vm:'RX100',yr:'Any'});});await p.waitForTimeout(1500);
  t=await TX();

@@ -10,10 +10,24 @@ Clutch repair kit; RCD21 for two bikes): the first keeps the code, the second ge
 import json, re, sys
 
 sp = lambda s: re.sub(r'\s+', ' ', str(s or '')).strip()
-ROW = re.compile(r'^\s*(R[A-Z]{1,3}) ?-? ?(\d+[A-Z]?)\s+(\S.*?)\s+(?:[\d,]+\.\d\d\s+)?(Piece|Set|Pair|Pkt|Nos|Dozen|Box)\b', re.I)
+ROW = re.compile(r'^\s*(R[A-Z]{1,3}) ?-? ?(\d+[A-Z]?)\s+(\S.*?)\s+(?:[\d,]+\.\d\d\s+)?(Piece|Set|Pair|Kit)\s+\d+\s*(?:Nos|Set)\.?\s*$', re.I)   # the name ends at the rate / unit / pack columns
 SEC = {'FRONT BREAK SWITCH': 'Front brake switch', 'CARBORATOR DISTANCE PLATE WITH "O" RING': 'Carburettor distance plate with O ring', 'CLUTCH REPAIR “U” BUSH (KAJU)': 'Clutch repair U bush (kaju)',
        'UPPER - DIPPER BUTTON': 'Upper dipper button', 'BAJAJ RE-3 WHEELER ACCESSORIES': 'Bajaj RE 3 wheeler accessories', 'HANDLE GRIP SET OF 3 MOULDED': 'Handle grip set of 3 moulded'}
 MK = [('ROYAL ENFIELD', 'Royal Enfield'), ('BULLET', 'Royal Enfield'), ('YAMAHA', 'Yamaha'), ('SUZUKI', 'Suzuki'), ('BAJAJ', 'Bajaj'), ('PULSAR', 'Bajaj'), ('TVS', 'TVS'), ('HONDA ACTIVA', 'Honda'), ('HERO', 'Hero')]
+
+# 24b (Sam 2026-11-20: "rex starter relay jupiter/wego" found nothing): the list misspells bikes ("TVS VEGO /JUPUTOR"). The name stays as
+# printed; the search text ('hay', also shown as the bikes it fits) carries the right spelling
+FIX = {'JUPUTOR': 'JUPITER', 'JUPITOR': 'JUPITER', 'VEGO': 'WEGO', 'CALIBOR': 'CALIBER', 'EXTREEM': 'XTREME', 'XTREM': 'XTREME', 'FALSHER': 'FLASHER', 'FASSION': 'FASCINO', 'FASSIONO': 'FASCINO',
+       'FASSINO': 'FASCINO', 'FAZZER': 'FAZER', 'HAZERD': 'HAZARD', 'HAZZERD': 'HAZARD', 'INDICATIOR': 'INDICATOR', 'INRETLOCK': 'INTERLOCK', 'KARIZAMA': 'KARIZMA', 'MASTERO': 'MAESTRO',
+       'NUTARAL': 'NEUTRAL', 'PLASURE': 'PLEASURE', 'PULSER': 'PULSAR', 'RECTIFIRE': 'RECTIFIER', 'RODEEO': 'RODEO', 'SLERK': 'SLEEK', 'SLEVE': 'SLEEVE', 'SPLANDOR': 'SPLENDOR', 'SPLENDAR': 'SPLENDOR',
+       'SPLENDER': 'SPLENDOR', 'WHELLER': 'WHEELER', 'YAMAH': 'YAMAHA', 'YEZEDI': 'YEZDI', 'COTTING': 'COATING', 'MOVEBLE': 'MOVABLE', 'STARCITY': 'STAR CITY', 'DEO': 'DIO', 'BACKELITE': 'BAKELITE'}
+FIX2 = [(r'\bP\. ?PRO\b', 'PASSION PRO'), (r'\bS(UPER)?\. ?SPL(ENDOR)?\b\.?', 'SUPER SPLENDOR'), (r'\bS\. ?PEP\b', 'SCOOTY PEP')]
+
+
+def right(nm):
+    t = nm.upper()
+    for x, y in FIX2: t = re.sub(x, y, t)
+    return sp(re.sub(r'[A-Z]+', lambda m: FIX.get(m.group(), m.group()), t))
 
 
 def main(rate_f, pic_f, out_f):
@@ -31,10 +45,10 @@ def main(rate_f, pic_f, out_f):
         if pn in seen and seen[pn] != sec: pn = pn + ' (' + sec + ')'
         if pn in seen: pn = pn.split(' (')[0] + ' (' + nm.title() + ')'   # RCD21 is printed for two bikes
         if pn in seen: lost.append(t); continue
-        seen[pn] = sec; u = nm.upper(); mks = []
+        seen[pn] = sec; u = right(nm); mks = []
         for k, v in MK:
             if k in u and v not in mks: mks.append(v)
-        rows.append({'pn': pn, 'nm': nm, 'mk': mks[0] if len(mks) == 1 else '', 'veh': '', 'sec': sec, 'mrp': 0, 'oem': [], 'fit': '', 'hay': nm})
+        rows.append({'pn': pn, 'nm': nm, 'mk': mks[0] if len(mks) == 1 else '', 'veh': '', 'sec': sec, 'mrp': 0, 'oem': [], 'fit': '', 'hay': u})
     n0 = len(rows); codes = []
     for c in re.findall(r'\bRSS-(\d+A?)\b', open(pic_f, errors='replace').read()):
         if c not in codes: codes.append(c)

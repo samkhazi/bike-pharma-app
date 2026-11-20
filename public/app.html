@@ -3639,6 +3639,12 @@ function sameFound(q){if(!sameOn())return '';const L=sameOf(q);if(!L.length)retu
 /* in Add product and while billing: what this number is the same as, with our stock of it */
 function sameNote(pn,act){if(!sameOn())return '';const L=sameOf(pn);if(!L.length)return '';
  return `<div class="card same-note" style="gap:8px"><div class="row"><span class="pill g">Same part in another brand</span></div>${L.map(e=>{const x=sameProd(e.pn),n=x?DB.stock[x.id]||0:0;return `<div class="row wrap" style="gap:6px;align-items:center"><span class="grow" style="min-width:0">${sameTxt(e)}</span>${sameStock(e)}${act&&x&&n>0?`<button class="btn sm" onclick="${act}('${x.id}')">Add this</button>`:''}</div>`;}).join('')}<p class="cap" style="margin:0">Marked as the same part by staff. Either number can be given.</p></div>`;}
+/* 23z (Sam 2026-11-20, Rolon "Csb Kit F121" found nothing in this sheet): an aftermarket list may keep the code printed on the box in the
+   part's name (Rolon: "Chain sprocket kit · CSB KIT F121 · chain ..."), its own number being the maker's system code. The typed code is
+   matched to a whole " · " piece of the name; only when none matches, to a piece that ends with it or that it ends with (6+ characters) */
+function amCodeHits(q){if(!AM)return [];const k=catPk(q);if(k.length<5)return [];const ex=[],nr=[];
+ AM.p.forEach((p,i)=>{const bs=String(p[2]||'').split(' · ').slice(1).map(catPk).filter(b=>b.length>=5&&/\d/.test(b));if(bs.includes(k))ex.push(i);else if(bs.some(b=>b.length>=6&&(b.endsWith(k)||k.endsWith(b))))nr.push(i);});
+ const seen=new Set();return (ex.length?ex:nr).slice(0,8).flatMap(i=>amHits(catPk(AM.p[i][1])).filter(h=>h.vb===AM.b[AM.p[i][0]])).filter(h=>!seen.has(h.vb+'|'+h.pk)&&seen.add(h.vb+'|'+h.pk));}
 let SAME_ASK=null;
 function sameAsk(pn,vb,name,ms){SAME_ASK={a:{pn,vb,name,ms:ms||[]},q:'',o:null,busy:0};sameSheet();}
 function sameSheet(){const A=SAME_ASK;if(!A)return;closeSheet();const o=A.o,hits=o?o.hits.filter(h=>catPk(h.pn)!==catPk(A.a.pn)||h.vb!==A.a.vb):[];
@@ -3648,7 +3654,7 @@ function sameSheet(){const A=SAME_ASK;if(!A)return;closeSheet();const o=A.o,hits
   :catPk(A.q)===catPk(A.a.pn)?`<div class="cap">No other brand has the number <b class="num">${esc(A.q)}</b>. Type the other brand's part number.</div>`:`<div class="cap"><b class="num">${esc(A.q)}</b> is not in the catalogues we have. You can still save it as the same part.</div><button class="btn line sm" onclick="sameSave(-1)">Save this number</button>`}
  <button class="btn line" onclick="closeSheet()">Close</button>`);setTimeout(()=>{const i=document.getElementById('same-q');if(i&&!A.busy&&!o)i.focus();},60);}
 function sameFind(){const A=SAME_ASK,el=document.getElementById('same-q');if(!A||!el)return;const q=el.value.trim();if(catPk(q).length<5){toast('Type the other part number');return;}
- A.q=q;A.o=null;A.busy=1;sameSheet();invLookWait(q,o=>{if(SAME_ASK!==A||A.q!==q)return;A.busy=0;A.o=o;setTimeout(()=>{if(SAME_ASK===A)sameSheet();},60);});}
+ A.q=q;A.o=null;A.busy=1;sameSheet();invLookWait(q,o=>{if(SAME_ASK!==A||A.q!==q)return;A.busy=0;A.o=o.hits.length?o:Object.assign({},o,{hits:amCodeHits(q)});setTimeout(()=>{if(SAME_ASK===A)sameSheet();},60);});}
 async function sameSave(i){const A=SAME_ASK;if(!A||!A.o)return;const hits=A.o.hits.filter(h=>catPk(h.pn)!==catPk(A.a.pn)||h.vb!==A.a.vb),h=i>=0?hits[i]:null;
  if(!h&&catPk(A.q)===catPk(A.a.pn)){toast('That is this part’s own number');return;}
  const b=h?{pn:h.pn,vb:h.vb,name:h.name,ms:(h.fits||[]).slice(0,6).map(v=>String(v).replace(/ \(.*$/,''))}:{pn:A.q.toUpperCase(),vb:'',name:'',ms:[]};

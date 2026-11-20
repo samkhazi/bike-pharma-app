@@ -368,13 +368,15 @@ async function api(req, res, url, user) {
     const pkk = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, ''), txt = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f<>]/g, ' ').trim().slice(0, n);
     const side = x => x && typeof x === 'object' ? { pn: txt(x.pn, 40), vb: txt(x.vb, 40), name: txt(x.name, 120), ms: (Array.isArray(x.ms) ? x.ms : []).slice(0, 8).map(v => txt(v, 60)).filter(Boolean) } : null;
     const a = side(body && body.a), b = side(body && body.b), ka = a ? pkk(a.pn) : '', kb = b ? pkk(b.pn) : '';
-    if (ka.length < 5 || kb.length < 5 || ka === kb) return json(res, 400, { error: 'Give two different part numbers' });
-    const key = [ka, kb].sort().join('|');
+    // 23y: an aftermarket maker may print the original number as its own; then the two brands must differ and the brands are part of the key
+    const twin = ka === kb, vk = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (ka.length < 5 || kb.length < 5 || (twin && !body.del && (!vk(a.vb) || !vk(b.vb) || vk(a.vb) === vk(b.vb)))) return json(res, 400, { error: 'Give two different part numbers' });
+    const key = [ka, kb].sort().join('|') + (twin && vk(a.vb) && vk(b.vb) ? '|' + [vk(a.vb), vk(b.vb)].sort().join('|') : '');
     if (body.wrong != null) {   // 21n: Admin says two numbers of the "to check" list are NOT the same part (or takes that back)
       if (user.role !== 'admin') return json(res, 403, { error: 'Only Admin' });
       if (body.wrong) store.kvSet('samewrong', key, { a, b, by: txt(user.name || user.id, 60), at: new Date().toISOString() }); else store.kvDel('samewrong', key);
       console.log(new Date().toISOString(), 'same part', body.wrong ? 'marked wrong' : 'wrong mark removed', a.pn, b.pn, 'by', user.id); return json(res, 200, { ok: true }); }
-    if (body.del) { store.kvDel('samepart', key); console.log(new Date().toISOString(), 'same part removed', a.pn, b.pn, 'by', user.id); return json(res, 200, { ok: true }); }
+    if (body.del) { store.kvDel('samepart', key); if (twin && key === ka + '|' + kb) store.kvAll('samepart').forEach(([k]) => { if (k.startsWith(key + '|')) store.kvDel('samepart', k); }); console.log(new Date().toISOString(), 'same part removed', a.pn, b.pn, 'by', user.id); return json(res, 200, { ok: true }); }
     if (store.kvAll('samepart').length >= 20000) return json(res, 400, { error: 'Too many links' });
     store.kvSet('samepart', key, { a, b, by: txt(user.name || user.id, 60), byId: txt(user.id, 60), at: new Date().toISOString() }); store.kvDel('samewrong', key);
     console.log(new Date().toISOString(), 'same part saved', a.pn, '=', b.pn, 'by', user.id);

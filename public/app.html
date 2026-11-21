@@ -6941,6 +6941,13 @@ function apOcrW(){return AP_OCR||(AP_OCR=ocrWorker(()=>{}).then(async w=>{await 
 /* the codes read: a catalogue number in them wins; else the code itself (a shop's own barcode) */
 function apScanUse(codes,opt){opt=opt||{};const a=S.ui.ap;if(!a)return false;let pn='';
  const tq=codes.map(tvsQR).find(Boolean);if(tq)codes=[tq.pn];   /* update 22x: only the part number of a TVS box QR counts, not its serial */
+ /* update 24f (Sam 2026-11-21, Uno Minda switch box SW-0681H): the label has two barcodes, "SW-0681H:2" (part number : pieces in the
+    box) and "1150.00:12/2025" (MRP : month made). The first gives the whole part number, also when no list knows it; the second is
+    never a part number. On the label's printed text the piece just before "NET QUANTITY" is the part number. */
+ const isPM=c=>/^\s*\d[\d,]*\.\d\d\s*:\s*\d{1,2}\/(?:19|20)\d\d\s*$/.test(String(c));
+ const pq=codes.map(c=>{const m=String(c).toUpperCase().match(/^\s*([A-Z0-9][A-Z0-9\/.-]{3,24}[A-Z0-9])\s*:\s*\d{1,3}\s*$/);return m&&/[A-Z]/.test(m[1])&&/\d/.test(m[1])&&!tq?m[1]:'';}).find(Boolean)||'';
+ if(codes.some(isPM)){codes=codes.filter(c=>!isPM(c));if(!codes.length&&!opt.rank){apScanMsg('That barcode is the MRP. Hold the barcode beside the part number.');return false;}}
+ if(pq)codes=codes.map(c=>new RegExp('^\\s*'+pq.replace(/[.\/-]/g,'\\$&')+'\\s*:','i').test(String(c))?pq:c);
  /* the pieces of the code's text that look like a part number (letters and digits, 5-18 long), Hero's 'S' ending also without it */
  const toks=[...new Set(codes.flatMap(c=>String(c).toUpperCase().replace(/(?:M\.?R\.?P\.?|RS|INR|₹)[\s.:\/-]*(?:RS\.?\s*)?\d[\d,]*(?:\.\d+)?/g,' ').replace(/\b(?:MFD|MFG|MFG\.? ?DT|PKD|PACKED|EXP|DATE|BATCH DT)?[\s.:]*\b\d{1,2}[\/.-](?:19|20)?\d{2}(?:[\/.-]\d{2,4})?\b(?![\/.-]?[A-Z0-9])/g,m=>/^\s*\d{1,2}[\/.-](?:19|20)\d\d\s*$|MFD|MFG|PKD|PACKED|EXP|DATE/.test(m)?' ':m).split(/[^A-Z0-9\/.-]+/).flatMap(w=>{w=w.replace(/^[.\/-]+|[.\/-]+$/g,'');return w.includes('.')?[w,...w.split('.')]:[w];}).flatMap(ch=>{const q=ch.split('/'),o=q.length>2?[ch]:[];q.forEach((x,i)=>{if(/^[A-Z]$/.test(q[i+1]||''))o.push(x+'/'+q[i+1]);o.push(x);});return o;})).map(t=>t.replace(/^-+|-+$/g,'')).flatMap(t=>{const q=t.split('-'),o=[t];for(let i=1;i<q.length;i++)o.push(q.slice(0,i).join('-'),q[i]);return o;}).filter(t=>/\d/.test(t)&&t.replace(/[-\/.]/g,'').length>=4&&t.length<=32))];
  /* update 10k (Sam's video 2026-10-21): the reader breaks a number at its dashes ("02380 — KON — D01"): the pieces are also tried
@@ -6962,7 +6969,7 @@ function apScanUse(codes,opt){opt=opt||{};const a=S.ui.ap;if(!a)return false;let
  const sc=t=>{if(J.has(t)&&!known(t))return 0;
   if(opt.ocr&&/^\d{1,5}$/.test(t)&&!lab.has(t))return 0;   /* update 10l: a short plain number on a label photo (a bearing no. 6202 in a list) only after "Part No" */
  const v=[t];if(/^[0-9A-Z-]{6,}S$/.test(t))v.push(t.slice(0,-1));else v.push(t+'S');
-  if(v.some(known))return 100+Math.min(catPk(t).length,20)/100;   /* two known pieces: the longer, more exact one */if(catPk(t).length<5)return 0;if(opt.ocr&&/^\d{6}$/.test(t))return 50;if(opt.ocr&&/^\d{10,}$/.test(t))return 0;   /* a phone or toll-free number on the label (+919649012777 read as 19649012777) */   /* a pin code on the label (Pune-411035) */if(hq&&t===hq[3])return 90;if(tq&&t===tq.pn)return 90;if(v.some(shaped))return 70+(/[A-Z]/.test(t)&&/\d/.test(t)?5:0);
+  if(v.some(known))return 100+Math.min(catPk(t).length,20)/100;   /* two known pieces: the longer, more exact one */if(catPk(t).length<5)return 0;if(opt.ocr&&/^\d{6}$/.test(t))return 50;if(opt.ocr&&/^\d{10,}$/.test(t))return 0;   /* a phone or toll-free number on the label (+919649012777 read as 19649012777) */   /* a pin code on the label (Pune-411035) */if(hq&&t===hq[3])return 90;if(tq&&t===tq.pn)return 90;if(pq&&t===pq)return 90;if(v.some(shaped))return 70+(/[A-Z]/.test(t)&&/\d/.test(t)?5:0);
   if(/^[0-9]/.test(t)&&/[A-Z]/.test(t))return 40;if(/[A-Z]/.test(t))return 30;return /^\d{8,14}$/.test(t)?20:10;};
  /* text read off a printed label: some letters and digits look alike (O/0, I/1, B/8/3 at a cut edge, S/5, Z/2, G/6), so they are also
     tried the other way; each swap costs a point */
@@ -6982,6 +6989,7 @@ function apScanUse(codes,opt){opt=opt||{};const a=S.ui.ap;if(!a)return false;let
   const one=sw(t);one.forEach(v=>o.push([v,1]));if(one.length<=40)one.forEach(v=>sw(v).forEach(w=>{if(w!==t)o.push([w,2]);}));return o;};
  /* update 10i: on a label photo the piece printed right after "Part No" / "P/N" wins over a pin code or phone number */
  const lab=new Set();if(opt.ocr)codes.forEach(c=>{const m=String(c).toUpperCase().match(/(?:PART\s*(?:NO|NUMBER|#)|P\s*\/\s*N)\.?\s*[:.-]?\s*([A-Z0-9][A-Z0-9\/.-]{3,31})/);if(m)lab.add(m[1].replace(/[.\/-]+$/,''));});
+ if(opt.ocr)codes.forEach(c=>{const m=String(c).toUpperCase().match(/(?:^|[^A-Z0-9\/.-])([A-Z]{1,4}-?\d{3,6}[A-Z]{0,2})\s+NET\s*QUANTITY/);if(m)lab.add(m[1]);});   /* 24f */
  const ranked=toks.flatMap((t,n)=>vars(t).map(([v,k])=>{const x=sc(v),y=k&&x<100?sc(t):x;   /* a swapped letter only helps when it makes a known number */
   return [y-k+(lab.has(t)&&y<100?25:0),-n,k&&x<100?t:v];})).sort((x,y)=>y[0]-x[0]||y[1]-x[1]);
  const best=ranked[0];

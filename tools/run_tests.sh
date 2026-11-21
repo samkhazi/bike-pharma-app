@@ -24,6 +24,7 @@ node tools/test_catguard.mjs || r=1   # update 11h: catalogue guard (daily amoun
 node tools/test_herobuild.mjs || r=1   # update 11k: Hero made on the server from the Raw Data upload (own server on 3018)
 node tools/test_hondabuild.mjs || r=1   # update 11z: Honda made on the server from the whole Honda Catalogue folder (own server on 3026)
 node tools/test_bajajbuild.mjs || r=1   # update 12b: Bajaj made on the server from the Bajaj Catalogue folder (own server on 3027)
+node tools/test_bajajdms.mjs || r=1   # 23f: every detail of the Bajaj DMS Part List (HSN, GST, group, serviceable, DMS-only parts; no server)
 node tools/test_xref.mjs || r=1   # 16r: other brands with the same part (server xref.json)
 node tools/test_partnames.mjs || r=1   # 17f: Sam's part-names list (server only)
 node tools/test_yamahabuild.mjs || r=1   # update 12e: Yamaha made on the server from the Yamaha Catalogue folder (own server on 3028)

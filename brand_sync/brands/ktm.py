@@ -163,7 +163,7 @@ class KTM:
         self.img_dir = data_dir('ktm', 'img')
         self.state_path = os.path.join(self.dir, 'state.json')
         self.state = load_json(self.state_path, {'editions': {}, 'masters': {}, 'circulars': {}, 'pdfs': {}})
-        self.delay = float(env('KTM_DELAY', '1.0'))
+        self.delay = float(env('KTM_DELAY', '2.0'))   # 24m: slower, gentler on the portal (was 1.0)
 
     # ---------- login ----------
     def shot(self, page, name):
@@ -172,13 +172,15 @@ class KTM:
         except Exception: pass
         return p
 
-    def logged_in(self, page):
+    def logged_in(self, page, stop403=True):
         try:
             page.evaluate(JS.replace('%DELAY%', str(int(self.delay * 1000))))
             page.evaluate("() => kGet('/partmaster')")
             return True
         except Exception as e:
             if '403' in str(e):
+                # 24m (Sam 2026-11-22: run stopped at the first page): an old saved session can get 403; then log in fresh once, stop only if the fresh login is refused too
+                if not stop403: return False
                 raise SystemExit(f'KTM: portal ne is server ko 403 diya (Azure gateway). Server ka IP portal pe allowed nahi hai; '
                                  f'Bajaj/KTM se server IP allow karwana hoga. ({self.shot(page, "403")})')
             return False
@@ -187,8 +189,13 @@ class KTM:
         r = page.goto(BASE + '/index', wait_until='load')
         if r is not None and r.status == 403:
             raise SystemExit(f'KTM: portal ne is server ko 403 diya (Azure gateway). Server ka IP portal pe allowed nahi hai. ({self.shot(page, "403")})')
-        if page.url.startswith(BASE) and self.logged_in(page):
+        if page.url.startswith(BASE) and self.logged_in(page, stop403=False):
             log.info('KTM: still logged in (saved browser profile)'); return
+        if page.url.startswith(BASE) and not page.locator('input[type=password]:visible').count():
+            log.warning('KTM: saved session not accepted, clearing cookies and logging in fresh')   # 24m
+            try: page.context.clear_cookies()
+            except Exception: pass
+            page.goto(BASE + '/', wait_until='load')
         pw = page.locator('input[type=password]:visible')
         if not pw.count():
             page.goto(BASE + '/', wait_until='load')

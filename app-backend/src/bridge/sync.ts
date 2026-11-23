@@ -630,7 +630,7 @@ export async function runBridgeOnce(deps: BridgeDeps): Promise<BridgeSummary> {
     }
   };
   if (deps.old) {
-    await step("bays and staff", async () => Object.assign(summary, await syncMaster(deps)));
+    await step("bays and staff", async () => { Object.assign(summary, await syncMaster(deps)); });
   }
   if (deps.inventory) {
     await step("inventory parts", async () => { summary.parts = await syncParts(deps.db, deps.inventory!, deps.fetcher); });

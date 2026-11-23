@@ -51,6 +51,11 @@ function vl_db() {
 }
 
 function vl_schema($d) {
+    // Per-vehicle job names (a vehicle can call a labour job by its own name).
+    if (!$d->hasTable('vehicle_labour_names')) {
+        if ($d->lite) $d->q("CREATE TABLE IF NOT EXISTS vehicle_labour_names (vehicle_id INTEGER NOT NULL, labour_id INTEGER NOT NULL, name TEXT NOT NULL, PRIMARY KEY (vehicle_id,labour_id))");
+        else $d->q("CREATE TABLE IF NOT EXISTS `vehicle_labour_names` (`vehicle_id` int NOT NULL, `labour_id` int NOT NULL, `name` varchar(200) NOT NULL, PRIMARY KEY (`vehicle_id`,`labour_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    }
     if ($d->hasTable('vehicle_labour_settings') && $d->hasTable('vehicles') && $d->hasTable('vehicle_labour_charges')) return;
     if ($d->lite) {
         $d->q("CREATE TABLE IF NOT EXISTS vehicles (id INTEGER PRIMARY KEY AUTOINCREMENT, brand TEXT NOT NULL, model TEXT NOT NULL, cc INTEGER DEFAULT 0, is_active INTEGER DEFAULT 1, prices_done INTEGER DEFAULT 0, updated_by TEXT, updated_at TEXT, UNIQUE(brand,model))");

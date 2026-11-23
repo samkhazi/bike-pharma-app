@@ -58,6 +58,26 @@ function write_prices($d, $vid, $p, $who) {
     return true;
 }
 
+function clean_names($d, $nm) {
+    $def = array(); foreach ($d->rows("SELECT id, job_description FROM labour_charges") as $r) $def[(int)$r['id']] = trim((string)$r['job_description']);
+    $o = array();
+    foreach ($nm as $k => $v) {
+        $k = (int)$k; if (!isset($def[$k]) || !is_string($v)) continue;
+        $v = trim(preg_replace('/\s+/u', ' ', preg_replace('/[\x00-\x1F\x7F]/', ' ', $v)));
+        if ($v === '' || $v === $def[$k]) continue;
+        if (strlen($v) > 200) vl_fail(400, 'A job name is too long.');
+        $o[$k] = $v;
+    }
+    return $o;
+}
+function write_names($d, $vid, $nm) {
+    $vid = (int)$vid;
+    $d->q("DELETE FROM vehicle_labour_names WHERE vehicle_id=$vid");
+    if (!$nm) return true;
+    $v = array(); foreach ($nm as $k => $x) $v[] = "($vid," . (int)$k . ",'" . $d->esc($x) . "')";
+    return $d->q("INSERT INTO vehicle_labour_names (vehicle_id,labour_id,name) VALUES " . implode(',', $v)) !== false;
+}
+
 if ($a === 'state') {
     $V = array();
     foreach ($d->rows("SELECT id, brand, model, cc, prices_done, updated_by, updated_at FROM vehicles WHERE is_active=1 ORDER BY id") as $r)
@@ -66,7 +86,11 @@ if ($a === 'state') {
     foreach ($d->rows("SELECT c.vehicle_id, c.labour_id, c.price FROM vehicle_labour_charges c JOIN vehicles v ON v.id=c.vehicle_id WHERE v.prices_done=1") as $r) {
         $k = (int)$r['vehicle_id']; if (!isset($P[$k])) $P[$k] = array(); $P[$k][(int)$r['labour_id']] = (float)$r['price'];
     }
-    out(array('me' => $me, 'V' => $V, 'J' => jobs($d), 'P' => (object)$P, 'pinSet' => vl_get('pin') ? true : false));
+    $N = array();
+    foreach ($d->rows("SELECT n.vehicle_id, n.labour_id, n.name FROM vehicle_labour_names n JOIN vehicles v ON v.id=n.vehicle_id WHERE v.prices_done=1") as $r) {
+        $k = (int)$r['vehicle_id']; if (!isset($N[$k])) $N[$k] = array(); $N[$k][(int)$r['labour_id']] = (string)$r['name'];
+    }
+    out(array('me' => $me, 'V' => $V, 'J' => jobs($d), 'P' => (object)$P, 'N' => (object)$N, 'pinSet' => vl_get('pin') ? true : false));
 }
 if (!$post) vl_fail(400, 'Bad request');
 
@@ -74,8 +98,9 @@ if ($a === 'save') {
     $p = clean_prices($d, isset($in['p']) ? $in['p'] : null);
     $ids = isset($in['vids']) && is_array($in['vids']) ? array_slice(array_values(array_unique(array_map('intval', $in['vids']))), 0, 500) : array();
     if (!$ids) vl_fail(400, 'No vehicle');
+    $nm = isset($in['nm']) && is_array($in['nm']) ? clean_names($d, $in['nm']) : null;
     $d->q("BEGIN"); $n = 0;
-    foreach ($ids as $vid) { if (write_prices($d, $vid, $p, $me['name'])) $n++; else { $d->q("ROLLBACK"); vl_fail(500, 'Could not save' . ($me['admin'] ? ': ' . $d->err : '')); } }
+    foreach ($ids as $vid) { if (write_prices($d, $vid, $p, $me['name']) && ($nm === null || write_names($d, $vid, $nm))) $n++; else { $d->q("ROLLBACK"); vl_fail(500, 'Could not save' . ($me['admin'] ? ': ' . $d->err : '')); } }
     $d->q("COMMIT");
     out(array('n' => $n));
 }
@@ -83,6 +108,7 @@ if ($a === 'reset') {
     $vid = isset($in['vid']) ? (int)$in['vid'] : 0;
     $d->q("BEGIN");
     $d->q("DELETE FROM vehicle_labour_charges WHERE vehicle_id=$vid");
+    $d->q("DELETE FROM vehicle_labour_names WHERE vehicle_id=$vid");
     $d->q("UPDATE vehicles SET prices_done=0, updated_by='" . $d->esc($me['name']) . "', updated_at='" . date('Y-m-d H:i:s') . "' WHERE id=$vid");
     $d->q("COMMIT");
     out(array());

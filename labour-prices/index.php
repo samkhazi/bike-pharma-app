@@ -67,16 +67,24 @@ h2{font-size:15px;margin:18px 0 8px;color:var(--mut);font-weight:600;text-transf
 .who{background:none;border:0;color:#cfcfcf;font-size:12px;padding:4px 0;max-width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
 .panel input[type=password]{width:100%;border:2px solid var(--ink);border-radius:10px;padding:10px;background:#fff;margin-bottom:8px}
 .panel p:empty{display:none}
+.jn{flex:1;min-width:0;font-size:13px;line-height:1.3;overflow-wrap:anywhere;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.jn small{display:block;color:var(--mut);font-size:11.5px;margin-top:2px}
+.jn.re{font-weight:700}
+.hint{font-size:12.5px;color:var(--mut);margin:6px 0 0}
+.foot>div{flex-wrap:wrap}
+.foot .st{flex:1 1 100%}
+.foot #moreBtn{flex:1}
+.wrap{padding-bottom:160px}
 </style></head><body>
 <header><div class="hd"><button class="back hide" id="back" aria-label="Back">‹</button><b id="ttl">Labour Prices<small>Bike Surgeon</small></b><button class="who hide" id="who"></button><button class="btn y hide" id="expBtn">Export</button></div></header>
 <div class="wrap"><div id="msg"></div><div id="view"></div></div>
-<div class="foot hide" id="foot"><div><span class="st" id="st"></span><button class="btn sm" id="saveBtn">Save</button><button class="btn sm y" id="nextBtn">Next ›</button></div></div>
+<div class="foot hide" id="foot"><div><span class="st" id="st"></span><button class="btn sm" id="saveBtn">Save</button><button class="btn sm" id="moreBtn">Same for other vehicles</button><button class="btn sm y" id="nextBtn">Next ›</button></div></div>
 <script>
 
 const BK=[110,125,150,200,300,650];
 const bucket=cc=>!cc?110:cc<=110?110:cc<=125?125:cc<=160?150:cc<=250?200:cc<=400?300:650;
 let VEH=[],JOBS=[],CATS=[],ME=null,PINSET=false;
-let saved={};
+let saved={},NM={},curN={};
 let S={v:'home',brand:null,vid:null,q:'',cat:'ALL',panel:null};
 let cur=null,dirty=false,timer=null,lastLoad=0;
 async function api(a,body){
@@ -91,7 +99,11 @@ function setState(j){ME=j.me;PINSET=j.pinSet;
   const m={};for(const k in j.P)m[k]=j.P[k];
   for(const id of pend.keys())if(saved[id])m[id]=saved[id];
   if(S.v==='edit'&&dirty&&saved[S.vid])m[S.vid]=saved[S.vid];
-  saved=m;lastLoad=Date.now()}
+  const n={};for(const k in (j.N||{}))n[k]=j.N[k];
+  const keep=id=>{if(NM[id])n[id]=NM[id];else delete n[id]};
+  for(const id of pend.keys())keep(id);
+  if(S.v==='edit'&&dirty)keep(S.vid);
+  NM=n;saved=m;lastLoad=Date.now()}
 async function load(){const j=await api('state');setState(j)}
 const $=id=>document.getElementById(id);
 const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
@@ -101,6 +113,8 @@ const byBrand=b=>vehicles().filter(v=>v.brand===b);
 const veh=id=>vehicles().find(v=>v.id===+id);
 const start=(v,j)=>j.p[BK.indexOf(v.b)];
 const price=(v,j)=>{const s=saved[v.id];return s&&s[j.id]!=null?s[j.id]:start(v,j)};
+const jobName=(v,j)=>(NM[v.id]&&NM[v.id][j.id])||j.job;
+const cap=t=>t.replace(/\s+/g,' ').trim().replace(/(^|\s)([a-z])/g,(m,a,b)=>a+b.toUpperCase());
 const allPrices=v=>{const o={};for(const j of JOBS)o[j.id]=price(v,j);return o};
 function note(t,bad){const m=$('msg');m.textContent='';if(t){m.appendChild(el('div','note'+(bad?' bad':''),t))}}
 function status(t,k){const s=$('st');s.textContent=t;s.className='st'+(k?' '+k:'')}
@@ -108,21 +122,21 @@ function status(t,k){const s=$('st');s.textContent=t;s.className='st'+(k?' '+k:'
 /* ---------- saving ---------- */
 function touch(){dirty=true;status('Not saved yet');clearTimeout(timer);timer=setTimeout(flush,1200)}
 let chain=Promise.resolve();const pend=new Map();
-function put(vids,p){for(const vid of vids){saved[vid]=p;pend.set(vid,(pend.get(vid)||0)+1)}
-  const r=chain.then(()=>api('save',{vids,p}));
+function put(vids,p,nm){nm=nm||{};for(const vid of vids){saved[vid]=p;if(Object.keys(nm).length)NM[vid]=Object.assign({},nm);else delete NM[vid];pend.set(vid,(pend.get(vid)||0)+1)}
+  const r=chain.then(()=>api('save',{vids,p,nm}));
   const done=()=>{for(const vid of vids){const n=pend.get(vid)-1;if(n>0)pend.set(vid,n);else pend.delete(vid)}};
   chain=r.then(done,done);return r}
 async function flush(){
   clearTimeout(timer);
   if(!dirty||!cur||!S.vid)return true;
-  const vid=S.vid,p=Object.assign({},cur);dirty=false;
+  const vid=S.vid,p=Object.assign({},cur),nm=Object.assign({},curN);dirty=false;
   if(S.v==='edit')status('Saving…');
-  try{await put([vid],p);if(S.vid===vid&&S.v==='edit'&&!dirty)status('Saved ✓','ok');return true}
+  try{await put([vid],p,nm);if(S.vid===vid&&S.v==='edit'&&!dirty)status('Saved ✓','ok');return true}
   catch(e){if(S.vid===vid&&S.v==='edit'){dirty=true;status(e.code===401?'Login again to save':'Could not save. Check the internet and tap Save.','bad')}return false}
 }
 
 /* ---------- views ---------- */
-function go(n){flush();S=Object.assign(S,n,{panel:n.panel||null});render();window.scrollTo(0,0);if(S.v!=='edit'&&S.v!=='add'&&Date.now()-lastLoad>20000)chain.then(load).then(()=>{if(S.v!=='edit'&&S.v!=='add')render()}).catch(()=>{})}
+function go(n){flush();S=Object.assign(S,n,{panel:n.panel||null,ej:null});render();window.scrollTo(0,0);if(S.v!=='edit'&&S.v!=='add'&&Date.now()-lastLoad>20000)chain.then(load).then(()=>{if(S.v!=='edit'&&S.v!=='add')render()}).catch(()=>{})}
 function render(){
   const v=$('view');v.textContent='';
   $('back').classList.toggle('hide',S.v==='home');
@@ -165,10 +179,10 @@ function brand(v){
   s.oninput=()=>{S.q=s.value;draw()};draw();
   const p=el('div','tools');const a=el('button','btn','+ Add vehicle');a.onclick=()=>go({v:'add'});p.appendChild(a);v.appendChild(p);
 }
-function open(vid){flush();vid=+vid;const x=veh(vid);cur=allPrices(x);dirty=false;S=Object.assign(S,{v:'edit',vid,brand:x.brand,cat:'ALL',panel:null});render();window.scrollTo(0,0);status(saved[vid]?'Saved ✓':'Old cc-wise prices shown',saved[vid]?'ok':'')}
+function open(vid){flush();vid=+vid;const x=veh(vid);cur=allPrices(x);curN=Object.assign({},NM[vid]||{});dirty=false;S=Object.assign(S,{v:'edit',vid,brand:x.brand,cat:'ALL',panel:null,ej:null});render();window.scrollTo(0,0);status(saved[vid]?'Saved ✓':'Old cc-wise prices shown',saved[vid]?'ok':'')}
 function edit(v,x){
   const tl=el('div','tools');
-  const b1=el('button','btn sm','Copy from…'),b2=el('button','btn sm','Apply to other vehicles'),b3=el('button','btn sm','Reset');
+  const b1=el('button','btn sm','Copy from…'),b2=el('button','btn sm','Same for other vehicles'),b3=el('button','btn sm','Reset');
   b1.onclick=()=>{S.panel=S.panel==='from'?null:'from';render()};
   b2.onclick=()=>{S.panel=S.panel==='to'?null:'to';render()};
   b3.onclick=()=>{S.panel=S.panel==='reset'?null:'reset';render()};
@@ -179,13 +193,16 @@ function edit(v,x){
   const ch=el('div','chips');
   for(const c of ['ALL'].concat(CATS)){const k=el('button','chip'+(S.cat===c?' on':''),c==='ALL'?'All jobs':c[0]+c.slice(1).toLowerCase());k.onclick=()=>{S.cat=c;render()};ch.appendChild(k)}
   v.appendChild(ch);
+  v.appendChild(el('div','hint','Tap a job name twice to change the name for this vehicle.'));
   for(const c of CATS){if(S.cat!=='ALL'&&S.cat!==c)continue;
     v.appendChild(el('div','cat',c));
     for(const j of JOBS){if(j.cat!==c)continue;
-      const r=el('div','job'),lb=el('label',null,j.job),st=start(x,j);
-      lb.htmlFor='j'+j.id;lb.appendChild(el('small',null,'Old price ₹'+st));
+      if(S.ej===j.id){v.appendChild(nameEd(j));continue}
+      const nm=curN[j.id],r=el('div','job'),lb=el('div','jn'+(nm?' re':''),nm||j.job),st=start(x,j);
+      lb.appendChild(el('small',null,'Old price ₹'+st+(nm?' · Old name: '+j.job:'')));
+      let t0=0;lb.onclick=()=>{const t=Date.now();if(t-t0<500){S.ej=j.id;render()}t0=t};
       const pr=el('div','pr'+(cur[j.id]!==st?' ch':''));pr.appendChild(el('span',null,'₹'));
-      const i=el('input');i.id='j'+j.id;i.type='text';i.inputMode='decimal';i.autocomplete='off';i.value=cur[j.id];
+      const i=el('input');i.id='j'+j.id;i.setAttribute('aria-label',nm||j.job);i.type='text';i.inputMode='decimal';i.autocomplete='off';i.value=cur[j.id];
       i.onfocus=()=>i.select();
       i.oninput=()=>{const n=parseFloat(i.value.replace(/[^0-9.]/g,''));cur[j.id]=isFinite(n)?Math.round(n*100)/100:0;pr.classList.toggle('ch',cur[j.id]!==st);touch()};
       i.onblur=()=>{i.value=cur[j.id]};
@@ -193,28 +210,48 @@ function edit(v,x){
       pr.appendChild(i);r.append(lb,pr);v.appendChild(r)}
   }
 }
+function nameEd(j){const p=el('div','panel'),i=el('input');i.type='text';i.maxLength=150;i.value=curN[j.id]||j.job;i.setAttribute('aria-label','Job name');i.autocomplete='off';
+  p.append(el('h3',null,'Job name'),el('p',null,'Only for this vehicle. Old name: '+j.job),i);
+  const er=el('p'),row=el('div','row'),ok=el('button','btn sm y','Save name'),no=el('button','btn sm','Cancel');let rec=null;
+  const done=()=>{if(rec){try{rec.abort()}catch(e){}}S.ej=null;render()};
+  ok.onclick=()=>{const t=i.value.replace(/\s+/g,' ').trim();if(!t){er.textContent='Type a name.';return}
+    if(t===j.job.trim())delete curN[j.id];else curN[j.id]=t;touch();done()};
+  no.onclick=done;
+  i.onkeydown=e=>{if(e.key==='Enter')ok.click();else if(e.key==='Escape')done()};
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(SR){const m=el('button','btn sm','🎤 Speak');
+    m.onclick=()=>{if(rec){rec.stop();return}
+      er.textContent='';rec=new SR();rec.lang='en-IN';rec.interimResults=true;rec.maxAlternatives=1;
+      rec.onresult=e=>{let t='';for(const x of e.results)t+=x[0].transcript;if(t.trim())i.value=cap(t).slice(0,150)};
+      rec.onerror=e=>{er.textContent=e.error==='not-allowed'||e.error==='service-not-allowed'?'Allow the microphone for this page, then tap Speak again.':e.error==='no-speech'?'Nothing heard. Tap Speak and say the name.':e.error==='aborted'?'':'Voice did not work. Type the name.'};
+      rec.onend=()=>{rec=null;m.textContent='🎤 Speak';m.classList.remove('k')};
+      try{rec.start();m.textContent='Listening… tap to stop';m.classList.add('k')}catch(e){rec=null;er.textContent='Voice did not work. Type the name.'}};
+    row.appendChild(m)}
+  row.append(ok,no);
+  if(curN[j.id]){const o=el('button','btn sm','Use old name');o.onclick=()=>{delete curN[j.id];touch();done()};row.appendChild(o)}
+  p.append(er,row);setTimeout(()=>i.focus(),0);return p}
 function optAll(skip){const s=el('select');s.appendChild(new Option('Choose a vehicle',''));
   for(const b of [S.brand].concat(brands().filter(z=>z!==S.brand))){const g=document.createElement('optgroup');g.label=b;
     for(const y of byBrand(b))if(y.id!==skip)g.appendChild(new Option(y.model+(y.cc?' ('+y.cc+' cc)':'')+(saved[y.id]?' ✓':''),y.id));
     s.appendChild(g)}return s}
-function pFrom(x){const p=el('div','panel');p.append(el('h3',null,'Copy prices from another vehicle'),el('p',null,'All 54 prices of that vehicle come here. You can still change them after.'));
+function pFrom(x){const p=el('div','panel');p.append(el('h3',null,'Copy prices from another vehicle'),el('p',null,'All prices and job names of that vehicle come here. You can still change them after.'));
   const s=optAll(x.id),b=el('button','btn y','Copy here');
-  b.onclick=()=>{const y=s.value?veh(s.value):null;if(!y)return;cur=allPrices(y);S.panel=null;render();touch();flush()};
+  b.onclick=()=>{const y=s.value?veh(s.value):null;if(!y)return;cur=allPrices(y);curN=Object.assign({},NM[y.id]||{});S.panel=null;render();touch();flush()};
   p.append(s,b);return p}
-function pTo(x){const p=el('div','panel');p.append(el('h3',null,'Apply these prices to other vehicles'),el('p',null,'Tick the '+x.brand+' vehicles that should get the same prices as '+x.model+'.'));
+function pTo(x){const p=el('div','panel');p.append(el('h3',null,'Same for other vehicles'),el('p',null,'Tick the '+x.brand+' vehicles that get the same prices and job names as '+x.model+'. All are saved in one go.'));
   const l=el('div','ckl'),bs=[];
   for(const y of byBrand(x.brand)){if(y.id===x.id)continue;const r=el('label','ck'),c=el('input');c.type='checkbox';c.value=y.id;c.dataset.cc=y.cc||0;bs.push(c);
     r.append(c,el('span',null,y.model+(y.cc?' · '+y.cc+' cc':'')+(saved[y.id]?' · Done':'')));l.appendChild(r)}
-  const row=el('div','row'),a=el('button','btn sm','Tick same cc ('+(x.cc||0)+')'),n=el('button','btn sm','Tick all'),g=el('button','btn y','Apply');
+  const row=el('div','row'),a=el('button','btn sm','Tick same cc ('+(x.cc||0)+')'),n=el('button','btn sm','Tick all'),g=el('button','btn y','Save to all ticked');
   a.onclick=()=>bs.forEach(c=>c.checked=+c.dataset.cc===(x.cc||0));n.onclick=()=>{const on=bs.some(c=>!c.checked);bs.forEach(c=>c.checked=on)};
-  g.onclick=async()=>{const ids=bs.filter(c=>c.checked).map(c=>+c.value);if(!ids.length)return;g.disabled=true;await flush();status('Applying to '+ids.length+' vehicles…');
-    try{await put(ids,Object.assign({},cur));S.panel=null;render();status('Applied to '+ids.length+' vehicles ✓','ok')}
-    catch(e){g.disabled=false;status('Could not apply. Try again.','bad')}};
+  g.onclick=async()=>{const ids=bs.filter(c=>c.checked).map(c=>+c.value);if(!ids.length)return;g.disabled=true;await flush();if(!saved[x.id]){dirty=true;if(!await flush()){g.disabled=false;return}}status('Saving to '+ids.length+' vehicles…');
+    try{await put(ids,Object.assign({},cur),Object.assign({},curN));S.panel=null;render();status('Saved to '+x.model+' and '+ids.length+' more vehicles ✓','ok')}
+    catch(e){g.disabled=false;status('Could not save to the other vehicles. Try again.','bad')}};
   row.append(a,n);p.append(row,l,g);return p}
 function pReset(x){const p=el('div','panel');p.append(el('h3',null,'Reset '+x.model+'?'),el('p',null,'Your prices for this vehicle are removed and the old cc-wise prices come back.'));
   const row=el('div','row'),y=el('button','btn k','Yes, reset'),n=el('button','btn','No');
   n.onclick=()=>{S.panel=null;render()};
-  y.onclick=async()=>{clearTimeout(timer);dirty=false;y.disabled=true;try{await chain;await api('reset',{vid:x.id});delete saved[x.id];cur=allPrices(x);S.panel=null;render();status('Old cc-wise prices shown')}catch(e){y.disabled=false;status('Could not reset. Try again.','bad')}};
+  y.onclick=async()=>{clearTimeout(timer);dirty=false;y.disabled=true;try{await chain;await api('reset',{vid:x.id});delete saved[x.id];delete NM[x.id];curN={};cur=allPrices(x);S.panel=null;render();status('Old cc-wise prices shown')}catch(e){y.disabled=false;status('Could not reset. Try again.','bad')}};
   row.append(y,n);p.appendChild(row);return p}
 function addV(v){const p=el('div','panel');p.appendChild(el('h3',null,'New vehicle'));
   const b=el('select');for(const z of brands())b.appendChild(new Option(z,z));b.appendChild(new Option('Other brand…','__'));if(S.brand)b.value=S.brand;
@@ -235,7 +272,7 @@ function addV(v){const p=el('div','panel');p.appendChild(el('h3',null,'New vehic
 const q=s=>'"'+String(s).replace(/"/g,'""')+'"';
 const sq=s=>"'"+String(s).replace(/\\/g,'\\\\').replace(/'/g,"''")+"'";
 function csvList(l){const o=['Vehicle ID,Brand,Vehicle,CC,Category,Labour ID,Labour job,Price,Changed,Changed by,Changed on'];
-  for(const v of l)for(const j of JOBS)o.push([v.id,q(v.brand),q(v.model),v.cc,q(j.cat),j.id,q(j.job),price(v,j),saved[v.id]?'Yes':'No',q(saved[v.id]?v.by||'':''),q(saved[v.id]?v.at||'':'')].join(','));
+  for(const v of l)for(const j of JOBS)o.push([v.id,q(v.brand),q(v.model),v.cc,q(j.cat),j.id,q(jobName(v,j)),price(v,j),saved[v.id]?'Yes':'No',q(saved[v.id]?v.by||'':''),q(saved[v.id]?v.at||'':'')].join(','));
   return '﻿'+o.join('\r\n')}
 function csvBrand(b){const l=byBrand(b),o=[['Category','Labour ID','Labour job'].concat(l.map(v=>q(v.model+(v.cc?' ('+v.cc+' cc)':'')))).join(',')];
   for(const j of JOBS)o.push([q(j.cat),j.id,q(j.job)].concat(l.map(v=>price(v,j))).join(','));
@@ -284,6 +321,7 @@ $('expBtn').onclick=()=>{if(S.v!=='export')go({v:'export',from:S.v==='edit'?'bra
 $('saveBtn').onclick=()=>{if(dirty)flush();else if(!saved[S.vid]){dirty=true;flush()}else status('Saved ✓','ok')};
 $('nextBtn').onclick=async()=>{if(!saved[S.vid])dirty=true;const ok=await flush();if(!ok)return;const l=byBrand(S.brand),i=l.findIndex(x=>x.id===S.vid),n=l[i+1];if(n)open(n.id);else go({v:'brand'})};
 document.addEventListener('visibilitychange',()=>{if(document.hidden)flush()});
+$('moreBtn').onclick=()=>{S.panel='to';S.ej=null;render();window.scrollTo(0,0)};
 window.addEventListener('beforeunload',e=>{if(dirty||pend.size){e.preventDefault();e.returnValue=''}});
 boot();
 </script></body></html>

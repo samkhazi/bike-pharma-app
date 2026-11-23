@@ -349,6 +349,7 @@ export const Invoice = z
     vehicleLabel: z.string(),
     mode: z.enum(["pickup", "visit"]),
     status: z.enum(["open", "paid", "void"]),
+    source: z.enum(["app", "workshop"]).openapi({ description: "workshop: issued by the workshop's own billing; pay it at the counter" }),
     lines: z.array(BillLine),
     subtotal: amount,
     discountAmount: amount,

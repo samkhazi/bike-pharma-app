@@ -66,6 +66,7 @@ import { createContext, useContext, type ReactNode } from "react";
 import { BikeArt } from "./bike-art";
 import { bikeTypeOrder, bikeTypes, catalog, popularBrands, typeForModel, type BikeType } from "./bike-catalog";
 import { booking } from "./data";
+import { ApiError, api, hasSession, live as onServer, logout, onSignedOut, playStream, saveSession } from "./live";
 import "./customer.css";
 import "./home.css";
 import "./tracker.css";
@@ -140,7 +141,7 @@ type WalletTxn = {
   when: string;
 };
 
-type VehicleId = "guerrilla" | "classic" | "access";
+type VehicleId = string;
 
 type ServiceBooking = {
   id: string;
@@ -155,6 +156,12 @@ type ServiceBooking = {
   estimate: number;
   walletPaid?: number;
   collectAtDoor?: boolean;
+  /** Set only on real data: the booking's uuid for API calls, the people on the job, the bay camera and the server's bill. */
+  uuid?: string;
+  people?: { advisor?: string; mechanic?: string; bay?: string; rider?: string };
+  camera?: boolean;
+  bill?: { lines: { id: string; name: string; price: number }[]; subtotal: number; discount: number; extras: number; tax: number; total: number; kind: "estimate" | "due" | "paid" };
+  payAtCounter?: boolean;
 };
 
 type Payment = {
@@ -230,7 +237,7 @@ type AppProps = {
   setTheme: (theme: Theme) => void;
 };
 
-const services = [
+const services: { id: string; name: string; detail: string; price: number; type: string }[] = [
   { id: "general", name: "General service", detail: "24-point inspection and tune-up", price: 1499, type: "Service" },
   { id: "oil", name: "Engine oil change", detail: "Oil, filter and disposal", price: 799, type: "Service" },
   { id: "brake", name: "Brake inspection", detail: "Pads, fluid and calibration", price: 399, type: "Repair" },
@@ -241,7 +248,9 @@ const services = [
 
 const serviceCategories = ["All", "Service", "Repair", "Care"];
 
-const offerList = [
+type OfferItem = { id: string; big: string; line: string; title: string; detail: string; till: string; amount: number; firstOnly: boolean; needs: string | undefined; withOther?: boolean };
+
+const offerList: OfferItem[] = [
   { id: "first", big: "₹150", line: "off your first service", title: "₹150 off your first service", detail: "For new customers, on any booking", till: "Till 31 Oct", amount: 150, firstOnly: true, needs: undefined },
   { id: "wash", big: "Free", line: "foam wash with any service", title: "Free foam wash", detail: "With any other service", till: "Till 4 Oct", amount: 149, firstOnly: false, needs: "wash" },
   { id: "monsoon", big: "₹100", line: "off a brake inspection", title: "₹100 off a brake inspection", detail: "Get the brakes checked before the rains", till: "Till 15 Oct", amount: 100, firstOnly: false, needs: "brake" },
@@ -253,7 +262,7 @@ function offersFor(firstTime: boolean) {
 
 function offerFits(offer: (typeof offerList)[number], cart: string[]) {
   if (!offer.needs) return true;
-  return cart.includes(offer.needs) && (offer.needs !== "wash" || cart.length > 1);
+  return cart.includes(offer.needs) && (!(offer.withOther ?? offer.needs === "wash") || cart.length > 1);
 }
 
 const stages = ["Booked", "Rider assigned", "Picked up", "At the workshop", "Being serviced", "Job card closed", "Delivered"];
@@ -268,13 +277,35 @@ const stageHeadline = [
   "Delivered to your door",
 ];
 
-const vehicles = {
+type GarageBike = { name: string; make: string; plate: string; tone: string; colour: string; km: string; services: number; type: BikeType };
+
+const vehicles: Record<string, GarageBike> = {
   guerrilla: { name: "Guerrilla 450", make: "Royal Enfield", plate: booking.registration, tone: "#2f5b8a", colour: "Brava Blue", km: "6,842", services: 3, type: "naked" as BikeType },
   classic: { name: "Classic 350", make: "Royal Enfield", plate: "KA 05 JC 1987", tone: "#6e2a2a", colour: "Chrome Red", km: "21,390", services: 11, type: "classic" as BikeType },
   access: { name: "Access 125", make: "Suzuki", plate: "KA 03 NK 8821", tone: "#45675b", colour: "Pearl Green", km: "9,240", services: 2, type: "scooter" as BikeType },
 };
 
-type GarageBike = (typeof vehicles)[keyof typeof vehicles];
+/** The customer's own bikes, in garage order (real data only; the sample keeps its fixed three). */
+const liveGarage: string[] = [];
+
+function garageKeys(firstTime: boolean): string[] {
+  if (onServer) return liveGarage;
+  return firstTime ? ["guerrilla"] : Object.keys(vehicles);
+}
+
+/** Names of services on past job cards that are no longer bookable (the workshop's labour lines). */
+const serviceNames: Record<string, string> = {};
+
+function serviceName(id: string) {
+  return services.find((service) => service.id === id)?.name ?? serviceNames[id];
+}
+
+function messageOf(error: unknown) {
+  return error instanceof ApiError ? error.message : "Something went wrong. Try again.";
+}
+
+/** Reloads everything from the server after a change (set by CustomerApp). */
+let reloadLive: () => Promise<void> = async () => {};
 
 function inr(value: number) {
   const amount = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Math.abs(value));
@@ -306,6 +337,7 @@ function approvalNotice(extras: Extra[]) {
 }
 
 function billFor(item: ServiceBooking) {
+  if (item.bill) return { ...item.bill, fromServer: true };
   const lines = item.serviceIds
     .map((id) => services.find((service) => service.id === id))
     .filter((service): service is (typeof services)[number] => Boolean(service));
@@ -315,7 +347,7 @@ function billFor(item: ServiceBooking) {
   const taxable = item.estimate + extras;
   const tax = Math.round(taxable * GST_RATE);
   const kind: "estimate" | "due" | "paid" = item.paid ? "paid" : item.stage >= 5 ? "due" : "estimate";
-  return { lines, subtotal, discount, extras, tax, total: taxable + tax, kind };
+  return { lines, subtotal, discount, extras, tax, total: taxable + tax, kind, fromServer: false };
 }
 
 function billKindLabel(kind: ReturnType<typeof billFor>["kind"]) {
@@ -325,7 +357,7 @@ function billKindLabel(kind: ReturnType<typeof billFor>["kind"]) {
 }
 
 function serviceTitle(item: ServiceBooking) {
-  const first = services.find((service) => service.id === item.serviceIds[0])?.name ?? "Service";
+  const first = serviceName(item.serviceIds[0]) ?? "Service";
   const more = item.serviceIds.length - 1;
   return more > 0 ? `${first} + ${more} more` : first;
 }
@@ -341,7 +373,22 @@ function updateBooking(state: DemoState, id: string, update: (item: ServiceBooki
 function bookingStatus(item: ServiceBooking) {
   if (item.stage === 0) return "Upcoming";
   if (item.stage >= 6) return "Completed";
-  return stageHeadline[item.stage];
+  return headlineFor(item);
+}
+
+function headlineFor(item: ServiceBooking) {
+  const people = item.people;
+  if (!people) return stageHeadline[item.stage];
+  const rider = people.rider ? firstName(people.rider) : null;
+  return [
+    "Booking confirmed",
+    rider ? `${rider} is on the way` : "A rider is on the way",
+    rider ? `Your bike is with ${rider}` : "Your bike is with our rider",
+    "Checked in at the workshop",
+    people.bay ? `Being serviced in ${people.bay}` : "Being serviced",
+    "Service complete",
+    item.mode === "pickup" ? "Delivered to your door" : "Delivered",
+  ][item.stage] ?? "";
 }
 
 const returningBookings: ServiceBooking[] = [
@@ -1064,7 +1111,7 @@ function BillCard({ item }: { item: ServiceBooking }) {
       </div>
       <div className="cx-jobcard-lines">
         {bill.lines.map((service) => <Line key={service.id} label={service.name} value={inr(service.price)} />)}
-        {item.extras.filter((extra) => extra.status === "approved").map((extra) => (
+        {!(bill.fromServer && bill.kind !== "estimate") && item.extras.filter((extra) => extra.status === "approved").map((extra) => (
           <Line key={extra.id} label={extra.part} value={inr(extra.amount)} />
         ))}
         <Line label={item.mode === "pickup" ? "Pickup and delivery" : "Workshop visit"} value="Free" />
@@ -1173,10 +1220,38 @@ function StoryArt({ id }: { id: string }) {
   );
 }
 
+const loginPhone = { digits: "", channel: "sms" as "sms" | "whatsapp" };
+
+async function sendLoginCode(digits: string, channel: "sms" | "whatsapp") {
+  loginPhone.digits = digits;
+  loginPhone.channel = channel;
+  if (onServer) await api("/v1/auth/otp/request", { body: { phone: digits, channel } });
+}
+
+/** Verifies the code, keeps the session and says where to go next. */
+async function verifyLoginCode(code: string) {
+  const session = await api<{ accessToken: string; refreshToken: string; isNewCustomer: boolean }>("/v1/auth/otp/verify", { body: { phone: loginPhone.digits, code } });
+  saveSession(session);
+  if (session.isNewCustomer) return "Create account";
+  const bikes = await api<unknown[]>("/v1/vehicles").catch(() => [1]);
+  return bikes.length ? "Home" : "Create account";
+}
+
 function Auth({ open }: { open: (screen: string) => void }) {
   const [story, setStory] = useState(0);
   const [phone, setPhone] = useState("");
   const [typing, setTyping] = useState(false);
+  const [sending, setSending] = useState(false);
+  const send = (channel: "sms" | "whatsapp") => {
+    setSending(true);
+    sendLoginCode(phone.replace(/\D/g, ""), channel)
+      .then(() => {
+        if (channel === "whatsapp") toast("We’ll send the code on WhatsApp");
+        open("OTP");
+      })
+      .catch((error) => toast.error(messageOf(error)))
+      .finally(() => setSending(false));
+  };
   const digits = phone.replace(/\D/g, "");
   const valid = digits.length === 10;
   useEffect(() => {
@@ -1238,15 +1313,21 @@ function Auth({ open }: { open: (screen: string) => void }) {
             />
           </div>
         </label>
-        <button className="cx-btn cx-btn-primary" disabled={!valid} onClick={() => open("OTP")}>Continue</button>
-        {!typing && <button className="cx-link cx-auth-alt" onClick={() => { setPhone("98765 43210"); toast("We’ll send the code on WhatsApp"); }}>Get the code on WhatsApp instead</button>}
+        <button className="cx-btn cx-btn-primary" disabled={!valid || sending} onClick={() => send("sms")}>Continue</button>
+        {!typing && <button className="cx-link cx-auth-alt" onClick={() => {
+          if (!onServer) { setPhone("98765 43210"); toast("We’ll send the code on WhatsApp"); }
+          else if (valid) send("whatsapp");
+          else toast("Enter your mobile number first");
+        }}>Get the code on WhatsApp instead</button>}
         <p className="cx-fine">Only used to log in and send service updates. By continuing you agree to our <button className="cx-link">terms</button> and <button className="cx-link">privacy policy</button>.</p>
         {typing && (
           <div className="cx-keyboard">
-            <button className="cx-suggest" onClick={() => setPhone("98765 43210")}>
-              <small>From Contacts</small>
-              <b>98765 43210</b>
-            </button>
+            {!onServer && (
+              <button className="cx-suggest" onClick={() => setPhone("98765 43210")}>
+                <small>From Contacts</small>
+                <b>98765 43210</b>
+              </button>
+            )}
             <div className="cx-keys">
               {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key, index) =>
                 key ? (
@@ -1282,7 +1363,8 @@ function Otp({ open }: { open: (screen: string) => void }) {
   const [digits, setDigits] = useState("");
   const [status, setStatus] = useState<"idle" | "checking" | "error" | "done">("idle");
   const [countdown, setCountdown] = useState(30);
-  const [read, setRead] = useState<"waiting" | "shown" | "flying" | "manual">("waiting");
+  const [read, setRead] = useState<"waiting" | "shown" | "flying" | "manual">(onServer ? "manual" : "waiting");
+  const [errorText, setErrorText] = useState("");
   const [banner, setBanner] = useState<"in" | "out" | "gone">("gone");
   const [nudge, setNudge] = useState(0);
   const [arrived, setArrived] = useState(0);
@@ -1290,7 +1372,7 @@ function Otp({ open }: { open: (screen: string) => void }) {
   const [phone, setPhone] = useState<HTMLElement | null>(null);
   const sourceRefs = useRef<(HTMLElement | null)[]>([]);
   const slotRefs = useRef<(HTMLElement | null)[]>([]);
-  const manual = useRef(false);
+  const manual = useRef(onServer);
   useEffect(() => {
     const timer = window.setInterval(() => setCountdown((value) => Math.max(0, value - 1)), 1000);
     return () => window.clearInterval(timer);
@@ -1374,6 +1456,26 @@ function Otp({ open }: { open: (screen: string) => void }) {
   useEffect(() => {
     if (digits.length !== 4) return;
     setStatus("checking");
+    if (onServer) {
+      let cancelled = false;
+      verifyLoginCode(digits)
+        .then((next) => {
+          if (cancelled) return;
+          setStatus("done");
+          toast.success("Number verified");
+          window.setTimeout(() => open(next), 700);
+        })
+        .catch((error) => {
+          if (cancelled) return;
+          setErrorText(error instanceof ApiError && error.status !== 400 ? error.message : "That code didn’t match. Try again.");
+          setStatus("error");
+          setDigits("");
+          setArrived(0);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
     const timer = window.setTimeout(() => {
       if (digits === otpCode) {
         setStatus("done");
@@ -1403,10 +1505,12 @@ function Otp({ open }: { open: (screen: string) => void }) {
       ) : null}
       footer={
         <div className="cx-keyboard">
-          <button className="cx-suggest" disabled={read === "shown" || read === "flying"} onClick={() => { if (read === "waiting") setNudge((value) => value + 1); else if (status === "idle") setDigits(otpCode); }}>
-            <small>From Messages</small>
-            <b>{otpCode}</b>
-          </button>
+          {!onServer && (
+            <button className="cx-suggest" disabled={read === "shown" || read === "flying"} onClick={() => { if (read === "waiting") setNudge((value) => value + 1); else if (status === "idle") setDigits(otpCode); }}>
+              <small>From Messages</small>
+              <b>{otpCode}</b>
+            </button>
+          )}
           <div className="cx-keys">
             {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key, index) =>
               key ? (
@@ -1429,7 +1533,7 @@ function Otp({ open }: { open: (screen: string) => void }) {
       <TopBar onBack={() => open("Login / Sign up")} />
       <div className="cx-heading">
         <h1>Enter the code</h1>
-        <p>Sent to +91 98765 43210. <button className="cx-link" onClick={() => open("Login / Sign up")}>Change number</button></p>
+        <p>Sent to +91 {onServer ? spaced(loginPhone.digits) : "98765 43210"}{onServer && loginPhone.channel === "whatsapp" ? " on WhatsApp" : ""}. <button className="cx-link" onClick={() => open("Login / Sign up")}>Change number</button></p>
       </div>
       <div className={`cx-otp ${status} ${read === "waiting" ? "waiting" : ""}`} ref={(node) => setPhone(node?.closest<HTMLElement>(".cx-phone") ?? null)}>
         {[0, 1, 2, 3].map((index) => {
@@ -1443,11 +1547,14 @@ function Otp({ open }: { open: (screen: string) => void }) {
       </div>
       <p className={`cx-otp-note ${status === "error" ? "danger" : ""}`} aria-live="polite">
         {status === "checking" && <><Spinner />Checking the code</>}
-        {status === "error" && "That code didn’t match. Try 4719."}
+        {status === "error" && (onServer ? errorText : "That code didn’t match. Try 4719.")}
         {status === "done" && "Verified"}
         {status === "idle" && read === "waiting" && "Checking Messages"}
         {status === "idle" && (read === "shown" || read === "flying") && "Found in Messages"}
-        {status === "idle" && read === "manual" && (countdown ? `Resend code in 0:${String(countdown).padStart(2, "0")}` : <button className="cx-link">Resend code</button>)}
+        {status === "idle" && read === "manual" && (countdown ? `Resend code in 0:${String(countdown).padStart(2, "0")}` : <button className="cx-link" onClick={() => {
+          if (!onServer) return;
+          sendLoginCode(loginPhone.digits, loginPhone.channel).then(() => { setCountdown(30); toast.success("New code sent"); }).catch((error) => toast.error(messageOf(error)));
+        }}>Resend code</button>)}
       </p>
       {phone && flights.length > 0 && createPortal(flights.map((item, index) => (
         (arrived & (1 << index)) === 0 ? (
@@ -1501,9 +1608,28 @@ function TypePicker({ value, onPick }: { value: BikeType | null; onPick: (type: 
   );
 }
 
+type LookupResult = { registrationNumber: string; make: string | null; model: string | null; bodyType: BikeType | null; colourName: string | null; makeYear: number | null; chassisLast4: string | null };
+
+/** The RC lookup on the server. Null when it is not set up or the number is not found; the screen then asks for the details. */
+async function lookupPlate(reg: string) {
+  try {
+    const found = await api<LookupResult>("/v1/vehicles/lookup", { body: { registrationNumber: reg } });
+    return found.make && found.model ? found : null;
+  } catch {
+    return null;
+  }
+}
+
+function lookupLine(lookup: LookupResult | null, typeLabel: string) {
+  if (!lookup) return `${typeLabel}, Stealth Black, made in 2023`;
+  return [typeLabel, lookup.colourName, lookup.makeYear ? `made in ${lookup.makeYear}` : null].filter(Boolean).join(", ");
+}
+
 function CreateAccount({ open }: { open: (screen: string) => void }) {
-  const [name, setName] = useState("Sanath Naik");
-  const [reg, setReg] = useState("MH12AB1234");
+  const [name, setName] = useState(onServer ? "" : "Sanath Naik");
+  const [reg, setReg] = useState(onServer ? "" : "MH12AB1234");
+  const [lookup, setLookup] = useState<LookupResult | null>(null);
+  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [vehicle, setVehicle] = useState(false);
   const [manual, setManual] = useState(false);
@@ -1519,7 +1645,7 @@ function CreateAccount({ open }: { open: (screen: string) => void }) {
   const typedModel = brand === "Other" || model === "Not listed";
   const modelName = (typedModel ? modelText : model).trim();
   const brandName = brand === "Other" ? brandText.trim() : brand;
-  const found = typeForModel("XTREME 160R", "Hero");
+  const found = lookup?.bodyType ? { type: lookup.bodyType, source: "catalog" } : typeForModel(lookup?.model ?? "XTREME 160R", lookup?.make ?? "Hero");
   const detected = manual && modelName ? typeForModel(modelName, brandName) : null;
   const bikeType = pickedType ?? (vehicle ? found.type : detected && detected.source !== "unknown" ? detected.type : null);
   const needsType = manual && Boolean(modelName) && !bikeType;
@@ -1531,6 +1657,22 @@ function CreateAccount({ open }: { open: (screen: string) => void }) {
   };
   const fetchVehicle = () => {
     setLoading(true);
+    if (onServer) {
+      lookupPlate(reg).then((result) => {
+        setLoading(false);
+        resetType();
+        if (result) {
+          setLookup(result);
+          setVehicle(true);
+          setManual(false);
+          toast.success("Found your bike");
+        } else {
+          toast("We couldn’t read that number. Enter the details yourself.");
+          setManual(true);
+        }
+      });
+      return;
+    }
     window.setTimeout(() => {
       setLoading(false);
       setVehicle(true);
@@ -1542,10 +1684,33 @@ function CreateAccount({ open }: { open: (screen: string) => void }) {
     setPickedType(type);
     setChoosing(false);
   };
+  const finish = async () => {
+    if (!onServer) {
+      open("Home");
+      return;
+    }
+    setSaving(true);
+    try {
+      await api("/v1/me", { method: "PATCH", body: { name: name.trim().replace(/\s+/g, " ") } });
+      const bike = vehicle && lookup
+        ? { registrationNumber: reg, make: lookup.make, model: lookup.model, bodyType: bikeType ?? found.type, colourName: lookup.colourName, makeYear: lookup.makeYear, chassisLast4: lookup.chassisLast4 }
+        : { registrationNumber: reg, make: brandName, model: modelName, bodyType: bikeType, colourName: colour === "Custom" ? "Custom colour" : colour, colourHex: tone, makeYear: Number(year) || null };
+      await api("/v1/vehicles", { body: bike }).catch((error) => {
+        if (!(error instanceof ApiError && error.status === 409)) throw error;
+      });
+      await reloadLive();
+      open("Home");
+    } catch (error) {
+      toast.error(messageOf(error));
+    } finally {
+      setSaving(false);
+    }
+  };
+  const plateReady = !onServer || plateKey(reg).length >= 6;
   return (
     <PhoneFrame
       tone="white"
-      footer={<button className="cx-btn cx-btn-primary" disabled={!name || !(vehicle || (manual && manualDone))} onClick={() => open("Home")}>Continue</button>}
+      footer={<button className="cx-btn cx-btn-primary" disabled={saving || !name.trim() || !plateReady || !(vehicle || (manual && manualDone))} onClick={finish}>Continue</button>}
     >
       <TopBar onBack={() => open("OTP")} />
       <div className="cx-heading">
@@ -1570,9 +1735,9 @@ function CreateAccount({ open }: { open: (screen: string) => void }) {
         <div className="cx-found">
           <BikeArt tone="#1f2023" type={bikeType ?? found.type} />
           <div>
-            <b>Hero Xtreme 160R</b>
-            <small>{bikeTypes[bikeType ?? found.type].label}, Stealth Black, made in 2023</small>
-            <small>Chassis ending 2198</small>
+            <b>{lookup ? `${lookup.make} ${lookup.model}` : "Hero Xtreme 160R"}</b>
+            <small>{lookupLine(lookup, bikeTypes[bikeType ?? found.type].label)}</small>
+            {(!lookup || lookup.chassisLast4) && <small>Chassis ending {lookup ? lookup.chassisLast4 : "2198"}</small>}
             <button className="cx-link" onClick={() => setChoosing((value) => !value)}>{choosing ? "Keep this type" : "Not right? Change the type"}</button>
           </div>
         </div>
@@ -1675,6 +1840,12 @@ function CreateAccount({ open }: { open: (screen: string) => void }) {
 }
 
 function whoHas(item: ServiceBooking) {
+  if (item.people) {
+    const { mechanic, bay, rider } = item.people;
+    if (item.stage >= 3 && item.stage <= 4 && (mechanic || bay)) return [mechanic ? firstName(mechanic) : null, bay].filter(Boolean).join(" in ");
+    if (item.stage === 2) return rider ? `With ${firstName(rider)}` : "With our rider";
+    return bookingStatus(item);
+  }
   if (item.vehicleId === "guerrilla" && item.stage >= 3 && item.stage <= 4) return "Rahul in Bay 03";
   if (item.stage === 2) return "With Arjun";
   return bookingStatus(item);
@@ -1916,7 +2087,7 @@ function pickupWhen(item: ServiceBooking) {
 
 function jobWhere(item: ServiceBooking) {
   if (item.stage === 0) return pickupWhen(item);
-  if (item.stage === 1) return "Arjun is on his way";
+  if (item.stage === 1) return item.people ? headlineFor(item) : "Arjun is on his way";
   return whoHas(item);
 }
 
@@ -1931,7 +2102,7 @@ function HomeRowIcon({ icon }: { icon: GarageIcon }) {
 
 function HomeScreen({ state, setState, open, firstTime }: AppProps) {
   const [help, setHelp] = useState<null | { kind: "renew" | "puc"; vehicle: VehicleId }>(null);
-  const garage: VehicleId[] = firstTime ? ["guerrilla"] : (Object.keys(vehicles) as VehicleId[]);
+  const garage: VehicleId[] = garageKeys(firstTime);
   const [bike, setBike] = useState<VehicleId>(garage[0]);
   const [slide, setSlide] = useState(0);
   const jobs = state.bookings.filter((item) => item.stage < 6).sort((a, b) => b.stage - a.stage);
@@ -2152,6 +2323,16 @@ function HomeScreen({ state, setState, open, firstTime }: AppProps) {
   );
 }
 
+const slotHours: Record<string, [number, number]> = { "9–11 AM": [9, 11], "11 AM–1 PM": [11, 13], "2–4 PM": [14, 16], "4–6 PM": [16, 18] };
+
+function nextDays() {
+  const now = new Date();
+  return Array.from({ length: 6 }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + index);
+    return [index === 0 ? "Today" : date.toLocaleDateString("en-IN", { weekday: "short" }), String(date.getDate())];
+  });
+}
+
 function BookingScreen({ state, setState, open, firstTime }: AppProps) {
   const fromGarage = useFromGarage();
   const [intent] = useState(() => takeBookingIntent());
@@ -2168,11 +2349,13 @@ function BookingScreen({ state, setState, open, firstTime }: AppProps) {
     };
   }, [viaOffer]);
   const [step, setStep] = useState(0);
-  const [bike, setBike] = useState<VehicleId>(intent?.vehicle ?? (firstTime ? "guerrilla" : "access"));
+  const [bike, setBike] = useState<VehicleId>(() => intent?.vehicle
+    ?? (onServer ? liveGarage.find((key) => !state.bookings.some((item) => item.vehicleId === key && item.stage < 6)) ?? liveGarage[0] : firstTime ? "guerrilla" : "access"));
+  const [busy, setBusy] = useState(false);
   const [picking, setPicking] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
   const vehicle = vehicles[bike];
-  const bikeChoices = (firstTime ? ["guerrilla"] : ["guerrilla", "classic", "access"]) as VehicleId[];
+  const bikeChoices = onServer ? liveGarage : (firstTime ? ["guerrilla"] : ["guerrilla", "classic", "access"]) as VehicleId[];
   const [category, setCategory] = useState("All");
   const [applied, setApplied] = useState<string | null>(() => state.offer ?? (firstTime ? "first" : null));
   const [cart, setCart] = useState(() => {
@@ -2182,7 +2365,7 @@ function BookingScreen({ state, setState, open, firstTime }: AppProps) {
   const [couponsOpen, setCouponsOpen] = useState(false);
   const [showLocked, setShowLocked] = useState(false);
   const [mode, setMode] = useState<"pickup" | "visit">("pickup");
-  const [day, setDay] = useState(0);
+  const [day, setDay] = useState(() => (onServer && new Date().getHours() >= 14 ? 1 : 0));
   const [slot, setSlot] = useState("2–4 PM");
   const pager = useRef<HTMLDivElement>(null);
   const jumpingTo = useRef<number | null>(null);
@@ -2235,10 +2418,43 @@ function BookingScreen({ state, setState, open, firstTime }: AppProps) {
     if (item) toast.success(`${item.title} applied`);
   };
   const bikeUnavailable = state.bookings.some((item) => item.vehicleId === bike && item.stage < 6);
-  const days = [["Today", "27"], ["Mon", "28"], ["Tue", "29"], ["Wed", "30"], ["Thu", "1"], ["Fri", "2"]];
+  const days = onServer ? nextDays() : [["Today", "27"], ["Mon", "28"], ["Tue", "29"], ["Wed", "30"], ["Thu", "1"], ["Fri", "2"]];
+  const pickupAddress = state.addresses[0];
+  const slotGone = (item: string, dayIndex: number) => onServer
+    ? dayIndex === 0 && (slotHours[item]?.[0] ?? 0) <= new Date().getHours()
+    : dayIndex === 0 && ["9–11 AM", "11 AM–1 PM"].includes(item);
+  const timeOk = !onServer || (!slotGone(slot, day) && (mode === "visit" || Boolean(pickupAddress)));
   const when = `${day === 0 ? "Today" : `${days[day][0]} ${days[day][1]}`}, ${slot}`;
   const titles = ["What does it need?", "When should we come?", "Check and confirm"];
   const confirm = () => {
+    if (onServer) {
+      const [from, to] = slotHours[slot] ?? [14, 16];
+      const base = new Date();
+      const at = (hour: number) => new Date(base.getFullYear(), base.getMonth(), base.getDate() + day, hour).toISOString();
+      setBusy(true);
+      api<{ id: string; number: string }>("/v1/bookings", {
+        body: {
+          vehicleId: bike,
+          serviceIds: cart,
+          mode,
+          slotStart: at(from),
+          slotEnd: at(to),
+          pickupAddressId: mode === "pickup" ? pickupAddress?.id ?? null : null,
+          offerId: discount > 0 ? applied : null,
+        },
+      })
+        .then(async (created) => {
+          booked.current = true;
+          await reloadLive();
+          setState((current) => ({ ...current, selectedBookingId: created.number, offer: null }));
+          setCreatedId(created.number);
+          toast.success("Booking confirmed");
+          setStep(3);
+        })
+        .catch((error) => toast.error(messageOf(error)))
+        .finally(() => setBusy(false));
+      return;
+    }
     const id = `BS-2026-${String(126 + state.bookings.length).padStart(6, "0")}`;
     const item: ServiceBooking = {
       id,
@@ -2268,12 +2484,12 @@ function BookingScreen({ state, setState, open, firstTime }: AppProps) {
     ) : step === 1 ? (
       <div className="cx-footer-row">
         <div><b>{when}</b><small>{mode === "pickup" ? "Pickup from home" : "At the workshop"}</small></div>
-        <button className="cx-btn cx-btn-primary" onClick={() => setStep(2)}>Review</button>
+        <button className="cx-btn cx-btn-primary" disabled={!timeOk} onClick={() => setStep(2)}>Review</button>
       </div>
     ) : step === 2 ? (
       <div className="cx-footer-row">
         <div><b>{inr(estimatedNow)}</b><small>Estimate with GST</small></div>
-        <button className="cx-btn cx-btn-primary" onClick={confirm}>Confirm booking</button>
+        <button className="cx-btn cx-btn-primary" disabled={busy} onClick={confirm}>Confirm booking</button>
       </div>
     ) : undefined;
 
@@ -2296,7 +2512,7 @@ function BookingScreen({ state, setState, open, firstTime }: AppProps) {
         <div className="cx-done">
           <span><Check /></span>
           <h1>You’re booked</h1>
-          <p>Arjun will collect your {vehicle.name} {when.toLowerCase().startsWith("today") ? "today" : "on " + when.split(",")[0]} between {slot}.</p>
+          <p>{onServer ? (mode === "pickup" ? "We’ll collect your" : "Bring your") : "Arjun will collect your"} {vehicle.name} {when.toLowerCase().startsWith("today") ? "today" : "on " + when.split(",")[0]} between {slot}.</p>
         </div>
         <Group>
           <Row title="Booking" value={createdId ?? "Confirmed"} />
@@ -2390,11 +2606,13 @@ function BookingScreen({ state, setState, open, firstTime }: AppProps) {
           </div>
           <Group>
             {mode === "pickup"
-              ? <Row lead={<MapPin />} title="Home" detail="BTM 2nd Stage, Bengaluru" value={<button className="cx-link">Change</button>} />
+              ? onServer
+                ? <Row lead={<MapPin />} title={pickupAddress?.label ?? "Add a pickup address"} detail={pickupAddress ? pickupAddress.area : "Where the rider collects the bike"} value={<button className="cx-link" onClick={() => open("Add address")}>{pickupAddress ? "Change" : "Add"}</button>} />
+                : <Row lead={<MapPin />} title="Home" detail="BTM 2nd Stage, Bengaluru" value={<button className="cx-link">Change</button>} />
               : <Row lead={<Warehouse />} title="Bike Surgeon, Davangere" detail="Open till 8 PM, 2.4 km away" value={<button className="cx-link" onClick={() => window.open("https://www.google.com/maps/dir/?api=1&destination=14.4734864,75.8880148", "_blank", "noopener,noreferrer")}>Map</button>} />}
           </Group>
           <section className="cx-group">
-            <div className="cx-group-head"><h3>September</h3></div>
+            <div className="cx-group-head"><h3>{onServer ? new Date().toLocaleDateString("en-IN", { month: "long" }) : "September"}</h3></div>
             <div className="cx-days">
               {days.map(([label, date], index) => (
                 <button key={date} aria-pressed={day === index} onClick={() => setDay(index)}>
@@ -2407,11 +2625,11 @@ function BookingScreen({ state, setState, open, firstTime }: AppProps) {
             <div className="cx-group-head"><h3>{mode === "pickup" ? "Pickup window" : "Drop-off window"}</h3></div>
             <div className="cx-slots">
               {["9–11 AM", "11 AM–1 PM", "2–4 PM", "4–6 PM"].map((item, index) => {
-                const gone = day === 0 && index < 2;
+                const gone = slotGone(item, day);
                 return (
                   <button key={item} aria-pressed={slot === item} disabled={gone} onClick={() => setSlot(item)}>
                     {item}
-                    <small>{gone ? "Passed" : index === 3 ? "2 left" : "Open"}</small>
+                    <small>{gone ? "Passed" : index === 3 && !onServer ? "2 left" : "Open"}</small>
                   </button>
                 );
               })}
@@ -2424,7 +2642,7 @@ function BookingScreen({ state, setState, open, firstTime }: AppProps) {
         <>
           <Group>
             <Row lead={<BikeArt tone={vehicle.tone} type={vehicle.type} className="thumb" />} title={vehicle.name} detail={<Plate value={vehicle.plate} small />} />
-            <Row lead={<CalendarDays />} title={when} detail={mode === "pickup" ? "Pickup from BTM 2nd Stage" : "Drop-off at Davangere"} />
+            <Row lead={<CalendarDays />} title={when} detail={mode === "pickup" ? `Pickup from ${onServer ? pickupAddress?.area ?? "your address" : "BTM 2nd Stage"}` : "Drop-off at Davangere"} />
           </Group>
           <section className="cx-coupon" aria-label="Offer">
             {activeOffer ? (
@@ -2465,8 +2683,8 @@ function BookingScreen({ state, setState, open, firstTime }: AppProps) {
           <div className="cx-group-head"><h3>Price estimate</h3><small>Before extra parts</small></div>
           <section className="cx-receipt">
             {cart.map((id) => {
-              const item = services.find((service) => service.id === id)!;
-              return <Line key={id} label={item.name} value={inr(item.price)} />;
+              const item = services.find((service) => service.id === id);
+              return item ? <Line key={id} label={item.name} value={inr(item.price)} /> : null;
             })}
             <Line label={mode === "pickup" ? "Pickup and delivery" : "Workshop visit"} value="Free" />
             {discount > 0 && offer && <Line label={offer.title} value={`−${inr(discount)}`} />}
@@ -2528,12 +2746,48 @@ function BookingScreen({ state, setState, open, firstTime }: AppProps) {
   );
 }
 
-function CameraFeed() {
+function CameraFeed({ item }: { item?: ServiceBooking }) {
   const video = useRef<HTMLVideoElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const [time, setTime] = useState(() => new Date());
   const [live, setLive] = useState(true);
   const [full, setFull] = useState(false);
+  const [feed, setFeed] = useState<"loading" | "on" | "off">(onServer ? "loading" : "on");
+  const bay = item?.people?.bay ?? "Bay 03";
+  const uuid = item?.uuid;
+  useEffect(() => {
+    if (!onServer || !uuid) return;
+    let cancelled = false;
+    let timer = 0;
+    let stopPlayer: (() => void) | null = null;
+    const later = (ms: number) => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(start, ms);
+    };
+    async function start() {
+      try {
+        const camera = await api<{ playbackUrl: string; expiresAt: string }>(`/v1/bookings/${uuid}/camera`);
+        if (cancelled || !video.current) return;
+        stopPlayer?.();
+        stopPlayer = await playStream(video.current, camera.playbackUrl, () => {
+          if (!cancelled) later(5000);
+        });
+        if (cancelled) return stopPlayer();
+        setFeed("on");
+        later(Math.max(30_000, new Date(camera.expiresAt).getTime() - Date.now() - 60_000));
+      } catch {
+        if (cancelled) return;
+        setFeed("off");
+        later(20_000);
+      }
+    }
+    start();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      stopPlayer?.();
+    };
+  }, [uuid]);
   useEffect(() => {
     const timer = window.setInterval(() => setTime(new Date()), 1000);
     const onChange = () => setFull(document.fullscreenElement === stage.current);
@@ -2548,7 +2802,9 @@ function CameraFeed() {
     setLive(false);
   };
   const goLive = () => {
-    video.current?.play();
+    const el = video.current;
+    if (onServer && el && el.seekable.length) el.currentTime = el.seekable.end(el.seekable.length - 1);
+    el?.play();
     setLive(true);
   };
   const toggleFull = () => {
@@ -2556,13 +2812,14 @@ function CameraFeed() {
     else stage.current?.requestFullscreen();
   };
   return (
-    <div className={`cx-feed ${live ? "is-live" : "is-stopped"}`} ref={stage}>
-      <video ref={video} src="/bay-cam.mp4" autoPlay muted loop playsInline aria-label="Bay 03 live camera" />
+    <div className={`cx-feed ${live && feed === "on" ? "is-live" : "is-stopped"}`} ref={stage}>
+      <video ref={video} src={onServer ? undefined : "/bay-cam.mp4"} autoPlay muted loop={!onServer} playsInline aria-label={`${bay} live camera`} />
       <div className="cx-feed-top">
-        <span>Bay 03</span>
+        <span>{bay}</span>
         <span className="cx-feed-clock">{time.toLocaleTimeString("en-GB")}</span>
       </div>
-      {!live && <div className="cx-feed-paused">Camera stopped</div>}
+      {(!live || feed === "off") && <div className="cx-feed-paused">Camera stopped</div>}
+      {live && feed === "loading" && <div className="cx-feed-paused">Connecting to the bay camera…</div>}
       <div className="cx-feed-controls">
         <button type="button" onClick={stop} disabled={!live} aria-label="Stop"><Square /></button>
         <button type="button" className={`cx-live-btn ${live ? "on" : ""}`} onClick={goLive} aria-pressed={live}><i />Live</button>
@@ -2598,10 +2855,16 @@ function ServiceReview({
   const [leads, setLeads] = useState<string[]>([]);
   const [note, setNote] = useState("");
   const work = [
-    ...item.serviceIds.map((id) => services.find((service) => service.id === id)?.name).filter((name): name is string => Boolean(name)),
-    ...item.extras.filter((extra) => extra.status === "approved").map((extra) => extra.id === "pads" ? "Brake pads" : extra.id === "chain" ? "Chain lube" : "Extra work"),
+    ...item.serviceIds.map(serviceName).filter((name): name is string => Boolean(name)),
+    ...item.extras.filter((extra) => extra.status === "approved").map((extra) => extra.id === "pads" ? "Brake pads" : extra.id === "chain" ? "Chain lube" : onServer ? extra.part : "Extra work"),
   ];
   const pickup = item.mode === "pickup";
+  const person = item.people
+    ? (pickup ? item.people.rider : item.people.advisor) || (pickup ? "Our rider" : "The workshop team")
+    : pickup ? "Arjun K." : "Amit Patil";
+  const personNote = item.people
+    ? pickup ? `Delivered by ${person}.` : `Seen by ${person} at the workshop.`
+    : pickup ? "Delivered by Arjun K." : "Seen by Amit at the workshop.";
   const happy = stars >= 4;
   const toggle = (list: string[], value: string, set: (next: string[]) => void) => {
     set(list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value]);
@@ -2620,8 +2883,14 @@ function ServiceReview({
     const follow = [
       ...asked,
       ...liked.map((name) => `${name} again`),
-      ...(votes.person === "up" ? [pickup ? "Arjun for the next pickup" : "Amit for the next visit"] : []),
+      ...(votes.person === "up" ? [`${firstName(person)} for the next ${pickup ? "pickup" : "visit"}`] : []),
     ];
+    if (onServer && item.uuid) {
+      const workVotes = Object.fromEntries(Object.entries(votes).filter(([name]) => name !== "person"));
+      api(`/v1/bookings/${item.uuid}/review`, {
+        body: { stars, tags: tags.filter((tag) => tag !== "Tell us more"), note: note.trim() || null, workVotes, staffVote: votes.person ?? null, followUpInterests: follow.slice(0, 10).map((text) => text.slice(0, 60)) },
+      }).catch((error) => toast.error(messageOf(error)));
+    }
     if (happy && follow.length) {
       toast.success(follow.length === 1 ? `We’ll follow up: ${follow[0]}.` : `We’ll follow up on ${follow.length} things you asked for.`);
     } else if (happy) {
@@ -2669,9 +2938,9 @@ function ServiceReview({
           </section>
           <section className="cx-review-block">
             <h3>{pickup ? "How was pickup?" : "How was the workshop?"}</h3>
-            <p>{pickup ? "Delivered by Arjun K." : "Seen by Amit at the workshop."}</p>
+            <p>{personNote}</p>
             <div className="cx-thumb-row">
-              <b>{pickup ? "Arjun K." : "Amit Patil"}</b>
+              <b>{person}</b>
               <span className="cx-thumbs">
                 <button type="button" aria-label="Not happy with them" aria-pressed={votes.person === "down"} className={votes.person === "down" ? "on-down" : ""} onClick={() => vote("person", "down")}><ThumbsDown /></button>
                 <button type="button" aria-label="Happy for them to do the next one" aria-pressed={votes.person === "up"} className={votes.person === "up" ? "on-up" : ""} onClick={() => vote("person", "up")}><ThumbsUp /></button>
@@ -2763,7 +3032,20 @@ function Tracker({ state, setState, open }: AppProps) {
   const linked = state.payments.find((entry) => entry.bookingId === item.id);
   const pending = item.extras.filter((extra) => extra.status === "pending");
   const ready = readyTime(item);
+  const crew = item.people;
+  const riderFirst = crew?.rider ? firstName(crew.rider) : null;
   const stepNote = (index: number) => {
+    if (index <= item.stage && crew) {
+      return [
+        "Booking confirmed",
+        riderFirst ? `${riderFirst} is on the way` : "A rider is on the way",
+        riderFirst ? `${riderFirst} has your bike` : "Our rider has your bike",
+        "Checked in at Bike Surgeon",
+        inBay ? (crew.mechanic || crew.bay ? `${crew.mechanic ? firstName(crew.mechanic) : "The mechanic"} is working on it${crew.bay ? ` in ${crew.bay}` : ""}` : "Being serviced") : "Work done",
+        "Job card closed",
+        "Back with you",
+      ][index];
+    }
     if (index <= item.stage) return ["Booking confirmed", "Arjun is on his way", "Arjun has your bike", "Checked in at Bike Surgeon", inBay ? "Rahul is working on it in Bay 03" : "Work done", "Job card closed", "Back with you"][index];
     if (index === 5) return ready ? `Expected ${ready}` : item.eta;
     if (index === 6) return item.mode === "pickup" ? "We bring it to your door" : "Collect it at the workshop";
@@ -2780,19 +3062,19 @@ function Tracker({ state, setState, open }: AppProps) {
         <span className="cx-booking-art"><BikeArt tone={vehicle.tone} type={vehicle.type} /></span>
         <span><b>{vehicle.name}</b><Plate value={vehicle.plate} small /></span>
       </div>
-      {inBay ? (
+      {inBay && (!onServer || item.camera) ? (
         <div className="cx-feed-wrap">
-          <CameraFeed />
+          <CameraFeed item={item} />
         </div>
       ) : (
         <div className="cx-feed-off">
           <BikeArt tone={vehicle.tone} type={vehicle.type} />
-          <p>{item.stage < 3 ? "The bay camera turns on when your bike reaches Bay 03." : "The bay camera is off now that the service is done."}</p>
+          <p>{item.stage < 3 ? `The bay camera turns on when your bike reaches ${onServer ? "the bay" : "Bay 03"}.` : inBay ? "The bay camera is off right now." : "The bay camera is off now that the service is done."}</p>
         </div>
       )}
 
       <div className="cx-status-block trk-status">
-        <h1>{stageHeadline[item.stage]}</h1>
+        <h1>{headlineFor(item)}</h1>
         <p>{ready ? <>Ready by <b>{ready}</b>{item.eta.endsWith(" today") ? " today" : ""}</> : item.eta}</p>
         <Segments value={item.stage} total={stages.length} />
       </div>
@@ -2862,12 +3144,12 @@ function Tracker({ state, setState, open }: AppProps) {
       )}
 
       <Group title="Looking after your bike">
-        <Row lead={<span className="cx-avatar">AP</span>} title="Amit Patil" detail="Service advisor" value={<button className="cx-round" aria-label="Call the advisor" onClick={() => setAdvisorOpen(true)}><PhoneIcon /></button>} />
-        <Row lead={<span className="cx-avatar">RM</span>} title="Rahul M." detail="Mechanic, Bay 03" />
-        <Row lead={<span className="cx-avatar">AK</span>} title="Arjun K." detail="Pickup and delivery" />
+        <Row lead={<span className="cx-avatar">{initials(crew?.advisor ?? advisor.name)}</span>} title={crew?.advisor ?? advisor.name} detail="Service advisor" value={<button className="cx-round" aria-label="Call the advisor" onClick={() => setAdvisorOpen(true)}><PhoneIcon /></button>} />
+        {(!crew || crew.mechanic) && <Row lead={<span className="cx-avatar">{crew?.mechanic ? initials(crew.mechanic) : "RM"}</span>} title={crew?.mechanic ?? "Rahul M."} detail={crew ? `Mechanic${crew.bay ? `, ${crew.bay}` : ""}` : "Mechanic, Bay 03"} />}
+        {(!crew || crew.rider) && <Row lead={<span className="cx-avatar">{crew?.rider ? initials(crew.rider) : "AK"}</span>} title={crew?.rider ?? "Arjun K."} detail="Pickup and delivery" />}
       </Group>
 
-      <button
+      {!onServer && <button
         className="cx-demo-control"
         disabled={item.stage >= 6}
         onClick={() => {
@@ -2877,7 +3159,7 @@ function Tracker({ state, setState, open }: AppProps) {
         }}
       >
         Demo: move to the next stage
-      </button>
+      </button>}
       <AdvisorSheet open={advisorOpen} onOpenChange={setAdvisorOpen} />
       <ServiceReview
         key={item.id}
@@ -2921,6 +3203,11 @@ function Approval({ state, setState, open }: AppProps) {
   const pendingTotal = pending.reduce((sum, extra) => sum + extra.amount, 0);
   const approved = approvedExtraTotal(item.extras);
   const decide = (id: string, approvedPart: boolean) => {
+    if (onServer && item.uuid) {
+      api(`/v1/bookings/${item.uuid}/extras/${id}/decision`, { body: { approve: approvedPart } })
+        .catch((error) => toast.error(messageOf(error)))
+        .finally(() => reloadLive());
+    }
     setState((current) => updateBooking(current, item.id, (bookingItem) => ({
       ...bookingItem,
       extras: bookingItem.extras.map((extra) => (extra.id === id ? { ...extra, status: approvedPart ? "approved" : "declined" } : extra)),
@@ -2946,6 +3233,11 @@ function Approval({ state, setState, open }: AppProps) {
             className="cx-btn cx-btn-primary"
             onClick={() => {
               const total = pendingTotal;
+              if (onServer && item.uuid) {
+                api(`/v1/bookings/${item.uuid}/extras/approve-all`, { body: {} })
+                  .catch((error) => toast.error(messageOf(error)))
+                  .finally(() => reloadLive());
+              }
               setState((current) => updateBooking(current, item.id, (bookingItem) => ({
                 ...bookingItem,
                 extras: bookingItem.extras.map((extra) => (extra.status === "pending" ? { ...extra, status: "approved" } : extra)),
@@ -3057,7 +3349,9 @@ function Pay({ state, setState, open }: AppProps) {
     );
   }
   const bill = billFor(item);
-  const payable = bill.kind === "due" && !item.collectAtDoor;
+  const rider = item.people ? (item.people.rider ? firstName(item.people.rider) : "the rider") : "Arjun";
+  const counter = Boolean(item.payAtCounter) && !item.paid;
+  const payable = bill.kind === "due" && !item.collectAtDoor && !counter;
   const fromWallet = method === "wallet" ? Math.min(state.wallet, bill.total) : 0;
   const rest = bill.total - fromWallet;
   const methods = [
@@ -3065,12 +3359,31 @@ function Pay({ state, setState, open }: AppProps) {
     ["upi", "UPI", "GPay, PhonePe, Paytm"] as const,
     ["card", "Card", "Credit or debit"] as const,
     ["net", "Net banking", "All major banks"] as const,
-    ["later", "Pay at delivery", "Cash or UPI to Arjun"] as const,
+    ["later", "Pay at delivery", `Cash or UPI to ${rider}`] as const,
   ];
   const pay = () => {
+    if (onServer && item.uuid) {
+      const done = (text: string) => async () => {
+        await reloadLive();
+        toast.success(text);
+      };
+      if (method === "later") {
+        api(`/v1/bookings/${item.uuid}/pay-at-delivery`, { body: {} }).then(done(`You’ll pay ${rider} at delivery`)).catch((error) => toast.error(messageOf(error)));
+        return;
+      }
+      const online = method === "net" ? "netbanking" : method === "card" ? "card" : "upi";
+      api<{ pendingPayment: unknown }>(`/v1/bookings/${item.uuid}/pay`, { body: { walletAmount: fromWallet, ...(rest > 0 ? { method: online } : {}) } })
+        .then(async (result) => {
+          await reloadLive();
+          if (result.pendingPayment) toast.success(fromWallet ? `${inr(fromWallet)} taken from your wallet` : "Payment started", { description: "It shows as paid once the workshop confirms it." });
+          else toast.success("Paid from your wallet");
+        })
+        .catch((error) => toast.error(messageOf(error)));
+      return;
+    }
     if (method === "later") {
       setState((current) => updateBooking(current, item.id, (bookingItem) => ({ ...bookingItem, collectAtDoor: true, paid: false })));
-      toast.success("You’ll pay Arjun at delivery");
+      toast.success(`You’ll pay ${rider} at delivery`);
       return;
     }
     const payment = paymentFromBooking(item, method, fromWallet);
@@ -3100,7 +3413,7 @@ function Pay({ state, setState, open }: AppProps) {
       footer={
         item.paid
           ? <button className="cx-btn cx-btn-primary" onClick={() => open("Track + live view")}>Track delivery</button>
-          : item.collectAtDoor
+          : item.collectAtDoor || counter
             ? <button className="cx-btn cx-btn-quiet" onClick={() => open("Track + live view")}>Back to the booking</button>
             : payable
               ? <button className="cx-btn cx-btn-primary" onClick={pay}>{label}</button>
@@ -3109,14 +3422,16 @@ function Pay({ state, setState, open }: AppProps) {
     >
       <TopBar title="Invoice" onBack={back} />
       <div className="cx-heading">
-        <h1>{item.collectAtDoor ? "Pay Arjun at the door" : payable ? "The job card is closed" : item.paid ? "Paid in full" : "Not an invoice yet"}</h1>
+        <h1>{counter ? "Pay at the workshop" : item.collectAtDoor ? `Pay ${rider} at the door` : payable ? "The job card is closed" : item.paid ? "Paid in full" : "Not an invoice yet"}</h1>
         <p>
-          {item.collectAtDoor
+          {counter
+            ? "This bill is from the workshop counter. Pay there by cash, UPI or card, and it shows here as paid."
+            : item.collectAtDoor
             ? "Cash or UPI when the bike comes back. This invoice stays open until that payment is in."
             : payable
-              ? "Package, approved parts and GST. Pay now, or hand it to Arjun at the door."
+              ? `Package, approved parts and GST. Pay now, or hand it to ${rider} at the door.`
               : item.paid
-                ? "Your bike is on its way back with Arjun."
+                ? item.mode === "pickup" || !item.people ? `Your bike is on its way back with ${rider}.` : "Thank you. Your payment is in."
                 : "This becomes the invoice when the job card closes. Extra parts join it only after you approve them."}
         </p>
       </div>
@@ -3331,11 +3646,14 @@ function WalletScreen({ state, open, firstTime }: AppProps) {
   );
 }
 
-const referralCode = "SANATH200";
-const referralShareText = `Use my Bike Surgeon code ${referralCode}. You get ₹200 off your first completed service, and I get ₹200 in wallet credit.`;
+let referralCode = "SANATH200";
+let liveReferrals: { name: string; status: string; detail: string; amount: number }[] = [];
+let referralShareText = `Use my Bike Surgeon code ${referralCode}. You get ₹200 off your first completed service, and I get ₹200 in wallet credit.`;
 
 function ReferralScreen({ open, firstTime }: AppProps) {
-  const referrals = firstTime
+  const referrals = onServer
+    ? liveReferrals
+    : firstTime
     ? []
     : [
         { name: "Arun K.", status: "Credit received", detail: "First service completed", amount: 200 },
@@ -3346,7 +3664,7 @@ function ReferralScreen({ open, firstTime }: AppProps) {
       await navigator.clipboard.writeText(referralCode);
       toast.success("Referral code copied");
     } catch {
-      toast("Code: SANATH200");
+      toast(`Code: ${referralCode}`);
     }
   };
   const share = async () => {
@@ -3459,7 +3777,19 @@ function OffersScreen({ setState, open, firstTime }: AppProps) {
   );
 }
 
-const garageBook = {
+type GarageBook = {
+  odo: number;
+  odoNote: string;
+  insurance: { insurer: string; cover: string; till: string; due: boolean; life: number };
+  puc: { till: string; due: boolean; reading: string; life: number };
+  warrantyLife: number;
+  services: string[][];
+  next: string;
+  earlier: number;
+  warranties: string;
+};
+
+const garageBook: Record<string, GarageBook> = {
   guerrilla: {
     odo: 68423,
     odoNote: "Recorded at today’s service",
@@ -3504,7 +3834,7 @@ const garageBook = {
     earlier: 0,
     warranties: "2 active",
   },
-} as const;
+};
 
 type GarageIcon = "service" | "insurance" | "puc" | "warranty";
 
@@ -3565,7 +3895,7 @@ function garageCardLines(key: VehicleId, bookings: ServiceBooking[]): GarageLine
 
 const kmPins = [1000, 5000, 10000, 25000, 50000];
 
-const kmSchedule: Record<keyof typeof vehicles, [string, number, number][]> = {
+const kmSchedule: Record<string, [string, number, number][]> = {
   guerrilla: [
     ["Engine oil", 6842, 3000],
     ["Chain", 6842, 1000],
@@ -3959,8 +4289,7 @@ const emptyGarageRecord = {
 };
 
 function garageRecord(id: string) {
-  if (id in garageBook) return garageBook[id as keyof typeof garageBook];
-  return emptyGarageRecord;
+  return garageBook[id] ?? emptyGarageRecord;
 }
 
 const freshSchedule: [string, number, number][] = [
@@ -3992,7 +4321,8 @@ function AddVehicle({
   const [customHex, setCustomHex] = useState("#8a4fb3");
   const [pickedType, setPickedType] = useState<BikeType | null>(null);
   const [choosing, setChoosing] = useState(false);
-  const lookedUp = typeForModel("Xtreme 160R", "Hero");
+  const [lookup, setLookup] = useState<LookupResult | null>(null);
+  const lookedUp = lookup?.bodyType ? { type: lookup.bodyType, source: "catalog" } : typeForModel(lookup?.model ?? "Xtreme 160R", lookup?.make ?? "Hero");
   const typedModel = brand === "Other" || model === "Not listed";
   const modelName = (typedModel ? modelText : model).trim();
   const brandName = brand === "Other" ? brandText.trim() : brand;
@@ -4013,6 +4343,22 @@ function AddVehicle({
       return;
     }
     setLoading(true);
+    if (onServer) {
+      lookupPlate(reg).then((result) => {
+        setLoading(false);
+        resetType();
+        if (result) {
+          setLookup(result);
+          setFound(true);
+          setManual(false);
+          toast.success("Found your bike");
+        } else {
+          toast("We couldn’t read that number. Enter the details yourself.");
+          setManual(true);
+        }
+      });
+      return;
+    }
     window.setTimeout(() => {
       setLoading(false);
       setFound(true);
@@ -4034,11 +4380,11 @@ function AddVehicle({
     const plate = formatPlate(reg);
     if (found) {
       onSave({
-        name: "Xtreme 160R",
-        make: "Hero",
+        name: lookup?.model ?? "Xtreme 160R",
+        make: lookup?.make ?? "Hero",
         plate,
         tone: "#1f2023",
-        colour: "Stealth Black",
+        colour: lookup ? lookup.colourName ?? "Colour not set" : "Stealth Black",
         km: "0",
         services: 0,
         type: bikeType,
@@ -4086,9 +4432,9 @@ function AddVehicle({
           <div className="cx-found">
             <BikeArt tone="#1f2023" type={bikeType ?? lookedUp.type} />
             <div>
-              <b>Hero Xtreme 160R</b>
-              <small>{bikeTypes[bikeType ?? lookedUp.type].label}, Stealth Black, made in 2023</small>
-              <small>Chassis ending 2198</small>
+              <b>{lookup ? `${lookup.make} ${lookup.model}` : "Hero Xtreme 160R"}</b>
+              <small>{lookupLine(lookup, bikeTypes[bikeType ?? lookedUp.type].label)}</small>
+              {(!lookup || lookup.chassisLast4) && <small>Chassis ending {lookup ? lookup.chassisLast4 : "2198"}</small>}
               <button className="cx-link" type="button" onClick={() => setChoosing((value) => !value)}>{choosing ? "Keep this type" : "Not right? Change the type"}</button>
             </div>
           </div>
@@ -4256,7 +4602,7 @@ function Garage({ state, setState, open, firstTime }: AppProps) {
   const [editing, setEditing] = useState(false);
   const [draftTenths, setDraftTenths] = useState<number | null>(null);
   const shown: Record<string, GarageBike> = { ...vehicles, ...added };
-  const stockKeys = (firstTime ? ["guerrilla"] : Object.keys(vehicles)) as string[];
+  const stockKeys = garageKeys(firstTime);
   const keys = [...stockKeys, ...Object.keys(added).filter((id) => !stockKeys.includes(id))];
   const vehicle = keys.includes(picked) ? picked : keys[0];
   const freshBike = firstTime || !(vehicle in vehicles);
@@ -4325,13 +4671,20 @@ function Garage({ state, setState, open, firstTime }: AppProps) {
       return;
     }
     haptic.done();
+    if (onServer) {
+      api(`/v1/vehicles/${vehicle}`, { method: "PATCH", body: { odometerKm: Math.round(next / 10) } })
+        .then(() => reloadLive())
+        .catch((error) => toast.error(messageOf(error)));
+    }
     setSaved((current) => ({ ...current, [vehicle]: next }));
     setEditing(false);
     setDraftTenths(null);
     if (next !== floor) toast.success(`Odometer saved at ${formatKm(next / 10)} km`);
   };
   const known = !(freshBike && recorded === undefined);
-  const schedule = freshBike ? freshSchedule : kmSchedule[vehicle as keyof typeof kmSchedule];
+  const schedule = freshBike ? freshSchedule : kmSchedule[vehicle] ?? freshSchedule;
+  const noIns = onServer && book.insurance.till === "Not added";
+  const noPuc = onServer && book.puc.till === "Not added";
   const wear = known
     ? schedule.map(([name, doneAt, every]) => ({ name, ...kmLife(km, doneAt, every) }))
     : [];
@@ -4379,6 +4732,22 @@ function Garage({ state, setState, open, firstTime }: AppProps) {
     </div>
   );
   const acceptVehicle = (next: GarageBike) => {
+    if (onServer) {
+      api<{ id: string }>("/v1/vehicles", {
+        body: { registrationNumber: next.plate, make: next.make, model: next.name, bodyType: next.type, colourName: next.colour, colourHex: /^#[0-9a-f]{6}$/i.test(next.tone) ? next.tone : null },
+      })
+        .then(async (created) => {
+          await reloadLive();
+          setDirection(1);
+          setLeaving(vehicle);
+          setVehicle(created.id);
+          setArrivals((value) => value + 1);
+          setAdding(false);
+          toast.success(`${next.name} is in your garage`);
+        })
+        .catch((error) => toast.error(messageOf(error)));
+      return;
+    }
     const id = `plate:${plateKey(next.plate)}`;
     setAdded((current) => {
       const fleet = { ...current, [id]: next };
@@ -4403,7 +4772,7 @@ function Garage({ state, setState, open, firstTime }: AppProps) {
           onSave={acceptVehicle}
         />
       )}
-      {viewing && <DocViewer key={`${vehicle}-${viewing}`} doc={viewing} vehicle={vehicle} sample={!freshBike} onClose={() => setViewing(null)} />}
+      {viewing && <DocViewer key={`${vehicle}-${viewing}`} doc={viewing} vehicle={vehicle} sample={!freshBike && !onServer} onClose={() => setViewing(null)} />}
       <svg className="cx-defs" aria-hidden="true">
         <filter id="cx-ink-rough">
           <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="noise" />
@@ -4495,20 +4864,20 @@ function Garage({ state, setState, open, firstTime }: AppProps) {
             <div className="cx-doc-body">
               <span className="cx-chip" />
               <strong>{bike.plate}</strong>
-              <small>{vehicle in vehicles ? "Sanath Naik, registered Mar 2025" : "Added just now"}</small>
+              <small>{onServer ? state.profile.name : vehicle in vehicles ? "Sanath Naik, registered Mar 2025" : "Added just now"}</small>
             </div>
             {original("rc")}
           </article>
-          {freshBike && insuranceDoc.photo ? (
+          {(freshBike || noIns) && insuranceDoc.photo ? (
             <article className="cx-doc ins">
               <header><b>Insurance</b><span className="cx-doc-status">Photo added</span></header>
               <div className="cx-doc-body">
                 <strong>Saved on this phone</strong>
-                <small>Added {insuranceDoc.at ?? "today"}. Amit checks the dates at your first service.</small>
+                <small>Added {insuranceDoc.at ?? "today"}. {firstName(advisor.name)} checks the dates at your {freshBike ? "first" : "next"} service.</small>
               </div>
               {original("insurance")}
             </article>
-          ) : freshBike ? (
+          ) : freshBike || noIns ? (
             <article className="cx-doc empty">
               <header><b>Insurance</b><button className="cx-link" onClick={(event) => { event.stopPropagation(); setViewing("insurance"); }}>Add</button></header>
               <div className="cx-doc-body"><small>We’ll remind you a month before it lapses.</small></div>
@@ -4518,22 +4887,22 @@ function Garage({ state, setState, open, firstTime }: AppProps) {
               <header><b>Insurance</b><span className={`cx-doc-status ${book.insurance.due ? "due" : ""}`}>{book.insurance.till}</span></header>
               <div className="cx-doc-body">
                 <strong>{book.insurance.insurer}</strong>
-                <small>{book.insurance.cover}, policy ending 4471</small>
+                <small>{book.insurance.cover}{onServer ? "" : ", policy ending 4471"}</small>
                 {book.insurance.due && <PopButton tone="light" className="small" onClick={(event) => { event.stopPropagation(); toast("Renewal quotes from 3 insurers"); }}>Renew</PopButton>}
               </div>
               {original("insurance")}
             </article>
           )}
-          {freshBike && pucDoc.photo ? (
+          {(freshBike || noPuc) && pucDoc.photo ? (
             <article className="cx-doc puc">
               <header><b>Pollution certificate</b><span className="cx-doc-status">Photo added</span></header>
               <div className="cx-doc-body">
                 <strong>Saved on this phone</strong>
-                <small>Added {pucDoc.at ?? "today"}. Amit checks the reading at your first service.</small>
+                <small>Added {pucDoc.at ?? "today"}. {firstName(advisor.name)} checks the reading at your {freshBike ? "first" : "next"} service.</small>
               </div>
               {original("puc")}
             </article>
-          ) : freshBike ? (
+          ) : freshBike || noPuc ? (
             <article className="cx-doc empty">
               <header><b>Pollution certificate</b><button className="cx-link" onClick={(event) => { event.stopPropagation(); setViewing("puc"); }}>Add</button></header>
               <div className="cx-doc-body"><small>Or we’ll get a fresh one at your first service.</small></div>
@@ -4561,7 +4930,7 @@ function Garage({ state, setState, open, firstTime }: AppProps) {
           {!freshBike && book.services.map((row, index) => {
             const [title, date, reading, invoiceId] = row;
             return (
-              <div className="cx-book-row" key={date}>
+              <div className="cx-book-row" key={`${date}-${index}`}>
                 <span>
                   <b>{title}</b>
                   <small>{date}, {reading}</small>
@@ -4618,6 +4987,9 @@ function Garage({ state, setState, open, firstTime }: AppProps) {
   );
 }
 
+/** Warranties of all the customer's bikes: title, brand, what is left, percent left (real data only). */
+let liveWarranties: [string, string, string, number][] = [];
+
 function Warranty({ open, firstTime }: { open: (screen: string) => void; firstTime: boolean }) {
   const fromGarage = useFromGarage();
   const back = () => (fromGarage ? backToGarage(open) : open("Garage & history"));
@@ -4627,9 +4999,10 @@ function Warranty({ open, firstTime }: { open: (screen: string) => void; firstTi
     ["Front tyre", "Ceat Zoom", "12,400 of 18,000 km left", 38],
     ["Front brake pads", "Genuine part", "8 months left", 62],
   ] as const;
-  if (firstTime) {
+  const shownItems: readonly (readonly [string, string, string, number])[] = onServer ? liveWarranties : items;
+  if (firstTime || shownItems.length === 0) {
     return (
-      <PhoneFrame footer={<button className="cx-btn cx-btn-quiet" onClick={() => toast("Add a warranty")}><Plus /> Add a warranty</button>}>
+      <PhoneFrame footer={<button className="cx-btn cx-btn-quiet" onClick={() => toast(onServer ? "Ask the workshop to add it at your next visit" : "Add a warranty")}><Plus /> Add a warranty</button>}>
         <TopBar title="Warranties" onBack={back} />
         <div className="cx-quiet">
           <BikeArt />
@@ -4643,11 +5016,11 @@ function Warranty({ open, firstTime }: { open: (screen: string) => void; firstTi
     <PhoneFrame footer={<button className="cx-btn cx-btn-quiet" onClick={() => toast("Add a warranty")}><Plus /> Add a warranty</button>}>
       <TopBar title="Warranties" onBack={back} />
       <div className="cx-heading">
-        <h1>Four active warranties</h1>
+        <h1>{onServer ? `${shownItems.length} active ${shownItems.length === 1 ? "warranty" : "warranties"}` : "Four active warranties"}</h1>
         <p>We keep the receipts and serial numbers, and remind you a month before each one ends.</p>
       </div>
       <div className="cx-list">
-        {items.map(([title, brand, detail, value]) => (
+        {shownItems.map(([title, brand, detail, value]) => (
           <button className="cx-row cx-warranty" key={title} onClick={() => toast(`${title} details`)}>
             <span className="cx-row-text">
               <b>{title}</b>
@@ -4669,6 +5042,7 @@ function PhoneSheet(props: React.ComponentProps<typeof SheetContent>) {
 }
 
 const advisor = { name: "Amit Patil", phone: "+91 98450 11223", tel: "tel:+919845011223", wa: "919845011223" };
+const workshopTel = { href: advisor.tel };
 
 function AdvisorSheet({ open, onOpenChange, note = "Service advisor for your bikes and bookings." }: { open: boolean; onOpenChange: (open: boolean) => void; note?: string }) {
   return (
@@ -4696,20 +5070,22 @@ function GarageHelpSheet({
   bookings: ServiceBooking[];
   onOpenChange: (open: boolean) => void;
 }) {
-  const key = help?.vehicle ?? "classic";
+  const key = help?.vehicle ?? (onServer ? liveGarage[0] ?? "" : "classic");
   const bike = vehicles[key];
   const book = garageBook[key];
+  const am = firstName(advisor.name);
+  if (!bike || !book) return null;
   const active = bookings.find((item) => item.vehicleId === key && item.stage < 6);
   const pucPrice = services.find((service) => service.id === "puc")?.price ?? 100;
   const renewing = help?.kind === "renew";
   const note = renewing
-    ? `${book.insurance.insurer}, ${book.insurance.cover.toLowerCase()}. ${book.insurance.till}. Amit can ask 3 insurers for a quote. You pay the insurer after you pick one.`
+    ? `${book.insurance.insurer}, ${book.insurance.cover.toLowerCase()}. ${book.insurance.till}. ${am} can ask 3 insurers for a quote. You pay the insurer after you pick one.`
     : active && active.stage >= 3 && active.stage <= 4
-      ? `The ${bike.name} is in the workshop now. A pollution certificate is ${inr(pucPrice)}. Ask Amit to add it to this job. You pay after the work.`
-      : `The ${bike.name} is already booked. A pollution certificate is ${inr(pucPrice)}. Ask Amit to add it to that visit. You pay after the work.`;
+      ? `The ${bike.name} is in the workshop now. A pollution certificate is ${inr(pucPrice)}. Ask ${am} to add it to this job. You pay after the work.`
+      : `The ${bike.name} is already booked. A pollution certificate is ${inr(pucPrice)}. Ask ${am} to add it to that visit. You pay after the work.`;
   const waText = renewing
-    ? `Hi Amit, please get insurance quotes for my ${bike.name}, ${bike.plate}. ${book.insurance.insurer}, ${book.insurance.cover.toLowerCase()}, ${book.insurance.till.toLowerCase()}.`
-    : `Hi Amit, please add a pollution certificate to the current job for my ${bike.name}, ${bike.plate}. It is ${inr(pucPrice)}.`;
+    ? `Hi ${am}, please get insurance quotes for my ${bike.name}, ${bike.plate}. ${book.insurance.insurer}, ${book.insurance.cover.toLowerCase()}, ${book.insurance.till.toLowerCase()}.`
+    : `Hi ${am}, please add a pollution certificate to the current job for my ${bike.name}, ${bike.plate}. It is ${inr(pucPrice)}.`;
   return (
     <Sheet open={help !== null} onOpenChange={onOpenChange}>
       <PhoneSheet side="bottom" className="cx-sheet cx-help-sheet">
@@ -4721,8 +5097,8 @@ function GarageHelpSheet({
           <p className="cx-help-note">{note}</p>
           <p className="cx-advisor-number">{advisor.phone}</p>
           <div className="cx-help-actions">
-            <a className="cx-btn cx-btn-primary" href={`https://wa.me/${advisor.wa}?text=${encodeURIComponent(waText)}`} target="_blank" rel="noopener noreferrer"><MessageCircle /> WhatsApp Amit</a>
-            <a className="cx-btn cx-btn-quiet" href={advisor.tel}><PhoneIcon /> Call Amit</a>
+            <a className="cx-btn cx-btn-primary" href={`https://wa.me/${advisor.wa}?text=${encodeURIComponent(waText)}`} target="_blank" rel="noopener noreferrer"><MessageCircle /> WhatsApp {am}</a>
+            <a className="cx-btn cx-btn-quiet" href={advisor.tel}><PhoneIcon /> Call {am}</a>
           </div>
         </div>
       </PhoneSheet>
@@ -4737,6 +5113,20 @@ function PhoneDialog(props: React.ComponentProps<typeof DialogContent>) {
 
 const roadside = { phone: "+91 80 4718 2200", tel: "tel:+918047182200" };
 
+/** Sends the customer's location to the workshop on WhatsApp (real data only). */
+function shareRoadsideLocation() {
+  const send = (where: string) => {
+    const text = `I need roadside help. ${where}`;
+    window.open(`https://wa.me/${advisor.wa}?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+  };
+  if (!navigator.geolocation) return send("Please call me.");
+  navigator.geolocation.getCurrentPosition(
+    (position) => send(`My location: https://maps.google.com/?q=${position.coords.latitude.toFixed(6)},${position.coords.longitude.toFixed(6)}`),
+    () => send("Please call me."),
+    { enableHighAccuracy: true, timeout: 8000 },
+  );
+}
+
 function RoadsideDialog({ children }: { children: React.ReactNode }) {
   return (
     <Dialog>
@@ -4744,7 +5134,7 @@ function RoadsideDialog({ children }: { children: React.ReactNode }) {
       <PhoneDialog className="cx-dialog">
         <DialogHeader><DialogTitle>Send roadside help?</DialogTitle><DialogDescription>We’ll share your location with the nearest rider and call you within two minutes.</DialogDescription></DialogHeader>
         <div className="cx-stack">
-          <button className="cx-btn cx-btn-danger" onClick={() => toast.success("Help is on the way. Request SOS-2291.")}><Navigation /> Share my location</button>
+          <button className="cx-btn cx-btn-danger" onClick={() => (onServer ? shareRoadsideLocation() : toast.success("Help is on the way. Request SOS-2291."))}><Navigation /> Share my location</button>
           <a className="cx-btn cx-btn-quiet" href={roadside.tel}><PhoneIcon /> Call {roadside.phone}</a>
         </div>
       </PhoneDialog>
@@ -4769,14 +5159,14 @@ function Profile({ state, open, firstTime, theme, setTheme }: AppProps) {
         <Row lead={<Share2 />} title="Refer a friend" detail="You both get ₹200" chevron onClick={() => open("Refer a friend")} />
         <Row lead={<ReceiptIndianRupee />} title="Payment history" detail={firstTime ? "None yet" : dueBills ? "Ready to pay" : "What you have paid"} value={firstTime ? "None" : dueBills ? String(dueBills) : String(state.payments.length)} chevron onClick={() => openPaymentHistory(open, "Profile")} />
         <Row lead={<Gift />} title="Offers" value={String(offersFor(firstTime).length)} chevron onClick={() => open("Offers")} />
-        <Row lead={<History />} title="Service history" value={firstTime ? "None" : "4"} chevron onClick={() => open("Garage & history")} />
-        <Row lead={<ShieldCheck />} title="Warranties" value={firstTime ? "None" : "4"} chevron onClick={() => open("Warranty tracker")} />
+        <Row lead={<History />} title="Service history" value={onServer ? String(state.bookings.filter((item) => item.stage >= 6).length || "None") : firstTime ? "None" : "4"} chevron onClick={() => open("Garage & history")} />
+        <Row lead={<ShieldCheck />} title="Warranties" value={onServer ? String(liveWarranties.length || "None") : firstTime ? "None" : "4"} chevron onClick={() => open("Warranty tracker")} />
       </Group>
       <Group>
         <Row
-          lead={<span className="cx-avatar">AP</span>}
+          lead={<span className="cx-avatar">{initials(advisor.name)}</span>}
           title="Call the advisor"
-          detail="Amit Patil, service advisor"
+          detail={`${advisor.name}, service advisor`}
           value={<PhoneIcon />}
           onClick={() => setAdvisorOpen(true)}
         />
@@ -4825,8 +5215,8 @@ function Profile({ state, open, firstTime, theme, setTheme }: AppProps) {
           <PhoneDialog className="cx-dialog">
             <DialogHeader><DialogTitle>How can we help?</DialogTitle><DialogDescription>Your bike and booking details are shared with the team automatically.</DialogDescription></DialogHeader>
             <div className="cx-stack">
-              <button className="cx-btn cx-btn-dark"><MessageCircle /> Chat with Amit</button>
-              <button className="cx-btn cx-btn-quiet"><PhoneIcon /> Call the workshop</button>
+              <a className="cx-btn cx-btn-dark" href={`https://wa.me/${advisor.wa}`} target="_blank" rel="noopener noreferrer"><MessageCircle /> Chat with {firstName(advisor.name)}</a>
+              <a className="cx-btn cx-btn-quiet" href={workshopTel.href}><PhoneIcon /> Call the workshop</a>
             </div>
           </PhoneDialog>
         </Dialog>
@@ -4842,7 +5232,20 @@ function Profile({ state, open, firstTime, theme, setTheme }: AppProps) {
           <ExternalLink className="cx-chevron" />
         </a>
       </Group>
-      {testTools && (
+      {onServer && (
+        <Group>
+          <Row
+            lead={<UserRound />}
+            title="Log out"
+            detail={`+91 ${state.profile.phone}`}
+            chevron
+            onClick={() => {
+              logout().finally(() => open("Login / Sign up"));
+            }}
+          />
+        </Group>
+      )}
+      {testTools && !onServer && (
         <Group title="Test build">
           <div className="cx-row">
             <span className="cx-row-lead"><UserRound /></span>
@@ -4898,11 +5301,29 @@ function EditProfile({ state, setState, open }: AppProps) {
   const changed = (Object.keys(next) as (keyof ProfileInfo)[]).some((key) => next[key] !== saved[key]);
   const openBookings = state.bookings.filter((item) => item.stage < 6).length;
   const save = () => {
+    if (onServer) {
+      api("/v1/me", {
+        method: "PATCH",
+        body: { name: next.name, email: next.email || null, language: next.language, backupContactName: next.backupName || null, backupContactPhone: backupDigits || null },
+      })
+        .then(async () => {
+          await reloadLive();
+          toast.success("Profile saved");
+          open("Profile");
+        })
+        .catch((error) => toast.error(messageOf(error)));
+      return;
+    }
     setState((current) => ({ ...current, profile: next }));
     toast.success("Profile saved");
     open("Profile");
   };
   const sendCode = () => {
+    if (onServer) {
+      toast("To change your number, call the workshop. Your bikes and bookings move with you.");
+      setNumberOpen(false);
+      return;
+    }
     toast.success(`Code sent to +91 ${spaced(tenDigits(newNumber))}`, { description: "Enter it to switch. Your bikes and bookings stay with you." });
     setNumberOpen(false);
     setNewNumber("");
@@ -4978,7 +5399,12 @@ function EditProfile({ state, setState, open }: AppProps) {
             {openBookings > 0 ? (
               <button className="cx-btn cx-btn-dark" onClick={() => open("Track + live view")}>See my bookings</button>
             ) : (
-              <button className="cx-btn cx-btn-danger" onClick={() => { toast("Your account is deleted"); open("Starting page"); }}>Delete account</button>
+              <button className="cx-btn cx-btn-danger" onClick={() => {
+                if (!onServer) { toast("Your account is deleted"); open("Starting page"); return; }
+                api("/v1/me", { method: "DELETE" })
+                  .then(() => logout()).then(() => { toast("Your account is deleted"); open("Starting page"); })
+                  .catch((error) => toast.error(messageOf(error)));
+              }}>Delete account</button>
             )}
           </div>
         </PhoneDialog>
@@ -5010,6 +5436,13 @@ const mapAreas = [
   { name: "Madiwala", line: "Hosur Rd, Madiwala, Bengaluru 560068", x: 170, y: 730 },
   { name: "HSR Layout Sector 2", line: "27th Main Rd, HSR Layout, Bengaluru 560102", x: 740, y: 720 },
 ];
+if (onServer) {
+  ["PJ Extension", "Vidyanagar", "MCC B Block", "Nijalingappa Layout", "SS Layout"].forEach((name, index) => {
+    mapAreas[index].name = name;
+    mapAreas[index].line = `${name}, Davangere, Karnataka`;
+  });
+}
+
 const MAP = 900;
 const MAP_VIEW = { w: 390, h: 360 };
 const homeSpot = { x: MAP_VIEW.w / 2 - mapAreas[0].x, y: MAP_VIEW.h / 2 - mapAreas[0].y };
@@ -5063,7 +5496,7 @@ function CityMap() {
   );
 }
 
-const phoneContacts = [
+const phoneContacts: string[][] = onServer ? [] : [
   ["Amit Patil", "98450 11223"],
   ["Ananya Rao", "97311 44556"],
   ["Arjun K.", "99001 22881"],
@@ -5151,6 +5584,34 @@ function AddAddress({ state, setState, open }: AppProps) {
   const replaces = label !== "Other" && state.addresses.some((address) => address.label === label);
   const valid = !locating && house.trim().length > 0 && name.length > 0 && (forMe || (contact.trim().length > 0 && digits.length === 10));
   const save = () => {
+    if (onServer) {
+      const post = (spot: { latitude: number; longitude: number } | null) =>
+        api("/v1/me/addresses", {
+          body: {
+            label: name,
+            area: area.name,
+            line: [house.trim(), landmark.trim() && `near ${landmark.trim()}`, area.line].filter(Boolean).join(", "),
+            landmark: landmark.trim() || null,
+            contactName: forMe ? state.profile.name : contact.trim(),
+            contactPhone: forMe ? tenDigits(state.profile.phone) || null : digits,
+            latitude: spot?.latitude ?? null,
+            longitude: spot?.longitude ?? null,
+          },
+        })
+          .then(async () => {
+            await reloadLive();
+            toast.success(`${name} address saved`);
+            open("Profile");
+          })
+          .catch((error) => toast.error(messageOf(error)));
+      if (!navigator.geolocation) return void post(null);
+      navigator.geolocation.getCurrentPosition(
+        (position) => post({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
+        () => post(null),
+        { timeout: 6000, maximumAge: 120000 },
+      );
+      return;
+    }
     const entry: SavedAddress = {
       id: `${name.toLowerCase()}-${Date.now()}`,
       label: name,
@@ -5287,7 +5748,9 @@ function AddAddress({ state, setState, open }: AppProps) {
   );
 }
 
-const notices = [
+type Notice = { id: string; kind: string; title: string; body: string; bike: string; when: string; day: string; bookingId?: string; screen: string; unread: boolean };
+
+const notices: Notice[] = [
   { id: "pads", kind: "Update", title: "Two parts need your OK", body: "Amit sent them from Bay 03. Nothing extra is fitted until you say yes.", bike: "Guerrilla 450", when: "6:48 PM", day: "Today", bookingId: booking.id, screen: "Part approval", unread: true },
   { id: "bay", kind: "Update", title: "Service has started", body: "Rahul is on the general service in Bay 03. The camera is live.", bike: "Guerrilla 450", when: "6:40 PM", day: "Today", bookingId: booking.id, screen: "Track + live view", unread: true },
   { id: "pickup-reminder", kind: "Reminder", title: "Pickup is tomorrow", body: "Arjun collects the Classic 350 between 11 AM and 1 PM.", bike: "Classic 350", when: "5:10 PM", day: "Today", bookingId: "BS-2026-000125", screen: "Track + live view", unread: true },
@@ -5295,7 +5758,7 @@ const notices = [
   { id: "moved", kind: "Rescheduled", title: "Pickup moved", body: "The Classic 350 was 4–6 PM today. It’s now tomorrow, 11 AM–1 PM.", bike: "Classic 350", when: "Yesterday", day: "Earlier", bookingId: "BS-2026-000125", screen: "Track + live view", unread: false },
   { id: "cancelled", kind: "Cancelled", title: "Foam wash cancelled", body: "The Sunday 4–6 PM visit was cancelled. Nothing was charged.", bike: "Access 125", when: "12 Sep", day: "Earlier", screen: "", unread: false },
   { id: "guerrilla-booked", kind: "Confirmation", title: "General service booked", body: "Pickup today, 2–4 PM, from BTM 2nd Stage.", bike: "Guerrilla 450", when: "Yesterday", day: "Earlier", bookingId: booking.id, screen: "Track + live view", unread: false },
-] as const;
+];
 
 function unreadNotices(state: DemoState) {
   return notices.filter((notice) => notice.unread && !state.readNotices.includes(notice.id));
@@ -5304,16 +5767,18 @@ function unreadNotices(state: DemoState) {
 function Notifications({ state, setState, open, firstTime }: AppProps) {
   const unread = unreadNotices(state);
   const mark = (ids: string[]) => {
+    if (onServer) api("/v1/notifications/read", { body: { ids: ids.slice(0, 200) } }).catch(() => {});
     setState((current) => ({ ...current, readNotices: [...new Set([...current.readNotices, ...ids])] }));
   };
-  const openNotice = (notice: (typeof notices)[number]) => {
+  const openNotice = (notice: Notice) => {
+    if (onServer && notice.unread && !state.readNotices.includes(notice.id)) api("/v1/notifications/read", { body: { ids: [notice.id] } }).catch(() => {});
     setState((current) => ({
       ...current,
-      selectedBookingId: "bookingId" in notice && notice.bookingId ? notice.bookingId : current.selectedBookingId,
+      selectedBookingId: notice.bookingId ? notice.bookingId : current.selectedBookingId,
       readNotices: [...new Set([...current.readNotices, notice.id])],
     }));
     if (!notice.screen) {
-      toast("That visit was cancelled. Nothing was charged.");
+      toast(onServer ? notice.body : "That visit was cancelled. Nothing was charged.");
       return;
     }
     open(notice.screen);
@@ -5366,13 +5831,409 @@ function Notifications({ state, setState, open, firstTime }: AppProps) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Real data: everything the screens show, read from the Bike Surgeon API and shaped like the sample data,
+// so every screen stays exactly as designed.
+// ---------------------------------------------------------------------------
+
+type ApiPerson = { name: string; phone: string | null } | null;
+type ApiBooking = {
+  id: string; number: string; status: string; stage: number; mode: "pickup" | "visit"; source: string;
+  vehicle: { id: string; make: string; model: string; registrationNumber: string };
+  services: { id: string; name: string; price: number }[];
+  slotStart: string; slotEnd: string; promisedReadyAt: string | null;
+  bay: { code: string; name: string } | null; advisor: ApiPerson; mechanic: ApiPerson; rider: ApiPerson;
+  packageSubtotal: number; discountAmount: number; estimateAmount: number; payAtDelivery: boolean; paid: boolean; invoiceId: string | null;
+  cameraAvailable: boolean;
+  extras: { id: string; partName: string; note: string; amount: number; status: "pending" | "approved" | "declined"; raisedBy: string | null }[];
+  deliveredAt: string | null; closedAt: string | null; createdAt: string;
+};
+type ApiInvoice = {
+  id: string; number: string; jobCardId: string; bookingNumber: string; vehicleId: string; vehicleLabel: string; mode: "pickup" | "visit";
+  status: "open" | "paid" | "void"; source?: "app" | "workshop";
+  lines: { kind: string; label: string; amount: number }[];
+  discountAmount: number; gstAmount: number; total: number; walletAmount: number;
+  payments: { method: string; amount: number; status: string; providerReference: string | null }[];
+  issuedAt: string; paidAt: string | null;
+};
+type ApiVehicle = {
+  id: string; registrationNumber: string; make: string; model: string; bodyType: BikeType; colourName: string | null; colourHex: string | null;
+  makeYear: number | null; odometerKm: number | null; odometerRecordedAt: string | null;
+  documents: { kind: "rc" | "insurance" | "puc"; provider: string | null; policyType: string | null; reading: string | null; validUntil: string | null }[];
+};
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function dayStart(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+
+function shortDay(iso: string) {
+  const date = new Date(iso);
+  return `${date.getDate()} ${MONTHS[date.getMonth()]}`;
+}
+
+function dayWord(iso: string) {
+  const diff = Math.round((dayStart(new Date(iso)) - dayStart(new Date())) / 86_400_000);
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Tomorrow";
+  if (diff === -1) return "Yesterday";
+  return shortDay(iso);
+}
+
+function clockOf(iso: string) {
+  const date = new Date(iso);
+  const hour = date.getHours();
+  const minute = date.getMinutes();
+  return { time: `${hour % 12 || 12}${minute ? `:${String(minute).padStart(2, "0")}` : ""}`, half: hour < 12 ? "AM" : "PM" };
+}
+
+function slotText(start: string, end: string) {
+  const a = clockOf(start);
+  const b = clockOf(end);
+  return `${dayWord(start)}, ${a.half === b.half ? `${a.time}–${b.time} ${b.half}` : `${a.time} ${a.half}–${b.time} ${b.half}`}`;
+}
+
+function etaText(b: ApiBooking) {
+  if (b.stage >= 6) {
+    const word = dayWord(b.deliveredAt ?? b.closedAt ?? b.slotEnd);
+    return `Delivered ${word === "Today" || word === "Yesterday" ? word.toLowerCase() : word}`;
+  }
+  if (b.stage === 0) {
+    const word = dayWord(b.slotStart);
+    const start = clockOf(b.slotStart);
+    return `${b.mode === "pickup" ? "Pickup" : "Drop-off"} ${word === "Today" || word === "Tomorrow" ? word.toLowerCase() : word} at ${start.time} ${start.half}`;
+  }
+  if (b.promisedReadyAt) {
+    const ready = clockOf(b.promisedReadyAt);
+    const word = dayWord(b.promisedReadyAt);
+    return `Ready by ${ready.time} ${ready.half}${word === "Today" ? " today" : `, ${word}`}`;
+  }
+  if (b.stage >= 5) return b.mode === "pickup" ? "On its way back soon" : "Ready to collect";
+  return "We’ll share the ready time soon";
+}
+
+function plainPhone(phone: string | null | undefined) {
+  return String(phone ?? "").replace(/\D/g, "").slice(-10);
+}
+
+const methodNames: Record<string, string> = { upi: "UPI", card: "Card", netbanking: "Net banking", cash: "Cash at the workshop", wallet: "Wallet" };
+
+function invoiceTitle(inv: ApiInvoice) {
+  const work = inv.lines.filter((line) => line.kind === "service");
+  const first = work[0]?.label ?? inv.lines[0]?.label ?? "Service";
+  return work.length > 1 ? `${first} + ${work.length - 1} more` : first;
+}
+
+function lifeOf(validUntil: string | null, span: number) {
+  if (!validUntil) return null;
+  const days = Math.round((new Date(`${validUntil}T23:59:59`).getTime() - Date.now()) / 86_400_000);
+  const date = new Date(`${validUntil}T00:00:00`);
+  const till = days < 0 ? `Ended ${shortDay(date.toISOString())}` : days <= 30 ? `Due in ${days} ${days === 1 ? "day" : "days"}` : `Till ${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+  return { till, due: days <= 30, life: Math.max(0, Math.min(100, Math.round((days / span) * 100))) };
+}
+
+const fallbackTones = ["#2f5b8a", "#6e2a2a", "#45675b", "#1f2023", "#8a6d2f"];
+
+function replaceAll<T>(list: T[], next: T[]) {
+  list.splice(0, list.length, ...next);
+}
+
+function replaceKeys<T>(record: Record<string, T>, next: Record<string, T>) {
+  for (const key of Object.keys(record)) delete record[key];
+  Object.assign(record, next);
+}
+
+function spacedPhone(phone: string | null) {
+  const digits = plainPhone(phone);
+  return digits ? `+91 ${digits.slice(0, 5)} ${digits.slice(5)}` : "";
+}
+
+/** Reads the signed-in customer's data and fills the screens' tables. Returns the parts of the state that come from the server. */
+async function loadLiveState(): Promise<Omit<DemoState, "selectedBookingId" | "offer" | "rating" | "viewingPaymentId" | "readNotices">> {
+  const [me, bikes, jobs, invoices, wallet, addresses, inbox, catalogue, offers, workshop, referral] = await Promise.all([
+    api<{ name: string; phone: string; email: string | null; language: ProfileInfo["language"]; backupContactName: string | null; backupContactPhone: string | null }>("/v1/me"),
+    api<ApiVehicle[]>("/v1/vehicles"),
+    api<ApiBooking[]>("/v1/bookings"),
+    api<ApiInvoice[]>("/v1/invoices"),
+    api<{ balance: number; transactions: { id: string; title: string; detail: string; amount: number; createdAt: string }[] }>("/v1/wallet"),
+    api<{ id: string; label: string; area: string; line: string; contactName: string | null; contactPhone: string | null }[]>("/v1/me/addresses"),
+    api<{ items: { id: string; kind: string; title: string; body: string; bookingNumber: string | null; vehicleLabel: string | null; targetScreen: string | null; read: boolean; createdAt: string }[] }>("/v1/notifications"),
+    api<{ id: string; name: string; detail: string; category: string; price: number }[]>("/v1/services"),
+    api<{ id: string; title: string; shortLabel: string; detail: string; discountAmount: number; firstBookingOnly: boolean; requiresServiceId: string | null; requiresOtherService: boolean; validUntil: string | null }[]>("/v1/offers"),
+    api<{ name: string; phone: string | null; whatsapp: string | null; roadsidePhone: string | null; advisor: ApiPerson }>("/v1/workshop"),
+    api<{ code: string; rewardAmount: number; shareText: string; referrals: { name: string; status: string }[] }>("/v1/referral"),
+  ]);
+  const extrasByBike = await Promise.all(bikes.map((bike) => Promise.all([
+    api<{ item: string; lastDoneKm: number; intervalKm: number | null }[]>(`/v1/vehicles/${bike.id}/maintenance`).catch(() => []),
+    api<{ title: string; brand: string; startsOn: string | null; endsOn: string | null; endsAtKm: number | null }[]>(`/v1/vehicles/${bike.id}/warranties`).catch(() => []),
+  ])));
+
+  // Catalogue, offers, workshop contacts, referral
+  replaceAll(services, catalogue.map((item) => ({ id: item.id, name: item.name, detail: item.detail, price: item.price, type: item.category })));
+  replaceAll(offerList, offers.map((offer) => ({
+    id: offer.id,
+    big: /^free\b/i.test(offer.title) ? "Free" : inr(offer.discountAmount),
+    line: offer.shortLabel,
+    title: offer.title,
+    detail: offer.detail,
+    till: offer.validUntil ? `Till ${shortDay(`${offer.validUntil}T12:00:00`)}` : "While it lasts",
+    amount: offer.discountAmount,
+    firstOnly: offer.firstBookingOnly,
+    needs: offer.requiresServiceId ?? undefined,
+    withOther: offer.requiresOtherService,
+  })));
+  const contact = workshop.advisor?.phone ?? workshop.phone ?? workshop.whatsapp;
+  Object.assign(advisor, {
+    name: workshop.advisor?.name ?? workshop.name,
+    phone: spacedPhone(contact),
+    tel: contact ? `tel:+91${plainPhone(contact)}` : "tel:",
+    wa: `91${plainPhone(workshop.whatsapp ?? contact)}`,
+  });
+  workshopTel.href = workshop.phone ? `tel:+91${plainPhone(workshop.phone)}` : advisor.tel;
+  const sos = workshop.roadsidePhone ?? workshop.phone;
+  Object.assign(roadside, { phone: spacedPhone(sos), tel: sos ? `tel:+91${plainPhone(sos)}` : "tel:" });
+  referralCode = referral.code;
+  referralShareText = referral.shareText;
+  liveReferrals = referral.referrals.map((friend) => ({
+    name: friend.name,
+    status: friend.status === "rewarded" ? "Credit received" : friend.status === "void" ? "Not eligible" : "Waiting",
+    detail: friend.status === "rewarded" ? "First service completed" : "Joined, service not completed",
+    amount: friend.status === "rewarded" ? referral.rewardAmount : 0,
+  }));
+
+  // Bikes: the garage plus any bike that only appears on old bills
+  const open = jobs.filter((job) => job.status !== "cancelled");
+  const delivered = (vehicleId: string) => open.filter((job) => job.vehicle.id === vehicleId && job.stage >= 6);
+  const bikesById: Record<string, GarageBike> = {};
+  bikes.forEach((bike, index) => {
+    bikesById[bike.id] = {
+      name: bike.model,
+      make: bike.make,
+      plate: formatPlate(bike.registrationNumber),
+      tone: bike.colourHex ?? bikeColours.find(([label]) => label.toLowerCase() === (bike.colourName ?? "").toLowerCase())?.[1] ?? fallbackTones[index % fallbackTones.length],
+      colour: bike.colourName ?? "Colour not set",
+      km: bike.odometerKm != null ? bike.odometerKm.toLocaleString("en-IN") : "0",
+      services: delivered(bike.id).length,
+      type: bike.bodyType,
+    };
+  });
+  const remember = (id: string, make: string, model: string, plate: string) => {
+    if (bikesById[id]) return;
+    bikesById[id] = { name: model, make, plate: formatPlate(plate), tone: "#5b5b5b", colour: "Colour not set", km: "0", services: delivered(id).length, type: typeForModel(model, make).type };
+  };
+  jobs.forEach((job) => remember(job.vehicle.id, job.vehicle.make, job.vehicle.model, job.vehicle.registrationNumber));
+  invoices.forEach((inv) => remember(inv.vehicleId, "", inv.vehicleLabel, ""));
+  replaceKeys(vehicles, bikesById);
+  replaceAll(liveGarage, bikes.map((bike) => bike.id));
+
+  // Bookings with their bills
+  const invoiceFor = (jobId: string) => invoices.find((inv) => inv.jobCardId === jobId && inv.status !== "void");
+  const bookings: ServiceBooking[] = open.map((job) => {
+    job.services.forEach((service) => {
+      serviceNames[service.id] = service.name;
+    });
+    const inv = invoiceFor(job.id);
+    const extras = job.extras.map((extra) => ({ id: extra.id, part: extra.partName, note: extra.note, amount: extra.amount, status: extra.status, by: extra.raisedBy ?? "" }));
+    const approved = approvedExtraTotal(extras);
+    const bill: ServiceBooking["bill"] = inv
+      ? {
+          lines: inv.lines.filter((line) => line.kind !== "discount").map((line, index) => ({ id: `${inv.id}-${index}`, name: line.label, price: line.amount })),
+          subtotal: inv.lines.filter((line) => line.kind !== "discount").reduce((sum, line) => sum + line.amount, 0),
+          discount: inv.discountAmount,
+          extras: 0,
+          tax: inv.gstAmount,
+          total: inv.total,
+          kind: inv.status === "paid" ? "paid" : "due",
+        }
+      : {
+          lines: job.services.map((service) => ({ id: service.id, name: service.name, price: service.price })),
+          subtotal: job.packageSubtotal,
+          discount: job.discountAmount,
+          extras: approved,
+          tax: Math.round((job.estimateAmount + approved) * GST_RATE),
+          total: job.estimateAmount + approved + Math.round((job.estimateAmount + approved) * GST_RATE),
+          kind: job.stage >= 5 ? "due" : "estimate",
+        };
+    return {
+      id: job.number,
+      uuid: job.id,
+      vehicleId: job.vehicle.id,
+      serviceIds: job.services.map((service) => service.id),
+      stage: Math.max(0, job.stage),
+      extras,
+      paid: job.paid,
+      scheduled: slotText(job.slotStart, job.slotEnd),
+      eta: etaText(job),
+      mode: job.mode,
+      estimate: job.estimateAmount,
+      walletPaid: inv?.walletAmount || undefined,
+      collectAtDoor: job.payAtDelivery && !job.paid,
+      people: { advisor: job.advisor?.name, mechanic: job.mechanic?.name, bay: job.bay?.name, rider: job.rider?.name },
+      camera: job.cameraAvailable,
+      bill,
+      payAtCounter: inv?.source === "workshop",
+    };
+  });
+
+  // Payment history: every paid bill, newest first
+  const payments: Payment[] = invoices
+    .filter((inv) => inv.status === "paid")
+    .sort((a, b) => (b.paidAt ?? b.issuedAt).localeCompare(a.paidAt ?? a.issuedAt))
+    .map((inv) => {
+      const money = inv.payments.filter((p) => p.status === "succeeded" && p.method !== "wallet");
+      const labels = [...new Set(money.map((p) => methodNames[p.method] ?? p.method))];
+      return {
+        id: inv.number,
+        bookingId: inv.bookingNumber,
+        vehicleId: inv.vehicleId,
+        service: invoiceTitle(inv),
+        when: shortDay(inv.paidAt ?? inv.issuedAt),
+        methodLabel: labels.length > 1 ? labels.map((label) => label.replace(" at the workshop", "")).join(" + ") : labels[0] ?? "Wallet",
+        ref: money.find((p) => p.providerReference)?.providerReference ?? undefined,
+        wallet: inv.walletAmount,
+        total: inv.total,
+        lines: inv.lines.filter((line) => line.kind !== "discount").map((line) => ({ label: line.label, amount: line.amount })),
+        visit: inv.mode === "pickup" ? "Pickup and delivery" : "Workshop visit",
+        discount: inv.discountAmount,
+        tax: inv.gstAmount,
+      };
+    });
+
+  // Garage records: odometer, documents, service stamps, wear and warranties
+  const books: Record<string, GarageBook> = {};
+  const schedules: Record<string, [string, number, number][]> = {};
+  const warrantyRows: [string, string, string, number][] = [];
+  bikes.forEach((bike, index) => {
+    const [maintenance, warranties] = extrasByBike[index];
+    const done = delivered(bike.id).sort((a, b) => (b.deliveredAt ?? b.slotEnd).localeCompare(a.deliveredAt ?? a.slotEnd));
+    const km = bike.odometerKm ?? 0;
+    const insurance = bike.documents.find((doc) => doc.kind === "insurance");
+    const puc = bike.documents.find((doc) => doc.kind === "puc");
+    const insuranceLife = lifeOf(insurance?.validUntil ?? null, 365);
+    const pucLife = lifeOf(puc?.validUntil ?? null, 180);
+    const last = done[0];
+    const nextDate = last ? new Date(new Date(last.deliveredAt ?? last.slotEnd).getTime() + 182 * 86_400_000) : null;
+    const rows = warranties.map((item): [string, string, string, number] => {
+      const life = lifeOf(item.endsOn, 365);
+      const detail = item.endsOn ? (life?.till ?? "") : item.endsAtKm ? `Till ${item.endsAtKm.toLocaleString("en-IN")} km` : "Active";
+      return [item.title, item.brand || bikesById[bike.id].make, detail, life?.life ?? (item.endsAtKm && km ? Math.max(0, Math.min(100, Math.round(((item.endsAtKm - km) / item.endsAtKm) * 100))) : 100)];
+    }).filter((row) => !row[2].startsWith("Ended"));
+    warrantyRows.push(...rows);
+    books[bike.id] = {
+      odo: km * 10,
+      odoNote: bike.odometerRecordedAt ? `Recorded on ${shortDay(bike.odometerRecordedAt)}` : "Not recorded yet",
+      insurance: insuranceLife
+        ? { insurer: insurance?.provider ?? "Insurance", cover: insurance?.policyType ?? "Policy", till: insuranceLife.till, due: insuranceLife.due, life: insuranceLife.life }
+        : { insurer: "", cover: "", till: "Not added", due: false, life: 0 },
+      puc: pucLife
+        ? { till: pucLife.till, due: pucLife.due, reading: puc?.reading ?? "", life: pucLife.life }
+        : { till: "Not added", due: false, reading: "", life: 0 },
+      warrantyLife: rows.length ? Math.round(rows.reduce((sum, row) => sum + row[3], 0) / rows.length) : 0,
+      services: done.slice(0, 3).map((job) => {
+        const inv = invoiceFor(job.id);
+        const date = new Date(job.deliveredAt ?? job.slotEnd);
+        return [job.services[0]?.name ?? (inv ? invoiceTitle(inv) : "Service"), `${date.getDate()} ${MONTHS[date.getMonth()]} ${String(date.getFullYear()).slice(2)}`, job.mode === "pickup" ? "Pickup and delivery" : "Workshop visit", ...(inv?.status === "paid" ? [inv.number] : [])];
+      }),
+      next: last && nextDate
+        ? `Due at ${(km + 3000).toLocaleString("en-IN")} km or ${nextDate.getDate()} ${MONTHS[nextDate.getMonth()]}`
+        : "Due now, book the first service here",
+      earlier: Math.max(0, done.length - 3),
+      warranties: rows.length ? `${rows.length} active` : "None yet",
+    };
+    const tracked = maintenance.filter((item) => item.intervalKm).map((item): [string, number, number] => [item.item, item.lastDoneKm, item.intervalKm ?? 3000]);
+    schedules[bike.id] = tracked.length ? tracked : [["Engine oil", last ? km : 0, 3000], ["Chain", last ? km : 0, 1000], ["Brake pads", last ? km : 0, 15000]];
+  });
+  replaceKeys(garageBook, books);
+  replaceKeys(kmSchedule, schedules);
+  liveWarranties = warrantyRows;
+
+  // Notifications
+  replaceAll(notices, inbox.items.map((item) => {
+    const word = dayWord(item.createdAt);
+    const at = clockOf(item.createdAt);
+    return {
+      id: item.id,
+      kind: item.kind.charAt(0).toUpperCase() + item.kind.slice(1),
+      title: item.title,
+      body: item.body,
+      bike: item.vehicleLabel ?? "Bike Surgeon",
+      when: word === "Today" ? `${at.time} ${at.half}` : word,
+      day: word === "Today" ? "Today" : "Earlier",
+      bookingId: item.bookingNumber ?? undefined,
+      screen: item.bookingNumber && !bookings.some((job) => job.id === item.bookingNumber) && item.targetScreen !== "Invoices" ? "" : item.targetScreen ?? "",
+      unread: !item.read,
+    };
+  }));
+
+  return {
+    profile: {
+      name: me.name,
+      phone: spaced(plainPhone(me.phone)),
+      email: me.email ?? "",
+      language: me.language,
+      backupName: me.backupContactName ?? "",
+      backupPhone: me.backupContactPhone ? spaced(plainPhone(me.backupContactPhone)) : "",
+    },
+    bookings,
+    addresses: addresses.map((address) => ({
+      id: address.id,
+      label: address.label,
+      area: address.area,
+      line: address.line,
+      contact: address.contactName ?? me.name,
+      phone: spaced(plainPhone(address.contactPhone ?? me.phone)),
+    })),
+    wallet: wallet.balance,
+    txns: wallet.transactions.map((txn) => ({ id: txn.id, title: txn.title, detail: txn.detail, amount: txn.amount, when: shortDay(txn.createdAt) })),
+    payments,
+  };
+}
+
+const onboardingScreens = ["Starting page", "Login / Sign up", "OTP", "Create account"];
+
 const presets: Record<DemoScreenProps["experience"], DemoState> = {
   first: { profile: defaultProfile, bookings: [], selectedBookingId: null, addresses: [], readNotices: [], offer: null, rating: 0, wallet: 0, txns: [], payments: [], viewingPaymentId: null },
   returning: { profile: { ...defaultProfile, email: "sanath.naik@gmail.com", backupName: "Lakshmi Naik", backupPhone: "94481 20457" }, bookings: returningBookings, selectedBookingId: null, addresses: savedAddresses, readNotices: [], offer: null, rating: 0, wallet: 420, txns: returningTxns, payments: returningPayments, viewingPaymentId: null },
 };
 
 export function CustomerApp({ screen, open, experience, theme, setTheme }: DemoScreenProps) {
-  const [state, setState] = useState<DemoState>(() => presets[experience]);
+  const [state, setState] = useState<DemoState>(() => (onServer ? { ...presets.first, profile: { ...defaultProfile, name: "", phone: "" } } : presets[experience]));
+  const [liveReady, setLiveReady] = useState(false);
+  const onboarding = onboardingScreens.includes(screen);
+  useEffect(() => {
+    if (!onServer || onboarding || !hasSession()) return;
+    let alive = true;
+    const load = async () => {
+      try {
+        const next = await loadLiveState();
+        if (!alive) return;
+        setState((current) => ({ ...current, ...next }));
+        setLiveReady(true);
+      } catch (error) {
+        if (error instanceof ApiError && error.status !== 401 && error.status !== 0) toast.error(error.message);
+      }
+    };
+    reloadLive = load;
+    load();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, 20_000);
+    const onShow = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    document.addEventListener("visibilitychange", onShow);
+    const stop = onSignedOut(() => open("Login / Sign up"));
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onShow);
+      stop();
+    };
+  }, [onboarding, open]);
+  useEffect(() => {
+    if (onServer && liveReady && !onboarding && liveGarage.length === 0) open("Create account");
+  }, [liveReady, onboarding, open, state.bookings]);
   const originRef = useRef(screen);
   const [motion, setMotion] = useState<null | { from: string; phase: "cover" | "reveal" }>(null);
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -5399,13 +6260,14 @@ export function CustomerApp({ screen, open, experience, theme, setTheme }: DemoS
     return () => window.clearTimeout(id);
   }, [motion?.phase]);
   useEffect(() => {
+    if (onServer) return;
     fetchedScreens.clear();
     setState(presets[experience]);
   }, [experience]);
   useEffect(() => {
     if (screen === "Starting page") fetchedScreens.clear();
   }, [screen]);
-  const firstTime = experience === "first";
+  const firstTime = onServer ? state.bookings.length === 0 && state.payments.length === 0 : experience === "first";
   const app = useMemo(() => ({ state, setState, open, firstTime, theme, setTheme }), [state, open, firstTime, theme, setTheme]);
   const shown = motion?.phase === "cover" ? motion.from : screen;
   const pageRef = useRef<{ screen: string; kind: PageMotion }>({ screen: shown, kind: null });
@@ -5414,7 +6276,8 @@ export function CustomerApp({ screen, open, experience, theme, setTheme }: DemoS
     pageRef.current = { screen: shown, kind: bloomed ? null : pageMotion(pageRef.current.screen, shown) };
   }
   let view: ReactNode;
-  if (shown === "Starting page") view = <Splash open={open} />;
+  if (onServer && !onboarding && (!liveReady || liveGarage.length === 0)) view = <HomeSkeleton open={open} />;
+  else if (shown === "Starting page") view = <Splash open={open} />;
   else if (shown === "Login / Sign up") view = <Auth open={open} />;
   else if (shown === "OTP") view = <Otp open={open} />;
   else if (shown === "Create account") view = <CreateAccount open={open} />;

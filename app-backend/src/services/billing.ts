@@ -15,6 +15,7 @@ type InvoiceRow = {
   job_card_id: string;
   customer_id: string;
   status: "open" | "paid" | "void";
+  source: "app" | "workshop";
   subtotal: number;
   discount_amount: number;
   extras_amount: number;
@@ -76,6 +77,7 @@ async function hydrateInvoices(db: Queryable, rows: InvoiceRow[]) {
       vehicleLabel: row.vehicle_label,
       mode: row.mode,
       status: row.status,
+      source: row.source,
       lines: lines.filter((l) => l.invoice_id === row.id).map(({ kind, label, amount }) => ({ kind, label, amount })),
       subtotal: row.subtotal,
       discountAmount: row.discount_amount,
@@ -224,6 +226,8 @@ async function lockOpenInvoice(client: pg.PoolClient, jobCardId: string, custome
 export async function pay(db: Db, customerId: string, jobCardId: string, input: { walletAmount: number; method?: "upi" | "card" | "netbanking" }) {
   const result = await tx(db, async (client) => {
     const invoice = await lockOpenInvoice(client, jobCardId, customerId);
+    const origin = await one<{ source: string }>(client, "SELECT source FROM invoices WHERE id = $1", [invoice.id]);
+    if (origin?.source === "workshop") throw conflict("pay_at_workshop", "This bill is from the workshop counter. Pay it there by cash, UPI or card.");
     const available = await walletBalance(client, customerId);
     if (input.walletAmount > available + 0.005) throw badRequest("insufficient_wallet", "That is more than your wallet balance");
     const fromWallet = money(Math.min(input.walletAmount, invoice.balance));

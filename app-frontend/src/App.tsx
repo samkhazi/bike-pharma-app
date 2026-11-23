@@ -3,10 +3,11 @@ import { CustomerApp, TestToolsContext, tabScreens, type Experience, type TestTo
 import { Toaster } from "@/components/ui/sonner";
 import { closeOverlay, hasOverlay, hideLaunchScreen, leaveApp, onHardwareBack, prepareSystemBars, setStatusBarDark, store } from "./native";
 import "./native.css";
+import { hasSession, live } from "./live";
 
 const onboarding = ["Starting page", "Login / Sign up", "OTP", "Create account"];
 const roots = ["Home", "Starting page", "Login / Sign up"];
-const showTestTools = import.meta.env.VITE_TEST_TOOLS !== "off";
+const showTestTools = import.meta.env.VITE_TEST_TOOLS !== "off" && !live;
 const toastOffset = { top: "calc(env(safe-area-inset-top, 0px) + 8px)" };
 
 /** The screens navigate by name, so the back stack is rebuilt from where each jump lands. */
@@ -21,7 +22,7 @@ function nextStack(stack: string[], to: string) {
 export function App() {
   const [theme, setTheme] = useState<Theme>(() => (store.get("theme") === "dark" ? "dark" : "light"));
   const [experience, setExperience] = useState<Experience>(() => (store.get("experience") === "returning" ? "returning" : "first"));
-  const [stack, setStack] = useState<string[]>(() => [store.get("signedIn") === "yes" ? "Home" : "Starting page"]);
+  const [stack, setStack] = useState<string[]>(() => [(live ? hasSession() : store.get("signedIn") === "yes") ? "Home" : "Starting page"]);
   const screen = stack[stack.length - 1];
   const stackRef = useRef(stack);
   stackRef.current = stack;

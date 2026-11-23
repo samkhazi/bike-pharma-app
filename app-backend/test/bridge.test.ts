@@ -255,6 +255,11 @@ test("live: camera off, labour change, completion with an unpaid bill, then paym
   const bill = (await call("GET", `/v1/bookings/${state.live.id}/bill`, { token: state.token })).data;
   assert.equal(bill.kind, "due");
   assert.equal(bill.total, 830);
+  const invoices = (await call("GET", "/v1/invoices", { token: state.token })).data as Json[];
+  assert.equal(invoices.find((i) => i.number === "BS2627/9002")?.source, "workshop");
+  const tried = await call("POST", `/v1/bookings/${state.live.id}/pay`, { token: state.token, body: { walletAmount: 0, method: "upi" } });
+  assert.equal(tried.status, 409);
+  assert.equal(tried.data.error.code, "pay_at_workshop");
 
   await mysql("UPDATE invoice SET payment_status = 'PAID', payment_method = 'upi', collected_at = '2026-10-28 19:30:00' WHERE id = 9002;", OLD_DB);
   await run();

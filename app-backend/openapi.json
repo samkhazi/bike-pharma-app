@@ -2505,7 +2505,8 @@
           "partName": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 120
+            "maxLength": 120,
+            "description": "Needed unless partNo is sent; then the Inventory's name is used"
           },
           "note": {
             "type": "string",
@@ -2514,7 +2515,21 @@
           },
           "amount": {
             "type": "number",
-            "minimum": 0
+            "minimum": 0,
+            "description": "Needed unless partNo is sent; then MRP less the customer discount, times quantity"
+          },
+          "partNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "description": "Part number in the Bike Surgeon Inventory",
+            "example": "06455-KWP-901"
+          },
+          "quantity": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 999,
+            "description": "Default 1"
           },
           "raisedByStaffCode": {
             "type": "string"
@@ -2524,11 +2539,7 @@
             "maxLength": 80,
             "example": "Amit, Bay 03"
           }
-        },
-        "required": [
-          "partName",
-          "amount"
-        ]
+        }
       },
       "IntegrationExtraDecision": {
         "type": "object",

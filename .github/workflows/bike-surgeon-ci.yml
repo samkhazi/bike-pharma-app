@@ -62,13 +62,32 @@ jobs:
       - name: Frontend build
         working-directory: app-frontend
         run: npm run build
-      - name: Commit the regenerated API spec
-        if: github.ref == 'refs/heads/claude/project-thread-vczbd1'
+      - name: End-to-end (app on the API, live HLS camera)
+        working-directory: app-frontend
         run: |
-          if ! git diff --quiet -- app-backend/openapi.json; then
-            git config user.name "github-actions"
-            git config user.email "github-actions@users.noreply.github.com"
-            git add app-backend/openapi.json
-            git commit -m "Regenerate openapi.json"
+          cd ../app-backend
+          npm run db:seed:demo
+          nohup npx tsx --env-file=.env src/index.ts > ../api.log 2>&1 &
+          cd ../app-frontend
+          VITE_API_URL=http://localhost:8080 npx vite build --outDir dist-live
+          mkdir -p dist-live/hls
+          ffmpeg -loglevel error -i public/bay-cam.mp4 -an -c:v libx264 -g 30 -f hls -hls_time 2 -hls_list_size 0 dist-live/hls/cam3.m3u8
+          nohup npx vite preview --outDir dist-live --port 5173 --strictPort > ../web.log 2>&1 &
+          (cd ../app-backend && node -e "const pg=require('pg');const c=new pg.Client('postgres://bikesurgeon:bikesurgeon@localhost:5433/bikesurgeon');c.connect().then(()=>c.query(\"UPDATE bays SET camera_stream_url='http://localhost:5173/hls/cam3.m3u8' WHERE code='BAY-03'\")).then(()=>c.end())")
+          for i in $(seq 1 30); do curl -sf http://localhost:8080/health >/dev/null && curl -sf http://localhost:5173/ >/dev/null && break; sleep 1; done
+          npm i --no-save --no-audit --no-fund playwright@1.49.1
+          google-chrome --version
+          set +e; PW_CHANNEL=chrome node e2e/live-smoke.mjs; code=$?; set -e
+          if [ $code -ne 0 ]; then echo "--- api.log"; tail -n 40 ../api.log; fi
+          exit $code
+      - name: Commit the regenerated API spec and screenshots
+        if: always() && github.ref == 'refs/heads/claude/project-thread-vczbd1'
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add app-backend/openapi.json
+          [ -d e2e-shots ] && git add e2e-shots
+          if ! git diff --cached --quiet; then
+            git commit -m "CI: regenerated openapi.json and end-to-end screenshots"
             git push
           fi

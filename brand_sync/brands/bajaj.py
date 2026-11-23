@@ -568,7 +568,7 @@ class Bajaj:
             for pid in sorted(plates, key=pkey):
                 p = plates[pid]
                 img = self.img_path(p['img']) if p['img'] else ''
-                pl.append({'title': f"{pid} - {p['title']}" if p['title'] else 'All parts (EPC me diagram nahi)',
+                pl.append({'title': f"{pid} - {p['title']}" if p['title'] else 'All parts (no diagram in EPC)',
                            'img': img if img and os.path.exists(img) else '', 'rows': p['rows']})
             vf = h.get('valid_from') or ''
             yield {'brand': 'Bajaj', 'family': s.get('brand') or 'Unnamed SKU',

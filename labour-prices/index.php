@@ -75,6 +75,9 @@ h2{font-size:15px;margin:18px 0 8px;color:var(--mut);font-weight:600;text-transf
 .foot .st{flex:1 1 100%}
 .foot #moreBtn{flex:1}
 .wrap{padding-bottom:160px}
+.vrow input{width:22px;height:22px;accent-color:#111;flex:none;margin:0}
+.vrow.src{background:var(--ys)}
+.tag.k{background:var(--ink);color:#fff}
 </style></head><body>
 <header><div class="hd"><button class="back hide" id="back" aria-label="Back">‹</button><b id="ttl">Labour Prices<small>Bike Surgeon</small></b><button class="who hide" id="who"></button><button class="btn y hide" id="expBtn">Export</button></div></header>
 <div class="wrap"><div id="msg"></div><div id="view"></div></div>
@@ -136,7 +139,7 @@ async function flush(){
 }
 
 /* ---------- views ---------- */
-function go(n){flush();S=Object.assign(S,n,{panel:n.panel||null,ej:null});render();window.scrollTo(0,0);if(S.v!=='edit'&&S.v!=='add'&&Date.now()-lastLoad>20000)chain.then(load).then(()=>{if(S.v!=='edit'&&S.v!=='add')render()}).catch(()=>{})}
+function go(n){flush();note('');S=Object.assign(S,n,{panel:n.panel||null,ej:null,cp:null});render();window.scrollTo(0,0);if(S.v!=='edit'&&S.v!=='add'&&Date.now()-lastLoad>20000)chain.then(load).then(()=>{if(S.v!=='edit'&&S.v!=='add')render()}).catch(()=>{})}
 function render(){
   const v=$('view');v.textContent='';
   $('back').classList.toggle('hide',S.v==='home');
@@ -169,15 +172,36 @@ function home(v){
   v.appendChild(el('div','note',done+' of '+all.length+' vehicles have your prices. The others keep the old cc-wise price until you change them.'));
 }
 function brand(v){
+  const cp=S.cp;
   const s=el('input','search');s.type='search';s.placeholder='Search vehicle';s.value=S.q;v.appendChild(s);
+  const tp=el('div','tools');
+  if(!cp){const c=el('button','btn y','Copy one vehicle to many');c.onclick=()=>{note('');S.cp={from:null,to:new Set()};render()};tp.appendChild(c)}
+  v.appendChild(tp);
+  const src=cp&&cp.from?veh(cp.from):null;
+  if(cp)v.appendChild(el('div','note',!src?'Step 1: tap the vehicle to copy FROM.':'Step 2: tick the vehicles that get all prices and job names of '+src.model+'. Then tap Copy.'));
   const box=el('div');v.appendChild(box);
+  let bar=null,stx=null,cb=null;
+  const upd=()=>{if(!bar)return;const n=cp.to.size;stx.textContent=!src?'Choose the vehicle to copy from':n?n+' vehicle'+(n>1?'s':'')+' ticked':'Tick the vehicles';cb.textContent=n?'Copy to '+n+' vehicle'+(n>1?'s':''):'Copy';cb.disabled=!src||!n};
   const draw=()=>{box.textContent='';const q=S.q.trim().toLowerCase();
     const l=byBrand(S.brand).filter(x=>!q||x.model.toLowerCase().includes(q));
     if(!l.length)box.appendChild(el('div','note','No vehicle found. Use "Add vehicle" to add it.'));
-    for(const x of l){const r=el('button','vrow');r.append(el('b',null,x.model),el('span','cc',x.cc?x.cc+' cc':'Electric'),el('span','tag'+(saved[x.id]?'':' n'),saved[x.id]?'Done':'Old price'));if(saved[x.id]&&x.by)r.title='By '+x.by+' '+x.at;
-      r.onclick=()=>open(x.id);box.appendChild(r)}};
+    for(const x of l){const done=!!saved[x.id];
+      if(cp&&src&&x.id!==src.id){const r=el('label','vrow'),c=el('input');c.type='checkbox';c.checked=cp.to.has(x.id);
+        c.onchange=()=>{if(c.checked)cp.to.add(x.id);else cp.to.delete(x.id);upd()};
+        r.append(c,el('b',null,x.model),el('span','cc',x.cc?x.cc+' cc':'Electric'),el('span','tag'+(done?'':' n'),done?'Done · will change':'Old price'));box.appendChild(r);continue}
+      const r=el('button','vrow'+(src&&x.id===src.id?' src':''));r.append(el('b',null,x.model),el('span','cc',x.cc?x.cc+' cc':'Electric'));
+      if(src&&x.id===src.id)r.appendChild(el('span','tag k','Copy from · change'));
+      else r.appendChild(el('span','tag'+(done?'':' n'),done?'Done':'Old price'));
+      if(done&&x.by)r.title='By '+x.by+' '+x.at;
+      r.onclick=cp?()=>{cp.from=src?null:x.id;cp.to.clear();render()}:()=>open(x.id);box.appendChild(r)}};
   s.oninput=()=>{S.q=s.value;draw()};draw();
-  const p=el('div','tools');const a=el('button','btn','+ Add vehicle');a.onclick=()=>go({v:'add'});p.appendChild(a);v.appendChild(p);
+  if(cp){bar=el('div','foot');const d=el('div');stx=el('span','st');const no=el('button','btn sm','Cancel');cb=el('button','btn sm y','Copy');cb.style.flex='1';
+    no.onclick=()=>{S.cp=null;render()};
+    cb.onclick=async()=>{const ids=[...cp.to];if(!src||!ids.length)return;cb.disabled=true;no.disabled=true;stx.textContent='Copying…';
+      try{await put(ids,allPrices(src),Object.assign({},NM[src.id]||{}));S.cp=null;render();note('Copied: all labour prices and job names of '+src.model+' are now on '+ids.length+' more vehicle'+(ids.length>1?'s':'')+' ✓')}
+      catch(e){no.disabled=false;upd();stx.textContent='Could not copy. Check the internet and try again.';stx.className='st bad'}};
+    d.append(stx,no,cb);bar.appendChild(d);v.appendChild(bar);upd()}
+  else{const p=el('div','tools');const a=el('button','btn','+ Add vehicle');a.onclick=()=>go({v:'add'});p.appendChild(a);v.appendChild(p)}
 }
 function open(vid){flush();vid=+vid;const x=veh(vid);cur=allPrices(x);curN=Object.assign({},NM[vid]||{});dirty=false;S=Object.assign(S,{v:'edit',vid,brand:x.brand,cat:'ALL',panel:null,ej:null});render();window.scrollTo(0,0);status(saved[vid]?'Saved ✓':'Old cc-wise prices shown',saved[vid]?'ok':'')}
 function edit(v,x){

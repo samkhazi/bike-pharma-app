@@ -1,0 +1,38 @@
+name: Bike Surgeon app checks
+on:
+  push:
+    branches: ["claude/project-thread-vczbd1"]
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: bikesurgeon
+          POSTGRES_PASSWORD: bikesurgeon
+          POSTGRES_DB: bikesurgeon
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U bikesurgeon" --health-interval 2s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Backend install
+        working-directory: app-backend
+        run: npm ci --no-audit --no-fund
+      - name: Backend typecheck
+        working-directory: app-backend
+        run: npm run typecheck
+      - name: Backend tests
+        working-directory: app-backend
+        run: cp .env.example .env && npm run db:migrate && npm run db:check && npm test
+      - name: Frontend install
+        working-directory: app-frontend
+        run: npm ci --no-audit --no-fund
+      - name: Frontend build
+        working-directory: app-frontend
+        run: npm run build

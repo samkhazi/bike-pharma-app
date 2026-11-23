@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Bike Surgeon</string>
+    <string name="title_activity_main">Bike Surgeon</string>
+    <string name="package_name">com.bikesurgeon.customer</string>
+    <string name="custom_url_scheme">com.bikesurgeon.customer</string>
+</resources>

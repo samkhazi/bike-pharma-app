@@ -1,0 +1,53 @@
+/* Booking progress: the earlier layout, with the yellow contrast of the Claude artefact tracker */
+
+.cx-phone {
+  --trk-sy: #fff4cc;
+  --trk-todo: #d3d2cc;
+}
+.dark .cx-phone {
+  --trk-sy: rgb(246 195 28 / 14%);
+  --trk-todo: #4a4741;
+}
+
+.trk-status p b { color: var(--ink); font-weight: 750; }
+.trk-status .cx-segments span.done { background: var(--yellow); }
+.trk-status .cx-segments span.now { background: color-mix(in srgb, var(--yellow) 45%, var(--track)); }
+
+.trk-notice { background: var(--trk-sy); box-shadow: inset 0 0 0 1.5px var(--yellow); }
+.trk-notice > svg { color: var(--ink); }
+.trk-notice small { color: var(--ink); opacity: 0.75; }
+.trk-notice em {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--strong);
+  color: var(--on-strong-accent);
+  font-size: 13px;
+}
+
+.trk-steps { margin: 0; padding: 18px 16px; border-radius: 20px; background: var(--panel); list-style: none; }
+.trk-steps li { position: relative; display: grid; grid-template-columns: 24px 1fr; gap: 14px; padding-bottom: 18px; }
+.trk-steps li:last-child { padding-bottom: 0; }
+.trk-steps li::before { content: ""; position: absolute; left: 11px; top: 24px; bottom: 0; width: 2px; background: var(--trk-todo); }
+.trk-steps li:last-child::before { display: none; }
+.trk-steps li.done::before { left: 10.5px; width: 3px; background: var(--yellow); }
+.trk-steps i {
+  position: relative;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--trk-todo);
+  border-radius: 50%;
+  background: var(--panel);
+  color: #1b1c1f;
+}
+.trk-steps i svg { width: 13px; height: 13px; }
+.trk-steps li.done i { border-color: var(--yellow); background: var(--yellow); }
+.trk-steps li.now i { border: 6px solid var(--yellow); background: #fff; box-shadow: 0 0 0 4px rgb(246 195 28 / 22%); }
+.trk-steps li div { display: grid; gap: 2px; padding-top: 1px; }
+.trk-steps b { font-size: 15px; font-weight: 700; }
+.trk-steps small { color: var(--graphite); font-size: 13px; }
+.trk-steps li.now b { font-weight: 800; }
+.trk-steps li.now small { color: var(--ink); font-weight: 600; }
+.trk-steps li.todo b { color: var(--faint); font-weight: 600; }

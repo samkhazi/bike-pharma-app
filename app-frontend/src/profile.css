@@ -1,0 +1,23 @@
+/* Edit profile */
+
+.pf-avatar { display: grid; justify-items: center; gap: 10px; padding: 4px 0 6px; text-align: center; }
+.pf-avatar .cx-avatar.large { width: 76px; height: 76px; font-size: 26px; }
+.pf-avatar small { color: var(--graphite); font-size: 13px; }
+
+.pf-phone { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 16px; border-radius: 16px; background: var(--field); }
+.pf-phone-number { flex: 1; font-size: 16px; font-weight: 650; letter-spacing: 0.01em; }
+.pf-verified { display: inline-flex; align-items: center; gap: 4px; color: var(--ok-text); font-size: 12.5px; font-weight: 700; }
+.pf-verified svg { width: 15px; height: 15px; }
+
+.pf-error { color: var(--danger-text); font-size: 12.5px; font-weight: 600; }
+
+.pf-delete {
+  justify-self: center;
+  margin: 6px 0 4px;
+  padding: 10px 14px;
+  border: 0;
+  background: none;
+  color: var(--danger-text) !important;
+  font-size: 14px;
+  font-weight: 700;
+}

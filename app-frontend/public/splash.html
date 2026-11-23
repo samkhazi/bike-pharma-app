@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bike Surgeon</title>
+<link rel="stylesheet" href="/fonts/fonts.css" />
+<style>
+html,body{margin:0;height:100%;background:#FFFFFF;overflow:hidden}
+svg{display:block;width:100%;height:100%}
+text{font-family:"Plus Jakarta Sans",system-ui,sans-serif}
+</style></head><body>
+<svg id="s" viewBox="0 0 390 844" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <radialGradient id="bg" cx="50%" cy="46%" r="70%"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#F1F1EE"/></radialGradient>
+  <filter id="bl" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur id="blv" stdDeviation="0"/></filter>
+  <radialGradient id="glow"><stop offset="0" stop-color="#F6C31C" stop-opacity=".35"/><stop offset="1" stop-color="#F6C31C" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="390" height="844" fill="url(#bg)"/>
+<g id="scene"></g>
+<g id="logo">
+  <g id="bars" fill="#F6C31C"></g>
+  <g id="letters" fill="#3F3F3F"></g>
+  <circle id="shock" r="26" fill="none" stroke="#F6C31C" stroke-width="2.5" opacity="0"/>
+  <g id="iconW" filter="url(#bl)"><g id="icon">
+    <path fill="#3F3F3F" d="M563.54,85Q477.07,0,322,0,171.8,0,83.41,85.66,15.78,151.34.32,251.82H142.66a191.29,191.29,0,0,1,180-125.59c105.94,0,192.24,86,192.24,192.25s-86.3,192.24-192.24,192.24A191.78,191.78,0,0,1,142,383.85H0c10,69.23,37,125.26,80.83,168.74q86,84.52,236,84.37Q471.93,637,561,553.23q88.88-84,88.88-227.67Q649.84,170.51,563.54,85Z"/>
+    <polygon id="bolt" fill="#3F3F3F" points="302.3 403.24 582.62 403.24 582.62 233.7 302.3 233.7 253.36 318.47 302.3 403.24"/>
+  </g></g>
+</g>
+<text id="tag" x="195" y="0" text-anchor="middle" fill="#3F3F3F" font-size="12" font-weight="600" letter-spacing="3.2" opacity="0">ONE STOP FOR BIKE SOLUTIONS</text>
+<g id="loader" opacity="0"><rect x="145" y="760" width="100" height="4" rx="2" fill="#3F3F3F" fill-opacity=".12"/><rect id="lfill" x="145" y="760" width="0" height="4" rx="2" fill="#F6C31C"/></g>
+</svg>
+<script>
+const LET={"B": "M67.8 357.9 71.5 357.7 75.6 356.8 80.4 354.6 83.6 351.5 84.6 349.5 85.8 345.9 86.7 339.8 85.6 333.2 84.8 331.2 82.9 328.2 79.2 325.2 77.8 324.6 77.5 324 77.8 323.3 80.5 321.7 81.9 320.4 82.4 319.2 84.7 315.8 85.9 312.9 86.6 308.8 86.6 306.8 85.7 301.5 83.8 297.6 82.7 296 79.8 293.1 74 290.2 71.4 289.7 63.6 289.3 28.4 289.2 26.5 289.5 26.1 290 25.9 290.9 25.9 353.5 26.1 357.5 26.6 357.9 27.9 357.9 67.8 357.9Z M63.2 317.3 41.8 317.3 40.8 317 40.3 316.4 40.5 315.2 40.5 302.2 41.6 301.6 60 301.7 64.6 302 67.5 303.1 69.1 304.4 70.6 308.2 70.6 310.9 70 312.4 70 313.4 68.7 314.9 66.6 316.3 65.5 316.8 63.2 317.3Z M63.1 345.6 41.8 345.7 41 345.5 40.4 344.4 40.5 330.4 41.6 329.8 61.5 329.9 64.8 330.1 67.5 331.2 68.9 332.3 69.8 333.5 70.2 335.5 70.7 336.5 70.5 339.6 69.6 341.9 67.9 343.8 65.6 344.9 63.1 345.6Z", "i": "M99 358 109.5 358 110.4 357.8 110.7 357.2 110.8 310.6 110.5 308.6 109.8 308.2 97.9 308.2 97.4 308.3 97 308.8 97 355.5 97.2 357.6 98.1 358 99 358Z", "idot": "M109.7 302.8 110.5 302.3 110.8 301.2 110.8 290.8 110.4 289.6 109.4 289.3 105.5 289.2 99.1 289.2 97.4 289.5 96.9 290.8 97 301 97.2 302.6 97.6 302.8 99.4 302.9 109.7 302.8Z", "k": "M167.6 357.9 168.1 357.4 168.3 356 168.2 344.2 167.7 338.5 165.8 332.2 163.8 329.9 162.6 329.2 160.4 328.2 156.4 327.8 153.5 327.8 152.8 327.4 154.4 325.4 159.5 320.5 160.2 319.1 161.1 318.1 168.3 311.2 169.5 310.3 170.4 308.9 170.5 308.4 169.5 308.1 156.9 308.1 156.1 308.3 146.2 318.1 143.7 321.6 142.2 322.9 138.8 326.8 138.2 326.9 138 326.5 137.8 325.5 137.8 289.9 137.4 289.4 136.4 289.3 125.5 289.3 124.5 289.5 124 290.6 124 353.5 124.2 357.5 124.6 357.8 125.8 358 136.2 357.9 137.6 357.6 137.9 356.5 137.9 339.4 138.2 338.8 138.9 338.6 144.6 338.5 148.8 338.7 151.4 339.1 152.8 339.9 153.8 341.1 154.6 344.6 154.5 356.8 154.9 357.6 155.6 358 167.6 357.9Z", "e": "M218.5 358 219.6 357.7 220 357 220 348.6 219.9 347.6 219.6 347.2 218.4 347 200 346.9 196 346 194.1 345.1 192.8 343.6 192.1 342.5 191.4 339.8 191.9 338.8 192.6 338.4 195.6 338.5 219.4 338.4 219.8 338 220.1 337.2 220.1 328.8 219.8 328 218.4 327.5 193.4 327.6 192 327.3 191.7 326.2 192.2 323.5 193.2 321.9 195.1 320.1 197.1 319 200.4 318.6 218.4 318.7 219.5 318.4 220 317.2 220 309.8 219.7 308.6 219.2 308.3 217.1 308.2 200.4 308.3 192.5 309 186.8 311.2 183.9 313.2 181.8 315.2 180.1 317.4 179.4 318.8 177.1 325 176.4 328.5 176.1 331.4 176.3 337.1 177.1 341.5 179.1 346.6 181.1 350.1 182.4 351.8 183.6 352.2 184.2 353 186.5 354.5 192.4 356.8 197.1 357.7 200.5 357.9 218.5 358Z", "S": "M271.5 357.9 275 357.6 280.4 356.6 284.2 354.7 285.9 353.5 287.7 351.6 288.9 349.8 291.4 343.4 291.9 339.5 291.7 332.4 290.6 328.4 289.6 326.2 287.8 323.8 286 322.2 282.3 319.2 279.5 317.9 273.5 317 255 316.9 251.6 316.6 248.2 316 246.2 314.7 245.2 313.6 244.6 312.5 244.1 309.9 244.2 307.3 245.3 304.2 246.8 303 248.6 302.1 255 301.6 287.5 301.6 288 301 288.1 300.1 288.1 291.1 287.8 289.8 287.4 289.3 285.8 289.2 248.6 289.3 242.4 290.1 236.2 292.9 233.4 295.2 230.2 299.8 229.1 302.5 228.2 307.2 228.1 312.4 229.1 316.5 229.8 318.1 230.1 319.6 232.1 322.6 234.2 324.6 237.2 326.6 240.2 327.8 244.2 328.7 248.6 329.1 266.1 329.2 271.4 330.3 273.1 331.4 274.8 333.1 275.7 336.4 275.8 339.1 274.8 342.2 273.2 343.6 271.2 344.6 266.4 345.5 263.2 345.7 232 345.8 231.5 346.4 231.2 347.5 231.3 355.8 231.7 357.5 232.1 357.9 232.8 358 271.5 357.9Z", "u": "M347.5 357.9 348.1 357.4 348.2 356 348.2 311.2 348.1 309.4 347.7 308.5 347.1 308.3 335.6 308.2 335.1 308.4 334.7 309 334.6 345.4 334.3 346.6 333 347 320.4 347 317.4 345.9 316.3 344.8 315.7 343.5 315.2 340.1 315.1 309.1 314.6 308.5 313.9 308.4 302.6 308.3 302 308.6 301.4 309.6 301.5 339.8 302 345.4 302.6 347.1 303.1 349.6 304.1 351.7 307.4 354.9 311.4 356.7 315.6 357.7 320 357.9 347.5 357.9Z", "r": "M374.7 357.9 375.4 357.5 375.5 357 375.4 319.8 375.9 318.8 376.8 318.4 383.2 318.8 384.1 319.2 385.6 320.4 386.9 321.9 387.7 323.9 388.1 327.4 388 329.4 388.2 329.9 388.8 330.2 389.8 330.4 400.2 330.4 400.9 330.2 401.3 329.5 401.5 326.2 401.1 320.8 400.8 318.2 399.9 315.4 398.8 313.3 397.8 312.1 396.5 311.1 394 309.9 392.4 309.6 391.2 309.1 384 308.3 362.6 308.2 362 308.8 361.8 311.1 361.9 357.2 362.1 357.8 362.8 358 374.7 357.9Z", "g": "M431.8 378.6 441.6 378.5 445.6 378 446.9 377.1 449.8 376 451.8 374.6 454.6 371.6 455.8 369.5 456.9 365.1 457 360.6 457.1 310.2 456.9 309 456.2 308.3 430.1 308.3 424.5 308.9 422.6 309.3 420 310.1 416.2 311.8 413.1 314.1 410.3 317.2 409.2 318.9 408.1 322.1 407 326 406.6 329.5 406.4 333.2 406.8 338.8 408 343.8 411 349.9 412.3 351.6 416.2 354.8 420.5 356.6 424.4 357.7 429.9 358 442.2 357.9 442.9 358.1 443.2 358.5 443.2 363.1 442.8 365.5 441.9 366.5 439.8 367.5 436.5 367.8 416.6 367.8 415.6 368.4 415.5 376.5 415.7 378 416.1 378.6 416.8 378.7 431.8 378.6Z M442.2 347 432.5 347 429.4 346.8 425.9 345.6 424.3 344.5 422.1 341.9 421.1 339.4 420.6 336.2 420.5 332 421.1 326.6 422.3 324 424.2 321.5 427.9 319.1 431.5 318.6 442.2 318.5 443.2 319.1 443.4 319.8 443.3 346.1 443 346.8 442.2 347Z", "e2": "M510.5 357.9 511 357.1 511 347.8 510.6 347.1 491.9 347 488.5 346.4 486.2 345.7 484 344.1 482.9 342.2 482.3 339.5 482.6 338.8 484.5 338.3 513.9 338.5 518.4 338.5 519.2 338.2 519.2 328.6 519.6 327.6 519.4 327.3 518.4 327.6 517.1 327.4 515.1 327.6 487.2 327.4 484.5 327.7 482.8 327.2 482.4 326.8 483 324.1 484.2 321.7 486 320.2 488.1 318.9 492.4 318.6 510.5 318.4 511.1 317.4 511 309.6 510.6 308.6 509.5 308.3 488.2 308.4 482.4 309.2 478.2 310.9 474.9 313.1 471.2 317.1 470.2 319 468.1 324.3 467.7 327.4 467.3 328.6 467 332.2 467.2 335.5 468 341.5 469.2 345.1 472.1 350.3 473.4 351.6 475.2 353 478.4 354.9 483.9 356.8 487.5 357.6 492.6 358 510.5 357.9Z", "n": "M627 357.9 627.7 357.4 627.9 356.2 627.8 324.5 626.7 318.1 625.8 315.9 623.8 313.1 621.6 311.3 619.4 310.1 615.7 309 612.1 308.6 608.2 308.2 584.8 308.3 582.5 308.3 582.1 308.6 581.6 309.8 581.7 356.5 582 357.7 582.8 358 594.1 358 595.2 357.5 595.4 353.5 595.3 319.4 595.8 318.8 596.6 318.5 607.4 318.5 609.8 318.8 610.9 319.2 613.3 321.9 614.1 324.1 614.1 354.5 614.3 357.4 614.8 357.8 615.6 358 627 357.9Z"};
+const NS='http://www.w3.org/2000/svg';const $=id=>document.getElementById(id);
+const MODE=new URLSearchParams(location.search).get('mode')||'roll';
+if(new URLSearchParams(location.search).get('theme')==='dark'){
+ document.documentElement.style.background=document.body.style.background='#1A1917';
+ const stops=document.querySelectorAll('#bg stop');stops[0].setAttribute('stop-color','#262421');stops[1].setAttribute('stop-color','#161513');
+ $('letters').setAttribute('fill','#F2EFE8');
+ $('icon').querySelectorAll('path,polygon').forEach(n=>n.setAttribute('fill','#F2EFE8'));
+ $('tag').setAttribute('fill','#F2EFE8');
+ $('loader').firstElementChild.setAttribute('fill','#F2EFE8');
+}
+const cl=x=>x<0?0:x>1?1:x;
+const bez=(x1,y1,x2,y2)=>t=>{let a=0,b=1,u=t;for(let i=0;i<30;i++){u=(a+b)/2;const x=3*(1-u)*(1-u)*u*x1+3*(1-u)*u*u*x2+u*u*u;if(x<t)a=u;else b=u;}return 3*(1-u)*(1-u)*u*y1+3*(1-u)*u*u*y2+u*u*u;};
+const E={lin:x=>x,out:bez(0,0,.58,1),in:bez(.42,0,1,1),outC:x=>1-Math.pow(1-x,3),inOut:x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2,pop:bez(.45,1.45,.8,1),
+ spring:t=>1-Math.exp(-t*7.6657)*(Math.cos(t*6.7605)+1.1339*Math.sin(t*6.7605))};
+function tw(t,t0,t1,a,b,e){if(t<=t0)return a;if(t>=t1)return b;return a+(b-a)*E[e||'lin']((t-t0)/(t1-t0));}
+// keyframe helper: list of [time,value,easeOfSegmentStartingHere]
+function kf(t,list){if(t<=list[0][0])return list[0][1];for(let i=0;i<list.length-1;i++){const [t0,v0,e]=list[i],[t1,v1]=list[i+1];if(t<=t1)return tw(t,t0,t1,v0,v1,e);}return list[list.length-1][1];}
+// wordmark placement
+const W=340,S=W/616,OX=(390-W)/2,OY=MODE==='roll'?395:590;
+const sx=u=>OX+(u-20)*S, sy=v=>OY+(v-284)*S;
+$('logo').setAttribute('data-x','');
+const lg=document.createElementNS(NS,'g');lg.setAttribute('transform',`translate(${OX} ${OY}) scale(${S}) translate(-20 -284)`);
+$('letters').appendChild(lg);
+const letters={};for(const [k,d] of Object.entries(LET)){const p=document.createElementNS(NS,'path');p.setAttribute('d',d);p.setAttribute('fill-rule','evenodd');lg.appendChild(p);const b=p.getBBox();letters[k]={p,cx:b.x+b.width/2,cy:b.y+b.height/2};}
+const BARS=[['BL',26,368,376,10],['TL',147,289,74,11],['TR',302,290,327,11],['BR',467,368,162,10]];
+const bars={};for(const [k,x,y,w,h] of BARS){const r=document.createElementNS(NS,'rect');r.setAttribute('x',sx(x));r.setAttribute('y',sy(y));r.setAttribute('height',h*S);r.setAttribute('rx',1);$('bars').appendChild(r);bars[k]={r,w:w*S};}
+const IC={x:sx(545.5),y:sy(333)},ICK=0.078481*S;
+$('shock').setAttribute('cx',IC.x);$('shock').setAttribute('cy',IC.y);
+$('tag').setAttribute('y',OY+98*S+38);
+const FPX=0.2123; // figma px -> screen px
+const DUR=MODE==='roll'?5.2:5.6;
+function setLetter(k,dy,sc,op){const L=letters[k];L.p.setAttribute('transform',`translate(0 ${dy}) translate(${L.cx} ${L.cy}) scale(${sc}) translate(${-L.cx} ${-L.cy})`);L.p.setAttribute('opacity',op);}
+function setIcon(dx,rotRad,blur,sc=1,op=1){$('icon').setAttribute('transform',`translate(${IC.x+dx} ${IC.y}) rotate(${rotRad*180/Math.PI}) scale(${ICK*sc}) translate(-325 -318.5)`);$('blv').setAttribute('stdDeviation',blur);$('iconW').setAttribute('opacity',op);}
+// ---------- ROLL (portrait version of the Figma Rolling Wheel Intro) ----------
+const LT={B:.1119,i:.131,idot:.15,k:.15,e:.1714,S:.1976,u:.2262,r:.25,g:.2714,e2:.4643,n:.4643};
+function roll(t){const T=4.2,p=x=>x*T;
+ for(const [k,s0] of Object.entries(LT)){const t0=p(s0),t1=t0+p(.0833);const sc=tw(t,t0,t1,.2,1,'pop');const dy=tw(t,t0,t1,k==='idot'?-80*FPX/S:40*FPX/S,0,'pop');const op=tw(t,t0,t0+p(.0143),0,1);setLetter(k,dy,sc,op);}
+ const rot=kf(t,[[0,-25.047],[p(.0476),-25.047,'lin'],[p(.2976),-2.111,'out'],[p(.3929),0],[p(.469),0,'out'],[p(.4976),.384,'spring'],[p(.5952),0]]);
+ const dx=kf(t,[[0,-1660.7*FPX],[p(.0476),-1660.7*FPX,'lin'],[p(.2976),-140*FPX,'out'],[p(.3929),0]]);
+ const blur=kf(t,[[0,3],[p(.2976),2.2,'out'],[p(.3929),0]]);
+ setIcon(dx,rot,blur);
+ const bx=tw(t,p(.4048),p(.4643),90*FPX/ICK,0,'in');$('bolt').setAttribute('transform',`translate(${bx} 0)`);$('bolt').setAttribute('opacity',t<p(.4048)?0:1);
+ const bump=kf(t,[[0,1],[p(.4643),1,'out'],[p(.4833),1.05,'spring'],[p(.5714),1]]);
+ $('logo').setAttribute('transform',`translate(195 ${IC.y}) scale(${bump}) translate(-195 ${-IC.y})`);
+ const so=t<p(.4643)?0:tw(t,p(.4667),p(.6071),1,0,'out');const ss=tw(t,p(.4643),p(.6071),.8,4.5,'out');
+ $('shock').setAttribute('opacity',so);$('shock').setAttribute('transform',`translate(${IC.x} ${IC.y}) scale(${ss}) translate(${-IC.x} ${-IC.y})`);
+ const B={BL:[.5048,.5881],TL:[.5238,.6071],TR:[.5429,.6262],BR:[.5476,.631]};
+ for(const [k,[a,b]] of Object.entries(B)){bars[k].r.setAttribute('width',Math.max(0.01,tw(t,p(a),p(b),0,bars[k].w,'out')));bars[k].r.setAttribute('opacity',t<p(a)?0:1);}
+ $('tag').setAttribute('opacity',tw(t,4.25,4.75,0,.8,'out'));
+ $('loader').setAttribute('opacity',tw(t,2.6,3.0,0,1));$('lfill').setAttribute('width',tw(t,2.6,DUR,0,100,'inOut'));
+}
+// ---------- FLAG (bike carrying the Bike Surgeon flag) ----------
+const sc=$('scene');
+sc.innerHTML=MODE!=='flag'?'':`
+ <line id="road" x1="195" y1="500" x2="195" y2="500" stroke="#FFFFFF" stroke-opacity=".22" stroke-width="2"/>
+ <g id="dashes"></g><g id="speed" stroke="#F6C31C" stroke-linecap="round"></g>
+ <ellipse id="shadow" cx="0" cy="503" rx="95" ry="5" fill="#000" opacity=".55"/>
+ <g id="bike">
+  <circle cx="0" cy="-60" r="150" fill="url(#glow)" opacity=".5"/>
+  <line x1="-74" y1="-38" x2="-74" y2="-212" stroke="#d9d9d9" stroke-width="3" stroke-linecap="round"/>
+  <path id="flag" fill="#F6C31C"/>
+  <g id="flagIcon"><path fill="#121212" d="M563.54,85Q477.07,0,322,0,171.8,0,83.41,85.66,15.78,151.34.32,251.82H142.66a191.29,191.29,0,0,1,180-125.59c105.94,0,192.24,86,192.24,192.25s-86.3,192.24-192.24,192.24A191.78,191.78,0,0,1,142,383.85H0c10,69.23,37,125.26,80.83,168.74q86,84.52,236,84.37Q471.93,637,561,553.23q88.88-84,88.88-227.67Q649.84,170.51,563.54,85Z"/><polygon fill="#121212" points="302.3 403.24 582.62 403.24 582.62 233.7 302.3 233.7 253.36 318.47 302.3 403.24"/></g>
+  <g id="body">
+   <line x1="-12" y1="-4" x2="-92" y2="-14" stroke="#8a8a8a" stroke-width="6" stroke-linecap="round"/>
+   <line x1="-62" y1="0" x2="-6" y2="-22" stroke="#e9e9e9" stroke-width="7" stroke-linecap="round"/>
+   <line x1="62" y1="0" x2="40" y2="-62" stroke="#e9e9e9" stroke-width="6" stroke-linecap="round"/>
+   <rect x="-22" y="-30" width="38" height="26" rx="5" fill="#4a4a4a"/>
+   <path d="M-76 -40 L-30 -46 L-28 -36 L-70 -32 Z" fill="#f2f2f2"/>
+   <path d="M-76 -40 L-98 -50 L-80 -52 Z" fill="#f2f2f2"/>
+   <path d="M-32 -44 L28 -54 Q48 -56 44 -42 L22 -22 L-24 -20 Z" fill="#F6C31C"/>
+   <path d="M44 -42 L60 -28 L56 -22 L40 -34 Z" fill="#F6C31C"/>
+   <line x1="40" y1="-62" x2="28" y2="-76" stroke="#e9e9e9" stroke-width="5" stroke-linecap="round"/>
+   <circle cx="50" cy="-54" r="6.5" fill="#fff6d0"/>
+  </g>
+  <g id="wR" transform="translate(-62 0)"></g><g id="wF" transform="translate(62 0)"></g>
+ </g>`;
+function wheel(g){g.innerHTML=`<circle r="33" fill="none" stroke="#1a1a1a" stroke-width="10"/><circle r="33" fill="none" stroke="#dedede" stroke-width="3"/><circle r="22" fill="none" stroke="#F6C31C" stroke-width="2.5"/><g class="sp" stroke="#F6C31C" stroke-width="2">${[0,1,2,3,4].map(i=>`<line x1="0" y1="0" x2="${22*Math.cos(i*1.2566)}" y2="${22*Math.sin(i*1.2566)}"/>`).join('')}</g><circle r="4.5" fill="#dedede"/>`;}
+if(MODE==='flag'){wheel($('wR'));wheel($('wF'));
+ const dg=$('dashes');for(let i=0;i<9;i++){const l=document.createElementNS(NS,'line');l.setAttribute('y1',512);l.setAttribute('y2',512);l.setAttribute('stroke','#FFFFFF');l.setAttribute('stroke-opacity','.12');l.setAttribute('stroke-width','3');l.setAttribute('stroke-linecap','round');dg.appendChild(l);}
+ const sp=$('speed');for(let i=0;i<4;i++){const l=document.createElementNS(NS,'line');sp.appendChild(l);}
+ // hide wordmark parts until reveal
+}
+const FW=118,FH=78,PX=-74,PY=-212;
+function flagPath(ph,amp){const pts=[];const N=24;const off=x=>amp*(x/FW)*Math.sin(ph+x*0.075);
+ let d='';for(let i=0;i<=N;i++){const x=i*FW/N;d+=(i?'L':'M')+(PX-x)+' '+(PY+off(x));}
+ for(let i=N;i>=0;i--){const x=i*FW/N;d+='L'+(PX-x)+' '+(PY+FH+off(x)*1.1);}
+ return {d:d+'Z',off};}
+const BX=195,AY=466;
+function bikeX(t){return tw(t,.25,2.35,-170,BX,'outC');}
+function flag(t){
+ $('road').setAttribute('x1',tw(t,0,.55,195,-10,'outC'));$('road').setAttribute('x2',tw(t,0,.55,195,400,'outC'));
+ const x=bikeX(t),v=(bikeX(t+.01)-x)/.01; // px/s
+ const brake=tw(t,1.95,2.35,0,1,'lin');const tilt=Math.sin(brake*Math.PI)*2.6*(t<2.35?1:0);
+ const bounce=v>5?Math.sin(t*38)*0.8:0;
+ $('bike').setAttribute('transform',`translate(${x} ${AY+bounce}) rotate(${tilt} 62 0)`);
+ $('shadow').setAttribute('cx',x);
+ const ang=(x+170)/33;for(const w of ['wR','wF'])$(w).querySelector('.sp').setAttribute('transform',`rotate(${ang*180/Math.PI})`);
+ const amp=6+Math.min(v,400)/400*10;const {d,off}=flagPath(t*(6+Math.min(v,400)/60),amp);$('flag').setAttribute('d',d);
+ const fx=FW/2;const fy=off(fx);const slope=(off(fx+2)-off(fx-2))/4;
+ const k=40/650;$('flagIcon').setAttribute('transform',`translate(${PX-fx} ${PY+FH/2+fy*1.05}) rotate(${Math.atan(slope)*57.3}) scale(${k}) translate(-325 -318.5)`);
+ // road dashes scroll relative to camera-static road (static), only fade in
+ const dl=[...$('dashes').children];dl.forEach((l,i)=>{const xx=i*50-10;l.setAttribute('x1',xx);l.setAttribute('x2',xx+22);l.setAttribute('opacity',tw(t,.3,.8,0,1));});
+ const sl=[...$('speed').children];const sv=Math.min(v,450)/450;sl.forEach((l,i)=>{const yy=AY-80+i*22;const len=sv*(60+i*18);l.setAttribute('x1',x-105-len);l.setAttribute('x2',x-105);l.setAttribute('y1',yy);l.setAttribute('y2',yy);l.setAttribute('stroke-width',2);l.setAttribute('opacity',sv*.7);});
+ // logo reveal
+ const R=2.45;const order=['B','i','idot','k','e','S','u','r','g','e2','n'];
+ order.forEach((k,i)=>{const t0=R+i*.07,t1=t0+.36;setLetter(k,tw(t,t0,t1,k==='idot'?-26:14,0,'pop'),tw(t,t0,t1,.2,1,'pop'),tw(t,t0,t0+.06,0,1));});
+ const it0=R+.6;setIcon(0,tw(t,it0,it0+.5,-3.2,0,'outC'),0,tw(t,it0,it0+.5,.2,1,'pop'),tw(t,it0,it0+.08,0,1));$('bolt').setAttribute('transform','');
+ const so=t<it0+.4?0:tw(t,it0+.4,it0+1.1,1,0,'out');$('shock').setAttribute('opacity',so);const ss=tw(t,it0+.4,it0+1.1,.8,4.5,'out');$('shock').setAttribute('transform',`translate(${IC.x} ${IC.y}) scale(${ss}) translate(${-IC.x} ${-IC.y})`);
+ const B={BL:[3.3,3.75],TL:[3.4,3.85],TR:[3.5,3.95],BR:[3.55,4.0]};
+ for(const [k2,[a,b]] of Object.entries(B)){bars[k2].r.setAttribute('width',Math.max(0.01,tw(t,a,b,0,bars[k2].w,'out')));bars[k2].r.setAttribute('opacity',t<a?0:1);}
+ $('tag').setAttribute('opacity',tw(t,4.1,4.6,0,.65,'out'));
+ $('loader').setAttribute('opacity',tw(t,2.8,3.2,0,1));$('lfill').setAttribute('width',tw(t,2.8,DUR,0,100,'inOut'));
+}
+function render(t){if(MODE==='flag')flag(t);else roll(t);}
+window.render=render;window.DUR=DUR;
+if(!location.search.includes('render')){const st=performance.now();(function loop(){const t=((performance.now()-st)/1000)%(DUR+0.8);render(Math.min(t,DUR));requestAnimationFrame(loop);})();}
+else render(0);
+</script></body></html>

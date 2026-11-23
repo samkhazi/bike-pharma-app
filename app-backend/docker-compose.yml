@@ -1,0 +1,32 @@
+# Local development: `docker compose up -d db` for just the database, or `docker compose up --build` for both.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: bikesurgeon
+      POSTGRES_PASSWORD: bikesurgeon
+      POSTGRES_DB: bikesurgeon
+    ports:
+      - "5433:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bikesurgeon"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://bikesurgeon:bikesurgeon@db:5432/bikesurgeon
+    ports:
+      - "8080:8080"
+    command: sh -c "node dist/scripts/migrate.js && node dist/src/index.js"
+
+volumes:
+  db-data:

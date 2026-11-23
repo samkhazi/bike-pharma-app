@@ -787,7 +787,8 @@ function tab(s){S.stack=[{s,p:{}}];navSave(true);render('fade');}
 function reset(s,p={}){const was=cur();S.stack=[{s,p}];navSave(!!(S.user&&was&&!NAV_PRE.includes(was.s)&&!NAV_PRE.includes(s)));render('fade');
  /* 21o: just logged in: the log in steps are left behind, so the first Back on the home screen is not a dead press */
  if(S.user&&was&&NAV_PRE.includes(was.s)&&!NAV_PRE.includes(s)&&NAVH&&NAVH.on&&NAVH.i>0){try{NAVH.pend=1;HIST.go(-NAVH.i);}catch(e){NAVH.pend=0;}}}
-function refresh(){const ev=window.event;if(ev&&ev.type==='change'&&ev.isTrusted){clearTimeout(refresh._t);refresh._t=setTimeout(refresh,250);return;}clearTimeout(refresh._t);const vp=document.getElementById('vp');const sc=vp.querySelector('.scroll');const top=sc?sc.scrollTop:0;render('');const sc2=vp.querySelector('.scroll');if(sc2)sc2.scrollTop=top;}
+function refresh(){const ev=window.event;if(ev&&ev.type==='change'&&ev.isTrusted){clearTimeout(refresh._t);refresh._t=setTimeout(refresh,250);return;}clearTimeout(refresh._t);const vp=document.getElementById('vp');const sc=vp.querySelector('.scroll');const top=sc?sc.scrollTop:0;const keep=!window.event?[...vp.querySelectorAll('.screen > .scrim')]:[],s0=cur().s;   /* 24o: a refresh from the background (a list finishing loading, a sync) kept no open sheet: 'part added' vanished after Save product */
+render('');const sc2=vp.querySelector('.scroll');if(sc2)sc2.scrollTop=top;if(keep.length&&cur().s===s0){const ns=vp.querySelector('.screen');if(ns&&!ns.querySelector('.scrim'))keep.forEach(x=>ns.appendChild(x));}}
 function vpMorph(a,b){if(a.nodeType!==b.nodeType||a.nodeName!==b.nodeName){a.replaceWith(b);return;}
  if(a.nodeType===3||a.nodeType===8){if(a.nodeValue!==b.nodeValue)a.nodeValue=b.nodeValue;return;}if(a.nodeType!==1)return;
  for(const at of [...a.attributes])if(!b.hasAttribute(at.name))a.removeAttribute(at.name);
@@ -5865,7 +5866,11 @@ const perBills=per=>{const td=isoToday(),yd=addDays(td,-1),m0=moIso(),m1=moIso(-
 const sumAmt=l=>l.reduce((a,b)=>a+(+b.amt||0),0);
 const chgTxt=(c,p,vs)=>p?(c>=p?'▲ ':'▼ ')+Math.abs(Math.round((c-p)/p*100))+'% vs '+vs:(c?'first sales':'no sales yet');
 const billHr=b=>{const m=/(\d{1,2}):(\d{2})\s*([ap])?/i.exec(String(b.t||''));if(!m)return 12;return m[3]?(+m[1]%12)+(/p/i.test(m[3])?12:0):+m[1];};
-const itemCost=i=>{const x=P(i.pid);return x?(+x.cost||poCost(x)):0;};
+/* 24o (Sam 2026-11-23 "numbers sahi aana chahiye calculations ka"): profit uses the part's real purchase rate from its latest posted stock in,
+   not the old estimate (mechanic price x 0.85); the estimate stays only for a part never bought on a stock in with a rate */
+const grnRateMap=()=>{const G=DB.grns||[],now=Date.now();if(grnRateMap.m&&grnRateMap.g===G&&grnRateMap.n===G.length&&now-grnRateMap.t<2000)return grnRateMap.m;grnRateMap.g=G;grnRateMap.n=G.length;grnRateMap.t=now;
+ const m={};G.filter(g=>g.status==='posted').forEach(g=>[...(g.items||[]),...(g.nw||[]),...(g.wait||[])].forEach(it=>{if(it&&it.pid&&+it.rate>0)m[it.pid]=+it.rate;}));grnRateMap.m=m;return m;};
+const itemCost=i=>{const x=P(i.pid);if(!x)return 0;const g=grnRateMap()[i.pid];return g>0?g:(+x.cost||poCost(x));};
 function realCat(per){const o={};perBills(per).forEach(b=>(b.items||[]).forEach(i=>{const x=P(i.pid);const c=(x&&x.cat)||'Others';const q=+i.q||0,v=(+i.r||0)*q;const r=o[c]||(o[c]=[c,0,0]);r[1]+=v;r[2]+=itemCost(i)*q;}));return Object.values(o).map(([c,v,k])=>[c,v,v?+((v-k)/v*100).toFixed(1):0]).sort((a,b)=>b[1]-a[1]);}
 function realMg(per){const L=perBills(per),td=per==='today',sales=sumAmt(L),m=mgMargin(per);let chart;
  if(td){const H=[9,10,11,12,13,14,15,16,17,18,19,20],v=H.map(()=>0);L.forEach(b=>{v[Math.min(11,Math.max(0,billHr(b)-9))]+=+b.amt||0;});chart={t:'Today by hour (₹ thousand)',l:H.map(h=>String(h>12?h-12:h)),v:v.map(x=>+(x/1000).toFixed(1))};}

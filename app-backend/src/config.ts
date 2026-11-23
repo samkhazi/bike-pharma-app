@@ -42,6 +42,26 @@ const schema = z
     WORKER_INTERVAL_MS: z.coerce.number().int().positive().default(3000),
 
     CAMERA_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(900),
+
+    // Workshop bridge (src/bridge): the old billing MySQL and the Bike Surgeon Inventory. Off until BRIDGE=on.
+    BRIDGE: z.enum(["off", "on"]).default("off"),
+    BRIDGE_INTERVAL_MS: z.coerce.number().int().min(5000).default(20000),
+    OLD_DB_HOST: z.string().default("127.0.0.1"),
+    OLD_DB_PORT: z.string().default("3306"),
+    OLD_DB_USER: z.string().optional(),
+    OLD_DB_PASS: z.string().optional(),
+    OLD_DB_BS: z.string().default("bikesurgeonoff"),
+    OLD_DB_PUBKEY: z.enum(["0", "1"]).default("1"),
+    MYSQL_BIN: z.string().default("mysql"),
+    // on = app bookings are also written to the old site's booking list (a_service_bookings), so reception sees them.
+    OLD_DB_WRITE: z.enum(["off", "on"]).default("off"),
+    OLD_DB_WRITE_USER: z.string().optional(),
+    OLD_DB_WRITE_PASS: z.string().optional(),
+    // on = a customer's old wallet balance is copied once, the first time they log in to this app.
+    BRIDGE_IMPORT_WALLET: z.enum(["off", "on"]).default("on"),
+    INVENTORY_URL: z.url().optional(),
+    INVENTORY_FEED_KEY: z.string().optional(),
+    INVENTORY_STORE: z.enum(["BS", "ML", "BP"]).default("BS"),
   })
   .superRefine((env, ctx) => {
     const fail = (path: string, message: string) => ctx.addIssue({ code: "custom", path: [path], message });
@@ -50,6 +70,8 @@ const schema = z
       fail("ONESIGNAL_APP_ID", "ONESIGNAL_APP_ID and ONESIGNAL_API_KEY are required when PUSH_PROVIDER=onesignal");
     }
     if (env.WEBHOOK_URL && !env.WEBHOOK_SECRET) fail("WEBHOOK_SECRET", "required when WEBHOOK_URL is set");
+    if (env.BRIDGE === "on" && !env.OLD_DB_USER) fail("OLD_DB_USER", "required when BRIDGE=on (the read-only login of the old billing database)");
+    if (env.INVENTORY_URL && !env.INVENTORY_FEED_KEY) fail("INVENTORY_FEED_KEY", "required when INVENTORY_URL is set (the Inventory's FEED_KEY)");
     if (env.NODE_ENV === "production") {
       if (env.OTP_DEV_CODE) fail("OTP_DEV_CODE", "must not be set in production");
       if (env.OTP_PROVIDER === "console") fail("OTP_PROVIDER", "console only prints codes to the log; use http in production");

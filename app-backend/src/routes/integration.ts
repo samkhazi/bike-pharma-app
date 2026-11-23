@@ -80,7 +80,7 @@ export function registerIntegrationRoutes(app: App, { db, config }: Deps) {
       method: "post", path: "/integration/v1/job-cards/{ref}/extras", tags: tags("Job cards"), summary: "Raise an extra part for the customer to approve", ...secured,
       request: { params: JobRef, ...body(S.ExtraCreate) }, responses: { 201: json(S.IntegrationBooking, "Raised; the customer is notified"), ...errors },
     }),
-    async (c) => c.json(await raiseExtra(db, c.req.valid("param").ref, c.req.valid("json")), 201),
+    async (c) => c.json(await raiseExtra(db, c.req.valid("param").ref, c.req.valid("json"), config.INVENTORY_STORE), 201),
   );
 
   app.openapi(

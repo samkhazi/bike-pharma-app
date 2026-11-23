@@ -40,12 +40,12 @@ export function registerSystemRoutes(app: App, { db, config }: Deps) {
   app.get("/v1/camera/:token/*", async (c) => {
     const token = c.req.param("token");
     const jobCardId = await verifyCameraToken(config, token);
-    const row = await one<{ status: JobStatus; camera_stream_url: string | null }>(
+    const row = await one<{ status: JobStatus; camera_stream_url: string | null; camera_paused: boolean }>(
       db,
-      "SELECT jc.status, b.camera_stream_url FROM job_cards jc JOIN bays b ON b.id = jc.bay_id WHERE jc.id = $1",
+      "SELECT jc.status, jc.camera_paused, b.camera_stream_url FROM job_cards jc JOIN bays b ON b.id = jc.bay_id WHERE jc.id = $1",
       [jobCardId],
     );
-    if (!row?.camera_stream_url || !CAMERA_STATUSES.includes(row.status)) {
+    if (!row?.camera_stream_url || row.camera_paused || !CAMERA_STATUSES.includes(row.status)) {
       throw new AppError(403, "camera_unavailable", "The camera is available while your bike is in a bay");
     }
     const upstreamBase = new URL(row.camera_stream_url);

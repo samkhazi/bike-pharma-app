@@ -167,8 +167,8 @@ export async function issueInvoice(client: pg.PoolClient, jobCardId: string, gst
     "SELECT jcs.name, jcs.price, sc.sac_code FROM job_card_services jcs JOIN service_catalog sc ON sc.id = jcs.service_id WHERE jcs.job_card_id = $1 ORDER BY jcs.name",
     [jobCardId],
   );
-  const extras = await many<{ part_name: string; amount: number }>(
-    client, "SELECT part_name, amount FROM job_card_extras WHERE job_card_id = $1 AND status = 'approved' ORDER BY created_at", [jobCardId]);
+  const extras = await many<{ part_name: string; amount: number; part_no: string | null; quantity: number; hsn: string | null; gst_percent: number | null }>(
+    client, "SELECT part_name, amount, part_no, quantity, hsn, gst_percent FROM job_card_extras WHERE job_card_id = $1 AND status = 'approved' ORDER BY created_at", [jobCardId]);
   const extrasAmount = money(extras.reduce((sum, extra) => sum + extra.amount, 0));
   const taxable = money(job.estimate_amount + extrasAmount);
   const gst = gstOn(taxable, gstRate);
@@ -178,15 +178,18 @@ export async function issueInvoice(client: pg.PoolClient, jobCardId: string, gst
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
     [job.number.replace(/^BS-/, "INV-"), jobCardId, job.customer_id, job.package_subtotal, job.discount_amount, extrasAmount, taxable, gstRate, gst, money(taxable + gst)],
   );
-  const lines: [LineKind, string, string | null, number][] = [
-    ...services.map((s) => ["service", s.name, s.sac_code, s.price] as [LineKind, string, string | null, number]),
-    ...(job.discount_amount > 0 ? [["discount", "Offer", null, -job.discount_amount] as [LineKind, string, string | null, number]] : []),
-    ...extras.map((e) => ["part", e.part_name, null, e.amount] as [LineKind, string, string | null, number]),
+  type Line = [LineKind, string, string | null, number, { partNo: string | null; quantity: number; gstPercent: number | null }?];
+  const lines: Line[] = [
+    ...services.map((s) => ["service", s.name, s.sac_code, s.price] as Line),
+    ...(job.discount_amount > 0 ? [["discount", "Offer", null, -job.discount_amount] as Line] : []),
+    ...extras.map((e) => ["part", e.part_name, e.hsn, e.amount, { partNo: e.part_no, quantity: Number(e.quantity) || 1, gstPercent: e.gst_percent }] as Line),
   ];
-  for (const [index, [kind, label, code, amount]] of lines.entries()) {
+  for (const [index, [kind, label, code, amount, part]] of lines.entries()) {
+    const quantity = part?.quantity ?? 1;
     await client.query(
-      "INSERT INTO invoice_lines (invoice_id, kind, label, sac_hsn_code, unit_amount, amount, sort_order) VALUES ($1, $2, $3, $4, $5, $5, $6)",
-      [invoice!.id, kind, label, code, amount, index],
+      `INSERT INTO invoice_lines (invoice_id, kind, label, sac_hsn_code, quantity, unit_amount, amount, sort_order, part_no, gst_percent)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [invoice!.id, kind, label, code, quantity, money(amount / quantity), amount, index, part?.partNo ?? null, part?.gstPercent ?? null],
     );
   }
   return invoice!.id;

@@ -489,9 +489,11 @@ export const Assignment = z
 
 export const ExtraCreate = z
   .object({
-    partName: z.string().trim().min(1).max(120),
+    partName: z.string().trim().min(1).max(120).optional().openapi({ description: "Needed unless partNo is sent; then the Inventory's name is used" }),
     note: z.string().max(500).default(""),
-    amount: z.number().min(0),
+    amount: z.number().min(0).optional().openapi({ description: "Needed unless partNo is sent; then MRP less the customer discount, times quantity" }),
+    partNo: z.string().trim().min(1).max(60).optional().openapi({ description: "Part number in the Bike Surgeon Inventory", example: "06455-KWP-901" }),
+    quantity: z.number().positive().max(999).optional().openapi({ description: "Default 1" }),
     raisedByStaffCode: z.string().optional(),
     raisedByLabel: z.string().max(80).optional().openapi({ example: "Amit, Bay 03" }),
   })

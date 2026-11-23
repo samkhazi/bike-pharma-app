@@ -7,6 +7,7 @@ import { getInvoice, issueInvoice } from "./billing.js";
 import { rewardReferralIfDue } from "./customers.js";
 import { emit } from "./events.js";
 import { notify } from "./notifications.js";
+import { quotePart } from "../bridge/inventory.js";
 import { decodeCursor, pageOf } from "./paging.js";
 
 type BookingRow = {
@@ -63,7 +64,7 @@ const BASE_SELECT = `
   SELECT jc.*,
     v.make AS v_make, v.model AS v_model, v.registration_number AS v_reg,
     c.phone AS c_phone, c.name AS c_name,
-    b.code AS bay_code, b.name AS bay_name, (b.camera_stream_url IS NOT NULL) AS bay_has_camera,
+    b.code AS bay_code, b.name AS bay_name, (b.camera_stream_url IS NOT NULL AND NOT jc.camera_paused) AS bay_has_camera,
     adv.name AS advisor_name, adv.phone AS advisor_phone,
     mec.name AS mechanic_name, mec.phone AS mechanic_phone,
     rid.name AS rider_name, rid.phone AS rider_phone,
@@ -212,14 +213,14 @@ export async function getBookingByRef(db: Queryable, ref: string) {
   return (await hydrate(db, [row]))[0];
 }
 
-async function lockJobCard(client: pg.PoolClient, id: string) {
+export async function lockJobCard(client: pg.PoolClient, id: string) {
   const row = await one<{ id: string; status: JobStatus; customer_id: string }>(
     client, "SELECT id, status, customer_id FROM job_cards WHERE id = $1 FOR UPDATE", [id]);
   if (!row) throw notFound("Job card");
   return row;
 }
 
-async function touch(client: Queryable, id: string) {
+export async function touch(client: Queryable, id: string) {
   await client.query("UPDATE job_cards SET updated_at = now() WHERE id = $1", [id]);
 }
 
@@ -400,7 +401,8 @@ async function staffId(db: Queryable, code: string | null | undefined, role?: st
   return row.id;
 }
 
-async function applyStatus(
+/** Exported for the workshop bridge, which moves job cards without the app issuing its own invoice (no gstRate). */
+export async function applyStatus(
   client: pg.PoolClient,
   jobCardId: string,
   from: JobStatus,
@@ -528,17 +530,28 @@ export async function assign(
 export async function raiseExtra(
   db: Db,
   ref: string,
-  input: { partName: string; note: string; amount: number; raisedByStaffCode?: string; raisedByLabel?: string },
+  raw: { partName?: string; note: string; amount?: number; partNo?: string; quantity?: number; raisedByStaffCode?: string; raisedByLabel?: string },
+  inventoryStore = "BS",
 ) {
   const { id } = await getBookingByRef(db, ref);
+  // A part number picks the real part from the Inventory copy: its name, HSN, GST and the customer price (MRP less the customer discount).
+  const quantity = raw.quantity ?? 1;
+  const part = raw.partNo ? await quotePart(db, inventoryStore, raw.partNo, quantity) : null;
+  if (raw.partNo && !part) throw badRequest("unknown_part", `Part ${raw.partNo} is not in the Inventory`);
+  const partName = raw.partName?.trim() || part?.name;
+  const amount = raw.amount ?? part?.amount;
+  if (!partName) throw badRequest("part_name_required", "Send partName, or a partNo that is in the Inventory");
+  if (amount === undefined) throw badRequest("amount_required", "Send amount, or a partNo that is in the Inventory");
+  const input = { ...raw, partName, amount };
   await tx(db, async (client) => {
     const job = await lockJobCard(client, id);
     if (!["at_workshop", "in_service"].includes(job.status)) throw conflict("not_in_workshop", "Extra parts can only be raised while the bike is in the workshop");
     const extra = await one<{ id: string }>(
       client,
-      `INSERT INTO job_card_extras (job_card_id, part_name, note, amount, raised_by_staff_id, raised_by_label)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-      [id, input.partName, input.note, input.amount, await staffId(client, input.raisedByStaffCode), input.raisedByLabel ?? null],
+      `INSERT INTO job_card_extras (job_card_id, part_name, note, amount, raised_by_staff_id, raised_by_label, inventory_part_id, part_no, quantity, hsn, gst_percent)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+      [id, input.partName, input.note, input.amount, await staffId(client, input.raisedByStaffCode), input.raisedByLabel ?? null,
+        part?.id ?? null, part?.partNo ?? null, quantity, part?.hsn || null, part?.gstPercent ?? null],
     );
     await touch(client, id);
     const pending = await one<{ n: number }>(client, "SELECT count(*) AS n FROM job_card_extras WHERE job_card_id = $1 AND status = 'pending'", [id]);

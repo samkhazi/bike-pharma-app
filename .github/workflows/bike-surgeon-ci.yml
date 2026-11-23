@@ -3,6 +3,8 @@ on:
   push:
     branches: ["claude/project-thread-vczbd1"]
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -16,11 +18,27 @@ jobs:
         ports: ["5433:5432"]
         options: >-
           --health-cmd "pg_isready -U bikesurgeon" --health-interval 2s --health-timeout 3s --health-retries 20
+      # Stands in for the workshop's old billing MySQL (same version as the server, 8.4)
+      olddb:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports: ["3307:3306"]
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -proot" --health-interval 3s --health-timeout 3s --health-retries 40
+    env:
+      OLD_DB_TEST: "1"
+      OLD_DB_HOST: 127.0.0.1
+      OLD_DB_PORT: "3307"
+      OLD_DB_USER: root
+      OLD_DB_PASS: root
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: mysql client
+        run: mysql --version
       - name: Backend install
         working-directory: app-backend
         run: npm ci --no-audit --no-fund
@@ -30,9 +48,22 @@ jobs:
       - name: Backend tests
         working-directory: app-backend
         run: cp .env.example .env && npm run db:migrate && npm run db:check && npm test
+      - name: API spec up to date
+        working-directory: app-backend
+        run: npm run openapi
       - name: Frontend install
         working-directory: app-frontend
         run: npm ci --no-audit --no-fund
       - name: Frontend build
         working-directory: app-frontend
         run: npm run build
+      - name: Commit the regenerated API spec
+        if: github.ref == 'refs/heads/claude/project-thread-vczbd1'
+        run: |
+          if ! git diff --quiet -- app-backend/openapi.json; then
+            git config user.name "github-actions"
+            git config user.email "github-actions@users.noreply.github.com"
+            git add app-backend/openapi.json
+            git commit -m "Regenerate openapi.json"
+            git push
+          fi

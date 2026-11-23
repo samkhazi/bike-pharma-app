@@ -47,7 +47,12 @@ jobs:
         run: npm run typecheck
       - name: Backend tests
         working-directory: app-backend
-        run: cp .env.example .env && npm run db:migrate && npm run db:check && npm test
+        run: |
+          cp .env.example .env && npm run db:migrate && npm run db:check
+          set +e; npm test > test.log 2>&1; code=$?; set -e
+          grep -v '^# \[otp\]' test.log | tail -n 40
+          if [ $code -ne 0 ]; then echo "===== FAILURES ====="; grep -n -A30 '^not ok' test.log | head -n 160; fi
+          exit $code
       - name: API spec up to date
         working-directory: app-backend
         run: npm run openapi

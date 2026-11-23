@@ -420,7 +420,7 @@ async function upsertOldJob(deps: BridgeDeps, job: OldJob, extras: JobExtras, hi
       );
       if (!hasInvoice) await setServices(client, jobCardId, job, labour);
     }
-    if (bill) await copyBill(client, jobCardId, customer.id, bill, extras.billItems.get(oldId) ?? [], labour, extras.products, history || finished);
+    if (bill) await copyBill(client, jobCardId, customer.id, bill, extras.billItems.get(oldId) ?? [], labour, extras.products, history);
 
     // Forward only: the workshop's status never moves the app backwards.
     if (!finished && current.status !== target && (target === "cancelled" || stageOf(target) > stageOf(current.status))) {

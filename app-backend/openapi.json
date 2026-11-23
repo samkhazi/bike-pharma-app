@@ -1774,6 +1774,14 @@
               "void"
             ]
           },
+          "source": {
+            "type": "string",
+            "enum": [
+              "app",
+              "workshop"
+            ],
+            "description": "workshop: issued by the workshop's own billing; pay it at the counter"
+          },
           "lines": {
             "type": "array",
             "items": {
@@ -1857,6 +1865,7 @@
           "vehicleLabel",
           "mode",
           "status",
+          "source",
           "lines",
           "subtotal",
           "discountAmount",

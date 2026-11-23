@@ -70,6 +70,7 @@ jobs:
           nohup npx tsx --env-file=.env src/index.ts > ../api.log 2>&1 &
           cd ../app-frontend
           VITE_API_URL=http://localhost:8080 npx vite build --outDir dist-live
+          command -v ffmpeg >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null)
           mkdir -p dist-live/hls
           ffmpeg -loglevel error -i public/bay-cam.mp4 -an -c:v libx264 -g 30 -f hls -hls_time 2 -hls_list_size 0 dist-live/hls/cam3.m3u8
           nohup npx vite preview --outDir dist-live --port 5173 --strictPort > ../web.log 2>&1 &

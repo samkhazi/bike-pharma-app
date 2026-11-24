@@ -4,8 +4,8 @@ The app runs on the same server as the billing, the admin panel and the Inventor
 After that the server takes new code from GitHub by itself every 5 minutes.
 
 ## 1. Domain (one time)
-In Cloudflare, add a DNS record: type `A`, name `app`, value `72.62.246.246`, Proxy **off** (DNS only).
-The https certificate needs this record.
+In Cloudflare, add a DNS record: type `A`, name `api`, value `72.62.246.246`, Proxy **off** (DNS only).
+The https certificate needs this record. Do not touch the `app` record: app.bikesurgeon.online is the live old app.
 
 ## 2. One command, as root on the server
 ```bash
@@ -16,19 +16,19 @@ The first time it asks two things:
 - the workshop phone number that customers call and WhatsApp
 
 Then it:
-- makes the site `app.bikesurgeon.online` in CloudPanel (Node 22, port 3050, site user `bikesurgeon-app`)
+- makes the site `api.bikesurgeon.online` in CloudPanel (Node 22, port 3050, site user `bikesurgeon-app`). It is only
+  for the app: no web pages. It stops without changing anything if another site already uses that address.
 - makes a PostgreSQL database for the app (installs PostgreSQL if it is missing)
 - writes the settings file `/home/bikesurgeon-app/shared/.env`. The old billing login and the Inventory key are
   copied from the admin panel's `.env` and never printed. The old billing database is only read (`OLD_DB_WRITE=off`).
 - builds the app, starts it with pm2 (name `bs-app`) and adds the 5-minute update and the restart after a reboot to cron
 - asks Let's Encrypt for the https certificate
 
-It ends with `All done`, the app address and the test login code. It takes about 5 to 10 minutes the first time.
+It ends with `All done`, the server address and the test login code. It takes about 5 to 10 minutes the first time.
 It is safe to run again: if it stops with a message, fix that and run the same command.
 
 ## 3. Test
-- In a phone browser: https://app.bikesurgeon.online
-- Android app: https://app.bikesurgeon.online/download/bike-surgeon.apk
+- Install the Android app: https://api.bikesurgeon.online/download/bike-surgeon.apk
 - Log in with a test number and the code that the setup printed. No SMS is sent. Other numbers see that the app is
   being tested.
 

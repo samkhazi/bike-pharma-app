@@ -130,6 +130,9 @@ jobs:
           grep -q "^All done" /tmp/setup-3.log && grep -q "restarted with the new test numbers" /tmp/setup-3.log
           status=$(curl -s -o /dev/null -w '%{http_code}' -H 'content-type: application/json' -d '{"phone":"9811100002"}' http://127.0.0.1:3050/v1/auth/otp/request)
           case "$status" in 2??) echo "PASS a test number added later can log in";; *) echo "FAIL added number got $status"; exit 1;; esac
+          mkdir -p /etc/nginx/sites-enabled && touch /etc/nginx/sites-enabled/app.bikesurgeon.online.conf
+          if DOMAIN=app.bikesurgeon.online SITE_USER=bikesurgeon-other PORT=3059 bash scripts/server/setup.sh > /tmp/setup-4.log 2>&1; then cat /tmp/setup-4.log; echo "FAIL took an address another site uses"; exit 1; fi
+          grep -q "already used by another site" /tmp/setup-4.log && ! id bikesurgeon-other >/dev/null 2>&1 && echo "PASS an address another site uses is never taken"
       - name: Logs
         if: failure()
         run: |
@@ -161,14 +164,14 @@ jobs:
           GIT_TERMINAL_PROMPT=0 git -c credential.helper= ls-remote --exit-code "$repo" "refs/heads/$branch"
           echo "PASS setup command"
 
-  # Test APK for phones: talks to https://app.bikesurgeon.online. Built only when the app's files changed, and saved
+  # Test APK for phones: talks to https://api.bikesurgeon.online (app.bikesurgeon.online is the live old app). Built only when the app's files changed, and saved
   # as downloads/bike-surgeon.apk (the server offers it at /download/bike-surgeon.apk). Always signed with the same
   # test key, so a newer APK installs over the old one.
   android-apk:
     needs: check
     runs-on: ubuntu-latest
     env:
-      APP_URL: https://app.bikesurgeon.online
+      APP_URL: https://api.bikesurgeon.online
     steps:
       - uses: actions/checkout@v4
       - name: Anything new for the APK?

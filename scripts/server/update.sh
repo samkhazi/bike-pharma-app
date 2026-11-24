@@ -28,11 +28,13 @@ FORCE=${FORCE:-0}
 [ "$(cat "$H/.failed" 2>/dev/null || true)" != "$NEW" ] || [ "$FORCE" = 1 ] || return 0
 git reset -q --hard "$NEW"
 
-# Only screenshots, docs or the API description changed: nothing to build.
+# Only the app's screens, screenshots, docs or the API description changed: nothing to build here (the Android app is
+# built on GitHub). This script itself is still updated.
 if [ "$FORCE" != 1 ] && [ -d "$H/current" ] && git cat-file -e "$CUR^{commit}" 2>/dev/null \
-  && git diff --quiet "$CUR" "$NEW" -- app-backend app-frontend downloads ':(exclude)app-frontend/e2e' ':(exclude)app-backend/openapi.json'; then
+  && git diff --quiet "$CUR" "$NEW" -- app-backend downloads ':(exclude)app-backend/openapi.json'; then
   echo "$NEW" > "$H/current/.commit"
-  log "${NEW:0:7}: no app changes, nothing to build"
+  self_update
+  log "${NEW:0:7}: no server changes, nothing to build"
   return 0
 fi
 
@@ -43,13 +45,10 @@ trap 'on_exit' EXIT
 mkdir -p "$REL"
 git archive "$NEW" | tar -x -C "$REL"
 ln -s "$ENV_FILE" "$REL/app-backend/.env"
-URL=$(sed -n 's/^PUBLIC_BASE_URL=//p' "$ENV_FILE" | tail -1)
 ( cd "$REL/app-backend" && npm ci --no-audit --no-fund --loglevel=error && npm run -s build )
-( cd "$REL/app-frontend" && npm ci --no-audit --no-fund --loglevel=error && VITE_API_URL="$URL" npm run -s build )
-if [ -f "$REL/downloads/bike-surgeon.apk" ]; then
-  mkdir -p "$REL/app-frontend/dist/download"
-  cp "$REL/downloads/bike-surgeon.apk" "$REL/app-frontend/dist/download/bike-surgeon.apk"
-fi
+# No web app: the server only offers the Android app built on GitHub, at /download/bike-surgeon.apk
+mkdir -p "$REL/public/download"
+[ ! -f "$REL/downloads/bike-surgeon.apk" ] || cp "$REL/downloads/bike-surgeon.apk" "$REL/public/download/bike-surgeon.apk"
 ( cd "$REL/app-backend" && npm run -s db:migrate )
 # The first build also loads the reference data (workshop, services, offers). Safe to run again.
 [ -e "$H/current" ] || ( cd "$REL/app-backend" && npm run -s db:seed )
@@ -75,8 +74,7 @@ rm -f "$H/.failed"
 for dir in $(ls -1dt "$H"/releases/*/ 2>/dev/null | tail -n +4); do
   [ "${dir%/}" = "$(readlink -f "$H/current")" ] || rm -rf "${dir%/}"
 done
-# the next run uses this version of the script (a new file, so this running copy is not touched)
-cp "$H/repo/scripts/server/update.sh" "$H/update.sh.new" && chmod 700 "$H/update.sh.new" && mv -f "$H/update.sh.new" "$H/update.sh"
+self_update
 log "${NEW:0:7}: running"
 }
 
@@ -91,6 +89,9 @@ on_exit() {
   fi
   return $rc
 }
+
+# the next run uses this version of the script (a new file, so this running copy is not touched)
+self_update() { cp "$H/repo/scripts/server/update.sh" "$H/update.sh.new" && chmod 700 "$H/update.sh.new" && mv -f "$H/update.sh.new" "$H/update.sh"; }
 
 point_current_to() { ln -sfn "$1" "$H/current.new" && mv -Tf "$H/current.new" "$H/current"; }
 

@@ -4,7 +4,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/samkhazi/bike-pharma-app/refs/heads/claude/project-thread-vczbd1/scripts/server/setup.sh -o /root/bs-app-setup.sh && bash /root/bs-app-setup.sh
 #
 # What it does:
-#   1. makes the site app.bikesurgeon.online in CloudPanel (Node 22, port 3050, site user bikesurgeon-app)
+#   1. makes the site api.bikesurgeon.online in CloudPanel (Node 22, port 3050, site user bikesurgeon-app); the app talks to it
 #   2. makes a PostgreSQL database for the app (installs PostgreSQL if it is missing)
 #   3. writes the app's settings (~/shared/.env, only root and the site user can read it). The old billing login and
 #      the Inventory key are copied from the admin panel's .env and never printed.
@@ -15,7 +15,7 @@
 main() {
 set -euo pipefail
 
-DOMAIN=${DOMAIN:-app.bikesurgeon.online}
+DOMAIN=${DOMAIN:-api.bikesurgeon.online}
 SITE_USER=${SITE_USER:-bikesurgeon-app}
 PORT=${PORT:-3050}
 REPO_URL=${REPO_URL:-https://github.com/samkhazi/bike-pharma-app.git}
@@ -55,6 +55,10 @@ if [ ! -f "$ENV_FILE" ] && ss -ltn "( sport = :$PORT )" 2>/dev/null | grep -q LI
 fi
 
 step "Site $DOMAIN"
+# Never take over an address another site on this server already uses (app.bikesurgeon.online is the live old app).
+if [ ! -d "$H" ] && ls /etc/nginx/sites-enabled/ 2>/dev/null | grep -qxF "$DOMAIN.conf"; then
+  stop "the address $DOMAIN is already used by another site on this server; nothing was changed"
+fi
 if [ ! -d "$H" ]; then
   clpctl site:add:nodejs --domainName="$DOMAIN" --nodejsVersion=22 --appPort="$PORT" --siteUser="$SITE_USER" \
     --siteUserPassword="$(openssl rand -hex 12)Aa1!" \
@@ -120,7 +124,7 @@ if [ ! -f "$ENV_FILE" ]; then
       echo "OTP_PROVIDER=console"
       echo "LOGIN_ALLOWLIST=$PHONES"
       echo "TEST_LOGIN_CODE=$(shuf -i 1000-9999 -n 1)"
-      echo "WEB_DIR=$H/current/app-frontend/dist"
+      echo "WEB_DIR=$H/current/public"
       echo "# Old billing database (read only) and Inventory, copied from $PANEL_ENV"
       echo "BRIDGE=on"
       grep -E '^(OLD_DB_HOST|OLD_DB_PORT|OLD_DB_USER|OLD_DB_PASS|OLD_DB_BS|OLD_DB_PUBKEY|MYSQL_BIN)=' "$PANEL_ENV" || true
@@ -184,7 +188,7 @@ elif clpctl lets-encrypt:install:certificate --domainName="$DOMAIN" >/dev/null 2
   echo "ok"
 else
   SSL_TODO=1
-  echo "NOT YET: the domain does not point here yet. Check the 'app' record in Cloudflare (A, 72.62.246.246, DNS only), wait 5 minutes, then run:"
+  echo "NOT YET: the domain does not point here yet. Check the '${DOMAIN%%.*}' record in Cloudflare (A, 72.62.246.246, DNS only), wait 5 minutes, then run:"
   echo "   clpctl lets-encrypt:install:certificate --domainName=$DOMAIN"
 fi
 
@@ -197,8 +201,8 @@ grep -h '\[bridge\]' "$H"/.pm2/logs/bs-app-out*.log 2>/dev/null | tail -2 | sed 
 CODE=$(sed -n 's/^TEST_LOGIN_CODE=//p' "$ENV_FILE")
 ALLOWED=$(sed -n 's/^LOGIN_ALLOWLIST=//p' "$ENV_FILE")
 echo
-echo "App:          $PUBLIC_URL"
-echo "Android app:  $PUBLIC_URL/download/bike-surgeon.apk (when the APK is ready)"
+echo "Server:       $PUBLIC_URL (for the app only, no web pages)"
+echo "Android app:  $PUBLIC_URL/download/bike-surgeon.apk"
 echo "Test login:   numbers $ALLOWED, code $CODE"
 echo "Updates:      checked every 5 minutes, log $H/logs/update.log"
 [ -z "${SSL_TODO:-}" ] || echo "Still to do:  the https certificate (see above)"

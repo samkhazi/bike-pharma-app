@@ -22,9 +22,10 @@ crontab -u bikesurgeon-app -l | grep -q 'pm2 resurrect' || fail "the restart aft
 pass "settings, secrets and cron"
 
 curl -fsS "$B/health/ready" | grep -q '"ready"' || fail "health"
-curl -fsS "$B/" | grep -q 'id="root"' || fail "web app"
-curl -fsS "$B/garage/bikes" | grep -q 'id="root"' || fail "web app screen link"
-pass "web app served at /"
+[ "$(curl -s -o /dev/null -w '%{http_code}' "$B/")" = 404 ] || fail "the server must not show a web app at /"
+[ "$(curl -s -o /dev/null -w '%{http_code}' "$B/garage/bikes")" = 404 ] || fail "the server must not show app screens"
+grep -qx "WEB_DIR=$H/current/public" "$ENV" || fail "WEB_DIR"
+pass "no web app on the server, only the API"
 
 APK=$H/current/downloads/bike-surgeon.apk
 if [ -f "$APK" ]; then

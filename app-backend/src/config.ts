@@ -28,6 +28,13 @@ const schema = z
     OTP_HTTP_TOKEN: z.string().optional(),
     OTP_TTL_SECONDS: z.coerce.number().int().positive().default(300),
     OTP_DEV_CODE: z.string().regex(/^\d{4}$/).optional(),
+    // Testing on a live server: only these numbers (comma separated) can log in. Empty = everyone.
+    LOGIN_ALLOWLIST: z.string().default(""),
+    // With LOGIN_ALLOWLIST: the allowed numbers log in with this fixed code and no SMS is sent. Allowed in production.
+    TEST_LOGIN_CODE: z.string().regex(/^\d{4}$/, "TEST_LOGIN_CODE must be 4 digits").optional(),
+
+    // Folder of the built web app (app-frontend/dist). When set, the API also serves the app at /.
+    WEB_DIR: z.string().optional(),
 
     PUSH_PROVIDER: z.enum(["none", "onesignal"]).default("none"),
     ONESIGNAL_APP_ID: z.string().optional(),
@@ -72,9 +79,13 @@ const schema = z
     if (env.WEBHOOK_URL && !env.WEBHOOK_SECRET) fail("WEBHOOK_SECRET", "required when WEBHOOK_URL is set");
     if (env.BRIDGE === "on" && !env.OLD_DB_USER) fail("OLD_DB_USER", "required when BRIDGE=on (the read-only login of the old billing database)");
     if (env.INVENTORY_URL && !env.INVENTORY_FEED_KEY) fail("INVENTORY_FEED_KEY", "required when INVENTORY_URL is set (the Inventory's FEED_KEY)");
+    const allowlist = list(env.LOGIN_ALLOWLIST);
+    if (allowlist.some((phone) => !/^(\+?91|0)?[6-9]\d{9}$/.test(phone.replace(/[\s-]/g, "")))) fail("LOGIN_ALLOWLIST", "10-digit Indian mobile numbers, comma separated");
+    if (env.TEST_LOGIN_CODE && allowlist.length === 0) fail("LOGIN_ALLOWLIST", "required with TEST_LOGIN_CODE: the fixed code works only for these numbers");
     if (env.NODE_ENV === "production") {
       if (env.OTP_DEV_CODE) fail("OTP_DEV_CODE", "must not be set in production");
-      if (env.OTP_PROVIDER === "console") fail("OTP_PROVIDER", "console only prints codes to the log; use http in production");
+      // A test server (TEST_LOGIN_CODE + LOGIN_ALLOWLIST) sends no SMS at all, so it needs no SMS gateway.
+      if (env.OTP_PROVIDER === "console" && !env.TEST_LOGIN_CODE) fail("OTP_PROVIDER", "console only prints codes to the log; use http in production");
       if (list(env.INTEGRATION_API_KEYS).some((key) => key.length < 24)) fail("INTEGRATION_API_KEYS", "each key must be at least 24 characters");
     }
   });
@@ -93,6 +104,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env) {
     ...env,
     corsOrigins: list(env.CORS_ORIGINS),
     integrationApiKeys: list(env.INTEGRATION_API_KEYS),
+    loginAllowlist: list(env.LOGIN_ALLOWLIST).map((phone) => `+91${phone.replace(/\D/g, "").slice(-10)}`),
     isProduction: env.NODE_ENV === "production",
   };
 }

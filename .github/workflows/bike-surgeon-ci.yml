@@ -92,3 +92,103 @@ jobs:
             git commit -m "CI: regenerated openapi.json and end-to-end screenshots"
             git push
           fi
+
+  # The server setup (scripts/server/setup.sh) run on a copy of the Bike Surgeon CloudPanel server: a plain Ubuntu
+  # with a stand-in clpctl, the admin panel's .env, the old billing MySQL, the Inventory feed and a bay camera.
+  server-rehearsal:
+    needs: check
+    runs-on: ubuntu-latest
+    container: ubuntu:24.04
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -proot" --health-interval 3s --health-timeout 3s --health-retries 40
+    steps:
+      - name: Programs a CloudPanel server already has
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git curl ca-certificates openssl cron iproute2 mysql-client ffmpeg xz-utils >/dev/null
+      - uses: actions/checkout@v4
+      - name: Setup exactly as on the server, then a tester's checks
+        env:
+          TEST_PHONES: "98765 43210, 9123456780"
+          WORKSHOP_PHONE: "9845000000"
+          PUBLIC_URL: http://127.0.0.1:3050
+          SKIP_SSL: "1"
+        run: |
+          export REPO_URL="file://$GITHUB_WORKSPACE" BRANCH="$GITHUB_REF_NAME"
+          bash scripts/server/rehearsal/prepare.sh
+          bash scripts/server/setup.sh 2>&1 | tee /tmp/setup-1.log
+          grep -q "^All done" /tmp/setup-1.log
+          bash scripts/server/rehearsal/check.sh
+          env -u TEST_PHONES -u WORKSHOP_PHONE bash scripts/server/setup.sh > /tmp/setup-2.log 2>&1 || { cat /tmp/setup-2.log; exit 1; }
+          grep -q "^All done" /tmp/setup-2.log && echo "PASS running setup again is safe"
+      - name: Logs
+        if: failure()
+        run: |
+          tail -n 80 /home/bikesurgeon-app/logs/update.log 2>/dev/null || true
+          tail -n 60 /home/bikesurgeon-app/.pm2/logs/*.log 2>/dev/null || true
+          cat /tmp/fake-inventory.log /tmp/fake-services.log 2>/dev/null || true
+
+  # Test APK for phones: talks to https://app.bikesurgeon.online. Built only when the app's files changed, and saved
+  # as downloads/bike-surgeon.apk (the server offers it at /download/bike-surgeon.apk). Always signed with the same
+  # test key, so a newer APK installs over the old one.
+  android-apk:
+    needs: check
+    runs-on: ubuntu-latest
+    env:
+      APP_URL: https://app.bikesurgeon.online
+    steps:
+      - uses: actions/checkout@v4
+      - name: Anything new for the APK?
+        id: inputs
+        run: |
+          sum=$( (echo "$APP_URL"; git ls-files -s app-frontend | grep -v -e 'app-frontend/e2e/' -e 'test-signing/') | sha256sum | cut -c1-16)
+          echo "sum=$sum" >> "$GITHUB_OUTPUT"
+          if [ "$(cat downloads/bike-surgeon.inputs 2>/dev/null)" = "$sum" ] && [ "${{ github.event_name }}" != workflow_dispatch ]; then
+            echo "build=no" >> "$GITHUB_OUTPUT"; echo "The APK is up to date."
+          else
+            echo "build=yes" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.inputs.outputs.build == 'yes'
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        if: steps.inputs.outputs.build == 'yes'
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Build the APK
+        if: steps.inputs.outputs.build == 'yes'
+        working-directory: app-frontend
+        env:
+          APP_VERSION_CODE: ${{ github.run_number }}
+          APP_VERSION_NAME: 1.0.${{ github.run_number }}
+        run: |
+          npm ci --no-audit --no-fund
+          VITE_API_URL="$APP_URL" npm run build
+          npx cap sync android
+          KS=android/test-signing/debug.keystore
+          if [ ! -f "$KS" ]; then
+            mkdir -p android/test-signing
+            keytool -genkeypair -keystore "$KS" -storepass android -alias androiddebugkey -keypass android \
+              -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Bike Surgeon test,O=Bike Surgeon,C=IN"
+          fi
+          mkdir -p ~/.android && cp "$KS" ~/.android/debug.keystore
+          cd android && ./gradlew assembleDebug --no-daemon --console=plain -q
+          ls -la app/build/outputs/apk/debug/
+      - name: Save the APK on the branch
+        if: steps.inputs.outputs.build == 'yes'
+        run: |
+          mkdir -p downloads
+          cp app-frontend/android/app/build/outputs/apk/debug/app-debug.apk downloads/bike-surgeon.apk
+          echo "${{ steps.inputs.outputs.sum }}" > downloads/bike-surgeon.inputs
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -f downloads/bike-surgeon.apk downloads/bike-surgeon.inputs app-frontend/android/test-signing/debug.keystore
+          git commit -q -m "CI: test APK $(date -u +%F) (run ${{ github.run_number }})"
+          for i in 1 2 3; do git pull -q --rebase origin "$GITHUB_REF_NAME" && git push -q origin "HEAD:$GITHUB_REF_NAME" && break; sleep 5; done

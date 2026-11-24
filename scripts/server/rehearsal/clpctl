@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Stand-in for CloudPanel's clpctl in the CI rehearsal: makes the site user the way CloudPanel does (home, htdocs, nvm + Node).
+set -euo pipefail
+cmd=${1:-}; shift || true
+declare -A arg
+for a in "$@"; do k=${a%%=*}; arg[${k#--}]=${a#*=}; done
+echo "clpctl $cmd ${arg[domainName]:-}" >> /tmp/clpctl.log
+case "$cmd" in
+  site:add:nodejs)
+    u=${arg[siteUser]}
+    [ ${#arg[siteUserPassword]} -ge 8 ] || { echo "password too short"; exit 1; }
+    useradd -m -s /bin/bash "$u"
+    mkdir -p "/home/$u/htdocs/${arg[domainName]}"
+    chown -R "$u:$u" "/home/$u/htdocs"
+    su - "$u" -c "curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash >/dev/null 2>&1; . ~/.nvm/nvm.sh; nvm install ${arg[nodejsVersion]} >/dev/null 2>&1"
+    echo "Site ${arg[domainName]} has been created (port ${arg[appPort]})."
+    ;;
+  lets-encrypt:install:certificate) echo "certificate for ${arg[domainName]}";;
+  *) echo "unknown command $cmd"; exit 1;;
+esac

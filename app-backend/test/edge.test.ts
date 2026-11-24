@@ -1,7 +1,10 @@
 /** Adversarial tests: access control, races, malformed input, pagination, production config. Uses schema bs_edge. */
 import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { after, before, test } from "node:test";
 import { SignJWT } from "jose";
 import { createApp } from "../src/app.js";
@@ -307,4 +310,71 @@ test("OTP brute force is limited", async () => {
   const sends = [];
   for (let i = 0; i < 7; i += 1) sends.push((await call("POST", "/v1/auth/otp/request", { body: { phone: "9100000008" } })).status);
   assert.ok(sends.includes(429), `no rate limit on code requests: ${sends}`);
+});
+
+test("test server: only the listed numbers log in, with the fixed code and no SMS", async () => {
+  const base = { DATABASE_URL: "postgres://x@y/z", JWT_SECRET: "x".repeat(40), NODE_ENV: "production", OTP_PROVIDER: "console" };
+  assert.ok(loadConfig({ ...base, LOGIN_ALLOWLIST: "9100000021, 9100000023", TEST_LOGIN_CODE: "2468" }));
+  assert.throws(() => loadConfig({ ...base, TEST_LOGIN_CODE: "2468" }), /LOGIN_ALLOWLIST/);
+  assert.throws(() => loadConfig({ ...base, LOGIN_ALLOWLIST: "12345", TEST_LOGIN_CODE: "2468" }), /LOGIN_ALLOWLIST/);
+  assert.throws(() => loadConfig({ ...base, LOGIN_ALLOWLIST: "9100000021" }), /OTP_PROVIDER/);
+
+  const testConfig = loadConfig({ ...env, LOGIN_ALLOWLIST: "9100000021,+91 91000 00023", TEST_LOGIN_CODE: "2468" });
+  const sent: string[] = [];
+  const testApp = createApp({ db, config: testConfig, providers: { ...createProviders(testConfig), otp: { send: async (phone) => { sent.push(phone); } } } });
+  const post = async (path: string, body: unknown) => {
+    const res = await testApp.request(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    return { status: res.status, data: (await res.json()) as Json };
+  };
+
+  const stranger = await post("/v1/auth/otp/request", { phone: "9100000022" });
+  assert.equal(stranger.status, 403);
+  assert.equal(stranger.data.error.code, "testing_only");
+
+  assert.equal((await post("/v1/auth/otp/request", { phone: "91000 00021" })).status, 200);
+  assert.equal((await post("/v1/auth/otp/verify", { phone: "9100000021", code: "4719" })).status, 401, "the dev code must not work on a test server");
+  assert.equal((await post("/v1/auth/otp/request", { phone: "9100000021" })).status, 200);
+  const ok = await post("/v1/auth/otp/verify", { phone: "9100000021", code: "2468" });
+  assert.equal(ok.status, 200, JSON.stringify(ok.data));
+  assert.ok(ok.data.accessToken);
+  assert.equal((await post("/v1/auth/otp/request", { phone: "+919100000023" })).status, 200);
+  assert.deepEqual(sent, [], "a test server sends no SMS");
+
+  // the fixed code can be guessed, so a number gets only a few codes a day
+  await db.query(
+    `INSERT INTO ${SCHEMA}.otp_challenges (phone, code_hash, channel, expires_at, created_at)
+     SELECT '+919100000023', 'x', 'sms', now() - interval '2 hours', now() - interval '3 hours' FROM generate_series(1, 8)`,
+  );
+  assert.equal((await post("/v1/auth/otp/request", { phone: "9100000023" })).status, 429);
+});
+
+test("the web app is served from the API's address when WEB_DIR is set", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "bs-web-"));
+  mkdirSync(join(dir, "assets"));
+  mkdirSync(join(dir, "download"));
+  writeFileSync(join(dir, "index.html"), "<!doctype html><div id=root></div>");
+  writeFileSync(join(dir, "assets", "index-abc123.js"), "console.log(1)");
+  writeFileSync(join(dir, "download", "bike-surgeon.apk"), "PK-apk");
+  const webApp = createApp({ db, config: loadConfig({ ...env, WEB_DIR: dir }), providers: createProviders(config) });
+  const get = (path: string) => webApp.request(path);
+
+  const home = await get("/");
+  assert.equal(home.status, 200);
+  assert.match(home.headers.get("content-type") ?? "", /text\/html/);
+  assert.match(await home.text(), /id=root/);
+  const screen = await get("/garage/bikes");
+  assert.equal(screen.status, 200);
+  assert.match(await screen.text(), /id=root/);
+  const asset = await get("/assets/index-abc123.js");
+  assert.match(asset.headers.get("content-type") ?? "", /javascript/);
+  assert.match(asset.headers.get("cache-control") ?? "", /immutable/);
+  const apk = await get("/download/bike-surgeon.apk");
+  assert.equal(apk.status, 200);
+  assert.equal(apk.headers.get("content-type"), "application/vnd.android.package-archive");
+  assert.equal((await get("/assets/missing.js")).status, 404);
+  assert.equal((await get("/..%2f..%2f..%2fetc%2fpasswd")).status, 404);
+  const api = await get("/v1/no-such-route");
+  assert.equal(api.status, 404);
+  assert.equal(((await api.json()) as Json).error.code, "not_found");
+  assert.equal((await get("/health")).status, 200);
 });

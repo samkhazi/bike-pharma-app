@@ -10,6 +10,7 @@ import { registerCustomerRoutes } from "./routes/customer.js";
 import { registerIntegrationRoutes } from "./routes/integration.js";
 import type { Deps } from "./routes/shared.js";
 import { registerSystemRoutes } from "./routes/system.js";
+import { serveWebApp } from "./web.js";
 
 export function openApiDocument(config: Config) {
   return {
@@ -74,5 +75,6 @@ export function createApp(deps: Deps) {
 
   app.doc31("/openapi.json", openApiDocument(deps.config));
   app.get("/docs", swaggerUI({ url: "/openapi.json" }));
+  if (deps.config.WEB_DIR) serveWebApp(app, deps.config.WEB_DIR);
   return app;
 }

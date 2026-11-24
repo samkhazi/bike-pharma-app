@@ -23,16 +23,31 @@ function otpHash(config: Config, phone: string, code: string) {
 const MAX_CHALLENGES_PER_WINDOW = 5;
 const MAX_ATTEMPTS = 5;
 
+/** A fixed test code is the same every time, so guessing it is limited per day as well. */
+const MAX_TEST_CODES_PER_DAY = 8;
+
 export async function requestOtp(db: Db, config: Config, providers: Providers, rawPhone: string, channel: "sms" | "whatsapp") {
   const phone = normalizePhone(rawPhone);
-  const recent = await one<{ n: number }>(db, "SELECT count(*) AS n FROM otp_challenges WHERE phone = $1 AND created_at > now() - interval '15 minutes'", [phone]);
-  if (recent && recent.n >= MAX_CHALLENGES_PER_WINDOW) throw new AppError(429, "too_many_codes", "Too many codes requested. Try again in a few minutes.");
-  const code = !config.isProduction && config.OTP_DEV_CODE ? config.OTP_DEV_CODE : String(randomInt(0, 10_000)).padStart(4, "0");
+  if (config.loginAllowlist.length > 0 && !config.loginAllowlist.includes(phone)) {
+    throw new AppError(403, "testing_only", "The app is being tested right now. It opens for everyone soon.");
+  }
+  const testCode = config.TEST_LOGIN_CODE;
+  const recent = await one<{ n: number; day: number }>(
+    db,
+    `SELECT count(*) FILTER (WHERE created_at > now() - interval '15 minutes') AS n, count(*) AS day
+     FROM otp_challenges WHERE phone = $1 AND created_at > now() - interval '1 day'`,
+    [phone],
+  );
+  if (recent && (recent.n >= MAX_CHALLENGES_PER_WINDOW || (testCode && recent.day >= MAX_TEST_CODES_PER_DAY))) {
+    throw new AppError(429, "too_many_codes", "Too many codes requested. Try again in a few minutes.");
+  }
+  const code = testCode ?? (!config.isProduction && config.OTP_DEV_CODE ? config.OTP_DEV_CODE : String(randomInt(0, 10_000)).padStart(4, "0"));
   await db.query(
     "INSERT INTO otp_challenges (phone, code_hash, channel, expires_at) VALUES ($1, $2, $3, now() + make_interval(secs => $4))",
     [phone, otpHash(config, phone, code), channel, config.OTP_TTL_SECONDS],
   );
-  await providers.otp.send(phone, code, channel);
+  // On a test server the code is known to the testers, so nothing is sent.
+  if (!testCode) await providers.otp.send(phone, code, channel);
   return { phone, channel, expiresInSeconds: config.OTP_TTL_SECONDS };
 }
 

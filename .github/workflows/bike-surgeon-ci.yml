@@ -126,12 +126,40 @@ jobs:
           bash scripts/server/rehearsal/check.sh
           env -u TEST_PHONES -u WORKSHOP_PHONE bash scripts/server/setup.sh > /tmp/setup-2.log 2>&1 || { cat /tmp/setup-2.log; exit 1; }
           grep -q "^All done" /tmp/setup-2.log && echo "PASS running setup again is safe"
+          TEST_PHONES="9876543210, 9811100002" env -u WORKSHOP_PHONE bash scripts/server/setup.sh > /tmp/setup-3.log 2>&1 || { cat /tmp/setup-3.log; exit 1; }
+          grep -q "^All done" /tmp/setup-3.log && grep -q "restarted with the new test numbers" /tmp/setup-3.log
+          status=$(curl -s -o /dev/null -w '%{http_code}' -H 'content-type: application/json' -d '{"phone":"9811100002"}' http://127.0.0.1:3050/v1/auth/otp/request)
+          case "$status" in 2??) echo "PASS a test number added later can log in";; *) echo "FAIL added number got $status"; exit 1;; esac
       - name: Logs
         if: failure()
         run: |
           tail -n 80 /home/bikesurgeon-app/logs/update.log 2>/dev/null || true
           tail -n 60 /home/bikesurgeon-app/.pm2/logs/*.log 2>/dev/null || true
           cat /tmp/fake-inventory.log /tmp/fake-services.log 2>/dev/null || true
+
+  # The one command run on the server: GitHub must serve the script at the address in its header, and the code must
+  # clone without a login (the server has no GitHub key).
+  setup-command:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: The setup command downloads the script and the branch clones without a login
+        run: |
+          url=$(grep -o 'https://raw.githubusercontent.com/[^ ]*/setup.sh' scripts/server/setup.sh | head -1)
+          echo "$url"
+          curl -fsSL --retry 3 "$url" -o "$RUNNER_TEMP/bs-app-setup.sh"
+          head -1 "$RUNNER_TEMP/bs-app-setup.sh" | grep -qxF '#!/usr/bin/env bash'
+          tail -1 "$RUNNER_TEMP/bs-app-setup.sh" | grep -qxF 'main "$@"; exit $?'
+          bash -n "$RUNNER_TEMP/bs-app-setup.sh"
+          cmp -s "$RUNNER_TEMP/bs-app-setup.sh" scripts/server/setup.sh && echo "same as this commit" || echo "GitHub still serves the copy from a few minutes ago"
+          repo=$(sed -n 's/^REPO_URL=${REPO_URL:-\(.*\)}$/\1/p' scripts/server/setup.sh)
+          branch=$(sed -n 's/^BRANCH=${BRANCH:-\(.*\)}$/\1/p' scripts/server/setup.sh)
+          echo "$repo $branch"
+          cd "$RUNNER_TEMP"
+          GIT_TERMINAL_PROMPT=0 git -c credential.helper= ls-remote --exit-code "$repo" "refs/heads/$branch"
+          echo "PASS setup command"
 
   # Test APK for phones: talks to https://app.bikesurgeon.online. Built only when the app's files changed, and saved
   # as downloads/bike-surgeon.apk (the server offers it at /download/bike-surgeon.apk). Always signed with the same

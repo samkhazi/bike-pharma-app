@@ -1,67 +1,42 @@
-# Server steps (KL VPS, next to billing + Inventory)
+# Server steps (Bike Surgeon CloudPanel server, KL VPS 72.62.246.246)
 
-Run as root on the server where `bikesurgeonoff` (MySQL) and the Inventory (port 3021) already run.
+The app runs on the same server as the billing, the admin panel and the Inventory. Setting it up is one command.
+After that the server takes new code from GitHub by itself every 5 minutes.
 
-## 1. Postgres for the app (one time)
+## 1. Domain (one time)
+In Cloudflare, add a DNS record: type `A`, name `app`, value `72.62.246.246`, Proxy **off** (DNS only).
+The https certificate needs this record.
+
+## 2. One command, as root on the server
 ```bash
-apt-get update && apt-get install -y postgresql
-sudo -u postgres psql -c "CREATE USER bikesurgeon WITH PASSWORD 'PUT-A-NEW-PASSWORD';"
-sudo -u postgres psql -c "CREATE DATABASE bikesurgeon OWNER bikesurgeon;"
+curl -fsSL https://raw.githubusercontent.com/samkhazi/bike-pharma-app/refs/heads/claude/project-thread-vczbd1/scripts/server/setup.sh -o /root/bs-app-setup.sh && bash /root/bs-app-setup.sh
 ```
+The first time it asks two things:
+- the test phone numbers that may log in (10 digits, comma between numbers)
+- the workshop phone number that customers call and WhatsApp
 
-## 2. Read-only MySQL user for the bridge (one time)
-```bash
-mysql -u root -p -e "CREATE USER 'bs_read'@'127.0.0.1' IDENTIFIED BY 'PUT-A-NEW-PASSWORD'; GRANT SELECT ON bikesurgeonoff.* TO 'bs_read'@'127.0.0.1';"
-```
-The app never writes to the old billing DB while `OLD_DB_WRITE=off`.
+Then it:
+- makes the site `app.bikesurgeon.online` in CloudPanel (Node 22, port 3050, site user `bikesurgeon-app`)
+- makes a PostgreSQL database for the app (installs PostgreSQL if it is missing)
+- writes the settings file `/home/bikesurgeon-app/shared/.env`. The old billing login and the Inventory key are
+  copied from the admin panel's `.env` and never printed. The old billing database is only read (`OLD_DB_WRITE=off`).
+- builds the app, starts it with pm2 (name `bs-app`) and adds the 5-minute update and the restart after a reboot to cron
+- asks Let's Encrypt for the https certificate
 
-## 3. API
-```bash
-mkdir -p /opt/bike-surgeon && cd /opt/bike-surgeon
-unzip /root/bike-surgeon-*.zip
-cd app-backend && cp .env.example .env && nano .env
-```
-Change these lines in `.env`:
-```
-NODE_ENV=production
-PUBLIC_BASE_URL=https://api.bikesurgeon.online
-CORS_ORIGINS=capacitor://localhost,https://localhost,https://app.bikesurgeon.online
-DATABASE_URL=postgres://bikesurgeon:PASSWORD@127.0.0.1:5432/bikesurgeon
-JWT_SECRET=<openssl rand -hex 32>
-INTEGRATION_API_KEYS=<openssl rand -hex 24>
-OTP_PROVIDER=http            # SMS gateway URL + token in OTP_HTTP_URL / OTP_HTTP_TOKEN
-OTP_DEV_CODE=                # must be empty in production
-BRIDGE=on
-OLD_DB_USER=bs_read
-OLD_DB_PASS=PASSWORD
-INVENTORY_URL=http://127.0.0.1:3021
-INVENTORY_FEED_KEY=<same key as the Inventory .env>
-```
-Then:
-```bash
-npm ci && npm run build
-npm run db:migrate && npm run db:seed
-npm i -g pm2
-pm2 start "node --env-file=.env dist/src/index.js" --name bs-api && pm2 save
-```
-Nginx: `api.bikesurgeon.online` -> `127.0.0.1:8080` (HTTPS with certbot).
+It ends with `All done`, the app address and the test login code. It takes about 5 to 10 minutes the first time.
+It is safe to run again: if it stops with a message, fix that and run the same command.
 
-## 4. Bay cameras
-In Postgres, set each bay's camera link (RTSP cameras need an HLS/MP4 restream first):
-```bash
-sudo -u postgres psql bikesurgeon -c "UPDATE bays SET camera_stream_url='https://cam.bikesurgeon.online/bay3/index.m3u8' WHERE code='BAY-03';"
-```
-The app plays it only through the API, only to the bike owner, only while the bike is in that bay.
+## 3. Test
+- In a phone browser: https://app.bikesurgeon.online
+- Android app: https://app.bikesurgeon.online/download/bike-surgeon.apk
+- Log in with a test number and the code that the setup printed. No SMS is sent. Other numbers see that the app is
+  being tested.
 
-## 5. App (Android / iOS)
-On a computer with Android Studio / Xcode:
-```bash
-cd app-frontend
-echo "VITE_API_URL=https://api.bikesurgeon.online" > .env
-npm ci && npm run build
-npm run android:sync && npm run android:open
-```
-
-## Check
-- `pm2 logs bs-api` shows `[bridge] on: old billing linked, Inventory linked, every 20s`.
-- Log in on the app with a customer number from billing: their bikes, job cards and bills show up.
+## Later
+- Updates: every 5 minutes the server checks the branch on GitHub. A new version is built next to the running one and
+  switched to only when it starts; otherwise the running version stays. Log: `/home/bikesurgeon-app/logs/update.log`
+- App log: `su - bikesurgeon-app -c 'pm2 logs bs-app --lines 50'`
+- Change the test numbers (the app restarts by itself):
+  `TEST_PHONES=9876543210,9123456780 bash /root/bs-app-setup.sh`
+- Opening for all customers (only on the owner's word): remove `LOGIN_ALLOWLIST` and `TEST_LOGIN_CODE` from the
+  `.env`, set the SMS gateway (the old app uses Renflair), then `su - bikesurgeon-app -c 'pm2 restart bs-app'`.

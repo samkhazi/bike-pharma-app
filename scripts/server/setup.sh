@@ -128,8 +128,13 @@ if [ ! -f "$ENV_FILE" ]; then
       if [ -n "$INV_KEY_LINE" ]; then echo "$INV_URL_LINE"; echo "$INV_KEY_LINE"; fi
     } > "$ENV_FILE" )
   [ -n "$INV_KEY_LINE" ] || echo "Note: no Inventory key found, so parts prices from the Inventory are off for now."
-elif [ -n "${PHONES:-}" ]; then
-  sed -i "s/^LOGIN_ALLOWLIST=.*/LOGIN_ALLOWLIST=$PHONES/" "$ENV_FILE"
+elif [ -n "${PHONES:-}" ] && ! grep -qx "LOGIN_ALLOWLIST=$PHONES" "$ENV_FILE"; then
+  if grep -q '^LOGIN_ALLOWLIST=' "$ENV_FILE"; then
+    sed -i "s/^LOGIN_ALLOWLIST=.*/LOGIN_ALLOWLIST=$PHONES/" "$ENV_FILE"
+  else
+    echo "LOGIN_ALLOWLIST=$PHONES" >> "$ENV_FILE"
+  fi
+  ENV_CHANGED=1
 fi
 chown -R "$SITE_USER:$SITE_USER" "$H/shared" "$H/logs" "$H/releases"
 chmod 600 "$ENV_FILE"
@@ -149,6 +154,10 @@ FIRST=1
 if [ -e "$H/current/.commit" ] && [ ! -f "$H/.failed" ]; then FIRST=0; fi
 as_site "FORCE=$FIRST bash \"\$HOME/update.sh\"" 2>&1 | tee -a "$H/logs/update.log" | sed 's/^/   /' || true
 [ -e "$H/current/.commit" ] || stop "the app did not build or start; see $H/logs/update.log"
+if [ "${ENV_CHANGED:-0}" = 1 ]; then
+  as_site "export PATH=$NODE_BIN:\$PATH; pm2 restart bs-app >/dev/null" || stop "the app could not restart with the new settings"
+  echo "restarted with the new test numbers"
+fi
 
 step "Workshop details"
 WS_SQL="UPDATE workshops SET updated_at = now()"

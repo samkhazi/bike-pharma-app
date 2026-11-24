@@ -26,6 +26,14 @@ curl -fsS "$B/" | grep -q 'id="root"' || fail "web app"
 curl -fsS "$B/garage/bikes" | grep -q 'id="root"' || fail "web app screen link"
 pass "web app served at /"
 
+APK=$H/current/downloads/bike-surgeon.apk
+if [ -f "$APK" ]; then
+  curl -fsS -D /tmp/apk.headers -o /tmp/apk.bin "$B/download/bike-surgeon.apk" || fail "Android app download"
+  grep -qi '^content-type: application/vnd.android.package-archive' /tmp/apk.headers || fail "Android app download type"
+  cmp -s /tmp/apk.bin "$APK" || fail "the downloaded Android app is not the one built on GitHub"
+  pass "Android app downloads from /download/bike-surgeon.apk"
+fi
+
 status=$(curl -s -o /dev/null -w '%{http_code}' -H 'content-type: application/json' -d '{"phone":"9811100002"}' "$B/v1/auth/otp/request")
 [ "$status" = 403 ] || fail "a number that is not on the test list got $status"
 curl -fsS -H 'content-type: application/json' -d '{"phone":"98765 43210"}' "$B/v1/auth/otp/request" >/dev/null || fail "code request"

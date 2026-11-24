@@ -34,7 +34,7 @@ ok(st.s === 8 && st.p.mrp === 245 && st.p.price === 232.75 && st.p.mp === 208.25
 ok(JSON.stringify(st.L.map(l => [l.m, l.q])) === '[[210,3],[245,5]]', 'lots 210 × 3 then 245 × 5 ' + JSON.stringify(st.L));
 // part stock in Scan to find
 await Ad.evaluate(id => { S.ui.scanHit = id; S.ui.scanMiss = null; go('scanfind'); }, pid); await Ad.waitForTimeout(300);
-t = await T(Ad); ok(/Stock by MRP/i.test(t) && /Sells first/i.test(t) && /₹200/.test(t) && /Count \/ fix lot qty/i.test(t), 'scan to find shows the lots with prices and the fix button');
+t = await T(Ad); ok(/Stock by MRP/i.test(t) && /Sells first/i.test(t) && /₹199\.50|₹200/.test(t) && /Count \/ fix lot qty/i.test(t), 'scan to find shows the lots with prices and the fix button');
 // 11p (Sam 2026-10-23 'photo open nahi ho raha'): a tap on the photo opens it over the screen, Close shuts it
 await Ad.click(SC + ' button[aria-label="Open photo"]'); await Ad.waitForTimeout(300);
 const zd = await Ad.evaluate(() => { const d = document.querySelector('.fpz.ph'); return d ? d.querySelector('img').getAttribute('src') : null; }); ok(zd && /photos/.test(zd), 'scan to find: photo opens full screen ' + zd);

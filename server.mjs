@@ -4,6 +4,7 @@
 // files from data/project-files for staff.
 import http from 'node:http';
 import fs from 'node:fs';
+import { billClaims } from './lib/billclaim.mjs';
 import { rolonAmFile } from './lib/rolonam.mjs';
 import path from 'node:path';
 import zlib from 'node:zlib';
@@ -196,6 +197,7 @@ if (!store.kvGet('meta', 'demoRemoved')) {
 const normId = v => { v = String(v || '').trim().toLowerCase(); if (v.includes('@')) return v; const d = v.replace(/\D/g, ''); return d.length > 10 ? d.slice(-10) : d; };
 const today = () => new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 const stateVal = k => { const r = store.stateGet(k); return r ? JSON.parse(r.json) : undefined; };
+const CLAIM = billClaims(k => stateVal(k));   // 24p
 const accounts = () => stateVal('accounts') || {};
 const reader = () => { const c = new Map(); return k => { if (!c.has(k)) c.set(k, stateVal(k)); return c.get(k); }; }; // cached reads for one request
 function setAccount(id, acc) { const a = accounts(); a[id] = acc; store.write({ accounts: JSON.stringify(a) }); }
@@ -355,6 +357,8 @@ async function api(req, res, url, user) {
       res.writeHead(200, { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Length': b.length, 'Content-Disposition': 'attachment; filename="same-parts-' + ({ c: 'catalogue', k: 'to-check', s: 'staff' })[tab] + '.csv"', 'Cache-Control': 'no-store' }); return res.end(b); }
     return json(res, 200, SAMEREP.page(tab === 's' ? 'c' : tab, g('q'), g('bp'), Math.max(0, +g('off') || 0), 50));
   }
+  // 24p: the garages below; first, one bill keeps its pieces
+  if (p === '/api/bill/claim' && m === 'POST') { if (roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: 'Staff login needed' }); const [code, out] = CLAIM(body, user); return json(res, code, out); }
   // 22i: the garages a customer may have an order delivered to: the shop's active mechanics, garage name + area + code only (no phone, no dues)
   if (p === '/api/garages' && m === 'GET') {
     if (!user) return json(res, 401, { error: 'Please log in again' });

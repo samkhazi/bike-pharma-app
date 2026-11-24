@@ -1260,10 +1260,12 @@ function Auth({ open }: { open: (screen: string) => void }) {
     return () => window.clearTimeout(timer);
   }, [story, typing]);
   const format = (value: string) => value.length > 5 ? `${value.slice(0, 5)} ${value.slice(5)}` : value;
-  const press = (key: string) => {
-    if (key === "del") setPhone((value) => format(value.replace(/\D/g, "").slice(0, -1)));
-    else if (digits.length < 10) setPhone(format(digits + key));
-  };
+  const press = (key: string) =>
+    setPhone((value) => {
+      const typed = value.replace(/\D/g, "");
+      if (key === "del") return format(typed.slice(0, -1));
+      return typed.length < 10 ? format(typed + key) : value;
+    });
   const current = authStories[story];
   return (
     <div className={`cx-phone cx-auth ${typing ? "typing" : ""}`}>
@@ -1302,13 +1304,30 @@ function Auth({ open }: { open: (screen: string) => void }) {
           <span>Mobile number</span>
           <div className="cx-input-group">
             <em>+91</em>
+            {/* The app's own keypad below is the keyboard. readOnly keeps the phone's keyboard closed (with only
+                inputMode="none" the Android app still opened it), and a computer keyboard still types through onKeyDown. */}
             <input
               type="tel"
               inputMode="none"
+              readOnly
               autoComplete="tel-national"
               placeholder="98765 43210"
               value={phone}
               onFocus={() => setTyping(true)}
+              onClick={() => setTyping(true)}
+              onKeyDown={(event) => {
+                if (/^\d$/.test(event.key)) press(event.key);
+                else if (event.key === "Backspace" || event.key === "Delete") press("del");
+                else if (event.key === "Enter" && valid && !sending) send("sms");
+                else return;
+                event.preventDefault();
+              }}
+              onPaste={(event) => {
+                const pasted = event.clipboardData.getData("text").replace(/\D/g, "").slice(-10);
+                if (!pasted) return;
+                event.preventDefault();
+                setPhone(format(pasted));
+              }}
               onChange={(event) => setPhone(format(event.target.value.replace(/\D/g, "").slice(0, 10)))}
             />
           </div>

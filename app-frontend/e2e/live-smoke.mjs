@@ -34,7 +34,15 @@ try {
     await page.getByText("Mobile number").waitFor();
   });
   await step("OTP is sent by the API", async () => {
-    await page.locator('input[type="tel"]').fill("98765 43210");
+    // Typed on the app's own keypad, like on a phone. The field is read-only so the phone's keyboard stays closed.
+    const field = page.locator('input[type="tel"]');
+    await field.click();
+    if ((await field.getAttribute("readonly")) === null) throw new Error("phone field is not read-only");
+    for (const key of "9876543219") await page.getByRole("button", { name: key, exact: true }).click();
+    await field.press("Backspace"); // a computer keyboard still types
+    await field.press("0");
+    const typed = await field.inputValue();
+    if (typed !== "98765 43210") throw new Error(`phone field shows "${typed}"`);
     await page.getByRole("button", { name: "Continue" }).click();
     await page.getByText("Enter the code").waitFor();
     await page.getByText("Sent to +91 98765 43210").waitFor();

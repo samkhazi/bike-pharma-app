@@ -45,7 +45,7 @@ app.bikesurgeon.online, and made no `api` site (so the certificate failed). Run 
 - Updates: every 5 minutes the server checks the branch on GitHub. A new version is built next to the running one and
   switched to only when it starts; otherwise the running version stays. Log: `/home/bikesurgeon-api/logs/update.log`
 - App log: `su - bikesurgeon-api -c 'pm2 logs bs-app --lines 50'`
-- Change the test numbers (the app restarts by itself):
-  `TEST_PHONES=9876543210,9123456780 bash /root/bs-app-setup.sh`
+- Change the test numbers (the app restarts by itself), with your own 10-digit numbers in place of `NUMBER1,NUMBER2`:
+  `TEST_PHONES=NUMBER1,NUMBER2 bash /root/bs-app-setup.sh`
 - Opening for all customers (only on the owner's word): remove `LOGIN_ALLOWLIST` and `TEST_LOGIN_CODE` from the
   `.env`, set the SMS gateway (the old app uses Renflair), then `su - bikesurgeon-api -c 'pm2 restart bs-app'`.

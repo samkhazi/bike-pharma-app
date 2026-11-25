@@ -85,11 +85,11 @@ if [ -n "$OLD_H" ]; then
   # moving: the settings come along, only the test numbers may be changed now
   ask_or_keep TEST_PHONES "Test phone numbers that may log in, comma between numbers (now $(sed -n 's/^LOGIN_ALLOWLIST=//p' "$OLD_H/shared/.env" | tail -1); press Enter to keep them):"
   if [ -n "${TEST_PHONES:-}" ]; then
-    PHONES=$(phones "$TEST_PHONES") || stop "test numbers must be 10-digit mobile numbers, for example 9876543210,9123456780"
+    PHONES=$(phones "$TEST_PHONES") || stop "test numbers must be your own 10-digit mobile numbers, with a comma between two numbers"
   fi
 elif [ ! -f "$ENV_FILE" ] || [ -n "${TEST_PHONES:-}" ]; then
   ask TEST_PHONES "Test phone numbers that may log in (10 digits, comma between numbers):"
-  PHONES=$(phones "$TEST_PHONES") || stop "test numbers must be 10-digit mobile numbers, for example 9876543210,9123456780"
+  PHONES=$(phones "$TEST_PHONES") || stop "test numbers must be your own 10-digit mobile numbers, with a comma between two numbers"
 fi
 if [ -n "${WORKSHOP_PHONE:-}" ] || { [ ! -f "$ENV_FILE" ] && [ -z "$OLD_H" ]; }; then
   ask WORKSHOP_PHONE "Workshop phone number customers should call and WhatsApp (10 digits):"

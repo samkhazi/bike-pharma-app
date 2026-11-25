@@ -25,6 +25,8 @@ const MAX_ATTEMPTS = 5;
 
 /** A fixed test code is the same every time, so guessing it is limited per day as well. */
 const MAX_TEST_CODES_PER_DAY = 8;
+/** On a test server no SMS comes and testers type the code they were given, often after waiting for an SMS first. */
+const TEST_CODE_TTL_SECONDS = 1800;
 
 export async function requestOtp(db: Db, config: Config, providers: Providers, rawPhone: string, channel: "sms" | "whatsapp") {
   const phone = normalizePhone(rawPhone);
@@ -42,13 +44,14 @@ export async function requestOtp(db: Db, config: Config, providers: Providers, r
     throw new AppError(429, "too_many_codes", "Too many codes requested. Try again in a few minutes.");
   }
   const code = testCode ?? (!config.isProduction && config.OTP_DEV_CODE ? config.OTP_DEV_CODE : String(randomInt(0, 10_000)).padStart(4, "0"));
+  const ttl = testCode ? Math.max(config.OTP_TTL_SECONDS, TEST_CODE_TTL_SECONDS) : config.OTP_TTL_SECONDS;
   await db.query(
     "INSERT INTO otp_challenges (phone, code_hash, channel, expires_at) VALUES ($1, $2, $3, now() + make_interval(secs => $4))",
-    [phone, otpHash(config, phone, code), channel, config.OTP_TTL_SECONDS],
+    [phone, otpHash(config, phone, code), channel, ttl],
   );
   // On a test server the code is known to the testers, so nothing is sent.
   if (!testCode) await providers.otp.send(phone, code, channel);
-  return { phone, channel, expiresInSeconds: config.OTP_TTL_SECONDS };
+  return { phone, channel, expiresInSeconds: ttl };
 }
 
 async function issueSession(client: Parameters<Parameters<typeof tx>[1]>[0], config: Config, customerId: string, userAgent: string | null) {

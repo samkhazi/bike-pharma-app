@@ -337,8 +337,15 @@ test("test server: only the listed numbers log in, with the fixed code and no SM
   const ok = await post("/v1/auth/otp/verify", { phone: "9100000021", code: "2468" });
   assert.equal(ok.status, 200, JSON.stringify(ok.data));
   assert.ok(ok.data.accessToken);
-  assert.equal((await post("/v1/auth/otp/request", { phone: "+919100000023" })).status, 200);
+  const asked = await post("/v1/auth/otp/request", { phone: "+919100000023" });
+  assert.equal(asked.status, 200);
   assert.deepEqual(sent, [], "a test server sends no SMS");
+  // no SMS comes, so testers often wait for one before typing the code: it lasts 30 minutes, not 5
+  assert.equal(asked.data.expiresInSeconds, 1800);
+  const life = await db.query(
+    `SELECT extract(epoch FROM expires_at - created_at)::int AS s FROM ${SCHEMA}.otp_challenges WHERE phone = '+919100000023' ORDER BY created_at DESC LIMIT 1`,
+  );
+  assert.equal(Number(life.rows[0].s), 1800);
 
   // the fixed code can be guessed, so a number gets only a few codes a day
   await db.query(

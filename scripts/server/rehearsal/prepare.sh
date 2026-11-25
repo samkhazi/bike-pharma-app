@@ -40,6 +40,19 @@ INV_FEED_KEY=$FEED_KEY
 ENV
 chmod 600 /home/bikesurgeon-panel/htdocs/panel.bikesurgeon.online/.env
 
+# The live old app app.bikesurgeon.online (PHP) with its site user bikesurgeon-app, named the way CloudPanel names site
+# users. The setup must never use or change it.
+useradd -m -s /bin/bash bikesurgeon-app
+mkdir -p /home/bikesurgeon-app/htdocs/app.bikesurgeon.online /home/bikesurgeon-app/logs/nginx /home/bikesurgeon-app/logs/php
+printf '<?php echo "live old app";\n' > /home/bikesurgeon-app/htdocs/app.bikesurgeon.online/index.php
+chown -R bikesurgeon-app:bikesurgeon-app /home/bikesurgeon-app/htdocs
+echo '*/10 * * * * php /home/bikesurgeon-app/htdocs/app.bikesurgeon.online/index.php >/dev/null 2>&1' | crontab -u bikesurgeon-app -
+mkdir -p /etc/nginx/sites-enabled
+for site in panel.bikesurgeon.online app.bikesurgeon.online; do
+  echo "# $site" > "/etc/nginx/sites-enabled/$site.conf"
+  echo "$site" >> /etc/clp-sites
+done
+
 # Bay camera (HLS like the real cam server) and the Inventory feed
 mkdir -p /srv/cam/live/streams
 ffmpeg -loglevel error -f lavfi -i testsrc=size=640x360:rate=25 -t 30 -c:v libx264 -pix_fmt yuv420p -g 25 \

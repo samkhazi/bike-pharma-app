@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # CI rehearsal: checks the app that scripts/server/setup.sh set up, the way a tester would use it.
 set -euo pipefail
-H=/home/bikesurgeon-app
+H=${H:-/home/bikesurgeon-api}
+U=${H##*/}
 ENV=$H/shared/.env
+PHONES=${EXPECT_PHONES:-9876543210,9123456780}
 B=http://127.0.0.1:3050
 pass() { echo "PASS $*"; }
 fail() {
@@ -13,12 +15,12 @@ fail() {
 val() { sed -n "s/^$1=//p" "$ENV" | tail -1; }
 json() { node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf8')); const v=($1); process.stdout.write(v===undefined||v===null?'':String(v))"; }
 
-[ "$(stat -c %a "$ENV")" = 600 ] && [ "$(stat -c %U "$ENV")" = bikesurgeon-app ] || fail ".env must be private to the site user"
+[ "$(stat -c %a "$ENV")" = 600 ] && [ "$(stat -c %U "$ENV")" = "$U" ] || fail ".env must be private to the site user"
 grep -qx "OLD_DB_PASS='r3ad#only\"pw'" "$ENV" || fail "the old billing password was not copied as it is"
 grep -qx 'INVENTORY_FEED_KEY=rehearsal-feed-key-0123456789' "$ENV" || fail "the Inventory key was not copied"
-grep -qx 'LOGIN_ALLOWLIST=9876543210,9123456780' "$ENV" || fail "test numbers"
-crontab -u bikesurgeon-app -l | grep -q 'update.sh' || fail "the 5-minute update is not in cron"
-crontab -u bikesurgeon-app -l | grep -q 'pm2 resurrect' || fail "the restart after reboot is not in cron"
+grep -qx "LOGIN_ALLOWLIST=$PHONES" "$ENV" || fail "test numbers"
+crontab -u "$U" -l | grep -q 'update.sh' || fail "the 5-minute update is not in cron"
+crontab -u "$U" -l | grep -q 'pm2 resurrect' || fail "the restart after reboot is not in cron"
 pass "settings, secrets and cron"
 
 curl -fsS "$B/health/ready" | grep -q '"ready"' || fail "health"
@@ -65,6 +67,9 @@ pass "live bay camera plays through the app"
 grep -q 'GET /api/feed/parts key=right portal=desk' /tmp/fake-inventory.log || fail "the Inventory parts were not read"
 pass "Inventory linked"
 
-su - bikesurgeon-app -c 'bash ~/update.sh' || fail "update.sh"
-pass "update with nothing new is quiet"
+# the 5-minute update exactly as cron runs it (as the site user, plain sh, cron's PATH, its own log file)
+CRON_CMD=$(crontab -u "$U" -l | grep 'update.sh' | sed -E 's/^([^ ]+ ){5}//')
+runuser -u "$U" -- env -i HOME="$H" LOGNAME="$U" PATH=/usr/bin:/bin SHELL=/bin/sh /bin/sh -c "$CRON_CMD" || fail "the update from cron fails: $CRON_CMD"
+[ "$(stat -c %U "$H/logs/update.log")" = "$U" ] || fail "the update log is not the site user's"
+pass "the 5-minute update from cron runs (nothing new: quiet)"
 echo "REHEARSAL OK"

@@ -94,11 +94,17 @@ jobs:
           fi
 
   # The server setup (scripts/server/setup.sh) run on a copy of the Bike Surgeon CloudPanel server: a plain Ubuntu
-  # with a stand-in clpctl, the admin panel's .env, the old billing MySQL, the Inventory feed and a bay camera.
+  # with a stand-in clpctl, the admin panel's .env, the live old app (app.bikesurgeon.online, site user bikesurgeon-app),
+  # the old billing MySQL, the Inventory feed and a bay camera. Two starts: a server without the app, and the real server
+  # of 25 Nov 2026, where the first version of the setup had put the app into the live app's site user.
   server-rehearsal:
     needs: check
     runs-on: ubuntu-latest
     container: ubuntu:24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        start: [fresh, moved]
     services:
       mysql:
         image: mysql:8.4
@@ -110,35 +116,26 @@ jobs:
       - name: Programs a CloudPanel server already has
         run: |
           apt-get update -qq
-          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git curl ca-certificates openssl cron iproute2 mysql-client ffmpeg xz-utils >/dev/null
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git curl ca-certificates openssl cron iproute2 procps mysql-client ffmpeg xz-utils >/dev/null
       - uses: actions/checkout@v4
-      - name: Setup exactly as on the server, then a tester's checks
+      - name: Setup exactly as on the server, then a tester's checks (${{ matrix.start }})
         env:
           TEST_PHONES: "98765 43210, 9123456780"
           WORKSHOP_PHONE: "9845000000"
           PUBLIC_URL: http://127.0.0.1:3050
-          SKIP_SSL: "1"
         run: |
           export REPO_URL="file://$GITHUB_WORKSPACE" BRANCH="$GITHUB_REF_NAME"
           bash scripts/server/rehearsal/prepare.sh
-          bash scripts/server/setup.sh 2>&1 | tee /tmp/setup-1.log
-          grep -q "^All done" /tmp/setup-1.log
-          bash scripts/server/rehearsal/check.sh
-          env -u TEST_PHONES -u WORKSHOP_PHONE bash scripts/server/setup.sh > /tmp/setup-2.log 2>&1 || { cat /tmp/setup-2.log; exit 1; }
-          grep -q "^All done" /tmp/setup-2.log && echo "PASS running setup again is safe"
-          TEST_PHONES="9876543210, 9811100002" env -u WORKSHOP_PHONE bash scripts/server/setup.sh > /tmp/setup-3.log 2>&1 || { cat /tmp/setup-3.log; exit 1; }
-          grep -q "^All done" /tmp/setup-3.log && grep -q "restarted with the new test numbers" /tmp/setup-3.log
-          status=$(curl -s -o /dev/null -w '%{http_code}' -H 'content-type: application/json' -d '{"phone":"9811100002"}' http://127.0.0.1:3050/v1/auth/otp/request)
-          case "$status" in 2??) echo "PASS a test number added later can log in";; *) echo "FAIL added number got $status"; exit 1;; esac
-          mkdir -p /etc/nginx/sites-enabled && touch /etc/nginx/sites-enabled/app.bikesurgeon.online.conf
-          if DOMAIN=app.bikesurgeon.online SITE_USER=bikesurgeon-other PORT=3059 bash scripts/server/setup.sh > /tmp/setup-4.log 2>&1; then cat /tmp/setup-4.log; echo "FAIL took an address another site uses"; exit 1; fi
-          grep -q "already used by another site" /tmp/setup-4.log && ! id bikesurgeon-other >/dev/null 2>&1 && echo "PASS an address another site uses is never taken"
+          bash scripts/server/rehearsal/${{ matrix.start }}.sh
       - name: Logs
         if: failure()
         run: |
-          tail -n 80 /home/bikesurgeon-app/logs/update.log 2>/dev/null || true
-          tail -n 60 /home/bikesurgeon-app/.pm2/logs/*.log 2>/dev/null || true
-          cat /tmp/fake-inventory.log /tmp/fake-services.log 2>/dev/null || true
+          for h in /home/bikesurgeon-api /home/bikesurgeon-app; do
+            echo "== $h"; ls -la "$h" 2>/dev/null || true
+            tail -n 80 "$h/logs/update.log" 2>/dev/null || true
+            tail -n 60 "$h"/.pm2/logs/*.log 2>/dev/null || true
+          done
+          cat /tmp/clpctl.log /tmp/fake-inventory.log /tmp/fake-services.log 2>/dev/null || true
 
   # The one command run on the server: GitHub must serve the script at the address in its header, and the code must
   # clone without a login (the server has no GitHub key).

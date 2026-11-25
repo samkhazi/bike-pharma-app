@@ -38,7 +38,9 @@ ls /root/bs-app-moved-from-bikesurgeon-app-*/shared/.env /root/bs-app-moved-from
 [ "$(stat -c %a /root/bs-app-moved-from-bikesurgeon-app-*)" = 700 ] || fail "the parked files are not private"
 live_files | diff /tmp/live-files-before - || fail "the live app's files changed"
 crontab -u bikesurgeon-app -l | diff /tmp/live-cron-before - || fail "the live app's cron is not as it was"
-! pgrep -u bikesurgeon-app >/dev/null || { pgrep -a -u bikesurgeon-app; fail "something still runs as bikesurgeon-app"; }
+# (a container has no init to reap exited processes: those show as Z, defunct, and are not running)
+LEFT=$(ps -u bikesurgeon-app -o stat=,pid=,args= 2>/dev/null | awk '$1 !~ /^Z/' || true)
+[ -z "$LEFT" ] || { echo "$LEFT"; fail "something still runs as bikesurgeon-app"; }
 echo "PASS moved into bikesurgeon-api; the live app's files and cron are as they were and nothing runs as its user"
 bash "$HERE/check.sh"
 

@@ -23,8 +23,11 @@ CODE=$(sed -n 's/^TEST_LOGIN_CODE=//p' /home/bikesurgeon-app/shared/.env)
 echo "PASS the server of 25 Nov is reproduced: the app inside bikesurgeon-app, no api site, no certificate"
 
 # 2. the new setup moves it
-bash scripts/server/setup.sh 2>&1 | tee /tmp/setup-move.log
+# (this start also stands in for an older CloudPanel that offers Node only up to 20 for a new site)
+CLP_NODE_VERSIONS="16 18 20" bash scripts/server/setup.sh 2>&1 | tee /tmp/setup-move.log
 grep -q "^All done" /tmp/setup-move.log || fail "the new setup did not finish"
+grep -q "^(this CloudPanel offers Node 20 for a new site" /tmp/setup-move.log || fail "it did not fall back to Node 20 for the site"
+grep -q "^node v22\." /tmp/setup-move.log || fail "the app did not get Node 22"
 grep -q "^== Stopping the app in /home/bikesurgeon-app (the site user of app.bikesurgeon.online" /tmp/setup-move.log || fail "it did not stop the old copy"
 grep -q "^== Moving the app's settings here and its old files out of /home/bikesurgeon-app" /tmp/setup-move.log || fail "it did not move the old copy"
 grep -A1 "^== https certificate" /tmp/setup-move.log | grep -qx "ok" || fail "no certificate for the new site"

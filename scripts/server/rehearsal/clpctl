@@ -11,6 +11,9 @@ echo "clpctl $cmd ${arg[domainName]:-}" >> /tmp/clpctl.log
 case "$cmd" in
   site:add:nodejs)
     d=${arg[domainName]}; u=${arg[siteUser]}
+    # Node versions this CloudPanel offers for a new site (CLP_NODE_VERSIONS stands in for an older CloudPanel)
+    [[ " ${CLP_NODE_VERSIONS:-12 14 16 18 20 22} " == *" ${arg[nodejsVersion]} "* ]] \
+      || { echo "The Node.js version \"${arg[nodejsVersion]}\" is not valid."; exit 1; }
     [ ${#arg[siteUserPassword]} -ge 8 ] || { echo "password too short"; exit 1; }
     ! grep -qxF "$d" "$SITES" 2>/dev/null || { echo "Site \"$d\" already exists."; exit 1; }
     ! id "$u" >/dev/null 2>&1 || { echo "Site user \"$u\" already exists."; exit 1; }

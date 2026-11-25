@@ -109,9 +109,18 @@ fi
 
 step "Site $DOMAIN (site user $SITE_USER)"
 if [ ! -d "$H" ]; then
-  clpctl site:add:nodejs --domainName="$DOMAIN" --nodejsVersion=22 --appPort="$PORT" --siteUser="$SITE_USER" \
-    --siteUserPassword="$(openssl rand -hex 12)Aa1!" \
-    || stop "CloudPanel could not make the site. Make it by hand (CloudPanel > Add Site > Node.js: domain $DOMAIN, Node 22, port $PORT, site user $SITE_USER) and run this again"
+  # Node 22 first; an older CloudPanel may offer only 20 or 18 for a new site (the app gets its own Node 22 below)
+  CLP_OUT=""; CLP_NODE=""
+  for v in 22 20 18; do
+    if CLP_OUT=$(clpctl site:add:nodejs --domainName="$DOMAIN" --nodejsVersion="$v" --appPort="$PORT" --siteUser="$SITE_USER" \
+        --siteUserPassword="$(openssl rand -hex 12)Aa1!" 2>&1); then CLP_NODE=$v; break; fi
+    [ ! -d "$H" ] || break    # it got as far as making the site user: no second try
+  done
+  if [ -z "$CLP_NODE" ]; then
+    echo "CloudPanel said:"; printf '%s\n' "$CLP_OUT" | tail -n 6 | sed 's/^/   /'
+    stop "CloudPanel could not make the site. Make it by hand (CloudPanel > Add Site > Node.js: domain $DOMAIN, Node 22, port $PORT, site user $SITE_USER) and run this again"
+  fi
+  [ "$CLP_NODE" = 22 ] || echo "(this CloudPanel offers Node $CLP_NODE for a new site; the app gets its own Node 22 below)"
 fi
 [ -d "$H/htdocs/$DOMAIN" ] || stop "CloudPanel did not make the site (the folder $H/htdocs/$DOMAIN is missing). Make it by hand (CloudPanel > Add Site > Node.js: domain $DOMAIN, Node 22, port $PORT, site user $SITE_USER) and run this again"
 echo "ok"

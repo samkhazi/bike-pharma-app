@@ -16,6 +16,7 @@ case "$cmd" in
     ! id "$u" >/dev/null 2>&1 || { echo "Site user \"$u\" already exists."; exit 1; }
     useradd -m -s /bin/bash "$u"
     mkdir -p "/home/$u/htdocs/$d" "/home/$u/logs/nginx"
+    printf 'node_modules\n' > "/home/$u/htdocs/.gitignore"   # the real server has a .gitignore next to the site folder
     chown -R "$u:$u" "/home/$u/htdocs"
     mkdir -p /etc/nginx/sites-enabled
     echo "# $d -> 127.0.0.1:${arg[appPort]}" > "/etc/nginx/sites-enabled/$d.conf"

@@ -53,7 +53,7 @@ if [ ! -d "$H/htdocs/$DOMAIN" ] && ls /etc/nginx/sites-enabled/ 2>/dev/null | gr
   stop "the address $DOMAIN is already used by another site on this server; nothing was changed"
 fi
 if [ -d "$H" ] || id "$SITE_USER" >/dev/null 2>&1; then
-  OTHER_SITE=$(ls -1A "$H/htdocs" 2>/dev/null | grep -vxF "$DOMAIN" | head -1 || true)
+  OTHER_SITE=$(sites_of "$H" | grep -vxF "$DOMAIN" | head -1 || true)
   if [ -n "$OTHER_SITE" ]; then
     stop "the user $SITE_USER belongs to the site $OTHER_SITE; nothing was changed. Run again with a new user, e.g.  SITE_USER=bikesurgeon-api2 bash $0"
   fi
@@ -75,7 +75,7 @@ if [ -n "$OLD_H" ]; then
   OLD_USER=${OLD_H##*/}
   [ "$OLD_USER" != root ] && id "$OLD_USER" >/dev/null 2>&1 && [ "$(stat -c %U "$OLD_H/shared")" = "$OLD_USER" ] \
     || stop "found an old copy of the app in $OLD_H but could not tell its user; nothing was changed"
-  OLD_SITE=$(ls -1A "$OLD_H/htdocs" 2>/dev/null | head -1 || true)
+  OLD_SITE=$(sites_of "$OLD_H" | head -1 || true)
   OLD_PORT=$(sed -n 's/^PORT=//p' "$OLD_H/shared/.env" | tail -1)
   PORT=${OLD_PORT:-$PORT}
 fi
@@ -286,6 +286,10 @@ ask() {
   [ -r /dev/tty ] || stop "$var is needed (run the command in a terminal)"
   read -r -p "$question " answer < /dev/tty
   printf -v "$var" '%s' "$answer"
+}
+sites_of() {
+  # the sites of a site user: the folders in its htdocs (CloudPanel also puts files there, such as .gitignore)
+  find "$1/htdocs" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | sort
 }
 ask_or_keep() {
   # like ask, but Enter (or no terminal) keeps what there is

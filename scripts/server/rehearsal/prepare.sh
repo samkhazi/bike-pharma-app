@@ -45,6 +45,7 @@ chmod 600 /home/bikesurgeon-panel/htdocs/panel.bikesurgeon.online/.env
 useradd -m -s /bin/bash bikesurgeon-app
 mkdir -p /home/bikesurgeon-app/htdocs/app.bikesurgeon.online /home/bikesurgeon-app/logs/nginx /home/bikesurgeon-app/logs/php
 printf '<?php echo "live old app";\n' > /home/bikesurgeon-app/htdocs/app.bikesurgeon.online/index.php
+printf 'node_modules\n' > /home/bikesurgeon-app/htdocs/.gitignore
 chown -R bikesurgeon-app:bikesurgeon-app /home/bikesurgeon-app/htdocs
 echo '*/10 * * * * php /home/bikesurgeon-app/htdocs/app.bikesurgeon.online/index.php >/dev/null 2>&1' | crontab -u bikesurgeon-app -
 mkdir -p /etc/nginx/sites-enabled

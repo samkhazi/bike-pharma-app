@@ -21,7 +21,8 @@ grep -qx 'INVENTORY_FEED_KEY=rehearsal-feed-key-0123456789' "$ENV" || fail "the 
 grep -qx "LOGIN_ALLOWLIST=$PHONES" "$ENV" || fail "test numbers"
 crontab -u "$U" -l | grep -q 'update.sh' || fail "the 5-minute update is not in cron"
 crontab -u "$U" -l | grep -q 'pm2 resurrect' || fail "the restart after reboot is not in cron"
-pass "settings, secrets and cron"
+ls "$H"/.nvm/versions/node/v22*/bin/pm2 >/dev/null 2>&1 || fail "the app has no pm2 of its own (a pm2 for the whole server may change or go away)"
+pass "settings, secrets, cron and its own pm2"
 
 curl -fsS "$B/health/ready" | grep -q '"ready"' || fail "health"
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$B/")" = 404 ] || fail "the server must not show a web app at /"

@@ -21,6 +21,17 @@ grep -q 'does not exist' /tmp/clpctl.log 2>/dev/null || grep -q '^NOT YET' /tmp/
 curl -fsS http://127.0.0.1:3050/health/ready >/dev/null || fail "the first version's app does not run"
 CODE=$(sed -n 's/^TEST_LOGIN_CODE=//p' /home/bikesurgeon-app/shared/.env)
 echo "PASS the server of 25 Nov is reproduced: the app inside bikesurgeon-app, no api site, no certificate"
+if [ "${HIDE_PM2:-}" = 1 ]; then
+  # no pm2 command works any more (the app and its pm2 keep running): the setup must stop the app by its process
+  for p in /home/bikesurgeon-app/.nvm/versions/node/*/bin/pm2 /usr/local/bin/pm2 /usr/bin/pm2; do
+    [ ! -e "$p" ] || mv "$p" "$p.hidden"
+  done
+  STOPPED_BY="ok (stopped its process)"
+else
+  [ -e /usr/local/bin/pm2 ] && [ ! -e /home/bikesurgeon-app/.nvm/versions/node/v22*/bin/pm2 ] \
+    || fail "the first version should have used the server's pm2, as on the real server"
+  STOPPED_BY="ok (stopped with pm2)"
+fi
 
 # 2. the new setup moves it
 # (this start also stands in for an older CloudPanel that offers Node only up to 20 for a new site)
@@ -29,6 +40,7 @@ grep -q "^All done" /tmp/setup-move.log || fail "the new setup did not finish"
 grep -q "^(this CloudPanel offers Node 20 for a new site" /tmp/setup-move.log || fail "it did not fall back to Node 20 for the site"
 grep -q "^node v22\." /tmp/setup-move.log || fail "the app did not get Node 22"
 grep -q "^== Stopping the app in /home/bikesurgeon-app (the site user of app.bikesurgeon.online" /tmp/setup-move.log || fail "it did not stop the old copy"
+grep -A1 "^== Stopping the app in" /tmp/setup-move.log | grep -qxF "$STOPPED_BY" || fail "the old copy was not stopped the expected way ($STOPPED_BY)"
 grep -q "^== Moving the app's settings here and its old files out of /home/bikesurgeon-app" /tmp/setup-move.log || fail "it did not move the old copy"
 grep -A1 "^== https certificate" /tmp/setup-move.log | grep -qx "ok" || fail "no certificate for the new site"
 grep -q "^Moved: .*parked in /root/bs-app-moved-from-bikesurgeon-app-" /tmp/setup-move.log || fail "the summary does not say where the old files are"

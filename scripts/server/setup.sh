@@ -137,7 +137,9 @@ if ! ls -d "$H"/.nvm/versions/node/v22*/bin >/dev/null 2>&1; then
 fi
 NODE_BIN=$(ls -d "$H"/.nvm/versions/node/v22*/bin 2>/dev/null | sort -V | tail -1)
 [ -n "$NODE_BIN" ] || stop "Node 22 could not be installed for $SITE_USER"
-as_site "export PATH=$NODE_BIN:\$PATH; command -v pm2 >/dev/null || npm i -g pm2 --no-audit --no-fund --loglevel=error >/dev/null"
+# its own pm2 (a pm2 installed for the whole server may change or go away)
+as_site "export PATH=$NODE_BIN:\$PATH; [ -x $NODE_BIN/pm2 ] || npm i -g pm2 --no-audit --no-fund --loglevel=error >/dev/null"
+[ -x "$NODE_BIN/pm2" ] || stop "pm2 could not be installed for $SITE_USER"
 echo "node $("$NODE_BIN/node" -v)"
 
 step "PostgreSQL database"
@@ -321,16 +323,51 @@ stop_old_install() {
   if [ -e "$OLD_H/.update.lock" ]; then
     flock -w 300 "$OLD_H/.update.lock" true || stop "an update in $OLD_H is still running; wait 5 minutes and run this again"
   fi
-  # the app itself (pm2 too, but only when it runs nothing else)
+  # the app itself, with the pm2 it was started with: its own Node's, or one installed for the whole server
+  # (pm2 too, but only when it runs nothing else)
   old_bin=$(ls -d "$OLD_H"/.nvm/versions/node/v22*/bin 2>/dev/null | sort -V | tail -1 || true)
-  if [ -n "$old_bin" ] && [ -x "$old_bin/pm2" ]; then
-    su - "$OLD_USER" -s /bin/bash -c "export PATH=$old_bin:\$PATH; pm2 delete bs-app >/dev/null 2>&1; pm2 save --force >/dev/null 2>&1; [ \"\$(pm2 jlist 2>/dev/null)\" != '[]' ] || pm2 kill >/dev/null 2>&1; true" || true
-  fi
-  for _ in $(seq 1 15); do ss -ltn "( sport = :$PORT )" 2>/dev/null | grep -q LISTEN || break; sleep 1; done
-  if ss -ltn "( sport = :$PORT )" 2>/dev/null | grep -q LISTEN; then
-    stop "the app in $OLD_H still runs on port $PORT. Stop it with:  su - $OLD_USER -c 'pm2 delete bs-app'  and run this again"
-  fi
-  echo "ok"
+  su - "$OLD_USER" -s /bin/bash -c "export PATH=${old_bin:+$old_bin:}/usr/local/bin:/usr/bin:/bin; command -v pm2 >/dev/null || exit 0; pm2 delete bs-app >/dev/null 2>&1; pm2 save --force >/dev/null 2>&1; [ \"\$(pm2 jlist 2>/dev/null)\" != '[]' ] || pm2 kill >/dev/null 2>&1; true" >/dev/null 2>&1 || true
+  for _ in $(seq 1 10); do port_busy || break; sleep 1; done
+  if ! port_busy; then echo "ok (stopped with pm2)"; return 0; fi
+  # pm2 could not stop it: stop its process, but only when it is this app (run by that user from the app's releases),
+  # and the pm2 that started it only when that pm2 runs nothing else (the live app does not use pm2)
+  if kill_old_app; then echo "ok (stopped its process)"; return 0; fi
+  echo "On port $PORT:"
+  for p in $(port_pids); do
+    ps -o user=,pid=,ppid=,args= -p "$p" 2>/dev/null | cut -c1-160 | sed 's/^/   /' || true
+    echo "   folder: $(readlink "/proc/$p/cwd" 2>/dev/null)"
+  done
+  stop "the app in $OLD_H still runs on port $PORT and was not stopped, because it could not be told apart safely. Send a photo of this screen"
+}
+port_busy() { ss -ltn "( sport = :$PORT )" 2>/dev/null | grep -q LISTEN; }
+port_pids() { ss -ltnp "( sport = :$PORT )" 2>/dev/null | grep -o 'pid=[0-9]*' | cut -d= -f2 | sort -u; }
+old_app_pid() {  # $1: a process this app runs in $OLD_H (that user's, from the app's releases)
+  [ -d "/proc/$1" ] && [ "$(stat -c %U "/proc/$1" 2>/dev/null)" = "$OLD_USER" ] || return 1
+  case "$(readlink "/proc/$1/cwd" 2>/dev/null)" in "$OLD_H"/releases/*|"$OLD_H"/current|"$OLD_H"/current/*) return 0;; esac
+  return 1
+}
+old_pm2_of() {  # $1: an app process; prints its parent when that is the pm2 of $OLD_H and runs only this app
+  local pp c
+  pp=$(ps -o ppid= -p "$1" 2>/dev/null | tr -d ' ')
+  [ -n "$pp" ] && [ "$pp" != 1 ] && [ "$(stat -c %U "/proc/$pp" 2>/dev/null)" = "$OLD_USER" ] || return 1
+  [ "$(cat "$OLD_H/.pm2/pm2.pid" 2>/dev/null)" = "$pp" ] \
+    || tr '\0' ' ' < "/proc/$pp/cmdline" 2>/dev/null | grep -qF "God Daemon ($OLD_H/.pm2)" || return 1
+  for c in $(pgrep -P "$pp"); do old_app_pid "$c" || return 1; done
+  echo "$pp"
+}
+kill_old_app() {
+  local p d pids=""
+  for p in $(port_pids); do
+    old_app_pid "$p" || continue
+    d=$(old_pm2_of "$p" || true)
+    pids="$pids ${d:+$d }$p"
+  done
+  [ -n "$pids" ] || return 1
+  kill $pids 2>/dev/null || true
+  for _ in $(seq 1 10); do port_busy || return 0; sleep 1; done
+  kill -9 $pids 2>/dev/null || true
+  for _ in $(seq 1 5); do port_busy || return 0; sleep 1; done
+  return 1
 }
 move_old_install() {
   # Its settings come here (same database, secrets and test code); only the files this app made there are parked in /root.

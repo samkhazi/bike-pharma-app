@@ -15,6 +15,14 @@ git config --system --add safe.directory '*'
 curl -fsSL https://nodejs.org/dist/v22.12.0/node-v22.12.0-linux-x64.tar.xz | tar -xJ -C /opt
 ln -sf /opt/node-v22.12.0-linux-x64/bin/node /usr/local/bin/node
 
+# A pm2 for the whole server in /usr/local/bin. On 25 Nov 2026 the new setup could not stop the first version's app on the
+# real server, most likely because that app ran under such a pm2 (the first version used any pm2 it found).
+# NO_SERVER_PM2=1: a server without one.
+if [ "${NO_SERVER_PM2:-}" != 1 ]; then
+  PATH=/opt/node-v22.12.0-linux-x64/bin:$PATH npm i -g pm2 --no-audit --no-fund --loglevel=error >/dev/null
+  ln -sf /opt/node-v22.12.0-linux-x64/bin/pm2 /usr/local/bin/pm2
+fi
+
 # Old billing database + read-only login (a password with # and " in it, written the way node --env-file reads it)
 export MYSQL_PWD=root
 until mysql -h "$MYSQL_HOST" -u root -e "SELECT 1" >/dev/null 2>&1; do sleep 2; done

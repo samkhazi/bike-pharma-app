@@ -95,8 +95,9 @@ jobs:
 
   # The server setup (scripts/server/setup.sh) run on a copy of the Bike Surgeon CloudPanel server: a plain Ubuntu
   # with a stand-in clpctl, the admin panel's .env, the live old app (app.bikesurgeon.online, site user bikesurgeon-app),
-  # the old billing MySQL, the Inventory feed and a bay camera. Two starts: a server without the app, and the real server
-  # of 25 Nov 2026, where the first version of the setup had put the app into the live app's site user.
+  # the old billing MySQL, the Inventory feed and a bay camera. Three starts: a server without the app; the real server
+  # of 25 Nov 2026, where the first version of the setup had put the app into the live app's site user (with a pm2 for the
+  # whole server); and that server without a usable pm2, so the old app must be stopped by its process.
   server-rehearsal:
     needs: check
     runs-on: ubuntu-latest
@@ -104,7 +105,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        start: [fresh, moved]
+        start: [fresh, moved, moved-no-pm2]
     services:
       mysql:
         image: mysql:8.4
@@ -123,6 +124,7 @@ jobs:
           TEST_PHONES: "98765 43210, 9123456780"
           WORKSHOP_PHONE: "9845000000"
           PUBLIC_URL: http://127.0.0.1:3050
+          NO_SERVER_PM2: ${{ matrix.start == 'moved-no-pm2' && '1' || '' }}
         run: |
           export REPO_URL="file://$GITHUB_WORKSPACE" BRANCH="$GITHUB_REF_NAME"
           bash scripts/server/rehearsal/prepare.sh

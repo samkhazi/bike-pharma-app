@@ -6,6 +6,13 @@
 #               bash /root/bs-erp-update.sh old-off    (older role-email staff logins off, once everyone uses their own)
 #               bash /root/bs-erp-update.sh undo       (logins back as before the last update; again = one more back)
 #               bash /root/bs-erp-update.sh names      (the name-wise logins again from the attendance app; passwords + PINs kept)
+# 27 Nov update 4 (Sam: "I need instant"): the admin panel checks the Bike Surgeon billing's database every 3 seconds (a
+# checksum of each table; only a changed table is read again) and the Cashier asks the admin panel every 3 seconds, so a
+# new bill or job card shows within seconds there and on the open screens. If the quick check cannot be used, it reads
+# everything every minute as before. A file is replaced only when it is the 26 or 27 Nov one; a failure puts it back.
+# Every Bike Surgeon bill is now worked out exactly like the billing itself (its own bill calculation of 28 Oct: line
+# discounts, labour rate card, free service, special discount, coupon, wallet, advance, split with card): checked on all
+# 5,513 bills, 1,927 Moto Lab bills and the billing's Sales Report for 34 date ranges, equal to the paisa.
 # 27 Nov update 3 (Sam: "direct connect database only, I need instant"): the Moto Lab panel reads the Moto Lab billing's
 # database itself (read only, the admin panel's database lines are copied into its .env), a checksum check every 3 seconds;
 # a new bill shows on the open screens within seconds. If it cannot read the database, it keeps the admin panel's feed.
@@ -135,7 +142,7 @@ STAMP=$(date +%Y%m%d-%H%M%S)
 BK=/root/bikesurgeon-backup-names-$STAMP; [ $RUN_NAMES = 1 ] || BK=/root/bikesurgeon-backup-code-$STAMP
 mkdir -p "$BK" && chmod 700 "$BK"
 
-echo "== 3. The Moto Lab panel on real data (straight from the Moto Lab billing database, every 3 seconds)"
+echo "== 3. Admin panel and Moto Lab panel: the billing within seconds"
 # .env lines: setenv keeps the file (owner, rights); getenv gives the value without quotes; nothing is printed
 setenv() { local f=$1; { grep -v "^$2=" "$f" || true; echo "$2=$3"; } > "$T/env" && cat "$T/env" > "$f"; rm -f "$T/env"; }
 getenv() { [ -f "$1" ] && grep "^$2=" "$1" | tail -1 | cut -d= -f2- | tr -d '"'"'"' \r' || true; }
@@ -157,6 +164,16 @@ mlink() { "$B/node" --disable-warning=ExperimentalWarning -e 'try{const d=new (r
   console.log(Date.parse(l.at)+" "+l.mode+" "+(l.ok?"ok":"err")+" "+(l.bills||0))}catch{console.log("none")}' "$MLDB"; }
 mlerr() { "$B/node" --disable-warning=ExperimentalWarning -e 'try{const d=new (require("node:sqlite").DatabaseSync)(process.argv[1],{readOnly:true});
   const l=JSON.parse(d.prepare("SELECT value FROM settings WHERE key=?").get("link_last").value);console.log(String(l.dbError||l.error||"").slice(0,160))}catch{}' "$MLDB"; }
+# how the admin panel read the Bike Surgeon billing last (its new code keeps it): "<ok|err> <fast 1|0> <every s> <check ms>
+# <bills>" or "none" (older code); aerr: why the quick check or the read did not work
+alast() { "$B/node" --disable-warning=ExperimentalWarning -e 'try{const d=new (require("node:sqlite").DatabaseSync)(process.argv[1],{readOnly:true});
+  const l=JSON.parse(d.prepare("SELECT value FROM settings WHERE key=?").get("old_last").value);d.close();if(l.every===undefined)throw 0;
+  console.log((l.ok?"ok":"err")+" "+(l.fast?1:0)+" "+l.every+" "+(l.check||0)+" "+(l.bills||0))}catch{console.log("none")}' "$ADB"; }
+aerr() { "$B/node" --disable-warning=ExperimentalWarning -e 'try{const d=new (require("node:sqlite").DatabaseSync)(process.argv[1],{readOnly:true});
+  const l=JSON.parse(d.prepare("SELECT value FROM settings WHERE key=?").get("old_last").value);console.log(String(l.err||l.sumErr||"").slice(0,160))}catch{}' "$ADB"; }
+# awarn: a table the bills need that this database login could not read (the bills still come, without that table)
+awarn() { "$B/node" --disable-warning=ExperimentalWarning -e 'try{const d=new (require("node:sqlite").DatabaseSync)(process.argv[1],{readOnly:true});
+  const l=JSON.parse(d.prepare("SELECT value FROM settings WHERE key=?").get("old_last").value);console.log(String(l.warn||"").slice(0,200))}catch{}' "$ADB"; }
 # the database lines of the admin panel's .env, copied as they are (the password is never printed); CH=1 when one changed
 DBK="OLD_DB_HOST OLD_DB_PORT OLD_DB_USER OLD_DB_PASS OLD_DB_ML OLD_ML_USER OLD_ML_PASS OLD_DB_PUBKEY MYSQL_BIN"
 cpenv() { local k l; for k in $DBK; do l=$(grep "^$k=" "$ADM/.env" | tail -1)
@@ -166,7 +183,7 @@ cpenv() { local k l; for k in $DBK; do l=$(grep "^$k=" "$ADM/.env" | tail -1)
   rm -f "$T/env"; done; }
 ML=1   # 0 = the Moto Lab panel is on real data
 ADM=$(dirof 3040 "$PANEL"); MLD=$(dirof 3031 "$PANEL/portals/11-moto-lab")
-PF="01-admin-panel/server/oldbill.js 01-admin-panel/server/routes.js 11-moto-lab/server/oldlink.js 11-moto-lab/server/motolab.js
+PF="01-admin-panel/server/oldbill.js 01-admin-panel/server/routes.js 01-admin-panel/public/app.js 11-moto-lab/server/oldlink.js 11-moto-lab/server/motolab.js
   11-moto-lab/server/routes.js 11-moto-lab/server/links.js 11-moto-lab/server/index.js 11-moto-lab/public/app.js 11-moto-lab/server/mldb.js"
 dst() { case "$1" in 01-admin-panel/*) echo "$ADM/${1#01-admin-panel/}";; *) echo "$MLD/${1#11-moto-lab/}";; esac; }
 put() { local f d; for f in $PF; do case "$f" in "$1"/*) d=$(dst "$f")
@@ -177,6 +194,7 @@ elif [ ! -f "$CODE/portals/base-26nov.sha256" ]; then
   echo "FAILED  the panel code is not in the download: not changed"
 else
   MLDB=$(getenv "$MLD/.env" DB_FILE); case "$MLDB" in "") MLDB=$MLD/data/motolab.db;; /*) ;; *) MLDB=$MLD/$MLDB;; esac
+  ADB=$(getenv "$ADM/.env" DB_FILE); case "$ADB" in "") ADB=$ADM/data/admin.db;; /*) ;; *) ADB=$ADM/$ADB;; esac
   NEWA=0; NEWM=0; BAD=""
   for f in $PF; do d=$(dst "$f")
     [ -f "$d" ] && [ "$(sha "$d")" = "$(sha "$CODE/portals/$f")" ] && continue
@@ -192,7 +210,7 @@ else
     echo "FAILED  the admin panel has no ALERT_KEY in its .env: not changed"
   else
     printf 'X-Alert-Key: %s\n' "$AK" > "$T/hdr"
-    tar -C "$ADM" -czf "$BK/admin-code.tgz" server/oldbill.js server/routes.js && tar -C "$MLD" -czf "$BK/motolab-code.tgz" server public .env \
+    tar -C "$ADM" -czf "$BK/admin-code.tgz" server/oldbill.js server/routes.js public/app.js && tar -C "$MLD" -czf "$BK/motolab-code.tgz" server public .env \
       && chmod 600 "$BK"/*.tgz || { echo "FAILED  backup of the panels in $BK: not changed"; NEWA=x; }
     if [ "$NEWA" = 1 ]; then   # the admin panel first: it gives the Moto Lab items and bills
       OLDPID=$(pidof_port 3040); put 01-admin-panel && restart "$ADM" 3040 || echo "FAILED  copy or restart of the admin panel"
@@ -204,6 +222,14 @@ else
       else echo "OK      admin panel: new code, it gives ${GOT% *} Moto Lab items and ${GOT#* } bills"; fi
     elif [ "$NEWA" = 0 ]; then GOT=$(mlfeed)
       [ "$GOT" = no ] && echo "OK      admin panel code already new (its Moto Lab feed is not ready yet)" || echo "OK      admin panel code already new (it gives ${GOT% *} Moto Lab items and ${GOT#* } bills)"; fi
+    if [ "$NEWA" != x ]; then   # how it reads the Bike Surgeon billing now (its first round after the restart)
+      A=none; for i in $(seq 1 12); do A=$(alast); [ "$A" != none ] && break; sleep 5; done; read -r AO AF AE AC AB <<<"$A"
+      if [ "$A" = none ]; then echo "WARN    the admin panel did not say yet how it reads the billing. Send me a screenshot of this."
+      elif [ "$AO $AF" = "ok 1" ]; then echo "OK      admin panel checks the Bike Surgeon billing every $AE seconds (a check takes $AC ms; $AB bills)"
+        AW=$(awarn); [ -z "$AW" ] || { echo "WARN    admin panel could not read a billing table: $AW"; echo "        Send me a screenshot of this."; }
+      elif [ "$AO" = ok ]; then echo "WARN    admin panel reads the billing every minute: the quick check did not work ($(aerr))"; echo "        Send me a screenshot of this."
+      else echo "WARN    admin panel could not read the billing just now: $(aerr)"; echo "        Send me a screenshot of this."; fi
+    fi
     if [ "$NEWA" != x ]; then   # then the Moto Lab panel: the database lines and the admin panel's address and key, the new code
       CH=0
       [ "$(getenv "$MLD/.env" ADMIN_URL)" = http://127.0.0.1:3040 ] || { setenv "$MLD/.env" ADMIN_URL http://127.0.0.1:3040; CH=1; }
@@ -238,6 +264,64 @@ if [ $ML = 0 ]; then
   if grep -q '^PANELS_OFF=' "$FD/.env"; then OFFL=$(getenv "$FD/.env" PANELS_OFF | tr ',' '\n' | grep -vx motolab | grep -v '^$' | paste -sd, -)
   else OFFL=floor,maintainer,desk,accounts,counter,spares,supervisor; fi
   [ "$(getenv "$FD/.env" PANELS_OFF)" = "$OFFL" ] && grep -q '^PANELS_OFF=' "$FD/.env" || { setenv "$FD/.env" PANELS_OFF "$OFFL"; echo "OK      The Moto Lab goes into the menu (Mehek, Saddam sir, Ramzan sir, Sajiya)"; }
+fi
+
+echo "== 3b. The Cashier: bills and job cards within seconds"
+CS=1   # 0 = the Cashier is on its new code (or already was) and reads the admin panel
+CSH=$(dirof 3023 "$PANEL/portals/03-cashier"); CF="03-cashier/server/oldlink.js 03-cashier/public/app.js"
+# how the Cashier read the admin panel last (its new code keeps it): "<ms> <ok|err> <fast 1|0> <bills>" or "none"; cerr: why not
+clast() { "$B/node" --disable-warning=ExperimentalWarning -e 'try{const d=new (require("node:sqlite").DatabaseSync)(process.argv[1],{readOnly:true});
+  const l=JSON.parse(d.prepare("SELECT value FROM settings WHERE key=?").get("link_last").value);d.close();
+  console.log(Date.parse(l.at)+" "+(l.ok?"ok":"err")+" "+(l.fast?1:0)+" "+(l.bills||0))}catch{console.log("none")}' "$CDB"; }
+cerr() { "$B/node" --disable-warning=ExperimentalWarning -e 'try{const d=new (require("node:sqlite").DatabaseSync)(process.argv[1],{readOnly:true});
+  const l=JSON.parse(d.prepare("SELECT value FROM settings WHERE key=?").get("link_last").value);console.log(String(l.error||"").slice(0,160))}catch{}' "$CDB"; }
+cput() { local f d; for f in $CF; do d=$CSH/${f#03-cashier/}
+  install -m 644 -o "$(stat -c %U "$(dirname "$d")")" -g "$(stat -c %G "$(dirname "$d")")" "$CODE/portals/$f" "$d" || return 1; done; }
+AK=""; [ -n "$ADM" ] && AK=$(getenv "$ADM/.env" ALERT_KEY)
+if [ -z "$CSH" ] || [ ! -f "$CSH/server/oldlink.js" ] || [ ! -f "$CSH/.env" ]; then
+  echo "FAILED  Cashier folder not found: not changed"
+elif [ -z "$AK" ]; then
+  echo "FAILED  the admin panel has no ALERT_KEY in its .env: the Cashier is not changed"
+else
+  CDB=$(getenv "$CSH/.env" DB_FILE); case "$CDB" in "") CDB=$CSH/data/cashier.db;; /*) ;; *) CDB=$CSH/$CDB;; esac
+  NEWC=0; BAD=""
+  for f in $CF; do d=$CSH/${f#03-cashier/}
+    [ -f "$d" ] && [ "$(sha "$d")" = "$(sha "$CODE/portals/$f")" ] && continue
+    NEWC=1; [ ! -f "$d" ] || grep -qxF "$(sha "$d")  $f" "$CODE"/portals/base-*.sha256 || BAD="$BAD $f"
+  done
+  CH=0; [ "$(getenv "$CSH/.env" ADMIN_URL)" = http://127.0.0.1:3040 ] && [ "$(getenv "$CSH/.env" ALERT_KEY)" = "$AK" ] && ! grep -q '^CASHIER_LIVE=0' "$CSH/.env" || CH=1
+  K=$(clast)
+  if [ -n "$BAD" ]; then
+    echo "STOP    changed on this server by hand:$BAD"
+    echo "        The Cashier is not changed. Send me a screenshot of this."
+  elif [ "$NEWC" = 0 ] && [ "$CH" = 0 ] && [ "$K" != none ]; then
+    read -r _ KS KF KB <<<"$K"; CS=0
+    # the admin panel may have restarted just now: the Cashier gets up to 30 seconds for a good read again
+    [ "$KS" = ok ] || for i in $(seq 1 10); do sleep 3; K=$(clast); read -r _ KS KF KB <<<"$K"; [ "$KS" = ok ] && break; done
+    if [ "$KS $KF" = "ok 1" ]; then echo "OK      Cashier code already new: bills and job cards within seconds ($KB bills of the last 40 days)"
+    else echo "OK      Cashier code already new (its last read: $KS$( [ "$KS" = err ] && echo ": $(cerr)"))"; fi
+  elif ! { tar -C "$CSH" -czf "$BK/cashier-code.tgz" server/oldlink.js public/app.js .env && chmod 600 "$BK/cashier-code.tgz"; }; then
+    echo "FAILED  backup of the Cashier in $BK: not changed"
+  else   # its .env: the admin panel's address and key (copied, never printed), the link on; then the new code
+    [ "$(getenv "$CSH/.env" ADMIN_URL)" = http://127.0.0.1:3040 ] || setenv "$CSH/.env" ADMIN_URL http://127.0.0.1:3040
+    [ "$(getenv "$CSH/.env" ALERT_KEY)" = "$AK" ] || setenv "$CSH/.env" ALERT_KEY "$AK"
+    grep -q '^CASHIER_LIVE=0' "$CSH/.env" && setenv "$CSH/.env" CASHIER_LIVE 1
+    [ "$(stat -c %U "$CSH/.env")" = "$PU" ] && chmod 600 "$CSH/.env"
+    OLDPID=$(pidof_port 3023); T0=$(date +%s%3N); K=none
+    cput && restart "$CSH" 3023 || echo "FAILED  copy or restart of the Cashier"
+    for i in $(seq 1 24); do sleep 5; NEWPID=$(pidof_port 3023); [ -n "$NEWPID" ] && [ "$NEWPID" != "$OLDPID" ] || continue
+      K=$(clast); [ "$K" != none ] && [ "${K%% *}" -ge "$T0" ] && break; K=none; done
+    read -r _ KS KF KB <<<"$K"
+    if [ "$K" != none ] && [ "$KS" = ok ] && [ -n "$(pidof_port 3023)" ]; then
+      CS=0
+      if [ "$KF" = 1 ]; then echo "OK      Cashier: bills and job cards within seconds ($KB bills of the last 40 days)"
+      else echo "OK      Cashier on the real bills, every minute ($KB bills of the last 40 days)"; fi
+    else
+      [ "$K" = none ] && W="it did not read the admin panel in 2 minutes" || W="it could not read the admin panel: $(cerr)"
+      echo "FAILED  Cashier: $W. Its code before this update is put back"
+      tar -C "$CSH" -xzf "$BK/cashier-code.tgz"; restart "$CSH" 3023
+    fi
+  fi
 fi
 
 echo "== 4. Front door: the new code (sign-in page, one screen)"
@@ -279,4 +363,4 @@ if [ $RUN_NAMES = 1 ]; then
 else
   echo "Logins not changed: everyone keeps their password and PIN. Front door code backup: $BK"
 fi
-[ $N = 0 ] && [ $C = 0 ] && [ $MISS = 0 ] && [ $ML = 0 ] && echo "All done." || echo "Something failed: send me a screenshot of this (it shows no passwords)."
+[ $N = 0 ] && [ $C = 0 ] && [ $MISS = 0 ] && [ $ML = 0 ] && [ $CS = 0 ] && echo "All done." || echo "Something failed: send me a screenshot of this (it shows no passwords)."

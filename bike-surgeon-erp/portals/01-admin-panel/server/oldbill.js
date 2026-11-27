@@ -1,5 +1,5 @@
 // Live link to the old PHP billing sites (billing.bikesurgeon.online and themotolab.bikesurgeon.online, 29 Oct).
-// Every OLD_SECONDS (60) the panel READS their MySQL databases (a read-only user, nothing is ever written there) and
+// The panel READS their MySQL databases (a read-only user, nothing is ever written there) and
 // fills its own lists with the real data: bills (invoices), today's job cards (jobs), customers, credit, mechanic
 // sales, quotations, coupons and the workshop pages (mechanics, parts requests, waiting for spares, free service,
 // feedback calls, service reminders). The first read also clears the sample lists. A list is rewritten only when its data
@@ -7,6 +7,10 @@
 // goes down for every part sold on the old sites.
 // It talks to MySQL through the `mysql` command line program (installed with MySQL on the server), so no extra
 // npm package is needed. The password goes to it in the MYSQL_PWD environment variable, never on the command line.
+// Instant (Sam 27 Nov: "direct connect database only, I need instant"): every OLD_TICK (3) seconds one tiny question
+// asks MySQL for the checksum of every table it reads (CHECKSUM TABLE); only the tables that changed are read again
+// (the others come from memory), at least everything every 10 minutes. If the checksums cannot be had, it reads
+// everything every OLD_SECONDS (60) as before.
 'use strict';
 const { execFile } = require('node:child_process');
 const crypto = require('node:crypto');
@@ -31,21 +35,50 @@ const linked = () => db.setting('old_link', '') === 'on';
 // ---------------- MySQL through the command line ---------------------------------------------------------------------
 // q('bs', 'invoice', {no: 'invoice_no', ...}) runs SELECT JSON_OBJECT('no', invoice_no, ...) FROM invoice and gives the
 // rows as objects. One table per query (joins are done here), one JSON object per line (--raw keeps it as is).
-function q(which, table, cols, where = '') {
+// the tables read (for the checksums), the checksums of this round and the rows of each query while its table is unchanged
+// (a table goes into the checksum question only after it could be read, so a table this login may not read never stops it)
+const used = { bs: new Set(['invoice', 'invoice_items', 'job_labour_items', 'job_card', 'mechanic', 'bay', 'user', 'quotations', 'quotation_items',
+  'coupons', 'coupon_usage', 'cms_products']), ml: new Set(['invoice', 'invoice_items', 'ml_invoice_labour', 'cms_products']) };
+let sums = { bs: null, ml: null };
+const cache = new Map();
+const FULL_MS = 10 * 60 * 1000;
+async function q(which, table, cols, where = '') {
+  const sum = sums[which] && sums[which].get(table), k = `${which}|${table}|${JSON.stringify(cols)}|${where}`, c = cache.get(k);
+  if (sum && c && c.sum === sum && Date.now() - c.at < FULL_MS) return c.rows;
+  const rows = await q1(which, table, cols, where);
+  used[which].add(table);
+  if (sum) cache.set(k, { sum, rows, at: Date.now() }); else cache.delete(k);
+  return rows;
+}
+// CHECKSUM TABLE of every table read from that database: Map table -> checksum (NULL for a table that is not there)
+function stamp(which) {
+  return run(which, `CHECKSUM TABLE ${[...used[which]].map(t => `\`${t}\``).join(', ')}`).then(out => {
+    const m = new Map();
+    for (const line of out.split('\n')) { const [t, v] = line.trim().split('\t'); if (t) m.set(t.slice(t.indexOf('.') + 1), v || 'NULL'); }
+    if (!m.size) throw new Error(`${which}: MySQL gave no checksum`);
+    return m;
+  });
+}
+function q1(which, table, cols, where = '') {
+  const sql = `SELECT JSON_OBJECT(${Object.entries(cols).map(([k, c]) => `'${k}', ${c}`).join(', ')}) FROM \`${table}\`${where ? ' WHERE ' + where : ''}`;
+  return run(which, sql).then(out => {
+    const rows = [];
+    for (const line of out.split('\n')) if (line.trim()) { try { rows.push(JSON.parse(line)); } catch { /* a broken row is skipped */ } }
+    return rows;
+  }, e => { throw new Error(`${which} ${table}: ${e.message}`); });
+}
+function run(which, sql) {
   const database = env(which === 'bs' ? 'OLD_DB_BS' : 'OLD_DB_ML');
   const user = env(which === 'ml' && env('OLD_ML_USER') ? 'OLD_ML_USER' : 'OLD_DB_USER');
   const pass = process.env[which === 'ml' && env('OLD_ML_USER') ? 'OLD_ML_PASS' : 'OLD_DB_PASS'] || '';
-  const sql = `SELECT JSON_OBJECT(${Object.entries(cols).map(([k, c]) => `'${k}', ${c}`).join(', ')}) FROM \`${table}\`${where ? ' WHERE ' + where : ''}`;
   const args = ['-h', env('OLD_DB_HOST') || '127.0.0.1', '-P', env('OLD_DB_PORT') || '3306', '-u', user, '--batch', '--raw',
     '--skip-column-names', '--default-character-set=utf8mb4',
     // MySQL 8 users (caching_sha2_password) without TLS need the server's key; OLD_DB_PUBKEY=0 for a MariaDB client
     ...(env('OLD_DB_PUBKEY') === '0' ? [] : ['--get-server-public-key']), database, '-e', sql];
   return new Promise((resolve, reject) => {
     execFile(env('MYSQL_BIN') || 'mysql', args, { env: { ...process.env, MYSQL_PWD: pass }, maxBuffer: 256 * 1024 * 1024, timeout: 50000 }, (err, out, errOut) => {
-      if (err) return reject(new Error(`${which} ${table}: ${String(errOut || err.message).replace(/\s+/g, ' ').trim().slice(0, 200)}`));
-      const rows = [];
-      for (const line of out.split('\n')) if (line.trim()) { try { rows.push(JSON.parse(line)); } catch { /* a broken row is skipped */ } }
-      resolve(rows);
+      if (err) return reject(new Error(String(errOut || err.message).replace(/\s+/g, ' ').trim().slice(0, 200)));
+      resolve(out);
     });
   });
 }
@@ -79,29 +112,37 @@ const TYPE = { U: 'Customer', M: 'Mechanic', W: 'Wholeseller' };
 const cap = t => t ? t.charAt(0).toUpperCase() + t.slice(1) : t;
 const hash = v => crypto.createHash('sha1').update(JSON.stringify(v)).digest('hex');
 
-// Bill lines, made to add up to the bill's own total: the old sites sometimes changed a total after the lines (coupon,
-// special discount, a line removed). A higher total gets an "Other charges" line, a lower one a bill discount %.
+// Bill lines, made to add up to the bill's own total: the old sites sometimes changed a total after the lines (a line
+// removed, a total typed in). A higher total gets an "Other charges" line, a lower one a "Discount" minus line (to the paisa).
 function fitLines(items, partsTotal) {
   const sum = items.reduce((a, i) => a + i[1] * i[2], 0);
   if (!items.length && partsTotal > 0.5) return { items: [['Parts (old bill)', 1, r2(partsTotal)]], disc: 0 };
   const diff = r2(partsTotal - sum);
   if (diff > 0.5) return { items: [...items, ['Other charges (old bill)', 1, diff]], disc: 0 };
-  if (diff < -0.5 && sum > 0) return { items, disc: Math.min(100, r2(-diff / sum * 100)) };
+  if (diff < -0.5 && sum > 0) return { items: [...items, ['Discount (old bill)', 1, diff]], disc: 0 };
   return { items, disc: 0 };
 }
 
 // ---------------- read everything --------------------------------------------------------------------------------------
 let products = { at: 0, bs: new Map() };
 async function readBs() {
-  const [inv, lines, lab, jcs, mech, bays, users, quotes, qItems, coupons, cUse] = await Promise.all([
+  const warn = [];
+  const soft = (...a) => q(...a).catch(e => { warn.push(e.message.slice(0, 160)); return null; });
+  const [inv, lines, lab, jcs, si, rates, mech, bays, users, quotes, qItems, coupons, cUse] = await Promise.all([
     q('bs', 'invoice', { id: 'id', no: 'invoice_no', cust: 'customer_name', ph: 'customer_phone', type: 'type', total: 'total_amount',
       st: 'payment_status', pay: 'payment_method', sc: 'split_cash', su: 'split_upi', sk: 'split_card', by: 'created_by_name',
-      jc: 'job_card_id', date: 'date', time: 'time', net: 'net_payable', bal: 'balance_due', cleared: 'credit_cleared_at', paid: 'paid_date', veh: 'vehicle_number' }),
-    q('bs', 'invoice_items', { i: 'invoice_id', p: 'product_id', n: 'name', q: 'qty', a: 'selling_price', sn: 'serial_no' }),
-    q('bs', 'job_labour_items', { jc: 'job_card_id', a: 'labour_price' }),
+      jc: 'job_card_id', date: 'date', time: 'time', net: 'net_payable', bal: 'balance_due', cleared: 'credit_cleared_at', paid: 'paid_date', veh: 'vehicle_number',
+      sd: 'special_discount', cd: 'coupon_discount', code: 'coupon_code', wal: 'wallet_used', ad: 'advance_amount', am: 'advance_payment_method' }),
+    q('bs', 'invoice_items', { id: 'id', i: 'invoice_id', p: 'product_id', n: 'name', q: 'qty', a: 'selling_price', sn: 'serial_no', g: 'goods_price',
+      dp: 'discount_percent', d: 'discount' }),
+    q('bs', 'job_labour_items', { id: 'id', jc: 'job_card_id', n: 'labour_name', a: 'labour_price', cu: 'is_custom' }),
     q('bs', 'job_card', { id: 'id', ph: 'phone', cust: 'name', plate: 'vehicle_number', make: 'make', model: 'model', pkg: 'service_package',
       svc: 'SUBSTRING(service_type, 1, 120)', st: 'status', at: 'created_at', done: 'completed_at', go: 'initiated_at', late: 'delay_minutes',
       mech: 'mechanic_id', bay: 'bay_id', slot: 'slot', adv: 'created_by_name', dd: 'dd', mm: 'mm', yy: 'yy', free: 'is_free_service_claim' }),
+    // the billing's own link of a bill to its job card, and its labour rate card (for lines saved without a price)
+    soft('bs', 'service_invoice', { id: 'id', i: 'invoice_id', jc: 'job_card_id' }),
+    soft('bs', 'labour_charges', { id: 'id', n: 'job_description', p110: 'price_110cc', p125: 'price_125cc', p150: 'price_150cc', p200: 'price_200cc',
+      p300: 'price_300cc', p650: 'price_650cc' }),
     q('bs', 'mechanic', { id: 'id', name: 'name' }),
     q('bs', 'bay', { id: 'id', name: 'name' }),
     q('bs', 'user', { id: 'id', ph: 'userphone', wallet: 'wallet' }),
@@ -128,7 +169,7 @@ async function readBs() {
     opt('bs', 'next_service_call_log', { rid: 'reminder_id', adv: 'advisor_id', cs: 'call_status', at: 'called_at' }),
     opt('bs', 'service_adviser', { id: 'id', name: 'name' }),
   ]);
-  return { inv, lines, lab, jcs, mech, bays, users, quotes, qItems, coupons, cUse, preq, pitems, fbk, rem, calls, advs };
+  return { inv, lines, lab, jcs, si, rates, mech, bays, users, quotes, qItems, coupons, cUse, preq, pitems, fbk, rem, calls, advs, warn };
 }
 async function readMl() {
   const [inv, lines, lab, prods] = await Promise.all([
@@ -214,6 +255,93 @@ function mlFeed(ml) {
 }
 const motolab = () => mlLast;
 
+// ---------------- Bike Surgeon bills, worked out exactly like the billing does ---------------------------------------------
+// (includes/bs-invoice-calc.php of 28 Oct: the one calculation of the printed bill, All Invoices and the Sales Report; ported
+// line by line and checked against the billing's own PHP on all 5513 bills of 24 Nov: every amount equal to the paisa)
+//   job card = service_invoice first (its lowest job card), else invoice.job_card_id. No job card = a Bike Pharma counter bill
+//   parts    = each line's MRP x qty minus its discount %, to the paisa (the saved line total when that differs by over 5 paise)
+//   labour   = every line of the job card: a custom line its saved price; else its saved price, or the rate card for the job
+//              card's cc when nothing was saved. A job card flagged as a free service: the General Servicing line is 0
+//   net      = parts + labour - special discount - coupon - wallet, rounded DOWN to the rupee. A PAID or dealer CREDIT bill keeps
+//              its amount (the saved line totals; its net_payable when that is within Rs 1)
+//   money    = an advance in its own mode, the rest in the payment mode (a split: the paise difference on its larger part)
+//   Sales Report parts / labour = after the discounts (a coupon comes off the labour on a job card bill, else off the parts)
+const fl = v => { const n = parseFloat(String(v ?? '').trim()); return Number.isFinite(n) ? n : 0; };   // PHP (float)
+const iv = v => Math.trunc(fl(v));                                                                         // PHP intval
+const low = v => String(v ?? '').trim().toLowerCase();
+const isGs = n => /^\s*general\s+servic/i.test(String(n ?? ''));
+const roundDown = a => { a = rp(a); return a <= 0 ? 0 : Math.floor(a + 1e-9); };
+const bucket = m => { m = low(m); if (m === '' || m === 'cash') return 'cash'; if (['upi', 'phonepe', 'gpay', 'googlepay', 'paytm'].includes(m)) return 'upi'; return 'card'; };
+const CCOL = { '110cc': 'p110', '125cc': 'p125', '150cc': 'p150', '200cc': 'p200', '300cc': 'p300', '650cc': 'p650' };
+function bsCalc(bs) {
+  const siJc = new Map();                          // like SQL MIN(job_card_id): a NULL is skipped
+  for (const r of bs.si || []) {
+    const k = iv(r.i); if (!siJc.has(k)) siJc.set(k, null);
+    if (r.jc != null && String(r.jc).trim() !== '') { const j = iv(r.jc), o = siJc.get(k); siJc.set(k, o === null ? j : Math.min(o, j)); }
+  }
+  const jcById = new Map(bs.jcs.map(j => [iv(j.id), j]));
+  const group = (rows, key) => { const m = new Map(); for (const r of [...rows].sort((a, b) => iv(a[key]) - iv(b[key]) || iv(a.id) - iv(b.id))) { const k = iv(r[key]); if (!m.has(k)) m.set(k, []); m.get(k).push(r); } return m; };
+  const lines = group(bs.lines, 'i'), labour = group(bs.lab, 'jc');
+  const rate = new Map();
+  for (const r of [...(bs.rates || [])].sort((a, b) => iv(a.id) - iv(b.id))) if (!rate.has(low(r.n))) rate.set(low(r.n), r);
+  const gsRate = (bs.rates || []).filter(r => low(r.n).startsWith('general servic'))
+    .sort((a, b) => (low(b.n) === 'general servicing') - (low(a.n) === 'general servicing') || iv(a.id) - iv(b.id))[0] || {};
+  const out = [];
+  for (const v of bs.inv) {
+    const id = iv(v.id), jid = siJc.get(id) || iv(v.jc), job = jid ? jcById.get(jid) || null : null;
+    const parts = []; let pt = 0, stored = 0;
+    for (const l of lines.get(id) || []) {
+      const qty = iv(l.q); if (qty <= 0) continue;
+      const gross = rp(rp(fl(l.g)) * qty), saved = rp(fl(l.a)), ds = rp(fl(l.d));
+      let dp = fl(l.dp);
+      if (dp <= 0 && gross > 0 && ds > 0) dp = rp(ds / gross * 100);
+      let total = saved;
+      if (gross > 0) { const ct = rp(gross - rp(gross * dp / 100)); if (saved <= 0 || Math.abs(ct - saved) <= 0.05) total = ct; }
+      parts.push({ l, qty, total });
+      pt += total; stored += saved > 0 ? saved : total;
+    }
+    pt = rp(pt);
+    const col = CCOL[low(job && job.pkg) || '110cc'] || 'p110', free = !!job && iv(job.free) === 1;
+    let lt = 0, freeSaved = 0;
+    for (const r of jid ? labour.get(jid) || [] : []) {
+      const st = fl(r.a), rc = rate.get(low(r.n)), rt = rc ? fl(rc[col]) : 0;
+      let price = iv(r.cu) === 1 ? st : (st || rt);
+      if (free && isGs(r.n)) { freeSaved += rt || fl(gsRate[col]) || st || price; price = 0; }
+      lt += rp(price);
+    }
+    lt = rp(lt); freeSaved = rp(freeSaved);
+    const special = rp(fl(v.sd)), coupon = rp(fl(v.cd)), wallet = rp(fl(v.wal));
+    const netRaw = rp(rp(pt + lt) - special - coupon - wallet);
+    const st = String(v.st ?? '').toUpperCase(), paid = st === 'PAID', credit = st === 'CREDIT';
+    let net = roundDown(netRaw);
+    if (paid || credit) net = roundDown(rp(rp(stored) + lt - special - coupon - wallet));
+    const snap = v.net === null || v.net === undefined || v.net === '' ? null : rp(fl(v.net));
+    if ((paid || credit) && snap !== null && snap > 0 && Math.abs(snap - net) <= 1.0) net = snap;
+    const adv = rp(fl(v.ad)), method = low(v.pay), got = { cash: 0, upi: 0, card: 0 };
+    if (adv > 0) got[bucket(v.am ?? 'cash')] += paid ? Math.min(adv, net) : adv;
+    if (paid) {
+      const rest = rp(Math.max(0, net - adv));
+      if (method === 'split') {
+        const sp = { cash: rp(fl(v.sc)), upi: rp(fl(v.su)), card: rp(fl(v.sk)) };
+        if (sp.cash + sp.upi + sp.card > 0) {
+          const diff = rp(rest - (sp.cash + sp.upi + sp.card));
+          if (diff !== 0) { const k = ['cash', 'upi', 'card'].reduce((a, b) => (sp[b] > sp[a] ? b : a)); sp[k] = rp(sp[k] + diff); }
+          for (const k of ['cash', 'upi', 'card']) got[k] += sp[k];
+        } else got.cash += rest;
+      } else got[bucket(v.pay)] += rest;
+    }
+    for (const k of ['cash', 'upi', 'card']) got[k] = rp(got[k]);
+    const cp = coupon > 0 && !job ? coupon : 0, cl = coupon > 0 && job ? coupon : 0;
+    let pa = pt - cp - special - wallet, la = lt - cl;
+    if (pa < 0) { la += pa; pa = 0; }
+    if (la < 0) { pa += la; la = 0; }
+    if (pa < 0) pa = 0;
+    out.push({ v, id, jid, job, parts, pt, lt, free: free && freeSaved > 0, freeSaved, special, coupon, cp, cl, wallet, code: s(v.code, 30), net,
+      paid, credit, method, got, pa: rp(pa), la: rp(la) });
+  }
+  return out;
+}
+
 // ---------------- old rows → the panel's lists ---------------------------------------------------------------------------
 const JST = { COMPLETED: 'done', ONGOING: 'ongoing', 'WORK IN PROGRESS': 'ongoing', PENDING: 'pending', STREAM_STOPPED: 'paused', NOT_APPROVED: 'pending' };
 const dur = m => m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
@@ -232,65 +360,68 @@ function build(bs, ml, today = C.dmy(C.now())) {
     const jcById = new Map(bs.jcs.map(j => [String(j.id), j]));
     const mechName = new Map(bs.mech.map(m => [String(m.id), s(m.name, 60)]));
     const bayName = new Map(bs.bays.map(b => [String(b.id), s(b.name, 20)]));
-    const labour = new Map();
+    const labour = new Map();                     // saved labour of each job card (workshop pages)
     for (const l of bs.lab) labour.set(String(l.jc), (labour.get(String(l.jc)) || 0) + num(l.a));
     const lines = new Map();
     for (const l of bs.lines) { const k = String(l.i); if (!lines.has(k)) lines.set(k, []); lines.get(k).push(l); }
-    // the labour of a job card goes on its first bill only (a job card can get a second bill for spares added later)
-    const firstBill = new Map();
-    for (const v of [...bs.inv].sort((a, b) => num(a.id) - num(b.id))) if (v.jc && !firstBill.has(String(v.jc))) firstBill.set(String(v.jc), String(v.id));
+    const LBL = { cash: 'Cash', upi: 'UPI', card: 'Card' };
     const cr = new Map();
-    for (const v of bs.inv) {
+    for (const c of bsCalc(bs)) {
+      const v = c.v;
       // a bill counts on the day it was PAID, like the old Sales Report and All Invoices (paid_date, else the bill date)
       const date = dmy(v.paid) || dmy(v.date);
       if (!date) continue;
       const no = s(v.no, 40) || `BS-OLD-${v.id}`;
-      const ls = lines.get(String(v.id)) || [];
-      const items = [], fwd = [];
-      for (const l of ls) {
+      const fwd = [];                               // for the Inventory portal: the saved lines, as before
+      for (const l of lines.get(String(v.id)) || []) {
         const qty = num(l.q); if (!qty) continue;
         const prod = products.bs.get(String(l.p));
-        const name = s(l.n) || s(prod && prod.n) || s(l.sn) || s(prod && prod.sn) || `Part ${l.p}`;
-        items.push([name, qty, r2(num(l.a) / qty)]);
         fwd.push({ old: num(l.p) || undefined, pno: s(l.sn || (prod && prod.sn), 60) || undefined, qty, rate: r2(num(l.a) / qty) });
       }
-      const jc = v.jc && String(v.jc) !== '0' ? String(v.jc) : '';
-      const job = jc ? jcById.get(jc) : null;
-      const parts = num(v.total);
-      const labSum = jc && firstBill.get(jc) === String(v.id) ? labour.get(jc) || 0 : 0;
-      // net_payable (the printed bill, saved since 23 Oct 2026) is the truth: labour = what is left after the parts,
-      // a bill below its parts total had a discount and no labour, and paise go to the round-off below
-      const net = v.net != null ? num(v.net) : 0, d = r2(net - parts);
-      let lab = labSum, partsTo = parts;
-      if (net > 0 && Math.abs(d - labSum) >= 1.5) { if (d >= 0) lab = d; else { lab = 0; if (d <= -1.5) partsTo = net; } }
-      const fit = fitLines(items, partsTo);
-      const st = String(v.st || '').toUpperCase().trim();
-      const method = String(v.pay || '').toLowerCase().trim();
+      // the lines at the billing's own line totals (price = per piece); the discounts taken off the parts (special discount, a
+      // coupon on a counter bill, wallet) as minus lines, so parts + labour + round off = the bill, like the billing's Sales Report
+      const items = c.parts.map(p => {
+        const prod = products.bs.get(String(p.l.p));
+        return [s(p.l.n) || s(prod && prod.n) || s(p.l.sn) || s(prod && prod.sn) || `Part ${p.l.p}`, p.qty, p.qty === 1 ? p.total : p.total / p.qty];
+      });
+      let off = rp(c.pt - c.pa);
+      for (const [label, amt] of [['Special discount', c.special], [`Coupon${c.code ? ' ' + c.code : ''}`, c.cp], ['Wallet used', c.wallet]]) {
+        const x = rp(Math.min(off, amt)); if (x > 0) { items.push([label, 1, -x]); off = rp(off - x); }
+      }
+      if (off > 0) items.push(['Discount', 1, -off]);
+      // a job card number whose job card is not there (deleted) is a counter bill, as in the billing
+      const job = c.job, jc = job ? String(c.jid) : '';
       const t = hm(v.time);
+      const modes = ['cash', 'upi', 'card'].filter(k => c.got[k] > 0);
+      const pay = c.credit ? 'Credit' : !c.paid ? '' : modes.length > 1 ? 'Split' : LBL[modes[0] || (c.method === 'split' ? 'cash' : bucket(c.method))];
       const bill = { no, b: 'bs', br: 'dvg', date, time: t.txt, cust: s(v.cust, 80), ph: phone(v.ph), type: TYPE[String(v.type).trim()] || 'Customer',
-        items: fit.items, lab: r2(lab), disc: fit.disc, pay: st === 'CREDIT' ? 'Credit' : st === 'PAID' ? PAY[method] || cap(method) || 'Cash' : '',
-        st: st === 'PENDING' ? 'pending' : 'paid', by: s(v.by, 60), src: 'billing', oid: num(v.id) };
-      if (bill.pay === 'Split') bill.split = [r2(num(v.sc)), r2(num(v.su) + num(v.sk))];
-      if (job || jc) {
+        items, lab: c.la, disc: 0, pay, st: c.paid || c.credit ? 'paid' : 'pending', by: s(v.by, 60), src: 'billing', oid: num(v.id) };
+      if (pay === 'Split') bill.split = [c.got.cash, c.got.upi, c.got.card];
+      const notes = [];
+      if (c.free) notes.push(`Free service: General Servicing ₹0 (₹${c.freeSaved} saved)`);
+      if (rp(c.lt - c.la) > 0) notes.push(`Labour ₹${c.lt} less ₹${rp(c.lt - c.la)} ${c.cl ? `coupon${c.code ? ' ' + c.code : ''}` : 'discount'}`);
+      if (notes.length) bill.note = notes.join(' · ');
+      if (job) {
         Object.assign(bill, { jc, plate: s((job && job.plate) || v.veh, 20).toUpperCase(), model: s(job ? `${job.make || ''} ${job.model || ''}` : '', 60),
           adv: s(job && job.adv, 60), svc: job && String(job.st || '').toUpperCase().trim() === 'COMPLETED' ? 'Finalized' : 'Work in progress' });
         const inAt = job && hm(job.at).txt, outAt = job && job.done && hm(job.done).txt;
         if (inAt) bill.inAt = inAt;
         if (outAt) bill.outAt = outAt;
       }
-      bill.amt = r2(bill.items.reduce((a, i) => a + i[1] * i[2], 0) * (1 - bill.disc / 100) + bill.lab);
-      // round-off of the printed bill (net payable), so totals match the old report to the paisa
-      const ro = net > 0 ? r2(net - bill.amt) : 0;
-      if (ro && Math.abs(ro) < 2) { bill.ro = ro; bill.amt = r2(bill.amt + ro); }
+      // paise between the bill and its parts + labour: the billing's own round off (always down, at most a rupee or so)
+      const ro = rp(c.net - c.pa - c.la);
+      if (ro) bill.ro = ro;
+      bill.amt = c.net;
+      const st = String(v.st || '').toUpperCase().trim();
       out.invoices.push(bill);
       sortKey.set(bill, `${key(date)} ${String(t.min).padStart(4, '0')} ${String(v.id).padStart(8, '0')}`);
       sales.push({ store: 'BS', no, day: key(dmy(v.date) || date), lines: fwd });   // stock moves on the bill date, as before
       // credit (udhaar): bills given on credit, open or cleared
       const bal = num(v.bal);
       if ((st === 'CREDIT' || bal > 0.5) && bill.ph) {
-        const c = cr.get(bill.ph) || { id: cr.size + 1, name: bill.cust, ph: bill.ph, type: bill.type, b: 'bs', br: 'dvg', bills: [], pays: [] };
-        c.bills.push([no, dmy(v.date) || date, bill.amt, v.cleared ? bill.amt : r2(bill.amt - Math.min(bal, bill.amt))]);
-        cr.set(bill.ph, c);
+        const u = cr.get(bill.ph) || { id: cr.size + 1, name: bill.cust, ph: bill.ph, type: bill.type, b: 'bs', br: 'dvg', bills: [], pays: [] };
+        u.bills.push([no, dmy(v.date) || date, bill.amt, v.cleared ? bill.amt : r2(bill.amt - Math.min(bal, bill.amt))]);
+        cr.set(bill.ph, u);
       }
     }
 
@@ -331,13 +462,15 @@ function build(bs, ml, today = C.dmy(C.now())) {
   }
 
   if (ml) {
-    // worked out like the Moto Lab billing itself (mlCalc). The admin's lines are [name, qty, each] with the special discount as
-    // the bill discount %; a frozen bill's lines are made to add up to its net payable; the wallet is a minus line
+    // worked out like the Moto Lab billing itself (mlCalc). The admin's lines are [name, qty, each] at the billing's line
+    // totals; the special discount and the wallet are minus lines, so a bill's parts are the paisa of the billing's Sales
+    // Report (lines - special discount - wallet); a frozen bill's lines are made to add up to its net payable
     for (const c of mlCalc(ml)) {
       if (!c.date) continue;
-      const items = c.parts.map(p => [p.name, p.qty, r2(p.total / p.qty)]);
+      const items = c.parts.map(p => [p.name, p.qty, p.qty === 1 ? p.total : p.total / p.qty]);
+      if (c.sd) items.push(['Special discount', 1, -c.sd]);
       if (c.wallet) items.push(['Wallet used (old bill)', 1, -c.wallet]);
-      const fit = c.frozen ? fitLines(items, r2(c.net - c.labour)) : { items, disc: Math.min(100, Math.max(0, c.sdPct)) };
+      const fit = c.frozen ? fitLines(items, r2(c.net - c.labour)) : { items, disc: 0 };
       const bill = { no: c.no, b: 'ml', br: 'dvg', date: c.date, time: c.time, cust: c.cust, ph: c.ph, type: c.type,
         items: fit.items, lab: c.labour, disc: fit.disc, pay: c.paid ? c.mode : '', st: c.paid ? 'paid' : 'pending', by: c.by, src: 'billing', oid: c.id };
       if (c.split) bill.split = c.split;
@@ -365,14 +498,14 @@ function build(bs, ml, today = C.dmy(C.now())) {
     cust.set(k, c);
     if (v.type === 'Mechanic') {
       const m = mech.get(v.ph) || [v.cust, v.ph, 0, 0, 0, 0, 0];
-      m[0] = v.cust || m[0]; m[2]++; m[3] += v.items.reduce((a, i) => a + i[1], 0);
+      m[0] = v.cust || m[0]; m[2]++; m[3] += v.items.reduce((a, i) => a + (i[2] < 0 ? 0 : i[1]), 0);
       if (v.date.slice(3) === month) m[4] = r2(m[4] + v.amt);
       if (v.date.slice(3) === lastM) m[5] = r2(m[5] + v.amt);
       m[6] = r2(m[6] + v.amt);
       mech.set(v.ph, m);
     }
   }
-  out.customers = [...cust.values()].map(c => ({ ...c, name: c.name || 'No name' })).sort((a, b) => key(b.last) < key(a.last) ? -1 : key(b.last) > key(a.last) ? 1 : 0);
+  out.customers = [...cust.values()].map(c => [key(c.last), { ...c, name: c.name || 'No name' }]).sort((a, b) => b[0] < a[0] ? -1 : b[0] > a[0] ? 1 : 0).map(x => x[1]);
   out.mechSales = [...mech.values()].sort((a, b) => b[6] - a[6]);
   delete out._users;
   for (const v of out.invoices) delete v.oid;
@@ -504,12 +637,39 @@ async function sendSales(sales) {
 }
 
 // ---------------- one round ----------------------------------------------------------------------------------------------
-let running = false;
-async function pull() {
+// Every OLD_TICK (3) seconds the checksums come first (CHECKSUM TABLE of the tables read: one tiny question per database).
+// Nothing changed: nothing is read or written, except that every OLD_SECONDS (60) the lists that go with the clock (late
+// job cards, "today") are worked out again from the rows in memory. A change: only the changed tables are read again and
+// only the changed lists are rewritten, so the open screens and the Cashier see it at their next check (a few seconds).
+// No checksums (an error): everything is read every OLD_SECONDS as before, and the checksums are tried again then.
+// A slow check or a slow round makes the next check wait longer (never more than OLD_SECONDS), so a busy billing
+// database is never asked more than it can take.
+const tick = () => Math.max(2, Number(env('OLD_TICK')) || 3);
+const slow = () => Math.max(20, Number(env('OLD_SECONDS')) || 60);
+let running = false, lastKey = '', lastTry = 0, lastOk = false, sumPauseTill = 0, sumMs = 0, workMs = 0;
+const nextIn = () => Math.min(slow() * 1000, Math.max(tick() * 1000, sumMs * 10, workMs * 5));
+async function pull(force = false) {
   if (!on() || running) return null;
   running = true;
   const status = { at: C.stamp(C.now()), ok: false };
+  let key = '', quiet = false;
   try {
+    sums = { bs: null, ml: null };
+    if (Date.now() >= sumPauseTill) {
+      const t0 = Date.now();
+      try {
+        const [sb, sm] = await Promise.all([env('OLD_DB_BS') ? stamp('bs') : null, env('OLD_DB_ML') ? stamp('ml') : null]);
+        sumMs = Date.now() - t0;
+        sums = { bs: sb, ml: sm };
+        key = hash([sb ? [...sb] : null, sm ? [...sm] : null]);
+      } catch (e) {
+        // the checksums could not be had: everything is read now, and every OLD_SECONDS until they work again
+        sumPauseTill = Date.now() + slow() * 1000; status.sumErr = e.message.slice(0, 200); force = true;
+      }
+    }
+    if (!force && Date.now() - lastTry < slow() * 1000 && (!key || !lastOk || key === lastKey)) { quiet = true; return { ok: lastOk, same: true, changed: [] }; }
+    lastTry = Date.now();
+    const t1 = Date.now();
     const [bs, ml] = await Promise.all([env('OLD_DB_BS') ? readBs() : null, env('OLD_DB_ML') ? readMl() : null]);
     const { lists, sales } = build(bs, ml);
     if (ml) mlLast = { at: C.stamp(C.now()), ...mlFeed(ml) };   // for the Moto Lab panel (GET /api/feed/motolab)
@@ -533,23 +693,34 @@ async function pull() {
         db.setSetting('revision', store.revision() + 1);
       }
     });
+    workMs = Date.now() - t1;
     Object.assign(status, { ok: true, bills: lists.invoices.length, jobs: lists.jobs.length, customers: lists.customers.length, changed });
+    if (bs && bs.warn.length) status.warn = bs.warn.join(' · ').slice(0, 300);   // e.g. the labour rate card could not be read
+    lastKey = key; lastOk = true;
     try { status.stock = await sendSales(sales); } catch (e) { status.stock = 'error'; status.stockErr = e.message.slice(0, 200); }
   } catch (e) {
+    lastOk = false;
     status.err = e.message.slice(0, 300);
     console.error('old billing link:', status.err);
   } finally {
     running = false;
-    db.setSetting('old_last', JSON.stringify(status));
+    if (!quiet) {
+      // fast: the checksums work (every = seconds between checks, check = ms the last check took)
+      Object.assign(status, { fast: !!key, every: Math.round(nextIn() / 1000), check: sumMs });
+      db.setSetting('old_last', JSON.stringify(status));
+    }
   }
   return status;
 }
 
 function start() {
   if (!on()) return null;
-  const secs = Math.max(20, Number(env('OLD_SECONDS')) || 60);
-  pull();
-  return setInterval(pull, secs * 1000);
+  const loop = async () => {
+    try { await pull(); } catch (e) { console.error('old billing link:', e.message); }   // a round never stops the link
+    setTimeout(loop, nextIn());
+  };
+  loop();
+  return true;
 }
 const lastStatus = () => { try { return JSON.parse(db.setting('old_last', '') || 'null'); } catch { return null; } };
 

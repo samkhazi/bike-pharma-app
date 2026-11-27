@@ -17,7 +17,12 @@ switches off the older role-email staff logins once everyone signs in with their
   Moto Lab panel on the real Moto Lab billing: `server/mldb.js` reads the billing's database itself (read only, a
   checksum check every 3 seconds, the bills worked out exactly like the billing); without the database lines in its
   .env it uses the admin panel's `GET /api/feed/motolab` once a minute (`01-admin-panel/server/oldbill.js`).
-  `base-26nov.sha256`, `base-27nov.sha256`: the server's copies of each file before; update.sh replaces only those
-  (or stops).
+  `01-admin-panel/` (27 Nov): `server/oldbill.js` checks the Bike Surgeon billing's database every 3 seconds
+  (`CHECKSUM TABLE`; only a changed table is read again, everything at least every 10 minutes; no checksums = every
+  minute as before; a slow database makes it wait longer). `03-cashier/`: `server/oldlink.js` asks the admin panel's
+  `GET /api/feed/cashier?v=` every 3 seconds (a tiny answer when nothing changed). Both screens look for changes every
+  3 seconds. Every Bike Surgeon bill is worked out exactly like the billing's own calculation (includes/bs-invoice-calc.php
+  of 28 Oct; checked against that PHP on all 5,513 bills of 24 Nov, equal to the paisa). `base-26nov.sha256`, `base-27nov.sha256`: the server's copies of each file before; update.sh replaces only
+  those (or stops).
 - New passwords and PINs are written only on the server, to `/root/bikesurgeon-staff-logins.txt`. No secrets, phone
   numbers or customer data are kept in this repository (it is public).

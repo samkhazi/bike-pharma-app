@@ -162,15 +162,18 @@ router.get('/requests/list', (req, res) => {
   res.json({ reqs: [...pick('reopen'), ...pick('billfix')] });
 });
 // The Cashier panel reads the real bills + job cards of the Bike Surgeon service counter (Sam 6 Nov: Misba's cashier panel on real data)
-// GET /api/feed/cashier (X-Alert-Key) -> {live, at, invoices: Bike Surgeon bills of the last 40 days, jobs: today's + still open job cards}
+// GET /api/feed/cashier (X-Alert-Key) -> {live, at, v, invoices: Bike Surgeon bills of the last 40 days, jobs: today's + still open job cards}
+// ?v=<the v it holds>: nothing changed = {same: true, v} (the Cashier asks every few seconds, the lists come only on a change)
 router.get('/feed/cashier', (req, res) => {
   if (!spareKey(req, res)) return;
   const C = require('./clock'), ob = require('./oldbill');
+  const vs = store.versions(), v = `${vs.invoices || 0}.${vs.jobs || 0}.${C.dmy(C.now())}.${ob.linked() ? 1 : 0}`;
+  if (req.query.v && req.query.v === v) return res.json({ same: true, v });
   const k = d => String(d || '').split('-').reverse().join('-');
   const from = k(C.dmy(C.addDays(C.now(), -40)));
   const invoices = (store.readCollection('invoices') || []).filter(b => b.b === 'bs' && k(b.date) >= from);
   const jobs = store.readCollection('jobs') || [];
-  res.json({ live: ob.linked(), at: C.stamp ? C.stamp(C.now()) : '', invoices, jobs });
+  res.json({ live: ob.linked(), at: C.stamp ? C.stamp(C.now()) : '', v, invoices, jobs });
 });
 // The Moto Lab panel reads the real items and bills of the Moto Lab billing (Sam 27 Nov: "all data live, Moto Lab connected")
 // GET /api/feed/motolab (X-Alert-Key) -> {live, at, items: [...] (null = not read), bills: [...]}, worked out like the billing
@@ -496,7 +499,8 @@ const EXPORTS = {
       if (!inBiz(v, q) || !inRange(v.date, q) || (q.no && v.no !== q.no)) continue;
       const base = [v.no, iso(v.date), v.b === 'bs' ? 'Bike Surgeon' : 'The Moto Lab', (v.br || 'rnr').toUpperCase(), v.cust, v.ph, v.plate, v.type];
       const tail = [v.pay, v.st, v.by];
-      for (const [name, qty, rate] of v.items || []) rows.push([...base, name, 'Goods', qty, rate, v.disc || 0, r2(qty * rate * (1 - (v.disc || 0) / 100)), ...tail]);
+      // a minus line of an old bill (special discount, coupon, wallet) is a discount, not goods; the rate to the paisa
+      for (const [name, qty, rate] of v.items || []) rows.push([...base, name, rate < 0 ? 'Discount' : 'Goods', qty, r2(rate), v.disc || 0, r2(qty * rate * (1 - (v.disc || 0) / 100)), ...tail]);
       if (v.lab) rows.push([...base, 'Labour', 'Service', 1, v.lab, 0, v.lab, ...tail]);
     }
     return rows;

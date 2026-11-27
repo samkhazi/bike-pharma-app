@@ -100,7 +100,7 @@ function summaryOut() {
     budget: { month: B.month || mo.key, amt: B.amt || 0, bought: B.bought || 0, committed: M.committed(), left: (B.amt || 0) - M.committed() },
     closing: last ? { date: last.date, counted: last.counted, diff: last.diff, at: last.at, by: last.by } : null,
     byCat: group(it => it.cat), top: group(M.nameOf).slice(0, 8),
-    stock: { items: items.length, pieces: M.sum(items, it => Math.max(0, it.stock)), value: M.sum(items, it => Math.max(0, it.stock) * it.sp), low: items.filter(it => M.lowLevel(it)).length,
+    stock: { items: items.length, pieces: M.sum(items, it => Math.max(0, it.stock)), value: M.sum(items, it => Math.max(0, it.stock) * it.sp), low: items.filter(it => it.alert > 0 && it.stock <= it.alert).length,
       dead: dead.length, deadValue: M.sum(dead, it => it.stock * it.sp) } };
 }
 

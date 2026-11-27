@@ -344,7 +344,8 @@ router.post('/import/motolab', (req, res) => {
 // body {parts: [{inv, b, active, serial, name, brand, model, stock, alert, rack, sp, cp, tax, hsn, cd, wd, md, date, lastSold, img}], url}.
 // Rows are matched by `inv` (the Inventory portal's id); active: false removes the row. The first send replaces the
 // stock list typed here (sample rows), and from then on stock and transfers are read-only in this panel.
-// Discounts already set here (from the Spares portal, with discBy) are kept.
+// Discounts already set here (from the Spares portal, with discBy) are kept, except while the Inventory reads the billing
+// (live: true): then the billing's discounts are sent and shown.
 router.post('/import/inventory', (req, res) => {
   if (!spareKey(req, res)) return;
   const b = req.body || {};
@@ -365,13 +366,15 @@ router.post('/import/inventory', (req, res) => {
         cd: num(x.cd), wd: num(x.wd), md: num(x.md), date: text(x.date, 10), lastSold: text(x.lastSold, 10), img: !!x.img, by: 'Inventory' };
       if (i !== undefined) {
         const o = cur[i];
-        if (o.discBy) { row.cd = o.cd; row.wd = o.wd; row.md = o.md; row.discBy = o.discBy; row.discAt = o.discAt; }
+        // while the Inventory portal reads the billing (live), the billing's discounts are the ones that count
+        if (o.discBy && !b.live) { row.cd = o.cd; row.wd = o.wd; row.md = o.md; row.discBy = o.discBy; row.discAt = o.discAt; }
         cur[i] = row; updated++;
       } else { cur.push(row); at.set(inv, cur.length - 1); added++; }
     }
     const list = drop.size ? cur.filter((x, i) => !drop.has(i)) : cur;
     store.writeCollection('inventory', list, null);
     if (first) db.setSetting('inv_link', /^https:\/\//.test(String(b.url || '')) ? String(b.url).slice(0, 200) : 'linked');
+    db.setSetting('inv_live', b.live ? '1' : '0');   // the Inventory reads the billing: its discounts are the ones shown
     db.run('INSERT INTO audit_log (at, action, collection, detail) VALUES (?,?,?,?)', C.stamp(C.now()), 'Inventory import', 'inventory', `${added} added, ${updated} updated, ${removed} removed${first ? ' (first send: the typed stock list was replaced)' : ''}`);
     db.setSetting('revision', store.revision() + 1);
     return { added, updated, removed, total: list.length };
@@ -388,6 +391,8 @@ router.post('/import/discounts', (req, res) => {
   const list = (req.body || {}).discounts;
   if (!Array.isArray(list) || !list.length || list.length > 2000) return res.status(400).json({ error: 'discounts must be a list of 1 to 2000 items.' });
   if (list.some(d => !d || typeof d !== 'object' || !normNo(d.pno))) return res.status(400).json({ error: 'Every row needs its pno.' });
+  // while the Inventory reads the billing, the Stock list shows the billing's discounts (the ones it bills with): these wait
+  if (db.setting('inv_live', '0') === '1') return res.json({ updated: 0, unknown: [], live: true });
   const pct = v => Math.max(0, Math.min(100, Math.round((Number(v) || 0) * 10) / 10));
   const out = db.tx(() => {
     const inv = store.readCollection('inventory') || [];

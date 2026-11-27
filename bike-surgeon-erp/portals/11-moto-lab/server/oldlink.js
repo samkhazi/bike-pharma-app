@@ -78,7 +78,7 @@ function itemsOf(feed, had, all) {
     // the billing's serial no., barcode and brand are often the item's name again: then ML + its id, no barcode, no brand
     const nm = up(p.name), sn = up(p.sku);
     const it = { id: p.id, sku: (sn && sn !== nm ? sn : `ML${p.id}`).slice(0, 40), name: p.name, size: '', cat: catOf(p.name, p.brand), brand: up(p.brand) === nm ? '' : p.brand || '', fits: 'all',
-      rack: p.rack || '—', sp: r2(p.sp), mrp: r2(p.mrp), cp: 0, stock: Math.round(Number(p.stock) || 0), alert: p.alert > 0 ? Math.round(p.alert) : 1, bar: up(p.bar) === nm ? '' : p.bar || '',
+      rack: p.rack || '—', sp: r2(p.sp), mrp: r2(p.mrp), cp: 0, stock: Math.round(Number(p.stock) || 0), alert: p.alert > 0 ? Math.round(p.alert) : 0, bar: up(p.bar) === nm ? '' : p.bar || '',
       last: last.get(p.id) || '', src: 'billing' };
     if (!it.last) { const s = since(p.id); if (s) it.since = s; }
     if (o.wty > 0) it.wty = o.wty;

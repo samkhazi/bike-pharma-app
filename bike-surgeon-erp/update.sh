@@ -6,6 +6,15 @@
 #               bash /root/bs-erp-update.sh old-off    (older role-email staff logins off, once everyone uses their own)
 #               bash /root/bs-erp-update.sh undo       (logins back as before the last update; again = one more back)
 #               bash /root/bs-erp-update.sh names      (the name-wise logins again from the attendance app; passwords + PINs kept)
+# 27 Nov update 6 (Sam: "old inventory and new inventory numbers mismatch"): Inventory 2.0 reads the parts table of the
+# Bike Surgeon billing and of the Moto Lab billing straight from their databases (read only: the admin panel's database
+# lines are copied into its .env), a checksum check every 3 seconds. Every part number, name, MRP, cost, GST, discount,
+# stock, alert level and rack is exactly as in the billing (read the billing's own way: "1,250.00" = 1250, "18%" = 18),
+# and the admin panel's Stock gets the same list. Until switch day parts, stock and prices are changed in the billing
+# only. The inventory database is copied to the backup folder first; if it cannot read the billing, its old code goes back.
+# "Low stock" is counted the billing's way everywhere (its Low Stock page: an alert level set and the stock at or below
+# it): Inventory 2.0, the admin panel and the Moto Lab panel show the same number (the Moto Lab panel counted only items
+# that sell, and gave items without an alert level the level 1).
 # 27 Nov update 4 (Sam: "I need instant"): the admin panel checks the Bike Surgeon billing's database every 3 seconds (a
 # checksum of each table; only a changed table is read again) and the Cashier asks the admin panel every 3 seconds, so a
 # new bill or job card shows within seconds there and on the open screens. If the quick check cannot be used, it reads
@@ -324,6 +333,94 @@ else
   fi
 fi
 
+echo "== 3c. Inventory 2.0: parts, stock and prices straight from the billing"
+IV=1   # 0 = Inventory 2.0 reads the billing (or already did)
+IU=bikesurgeon-inventory; IB=$(ls -d /home/$IU/.nvm/versions/node/v22*/bin 2>/dev/null | sort -V | tail -1)
+INVD=$(dirof 3021 "$INV"); IC=$CODE/portals/12-inventory
+IFL=$( [ -d "$IC/server" ] && cd "$IC" && find server public -type f | sort )
+# how Inventory 2.0 read the billing last (its new code keeps it): "<ms> <ok|err> <fast 1|0> <Bike Surgeon parts> <Moto Lab
+# items>" or "none"; ierr: why not (the database's answer, nothing secret)
+ilast() { "$B/node" --disable-warning=ExperimentalWarning -e 'try{const d=new (require("node:sqlite").DatabaseSync)(process.argv[1],{readOnly:true});
+  const l=JSON.parse(d.prepare("SELECT value FROM settings WHERE key=?").get("billing_last").value);d.close();const s=l.stores||{};
+  console.log((l.t||0)+" "+(l.ok&&(s.BS||{}).ok?"ok":"err")+" "+(l.fast?1:0)+" "+((s.BS||{}).parts||0)+" "+((s.ML||{}).parts||0))}catch{console.log("none")}' "$IDB"; }
+ierr() { "$B/node" --disable-warning=ExperimentalWarning -e 'try{const d=new (require("node:sqlite").DatabaseSync)(process.argv[1],{readOnly:true});
+  const l=JSON.parse(d.prepare("SELECT value FROM settings WHERE key=?").get("billing_last").value);
+  console.log(String(Object.values(l.stores||{}).map(x=>x.err||x.sumErr||"").filter(Boolean)[0]||"").slice(0,160))}catch{}' "$IDB"; }
+# the admin panel's Stock list: "<Bike Surgeon rows> <Moto Lab rows>"
+astock() { "$B/node" --disable-warning=ExperimentalWarning -e 'try{const d=new (require("node:sqlite").DatabaseSync)(process.argv[1],{readOnly:true});
+  const n=b=>d.prepare("SELECT count(*) n FROM records WHERE collection=? AND json_extract(data,?)=?").get("inventory","$.b",b).n;console.log(n("bs")+" "+n("ml"));d.close()}catch{console.log("0 0")}' "$ADB"; }
+irestart() { local pid n; pid=$(pidof_port 3021)
+  n=$(su - "$IU" -c "export PATH=$IB:\$PATH; cd $INVD && npx pm2 jlist 2>/dev/null" | "$B/node" "$CODE/front-door/tools/pm2-name.js" "$INVD" "${pid:-0}")
+  su - "$IU" -c "export PATH=$IB:\$PATH; cd $INVD && npx pm2 restart '${n:-inventory}' >/dev/null"; }
+iput() { local f d; for f in $IFL; do d=$INVD/$f
+  install -m 644 -o "$(stat -c %U "$(dirname "$d")")" -g "$(stat -c %G "$(dirname "$d")")" "$IC/$f" "$d" || return 1; done; }
+# the admin panel's database lines (read only login), copied as they are (the password is never printed); CH=1 when one changed
+IDBK="OLD_DB_HOST OLD_DB_PORT OLD_DB_USER OLD_DB_PASS OLD_DB_BS OLD_DB_ML OLD_ML_USER OLD_ML_PASS OLD_DB_PUBKEY MYSQL_BIN"
+ienv() { local k l; for k in $IDBK; do l=$(grep "^$k=" "$ADM/.env" | tail -1)
+  if [ -n "$l" ]; then grep -qxF -- "$l" "$INVD/.env" && [ "$(grep -c "^$k=" "$INVD/.env")" = 1 ] && continue
+    [ "${1:-}" = check ] && { CH=1; continue; }
+    { grep -v "^$k=" "$INVD/.env" || true; printf '%s\n' "$l"; } > "$T/env" && cat "$T/env" > "$INVD/.env"; CH=1
+  elif grep -q "^$k=" "$INVD/.env"; then CH=1; [ "${1:-}" = check ] && continue
+    { grep -v "^$k=" "$INVD/.env" || true; } > "$T/env"; cat "$T/env" > "$INVD/.env"; fi
+  rm -f "$T/env"; done; }
+if [ -z "$INVD" ] || [ ! -f "$INVD/server/inv.js" ] || [ ! -f "$INVD/.env" ]; then
+  echo "FAILED  Inventory 2.0 folder not found: not changed"
+elif [ -z "$IB" ] || [ ! -x "$IB/node" ]; then
+  echo "FAILED  Node 22 of the inventory site not found: not changed"
+elif [ -z "$IFL" ] || [ ! -f "$CODE/portals/base-inv.sha256" ]; then
+  echo "FAILED  the inventory code is not in the download: not changed"
+elif [ -z "$ADM" ] || [ -z "$(getenv "$ADM/.env" OLD_DB_BS)" ] || [ -z "$(getenv "$ADM/.env" OLD_DB_USER)" ]; then
+  echo "FAILED  the admin panel has no billing database lines in its .env: Inventory 2.0 not changed"
+else
+  IDB=$(getenv "$INVD/.env" DB_FILE); case "$IDB" in "") IDB=$INVD/data/inventory.db;; /*) ;; *) IDB=$INVD/$IDB;; esac
+  ADB=$(getenv "$ADM/.env" DB_FILE); case "$ADB" in "") ADB=$ADM/data/admin.db;; /*) ;; *) ADB=$ADM/$ADB;; esac
+  NEWI=0; BAD=""
+  for f in $IFL; do d=$INVD/$f
+    [ -f "$d" ] && [ "$(sha "$d")" = "$(sha "$IC/$f")" ] && continue
+    # a file there must be one of ours (a version of 29 Oct to 26 Nov)
+    NEWI=1; [ ! -f "$d" ] || grep -qxF "$(sha "$d")  12-inventory/$f" "$CODE"/portals/base-*.sha256 || BAD="$BAD $f"
+  done
+  CH=0; ienv check; K=$(ilast)
+  if [ -n "$BAD" ]; then
+    echo "STOP    changed on this server by hand:$BAD"
+    echo "        Inventory 2.0 is not changed. Send me a screenshot of this."
+  elif [ "$NEWI" = 0 ] && [ "$CH" = 0 ] && [ "$K" != none ]; then
+    read -r _ KS KF KP KM <<<"$K"
+    if [ "$KS" = ok ]; then IV=0; echo "OK      Inventory 2.0 code already new: straight on the billing ($KP Bike Surgeon parts, $KM Moto Lab items)"
+    else echo "WARN    Inventory 2.0 code already new, but its last read of the billing did not work: $(ierr)"; echo "        Send me a screenshot of this."; fi
+  elif ! { tar -C "$INVD" -czf "$BK/inventory-code.tgz" server public .env && chmod 600 "$BK/inventory-code.tgz" \
+      && "$IB/node" --disable-warning=ExperimentalWarning -e 'new (require("node:sqlite").DatabaseSync)(process.argv[1],{readOnly:true}).exec("VACUUM INTO \x27"+process.argv[2].replace(/\x27/g,"\x27\x27")+"\x27")' "$IDB" "$BK/inventory.db" \
+      && chmod 600 "$BK/inventory.db"; }; then
+    echo "FAILED  backup of Inventory 2.0 in $BK: not changed"
+  else   # its .env: the billing's database lines, then the new code
+    ienv; [ "$(stat -c %U "$INVD/.env")" = "$IU" ] && chmod 600 "$INVD/.env"   # it holds the database password now
+    OLDPID=$(pidof_port 3021); T0=$(date +%s%3N); K=none
+    iput && irestart || echo "FAILED  copy or restart of Inventory 2.0"
+    echo "        waiting for Inventory 2.0 to read the billing (up to 3 minutes; its database copy: $BK/inventory.db)"
+    for i in $(seq 1 36); do sleep 5; NEWPID=$(pidof_port 3021); [ -n "$NEWPID" ] && [ "$NEWPID" != "$OLDPID" ] || continue
+      K=$(ilast); read -r KT KS _ <<<"$K"; [ "$K" != none ] && [ "$KT" -ge "$T0" ] && [ "$KS" = ok ] && break; done
+    read -r KT KS KF KP KM <<<"$K"
+    if [ "$K" != none ] && [ "$KT" -ge "$T0" ] && [ "$KS" = ok ] && [ -n "$(pidof_port 3021)" ]; then
+      IV=0
+      if [ "$KF" = 1 ]; then echo "OK      Inventory 2.0 straight on the billing: $KP Bike Surgeon parts, $KM Moto Lab items, checked every 3 seconds"
+      else echo "OK      Inventory 2.0 on the billing, read every minute ($KP Bike Surgeon parts, $KM Moto Lab items)"
+        echo "WARN    the quick check did not work: $(ierr)"; echo "        Send me a screenshot of this."; fi
+    else
+      [ "$K" = none ] || [ "$KT" -lt "$T0" ] && W="it did not read the billing in 3 minutes" || W="it could not read the billing: $(ierr)"
+      echo "FAILED  Inventory 2.0: $W. Its code before this update is put back"
+      for f in $IFL; do tar -tzf "$BK/inventory-code.tgz" "$f" >/dev/null 2>&1 || rm -f "$INVD/$f"; done
+      tar -C "$INVD" -xzf "$BK/inventory-code.tgz"; irestart
+    fi
+  fi
+  if [ $IV = 0 ]; then   # the admin panel's Stock gets the same list from Inventory 2.0 (in steps, a minute or two)
+    read -r _ _ _ KP KM <<<"$(ilast)"; A="0 0"
+    for i in $(seq 1 36); do A=$(astock); [ "$A" = "$KP $KM" ] && break; sleep 5; done
+    if [ "$A" = "$KP $KM" ]; then echo "OK      admin panel Stock: the same $KP Bike Surgeon parts and $KM Moto Lab items"
+    else echo "WARN    admin panel Stock has ${A% *} Bike Surgeon and ${A#* } Moto Lab parts so far (Inventory 2.0: $KP and $KM)."
+      echo "        It comes in steps: look again in 5 minutes. If it stays different, send me a screenshot of this."; fi
+  fi
+fi
+
 echo "== 4. Front door: the new code (sign-in page, one screen)"
 tar -C "$FD" --exclude=./data --exclude=./node_modules -czf "$BK/front-door-code.tgz" . && chmod 600 "$BK/front-door-code.tgz" \
   || { echo "The front door code could not be copied to $BK. Nothing changed."; exit 1; }
@@ -363,4 +460,4 @@ if [ $RUN_NAMES = 1 ]; then
 else
   echo "Logins not changed: everyone keeps their password and PIN. Front door code backup: $BK"
 fi
-[ $N = 0 ] && [ $C = 0 ] && [ $MISS = 0 ] && [ $ML = 0 ] && [ $CS = 0 ] && echo "All done." || echo "Something failed: send me a screenshot of this (it shows no passwords)."
+[ $N = 0 ] && [ $C = 0 ] && [ $MISS = 0 ] && [ $ML = 0 ] && [ $CS = 0 ] && [ $IV = 0 ] && echo "All done." || echo "Something failed: send me a screenshot of this (it shows no passwords)."

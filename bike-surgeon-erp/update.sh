@@ -5,6 +5,9 @@
 # After that:   bash /root/bs-erp-update.sh            (it takes the newest code from GitHub by itself)
 #               bash /root/bs-erp-update.sh old-off    (older role-email staff logins off, once everyone uses their own)
 #               bash /root/bs-erp-update.sh undo       (logins back as before the last update; again = one more back)
+#               bash /root/bs-erp-update.sh names      (the name-wise logins again from the attendance app; passwords + PINs kept)
+# 27 Nov update: the new sign-in page (the shop in 3D). An update changes the code only: once the name-wise logins
+# are there, the logins are not touched (everyone keeps their password and PIN; the Logins screen keeps its changes).
 # 26 Nov update, name-wise logins (Sam): every staff member gets their OWN login (mobile number + password) and is their
 # own person, with their own PIN, inside every panel of their role: the same names and roles as in Saddam sir's panels.
 # The mobile numbers are read from the attendance app (only read). The front door also takes a mobile number at sign in.
@@ -25,7 +28,7 @@ PU=bikesurgeon-panel
 MODE=${1:-}
 
 [ "$(id -u)" = 0 ] || { echo "Run this as root (type su - first, then this line). Nothing changed."; exit 1; }
-case "$MODE" in ""|undo|old-off) ;; *) echo "Unknown word: $MODE (use nothing, undo or old-off). Nothing changed."; exit 1;; esac
+case "$MODE" in ""|undo|old-off|names) ;; *) echo "Unknown word: $MODE (use nothing, names, undo or old-off). Nothing changed."; exit 1;; esac
 
 # ---- 0. the newest code from GitHub; a newer copy of this script takes over --------------------------------------------
 if [ "${BS_ERP_FRESH:-}" != 1 ]; then
@@ -48,7 +51,7 @@ if [ "${BS_ERP_FRESH:-}" != 1 ]; then
   fi
 fi
 CODE=$SRC/bike-surgeon-erp
-[ -z "$MODE" ] && echo "Code from GitHub: $(TZ=Asia/Kolkata git -C "$SRC" log -1 --format='%h, %cd' --date=format-local:'%d %b %H:%M IST' 2>/dev/null)"
+case "$MODE" in ""|names) echo "Code from GitHub: $(TZ=Asia/Kolkata git -C "$SRC" log -1 --format='%h, %cd' --date=format-local:'%d %b %H:%M IST' 2>/dev/null)";; esac
 
 B=$(ls -d /home/$PU/.nvm/versions/node/v22*/bin 2>/dev/null | sort -V | tail -1)
 [ -n "$B" ] && [ -x "$B/node" ] || { echo "Node 22 of the panel site not found. Nothing changed."; exit 1; }
@@ -79,9 +82,6 @@ if [ "$MODE" = undo ]; then
 fi
 
 [ -f "$CODE/front-door/tools/name-logins.js" ] && [ -f "$CODE/front-door/server/index.js" ] || { echo "The front door code is not in the download. Nothing changed."; exit 1; }
-[ -f "$ATTCFG" ] || { echo "The attendance app settings were not found ($ATTCFG). Nothing changed."; exit 1; }
-PHP="$(command -v php || ls /usr/bin/php8* /usr/bin/php7* 2>/dev/null | sort -V | tail -1)"
-[ -n "$PHP" ] || { echo "php not found. Nothing changed."; exit 1; }
 T=$(mktemp -d); chmod 700 "$T"; trap 'rm -rf "$T"' EXIT
 
 # folder of the app on a port (from its running process), else the usual folder
@@ -89,11 +89,27 @@ pidof_port() { ss -ltnpH "sport = :$1" 2>/dev/null | grep -o 'pid=[0-9]*' | head
 dirof() { local pid d; pid=$(pidof_port "$1"); [ -n "$pid" ] && d=$(readlink -f "/proc/$pid/cwd" 2>/dev/null) && [ -f "$d/server/index.js" ] && { echo "$d"; return; }
   [ -f "$2/server/index.js" ] && echo "$2"; }
 
-echo "== 1. Staff list of the attendance app (only read)"
-"$PHP" "$CODE/front-door/tools/att-people.php" "$ATTCFG" > "$T/people.json" 2> "$T/php.err" && [ -s "$T/people.json" ] \
-  || { echo "The attendance staff list could not be read: $(head -c 200 "$T/php.err"). Nothing changed."; exit 1; }
-"$B/node" -e 'const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));if(!(j.users||[]).length)process.exit(1);console.log(`OK      ${j.users.length} staff, ${(j.admins||[]).length} admin users`)' "$T/people.json" \
-  || { echo "The attendance staff list is empty. Nothing changed."; exit 1; }
+# the name-wise logins run only the first time (no name-wise login yet) or when asked (names); else the logins stay as they are
+NAMED=$(cd "$FD" && "$B/node" --env-file=.env --disable-warning=ExperimentalWarning -e '
+  const { DatabaseSync } = require("node:sqlite");
+  const D = new DatabaseSync(process.env.DB_FILE || "data/front.db", { readOnly: true });
+  try { const has = D.prepare("PRAGMA table_info(logins)").all().some(c => c.name === "person");
+    console.log(has ? D.prepare("SELECT COUNT(*) AS n FROM logins WHERE person IS NOT NULL").get().n : 0); } finally { D.close(); }' 2>/dev/null)
+RUN_NAMES=0; { [ "$MODE" = names ] || [ "$NAMED" = 0 ]; } && RUN_NAMES=1
+if [ $RUN_NAMES = 1 ]; then
+  [ -f "$ATTCFG" ] || { echo "The attendance app settings were not found ($ATTCFG). Nothing changed."; exit 1; }
+  PHP="$(command -v php || ls /usr/bin/php8* /usr/bin/php7* 2>/dev/null | sort -V | tail -1)"
+  [ -n "$PHP" ] || { echo "php not found. Nothing changed."; exit 1; }
+  echo "== 1. Staff list of the attendance app (only read)"
+  "$PHP" "$CODE/front-door/tools/att-people.php" "$ATTCFG" > "$T/people.json" 2> "$T/php.err" && [ -s "$T/people.json" ] \
+    || { echo "The attendance staff list could not be read: $(head -c 200 "$T/php.err"). Nothing changed."; exit 1; }
+  "$B/node" -e 'const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));if(!(j.users||[]).length)process.exit(1);console.log(`OK      ${j.users.length} staff, ${(j.admins||[]).length} admin users`)' "$T/people.json" \
+    || { echo "The attendance staff list is empty. Nothing changed."; exit 1; }
+elif [ -n "$NAMED" ]; then
+  echo "== 1. Logins: not changed ($NAMED name-wise logins are there; everyone keeps their password and PIN)"
+else
+  echo "== 1. Logins: not changed (to make the name-wise logins again:  bash $ME names )"
+fi
 
 echo "== 2. Panels"
 J="{"; MISS=0
@@ -106,8 +122,9 @@ for x in "admin:$PANEL:3040" "cashier:$PANEL/portals/03-cashier:3023" "counter:$
 done
 printf '%s}\n' "${J%,}" > "$T/dirs.json"
 
-echo "== 3. Front door: sign in with the mobile number too"
-STAMP=$(date +%Y%m%d-%H%M%S); BK=/root/bikesurgeon-backup-names-$STAMP
+echo "== 3. Front door: the new code (sign-in page, one screen)"
+STAMP=$(date +%Y%m%d-%H%M%S)
+BK=/root/bikesurgeon-backup-names-$STAMP; [ $RUN_NAMES = 1 ] || BK=/root/bikesurgeon-backup-code-$STAMP
 mkdir -p "$BK" && chmod 700 "$BK"
 tar -C "$FD" --exclude=./data --exclude=./node_modules -czf "$BK/front-door-code.tgz" . && chmod 600 "$BK/front-door-code.tgz" \
   || { echo "The front door code could not be copied to $BK. Nothing changed."; exit 1; }
@@ -122,22 +139,29 @@ if [ $UP != 1 ]; then
   su - "$PU" -c "$NODE; cd $PANEL && npx pm2 restart front-door >/dev/null"
   echo "Send me a screenshot of this."; exit 1
 fi
-echo "OK      front door restarted with the new sign in"
+echo "OK      front door restarted with the new code"
 
-echo "== 4. Name-wise logins (backup first: $BK)"
-(cd "$FD" && "$B/node" --env-file=.env --disable-warning=ExperimentalWarning tools/name-logins.js --people "$T/people.json" --dirs "$T/dirs.json" --out "$OUT" --backup "$BK"); N=$?
+N=0
+if [ $RUN_NAMES = 1 ]; then
+  echo "== 4. Name-wise logins (backup first: $BK)"
+  (cd "$FD" && "$B/node" --env-file=.env --disable-warning=ExperimentalWarning tools/name-logins.js --people "$T/people.json" --dirs "$T/dirs.json" --out "$OUT" --backup "$BK"); N=$?
+fi
 rm -rf "$T"
 
 echo "== 5. Check of every login"
 check; C=$?
 
 echo
-case $N in
-  0|2) echo "New passwords and PINs: $OUT   (see them with:  cat $OUT )"
-       echo "Send each person ONLY their own part. Never post this file or a photo of it in a chat."
-       echo "The older logins keep working. When everyone uses the new one:  bash $ME old-off";;
-  1) echo "The logins were NOT changed (see the STOP line above). Only the sign in page is new (mobile number or email).";;
-  *) echo "The logins were NOT changed: an error put everything back (see the FAILED line above).";;
-esac
-echo "Backup: $BK   (undo:  bash $ME undo )"
+if [ $RUN_NAMES = 1 ]; then
+  case $N in
+    0|2) echo "New passwords and PINs (if any): $OUT   (see them with:  cat $OUT )"
+         echo "Send each person ONLY their own part. Never post this file or a photo of it in a chat."
+         echo "The older logins keep working. When everyone uses the new one:  bash $ME old-off";;
+    1) echo "The logins were NOT changed (see the STOP line above). Only the front door code is new.";;
+    *) echo "The logins were NOT changed: an error put everything back (see the FAILED line above).";;
+  esac
+  echo "Backup: $BK   (undo:  bash $ME undo )"
+else
+  echo "Logins not changed: everyone keeps their password and PIN. Front door code backup: $BK"
+fi
 [ $N = 0 ] && [ $C = 0 ] && [ $MISS = 0 ] && echo "All done." || echo "Something failed: send me a screenshot of this (it shows no passwords)."

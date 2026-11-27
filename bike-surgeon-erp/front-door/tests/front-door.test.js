@@ -69,6 +69,18 @@ test('without a login every page goes to the sign-in page, the API answers 401',
   assert.equal(l.status, 200); assert.match(l.body, /Sign in/);
 });
 
+test('the sign-in page (shop photo in 3D): its photo, style and white logo are served versioned; the photo comes back unchanged', async () => {
+  const fs = require('node:fs'), path = require('node:path');
+  const l = await client()('/__gate/login');
+  for (const f of ['login.css', 'login.js', 'logo-white.svg', 'building.jpg']) assert.match(l.body, new RegExp(`/__gate/${f.replace('.', '\\.')}\\?v=[0-9a-f]{10}"`), f);
+  const u = l.body.match(/\/__gate\/building\.jpg\?v=[0-9a-f]{10}/)[0];
+  const r = await fetch(base + u);
+  assert.equal(r.status, 200); assert.equal(r.headers.get('content-type'), 'image/jpeg');
+  assert.match(r.headers.get('cache-control'), /immutable/);
+  assert.ok(Buffer.from(await r.arrayBuffer()).equals(fs.readFileSync(path.join(__dirname, '../public/building.jpg'))));
+  assert.equal((await fetch(base + '/__gate/login.css')).headers.get('content-type'), 'text/css; charset=utf-8');
+});
+
 test('owner signs in with email (any case) + password and lands in the admin panel; wrong password is refused', async () => {
   const c = client();
   assert.equal((await c.post('/__gate/login', { email: 'owner@shop.in', password: 'nope' })).status, 401);

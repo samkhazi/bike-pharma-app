@@ -172,7 +172,7 @@ const BAR = '<script src="/__gate/bar.js" defer></script>';
 // Pages (HTML) are never kept. This replaces emptying the browser cache at every sign in, which made each login cold.
 const gateVer = {};
 const gv = f => gateVer[f] || (gateVer[f] = crypto.createHash('sha1').update(fs.readFileSync(path.join(PUB, f))).digest('hex').slice(0, 10));
-const versionGate = t => t.replace(/(\/__gate\/([a-z]+\.(?:js|css|svg)))"/g, (m, u, f) => { try { return `${u}?v=${gv(f)}"`; } catch { return m; } });
+const versionGate = t => t.replace(/(\/__gate\/([a-z-]+\.(?:js|css|svg|jpg)))"/g, (m, u, f) => { try { return `${u}?v=${gv(f)}"`; } catch { return m; } });
 const INSHELL_T = '<link rel="stylesheet" href="/__gate/inshell.css"><script src="/__gate/inshell.js"></script>';
 const STATIC_RE = /\.(?:js|css|svg|png|jpg|webp|ico|woff2?)(?:\?|$)/i;
 // version of a panel's own file = a hash of the file itself, read from the panel (on this server, fast) and kept 20 s
@@ -249,11 +249,11 @@ function fail(req, res, e) {
 }
 const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 function json(res, status, v) { const b = JSON.stringify(v); res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'content-length': Buffer.byteLength(b) }); res.end(b); }
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg' };
 function page(res, file, status = 200, vars = {}, csp, keep) {
-  let t = fs.readFileSync(path.join(PUB, file), 'utf8');
-  for (const [k, v] of Object.entries(vars)) t = t.split(`{{${k}}}`).join(v);
-  const isHtml = path.extname(file) === '.html';
+  const ext = path.extname(file), isHtml = ext === '.html';
+  let t = fs.readFileSync(path.join(PUB, file), ext === '.jpg' ? null : 'utf8');   // the sign-in photo is sent as it is
+  if (typeof t === 'string') { for (const [k, v] of Object.entries(vars)) t = t.split(`{{${k}}}`).join(v); }
   if (isHtml) t = versionGate(t);
   res.writeHead(status, { 'content-type': TYPES[path.extname(file)], 'cache-control': isHtml ? 'no-store' : keep ? 'public, max-age=31536000, immutable' : 'no-cache', 'content-length': Buffer.byteLength(t),
     'content-security-policy': csp || "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; frame-ancestors 'none'",
@@ -309,7 +309,7 @@ async function gateRoute(req, res, u) {
   const p = u.pathname, m = req.method;
   if (m !== 'GET' && req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) throw err(403, 'Cross-site request blocked.');
   if (m === 'GET' && p === '/__gate/login') return session(req) ? redirect(res, '/') : page(res, 'login.html');
-  if (m === 'GET' && /^\/__gate\/(login\.js|bar\.js|logins\.js|gate\.css|logo\.svg|shell\.js|shell\.css|inshell\.js|inshell\.css|out\.js)$/.test(p)) return page(res, p.slice(8), 200, {}, undefined, /^v=[0-9a-f]{10}$/.test(u.search.slice(1)) && u.search.slice(3) === gv(p.slice(8)));
+  if (m === 'GET' && /^\/__gate\/(login\.js|login\.css|building\.jpg|logo-white\.svg|bar\.js|logins\.js|gate\.css|logo\.svg|shell\.js|shell\.css|inshell\.js|inshell\.css|out\.js)$/.test(p)) return page(res, p.slice(8), 200, {}, undefined, /^v=[0-9a-f]{10}$/.test(u.search.slice(1)) && u.search.slice(3) === gv(p.slice(8)));
   if (m === 'POST' && p === '/__gate/login') {
     const b = await body(req); const raw = signIn(b.login ?? b.email, b.password);
     setCookie(res, raw, DAYS * 86400); preLogin(raw); return json(res, 200, { ok: true });

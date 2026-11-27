@@ -1,0 +1,144 @@
+/* Sign-in page (Sam, 27 Nov 2026): the old billing look (the shop photo, dark glass card, gold) with the building in 3D.
+   The photo is cut into layers at different depths (sky far behind, the shop front, the workshop seen through the gate,
+   the yard in front), so the scene moves like a real camera. login.js moves the camera. Always dark, on purpose. */
+:root{--yel:#F8C018;--yel2:#F5A623;--ink:#0D0D10;--card:rgba(14,14,18,.74);--line:rgba(255,255,255,.09);--fg:#F4F4F1;
+  --muted:rgba(255,255,255,.52);--err:#FDBA74;--display:"Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif;color-scheme:dark}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--card:rgba(14,14,18,.74)}}
+:root[data-theme="dark"]{--card:rgba(14,14,18,.74)}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--ink);color:var(--fg);font-family:var(--display);-webkit-font-smoothing:antialiased}
+body{overflow-x:hidden}
+
+/* ---- the 3D scene (behind everything) ---- */
+.stage{position:fixed;inset:0;overflow:hidden;z-index:0;
+  background:linear-gradient(180deg,#93a6c5 0%,#a7bcda 22%,#c6d9ee 38%,#d7dde2 46%,#2a2724 54%,#1b1917 70%,#0d0d10 100%)}
+.world{position:absolute;left:0;top:0;width:1440px;height:1080px;transform-style:preserve-3d;will-change:transform}
+.L{position:absolute;left:0;top:0;width:1440px;height:1080px;max-width:none;display:block;user-select:none;-webkit-user-drag:none;
+  backface-visibility:hidden;will-change:transform,opacity;pointer-events:none}
+/* sky: everything above the roof line and around the building's sides */
+.L.sky{clip-path:polygon(0 0,1440px 0,1440px 562px,1338px 562px,1270px 404px,102px 404px,50px 566px,0 576px)}
+/* the shop front, with the gate cut out so the workshop behind it shows through; the photo's bottom edge fades out */
+.L.front{clip-path:path(evenodd,"M0 1080 L0 570 L48 560 L100 398 L1272 398 L1342 556 L1440 556 L1440 1080 Z M497 821 L500 618 L905 618 L906 821 Z");
+  -webkit-mask-image:linear-gradient(180deg,#000 1000px,transparent 1080px);mask-image:linear-gradient(180deg,#000 1000px,transparent 1080px);
+  -webkit-mask-size:1440px 1080px;mask-size:1440px 1080px;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
+/* the dark inside of the building, just behind the workshop picture: when the camera goes in through the gate,
+   this is what is around the picture (never the sky). Hidden behind the shop front until then. */
+.L.box{background:radial-gradient(ellipse 420px 300px at 702px 700px,#1d1915 0%,#121013 60%,#0b0b0d 100%);
+  clip-path:polygon(300px 480px,1100px 480px,1100px 1000px,300px 1000px);
+  -webkit-mask-image:radial-gradient(ellipse 150px 105px at 702px 690px,transparent 66%,#000 100%);mask-image:radial-gradient(ellipse 150px 105px at 702px 690px,transparent 66%,#000 100%);
+  -webkit-mask-size:1440px 1080px;mask-size:1440px 1080px;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
+/* the workshop seen through the gate: near part (walls, people), soft edges, and a soft hole where the far end shows */
+.L.hall{clip-path:polygon(470px 590px,935px 590px,935px 830px,470px 830px);
+  -webkit-mask-image:radial-gradient(ellipse 95px 70px at 702px 690px,transparent 35%,#000 100%),linear-gradient(90deg,transparent 470px,#000 497px,#000 906px,transparent 935px),linear-gradient(180deg,transparent 590px,#000 618px,#000 821px,transparent 830px);
+  mask-image:radial-gradient(ellipse 95px 70px at 702px 690px,transparent 35%,#000 100%),linear-gradient(90deg,transparent 470px,#000 497px,#000 906px,transparent 935px),linear-gradient(180deg,transparent 590px,#000 618px,#000 821px,transparent 830px);
+  -webkit-mask-size:1440px 1080px;mask-size:1440px 1080px;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+  -webkit-mask-composite:source-in;mask-composite:intersect}
+/* the far end of the workshop */
+.L.end{clip-path:polygon(560px 610px,845px 610px,845px 790px,560px 790px);
+  -webkit-mask-image:radial-gradient(ellipse 150px 105px at 702px 690px,#000 45%,transparent 100%);mask-image:radial-gradient(ellipse 150px 105px at 702px 690px,#000 45%,transparent 100%);
+  -webkit-mask-size:1440px 1080px;mask-size:1440px 1080px;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
+/* the yard in front of the shop (closest to the camera) */
+.L.yard{clip-path:polygon(0 884px,1440px 884px,1440px 1080px,0 1080px);
+  -webkit-mask-image:linear-gradient(180deg,transparent 884px,#000 936px,#000 1000px,transparent 1080px);mask-image:linear-gradient(180deg,transparent 884px,#000 936px,#000 1000px,transparent 1080px);
+  -webkit-mask-size:1440px 1080px;mask-size:1440px 1080px;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
+
+/* light and shade over the scene (flat, so the 3D stays sharp) */
+.shade{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(180deg,rgba(9,9,12,.70) 0%,rgba(9,9,12,.30) 30%,rgba(9,9,12,.18) 52%,rgba(9,9,12,.55) 78%,rgba(9,9,12,.92) 100%),
+    radial-gradient(ellipse 75% 70% at var(--gx,50%) var(--gy,60%),transparent 45%,rgba(0,0,0,.55) 100%)}
+.shade::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 30% 26% at var(--gx,50%) var(--gy,62%),rgba(248,192,24,.10),transparent 70%)}
+.side{position:fixed;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,transparent 46%,rgba(9,9,12,.55) 70%,rgba(9,9,12,.82) 100%)}
+.flash{position:fixed;inset:0;z-index:5;pointer-events:none;opacity:0;will-change:opacity;background:radial-gradient(ellipse at 50% 50%,rgba(255,236,190,.95),rgba(248,192,24,.35) 45%,rgba(13,13,16,0) 80%)}
+.fade{position:fixed;inset:0;z-index:6;pointer-events:none;opacity:0;will-change:opacity;background:var(--ink)}
+
+/* gold frame: top line, corner marks, floating dust */
+.topline{position:fixed;left:0;right:0;top:0;height:2px;z-index:3;background:linear-gradient(90deg,transparent,rgba(248,192,24,.75) 30%,#fff3c4 50%,rgba(248,192,24,.75) 70%,transparent)}
+.corner{position:fixed;width:46px;height:46px;z-index:3;border:0 solid rgba(248,192,24,.55);pointer-events:none}
+.c1{top:24px;left:24px;border-width:2px 0 0 2px}.c2{top:24px;right:24px;border-width:2px 2px 0 0}
+.c3{bottom:24px;left:24px;border-width:0 0 2px 2px}.c4{bottom:24px;right:24px;border-width:0 2px 2px 0}
+.dust{position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden}
+.dust i{position:absolute;bottom:-10px;border-radius:50%;animation:rise linear infinite}
+@keyframes rise{0%{transform:translateY(0);opacity:0}10%{opacity:1}90%{opacity:.8}100%{transform:translateY(-105vh);opacity:0}}
+
+/* ---- the card ---- */
+.page{position:relative;z-index:4;min-height:100vh;min-height:100svh;display:flex;align-items:center;justify-content:flex-end;padding:24px max(24px,6vw)}
+.card{position:relative;width:100%;max-width:400px;background:var(--card);border:1px solid var(--line);border-radius:22px;
+  padding:34px 32px 24px;box-shadow:0 30px 80px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.05);
+  -webkit-backdrop-filter:blur(16px) saturate(1.25);backdrop-filter:blur(16px) saturate(1.25);
+  opacity:0;transform:translateY(18px) scale(.985);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.8,.2,1),border-color .3s}
+.card.in{opacity:1;transform:none}
+.card.lit{border-color:rgba(248,192,24,.28)}
+.card.out{opacity:0;transform:translateY(-10px) scale(.97);transition:opacity .45s ease,transform .45s ease}
+.accent{position:absolute;left:22px;right:22px;top:-1px;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,var(--yel),#fff3c4,var(--yel),transparent)}
+.logo{display:block;width:230px;max-width:80%;height:auto;margin:6px auto 0;filter:drop-shadow(0 4px 18px rgba(248,192,24,.18))}
+.tag{display:block;text-align:center;margin-top:8px;font-size:12px;color:var(--muted);letter-spacing:.02em}
+.badge{display:flex;width:max-content;margin:18px auto 0;align-items:center;gap:8px;padding:6px 14px;border-radius:99px;
+  border:1px solid rgba(248,192,24,.38);background:rgba(248,192,24,.07);color:var(--yel);font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--yel);box-shadow:0 0 8px var(--yel);animation:blink 2.4s ease-in-out infinite}
+@keyframes blink{50%{opacity:.35}}
+.div{display:flex;align-items:center;gap:12px;margin:22px 0 18px;color:rgba(255,255,255,.34);font-size:10.5px;font-weight:600;letter-spacing:.24em;text-transform:uppercase}
+.div::before,.div::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent)}
+form{display:grid;gap:12px}
+.field{position:relative;display:block}
+.field svg{position:absolute;left:15px;top:50%;width:18px;height:18px;transform:translateY(-50%);color:rgba(255,255,255,.38);transition:color .2s;pointer-events:none}
+.field:focus-within svg{color:var(--yel)}
+.field input{width:100%;font:inherit;font-size:15px;color:var(--fg);background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.10);
+  border-radius:12px;padding:14px 46px 14px 46px;outline:none;transition:border-color .2s,background .2s,box-shadow .2s}
+.field input::placeholder{color:rgba(255,255,255,.38)}
+.field input:focus{border-color:rgba(248,192,24,.6);background:rgba(248,192,24,.05);box-shadow:0 0 0 4px rgba(248,192,24,.10)}
+.eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:38px;height:38px;display:grid;place-items:center;border:0;background:none;
+  color:rgba(255,255,255,.45);border-radius:10px;cursor:pointer}
+.eye:hover{color:var(--yel)}.eye svg{position:static;transform:none;width:18px;height:18px;color:inherit}
+.err{min-height:20px;color:var(--err);font-size:13px;font-weight:600;padding:0 2px}
+.go{position:relative;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:12px;padding:15px 16px;margin-top:2px;
+  font:inherit;font-size:14px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#1A1405;cursor:pointer;overflow:hidden;
+  background:linear-gradient(135deg,#FFE27A 0%,var(--yel) 45%,var(--yel2) 100%);box-shadow:0 10px 30px rgba(248,192,24,.28),inset 0 1px 0 rgba(255,255,255,.45);transition:transform .15s,box-shadow .2s}
+.go:hover{box-shadow:0 14px 38px rgba(248,192,24,.40),inset 0 1px 0 rgba(255,255,255,.45)}
+.go:active{transform:translateY(1px)}
+.go::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.45) 50%,transparent 70%);transform:translateX(-120%);animation:shine 4.5s ease-in-out 2s infinite}
+@keyframes shine{0%,70%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
+.go svg{width:17px;height:17px}
+.go .spin{display:none;width:18px;height:18px;border:2.5px solid rgba(26,20,5,.25);border-top-color:#1A1405;border-radius:50%;animation:spin .7s linear infinite}
+.go.wait .spin{display:block}.go.wait .lbl,.go.wait svg{display:none}
+.go:disabled{cursor:wait}
+@keyframes spin{to{transform:rotate(360deg)}}
+:focus-visible{outline:2px solid var(--yel);outline-offset:2px}
+.pills{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:20px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:99px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);
+  color:rgba(255,255,255,.5);font-size:11.5px;font-weight:600}
+.pill svg{width:13px;height:13px;color:var(--yel);opacity:.85}
+.foot{margin-top:16px;text-align:center;font-size:11px;color:rgba(255,255,255,.3);letter-spacing:.03em}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.shake{animation:shake .5s}
+@keyframes shake{20%{transform:translateX(-8px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(3px)}}
+
+/* signed in: a check, the person's name, then the camera goes inside */
+.body{transition:opacity .3s ease}
+.done{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;
+  opacity:0;visibility:hidden;transition:opacity .35s ease .1s}
+.card.ok .done{opacity:1;visibility:visible}.card.ok .body{opacity:0;visibility:hidden}
+.tick{position:relative;width:86px;height:86px;margin:0 auto 18px;flex:none;border-radius:50%;border:2px solid rgba(248,192,24,.65);display:grid;place-items:center;
+  box-shadow:0 0 34px rgba(248,192,24,.25);animation:pop .45s cubic-bezier(.2,.9,.3,1.4)}
+.tick::before,.tick::after{content:"";position:absolute;width:20px;height:20px;border:0 solid rgba(248,192,24,.85)}
+.tick::before{top:-12px;left:-12px;border-width:2px 0 0 2px}.tick::after{bottom:-12px;right:-12px;border-width:0 2px 2px 0}
+.tick svg{width:40px;height:40px}
+.tick polyline{fill:none;stroke:var(--yel);stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:50;stroke-dashoffset:50;animation:draw .5s ease .2s forwards}
+@keyframes pop{from{transform:scale(.6);opacity:0}}
+@keyframes draw{to{stroke-dashoffset:0}}
+.done b{display:block;font-size:20px}.done span{display:block;margin-top:6px;color:var(--muted);font-size:13px}
+
+/* phone and tall screens: the shop on top, the card below it */
+@media (max-aspect-ratio:21/20),(max-width:760px){
+  .side{display:none}
+  .page{align-items:flex-end;justify-content:center;padding:calc(36vh + 8px) 16px 18px}
+  .card{max-width:440px;padding:26px 20px 18px;border-radius:20px}
+  .logo{width:200px}
+  .badge{margin-top:14px}
+  .div{margin:16px 0 14px}
+  .corner{width:30px;height:30px}.c1,.c2{top:14px}.c3,.c4{bottom:14px}.c1,.c3{left:14px}.c2,.c4{right:14px}
+  .c3,.c4{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .dust,.go::after{display:none}
+  .card,.card.in,.card.out{transition:none}
+}

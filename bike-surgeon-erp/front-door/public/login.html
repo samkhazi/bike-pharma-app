@@ -2,23 +2,66 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0D0D10">
 <title>Bike Surgeon · Sign in</title>
 <link rel="icon" href="/__gate/logo.svg" type="image/svg+xml">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap">
-<link rel="stylesheet" href="/__gate/gate.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="/__gate/login.css">
 </head>
 <body>
-<main class="wrap">
-  <form class="box" id="f">
-    <div class="logo"><img src="/__gate/logo.svg" alt="Bike Surgeon"></div>
-    <h1>Sign in</h1>
-    <label>Mobile number or email<input id="email" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus></label>
-    <label>Password<input id="password" type="password" autocomplete="current-password" required></label>
-    <div class="err" id="err" role="alert"></div>
-    <button class="pri" type="submit" id="go">Sign in</button>
-    <small class="muted">One login for every panel. Your login opens your own panel.</small>
-  </form>
+<!-- the shop in 3D: one photo, cut into layers at different depths (data-z, photo pixels; minus = behind the shop front) -->
+<div class="stage" id="stage" aria-hidden="true">
+  <div class="world" id="world">
+    <img class="L sky" data-z="-2600" src="/__gate/building.jpg" alt="" decoding="async">
+    <img class="L end" data-z="-1600" src="/__gate/building.jpg" alt="" decoding="async">
+    <div class="L box" data-z="-400"></div>
+    <img class="L hall" data-z="-380" src="/__gate/building.jpg" alt="" decoding="async">
+    <img class="L front" data-z="0" src="/__gate/building.jpg" alt="" decoding="async">
+    <img class="L yard" data-z="240" src="/__gate/building.jpg" alt="" decoding="async">
+  </div>
+</div>
+<div class="shade" id="shade"></div>
+<div class="side"></div>
+<div class="dust" id="dust"></div>
+<div class="topline"></div>
+<div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>
+<div class="flash" id="flash"></div><div class="fade" id="fade"></div>
+
+<main class="page">
+  <section class="card" id="card" aria-label="Sign in">
+    <div class="accent"></div>
+    <div class="body">
+      <img class="logo" src="/__gate/logo-white.svg" alt="Bike Surgeon" width="230" height="36">
+      <span class="tag">One Stop for Bike Solutions</span>
+      <div class="badge"><span class="dot"></span>Management System</div>
+      <div class="div">Secure access</div>
+      <form id="f" novalidate>
+        <label class="field"><span class="sr">Mobile number or email</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg>
+          <input id="email" type="text" placeholder="Mobile number or email" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
+        </label>
+        <label class="field"><span class="sr">Password</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>
+          <input id="password" type="password" placeholder="Password" autocomplete="current-password" required>
+          <button class="eye" type="button" id="eye" aria-label="Show password"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        </label>
+        <div class="err" id="err" role="alert"></div>
+        <button class="go" type="submit" id="go"><span class="spin"></span><span class="lbl">Sign in</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+      </form>
+      <div class="pills">
+        <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l8 3v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10v-6l8-3z"/></svg>Secure sign in</span>
+        <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>One login, all panels</span>
+        <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="16.5" r="3.5"/><circle cx="18.5" cy="16.5" r="3.5"/><path d="M5.5 16.5l4-7h5l4 7M9.5 9.5L8 6.5H5.5M14.5 9.5l1.5-3h2"/></svg>ERP 2.0</span>
+      </div>
+      <div class="foot">Multi brand bike service &amp; genuine spares</div>
+    </div>
+    <div class="done" aria-live="polite">
+      <div class="tick"><svg viewBox="0 0 48 48"><polyline points="11,25 21,34 37,15"/></svg></div>
+      <b id="hello">Welcome</b>
+      <span>Opening your panels…</span>
+    </div>
+  </section>
 </main>
 <script src="/__gate/login.js"></script>
 </body>

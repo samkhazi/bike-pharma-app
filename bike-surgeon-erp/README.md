@@ -13,5 +13,9 @@ switches off the older role-email staff logins once everyone signs in with their
 
 - `front-door/`: the sign-in and the one screen (mobile number or email + password), name-wise logins
   (`tools/name-logins.js`: the staff list, their panels and roles; mobile numbers come from the attendance app).
+- `portals/`: changed files of the panels (the whole panels are on the server). `11-moto-lab/` (27 Nov): Mehek's
+  Moto Lab panel on the real Moto Lab billing (`server/oldlink.js` reads the admin panel's `GET /api/feed/motolab`
+  every minute); `01-admin-panel/` gives that feed (`server/oldbill.js` works the Moto Lab bills out exactly like the
+  billing). `base-26nov.sha256`: the server's copy of each file before; update.sh replaces only those (or stops).
 - New passwords and PINs are written only on the server, to `/root/bikesurgeon-staff-logins.txt`. No secrets, phone
   numbers or customer data are kept in this repository (it is public).

@@ -6,6 +6,12 @@
 #               bash /root/bs-erp-update.sh old-off    (older role-email staff logins off, once everyone uses their own)
 #               bash /root/bs-erp-update.sh undo       (logins back as before the last update; again = one more back)
 #               bash /root/bs-erp-update.sh names      (the name-wise logins again from the attendance app; passwords + PINs kept)
+# 27 Nov update 2 (Sam: "all data live, Moto Lab connected"): Mehek's Moto Lab panel shows the real items, bills and
+# customers of the Moto Lab billing site (themotolab), read by the admin panel every minute (worked out exactly like the
+# billing). Bills, returns and stock in are still made in the billing site; orders with advance, warranty claims, the
+# purchase budget, rack counts, sizes and the day closing are made in the panel. It goes into the menu once it shows the
+# real bills. A file of the admin or Moto Lab panel is replaced only when it is the 26 Nov one; if anything fails, the
+# old code goes back by itself.
 # 27 Nov update: the new sign-in page (the shop in 3D). An update changes the code only: once the name-wise logins
 # are there, the logins are not touched (everyone keeps their password and PIN; the Logins screen keeps its changes).
 # 26 Nov update, name-wise logins (Sam): every staff member gets their OWN login (mobile number + password) and is their
@@ -122,10 +128,92 @@ for x in "admin:$PANEL:3040" "cashier:$PANEL/portals/03-cashier:3023" "counter:$
 done
 printf '%s}\n' "${J%,}" > "$T/dirs.json"
 
-echo "== 3. Front door: the new code (sign-in page, one screen)"
 STAMP=$(date +%Y%m%d-%H%M%S)
 BK=/root/bikesurgeon-backup-names-$STAMP; [ $RUN_NAMES = 1 ] || BK=/root/bikesurgeon-backup-code-$STAMP
 mkdir -p "$BK" && chmod 700 "$BK"
+
+echo "== 3. The Moto Lab panel on real data (the Moto Lab billing, read by the admin panel)"
+# .env lines: setenv keeps the file (owner, rights); getenv gives the value without quotes; nothing is printed
+setenv() { local f=$1; { grep -v "^$2=" "$f" || true; echo "$2=$3"; } > "$T/env" && cat "$T/env" > "$f"; rm -f "$T/env"; }
+getenv() { [ -f "$1" ] && grep "^$2=" "$1" | tail -1 | cut -d= -f2- | tr -d '"'"'"' \r' || true; }
+sha() { sha256sum < "$1" | cut -d' ' -f1; }
+# restart the pm2 app that runs a folder (found by its folder, or by the process on its port)
+restart() { local pid n; pid=$(pidof_port "$2")
+  n=$(su - "$PU" -c "$NODE; cd $PANEL && npx pm2 jlist 2>/dev/null" | "$B/node" "$CODE/front-door/tools/pm2-name.js" "$1" "${pid:-0}")
+  [ -n "$n" ] && su - "$PU" -c "$NODE; cd $PANEL && npx pm2 restart '$n' >/dev/null"; }
+# the Moto Lab items and bills the admin panel gives ("<items> <bills>" or "no")
+mlfeed() { curl -s -m 30 -H @"$T/hdr" http://127.0.0.1:3040/api/feed/motolab | "$B/node" -e 'let t="";process.stdin.on("data",c=>t+=c).on("end",()=>{let o="no";try{const d=JSON.parse(t);if(d.live&&Array.isArray(d.items)&&d.items.length&&d.bills.length)o=d.items.length+" "+d.bills.length}catch{}console.log(o)})'; }
+# is the Moto Lab panel on the real bills? ("on <bills>" or "off")
+mlive() { "$B/node" --disable-warning=ExperimentalWarning -e 'try{const d=new (require("node:sqlite").DatabaseSync)(process.argv[1],{readOnly:true});
+  const s=d.prepare("SELECT value FROM settings WHERE key=?").get("live"),n=d.prepare("SELECT count(*) n FROM records WHERE collection=?").get("bills").n;
+  console.log(s&&s.value==="on"?"on "+n:"off");d.close()}catch{console.log("off")}' "$MLDB"; }
+ML=1   # 0 = the Moto Lab panel is on real data
+ADM=$(dirof 3040 "$PANEL"); MLD=$(dirof 3031 "$PANEL/portals/11-moto-lab")
+PF="01-admin-panel/server/oldbill.js 01-admin-panel/server/routes.js 11-moto-lab/server/oldlink.js 11-moto-lab/server/motolab.js
+  11-moto-lab/server/routes.js 11-moto-lab/server/links.js 11-moto-lab/server/index.js 11-moto-lab/public/app.js"
+dst() { case "$1" in 01-admin-panel/*) echo "$ADM/${1#01-admin-panel/}";; *) echo "$MLD/${1#11-moto-lab/}";; esac; }
+put() { local f d; for f in $PF; do case "$f" in "$1"/*) d=$(dst "$f")
+  install -m 644 -o "$(stat -c %U "$(dirname "$d")")" -g "$(stat -c %G "$(dirname "$d")")" "$CODE/portals/$f" "$d" || return 1;; esac; done; }
+if [ -z "$ADM" ] || [ -z "$MLD" ] || [ ! -f "$ADM/server/oldbill.js" ] || [ ! -f "$MLD/server/motolab.js" ] || [ ! -f "$MLD/.env" ]; then
+  echo "FAILED  admin panel or Moto Lab panel folder not found: not changed"
+elif [ ! -f "$CODE/portals/base-26nov.sha256" ]; then
+  echo "FAILED  the panel code is not in the download: not changed"
+else
+  MLDB=$(getenv "$MLD/.env" DB_FILE); case "$MLDB" in "") MLDB=$MLD/data/motolab.db;; /*) ;; *) MLDB=$MLD/$MLDB;; esac
+  NEWA=0; NEWM=0; BAD=""
+  for f in $PF; do d=$(dst "$f")
+    [ -f "$d" ] && [ "$(sha "$d")" = "$(sha "$CODE/portals/$f")" ] && continue
+    case "$f" in 01-*) NEWA=1;; *) NEWM=1;; esac
+    [ ! -f "$d" ] || grep -qxF "$(sha "$d")  $f" "$CODE/portals/base-26nov.sha256" || BAD="$BAD $f"
+  done
+  AK=$(getenv "$ADM/.env" ALERT_KEY)
+  if [ -n "$BAD" ]; then
+    echo "STOP    changed on this server after 26 Nov:$BAD"
+    echo "        The admin and Moto Lab panels are not changed. Send me a screenshot of this."
+  elif [ -z "$AK" ]; then
+    echo "FAILED  the admin panel has no ALERT_KEY in its .env: not changed"
+  else
+    printf 'X-Alert-Key: %s\n' "$AK" > "$T/hdr"
+    tar -C "$ADM" -czf "$BK/admin-code.tgz" server/oldbill.js server/routes.js && tar -C "$MLD" -czf "$BK/motolab-code.tgz" server public .env \
+      && chmod 600 "$BK"/*.tgz || { echo "FAILED  backup of the panels in $BK: not changed"; NEWA=x; }
+    if [ "$NEWA" = 1 ]; then   # the admin panel first: it gives the Moto Lab items and bills
+      OLDPID=$(pidof_port 3040); put 01-admin-panel && restart "$ADM" 3040 || echo "FAILED  copy or restart of the admin panel"
+      GOT=no; for i in $(seq 1 24); do NEWPID=$(pidof_port 3040)
+        [ -n "$NEWPID" ] && [ "$NEWPID" != "$OLDPID" ] && GOT=$(mlfeed) && [ "$GOT" != no ] && break; sleep 5; done
+      if [ "$GOT" = no ]; then
+        echo "FAILED  the admin panel did not give the Moto Lab bills: its old code is put back"
+        tar -C "$ADM" -xzf "$BK/admin-code.tgz"; restart "$ADM" 3040; NEWA=x
+      else echo "OK      admin panel: new code, it gives ${GOT% *} Moto Lab items and ${GOT#* } bills"; fi
+    elif [ "$NEWA" = 0 ]; then GOT=$(mlfeed)
+      [ "$GOT" = no ] && echo "OK      admin panel code already new (its Moto Lab feed is not ready yet)" || echo "OK      admin panel code already new (it gives ${GOT% *} Moto Lab items and ${GOT#* } bills)"; fi
+    if [ "$NEWA" != x ]; then   # then the Moto Lab panel: the admin panel's address and key, the new code, the first real read
+      [ "$(getenv "$MLD/.env" ADMIN_URL)" = http://127.0.0.1:3040 ] || setenv "$MLD/.env" ADMIN_URL http://127.0.0.1:3040
+      [ "$(getenv "$MLD/.env" ALERT_KEY)" = "$AK" ] || setenv "$MLD/.env" ALERT_KEY "$AK"
+      grep -q '^MOTOLAB_LIVE=0' "$MLD/.env" && setenv "$MLD/.env" MOTOLAB_LIVE 1
+      L=$(mlive)
+      if [ "$NEWM" = 1 ] || [ "$L" = off ]; then
+        OLDPID=$(pidof_port 3031); L=off; put 11-moto-lab && restart "$MLD" 3031 || echo "FAILED  copy or restart of the Moto Lab panel"
+        echo "        waiting for the Moto Lab panel to read the billing (up to 3 minutes)"
+        for i in $(seq 1 36); do sleep 5; NEWPID=$(pidof_port 3031); [ -n "$NEWPID" ] && [ "$NEWPID" != "$OLDPID" ] && L=$(mlive) && [ "$L" != off ] && break; done
+      fi
+      if [ "$L" != off ] && [ -n "$(pidof_port 3031)" ]; then
+        ML=0; echo "OK      Moto Lab panel on real data (${L#on } bills of the billing site)"
+      else
+        echo "FAILED  the Moto Lab panel did not read the billing: its old code is put back (it stays out of the menu)"
+        tar -C "$MLD" -xzf "$BK/motolab-code.tgz"; rm -f "$MLD/server/oldlink.js"; restart "$MLD" 3031
+      fi
+    fi
+    rm -f "$T/hdr"
+  fi
+fi
+# in the menu once it is on real data (PANELS_OFF in the front door .env; the code's list hides it)
+if [ $ML = 0 ]; then
+  if grep -q '^PANELS_OFF=' "$FD/.env"; then OFFL=$(getenv "$FD/.env" PANELS_OFF | tr ',' '\n' | grep -vx motolab | grep -v '^$' | paste -sd, -)
+  else OFFL=floor,maintainer,desk,accounts,counter,spares,supervisor; fi
+  [ "$(getenv "$FD/.env" PANELS_OFF)" = "$OFFL" ] && grep -q '^PANELS_OFF=' "$FD/.env" || { setenv "$FD/.env" PANELS_OFF "$OFFL"; echo "OK      The Moto Lab goes into the menu (Mehek, Saddam sir, Ramzan sir, Sajiya)"; }
+fi
+
+echo "== 4. Front door: the new code (sign-in page, one screen)"
 tar -C "$FD" --exclude=./data --exclude=./node_modules -czf "$BK/front-door-code.tgz" . && chmod 600 "$BK/front-door-code.tgz" \
   || { echo "The front door code could not be copied to $BK. Nothing changed."; exit 1; }
 OLDPID=$(pidof_port 3022)
@@ -143,12 +231,12 @@ echo "OK      front door restarted with the new code"
 
 N=0
 if [ $RUN_NAMES = 1 ]; then
-  echo "== 4. Name-wise logins (backup first: $BK)"
+  echo "== 5. Name-wise logins (backup first: $BK)"
   (cd "$FD" && "$B/node" --env-file=.env --disable-warning=ExperimentalWarning tools/name-logins.js --people "$T/people.json" --dirs "$T/dirs.json" --out "$OUT" --backup "$BK"); N=$?
 fi
 rm -rf "$T"
 
-echo "== 5. Check of every login"
+echo "== 6. Check of every login"
 check; C=$?
 
 echo
@@ -164,4 +252,4 @@ if [ $RUN_NAMES = 1 ]; then
 else
   echo "Logins not changed: everyone keeps their password and PIN. Front door code backup: $BK"
 fi
-[ $N = 0 ] && [ $C = 0 ] && [ $MISS = 0 ] && echo "All done." || echo "Something failed: send me a screenshot of this (it shows no passwords)."
+[ $N = 0 ] && [ $C = 0 ] && [ $MISS = 0 ] && [ $ML = 0 ] && echo "All done." || echo "Something failed: send me a screenshot of this (it shows no passwords)."

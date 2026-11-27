@@ -44,13 +44,12 @@ body{overflow-x:hidden}
   -webkit-mask-image:linear-gradient(180deg,transparent 884px,#000 936px,#000 1000px,transparent 1080px);mask-image:linear-gradient(180deg,transparent 884px,#000 936px,#000 1000px,transparent 1080px);
   -webkit-mask-size:1440px 1080px;mask-size:1440px 1080px;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
 
-/* white light over the scene (flat, so the 3D stays sharp): a pale sky, the yard fading into the white page,
-   soft white edges, and on a computer the card's side fading to white */
+/* the photo stays clear (Sam: no white haze over it); only the yard fades into the white page at the bottom,
+   with a touch of light at the very top (flat, so the 3D stays sharp) */
 .shade{position:fixed;inset:0;z-index:1;pointer-events:none;
-  background:linear-gradient(180deg,rgba(255,255,255,.6) 0%,rgba(255,255,255,.16) 26%,rgba(255,255,255,0) 42%,rgba(255,255,255,0) 70%,rgba(255,255,255,.72) 90%,#fff 100%),
-    radial-gradient(ellipse 78% 74% at var(--gx,50%) var(--gy,60%),transparent 55%,rgba(255,255,255,.5) 100%)}
+  background:linear-gradient(180deg,rgba(255,255,255,.18) 0%,rgba(255,255,255,0) 10%,rgba(255,255,255,0) 84%,rgba(255,255,255,.6) 94%,#fff 100%)}
 .shade::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 30% 26% at var(--gx,50%) var(--gy,62%),rgba(248,192,24,.10),transparent 70%)}
-.side{position:fixed;inset:0;z-index:1;pointer-events:none;will-change:opacity;background:linear-gradient(90deg,transparent 44%,rgba(255,255,255,.55) 63%,rgba(255,255,255,.88) 80%,rgba(255,255,255,.95) 100%)}
+.side{position:fixed;inset:0;z-index:1;pointer-events:none;will-change:opacity;background:linear-gradient(90deg,transparent 62%,rgba(255,255,255,.14) 82%,rgba(255,255,255,.26) 100%)}
 .flash{position:fixed;inset:0;z-index:5;pointer-events:none;opacity:0;will-change:opacity;background:radial-gradient(ellipse at 50% 50%,rgba(255,246,222,.95),rgba(248,192,24,.32) 45%,rgba(255,255,255,0) 80%)}
 .fade{position:fixed;inset:0;z-index:6;pointer-events:none;opacity:0;will-change:opacity;background:var(--page)}
 
@@ -135,7 +134,7 @@ form{display:grid;gap:12px}
 @media (max-aspect-ratio:21/20),(max-width:760px){
   .side{display:none}
   /* the photo is a band across the top here: only a light touch of white at the very top, the photo stays clear */
-  .shade{background:linear-gradient(180deg,rgba(255,255,255,.38) 0%,rgba(255,255,255,0) 16%)}
+  .shade{background:linear-gradient(180deg,rgba(255,255,255,.18) 0%,rgba(255,255,255,0) 12%)}
   .page{align-items:flex-end;justify-content:center;padding:calc(36vh + 8px) 16px 18px}
   .card{max-width:440px;padding:26px 20px 18px;border-radius:20px}
   .logo{width:200px}

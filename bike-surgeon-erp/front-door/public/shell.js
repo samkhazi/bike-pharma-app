@@ -109,7 +109,9 @@
   const num = s => { const m = String(s).match(/\d+/); return m && !/\//.test(s) ? Number(m[0]) : 0; };
   function draw() {
     const html = G.map((g, gi) => {
-      const sum = g.items.reduce((t, x) => t + num(x.badge), 0);
+      // a shut part shows only its urgent (blinking) counts, such as new stock waiting for a price: adding up every count
+      // in it (thousands of low-stock parts too) gave a meaningless "ADMIN 7397" (Sam 27 Nov)
+      const sum = g.items.reduce((t, x) => t + (x.blink ? num(x.badge) : 0), 0);
       let body = '';
       if (g.state === 'bad' && !g.items.length) body = `<p class="wait">${esc(g.msg ? g.msg.slice(0, 160) : 'This part did not open.')}</p><button type="button" class="it" data-re="${gi}">Try again</button>`;
       else if (!g.items.length) body = '<p class="wait">Loading…</p>';
@@ -121,7 +123,7 @@
           return `${head}<button type="button" class="it ${on ? 'on' : ''}" data-g="${gi}" data-i="${ii}" ${on ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" aria-hidden="true">${x.icon}</svg><span>${esc(x.label)}</span>${x.badge ? `<span class="badge ${x.blink ? 'blink' : ''}">${esc(x.badge)}</span>` : ''}</button>`;
         }).join('');
       }
-      const head = G.length > 1 ? `<button type="button" class="gh" data-sh="${gi}" aria-expanded="${!g.shut}"><span>${esc(g.name)}</span>${g.shut && sum ? `<span class="sum">${sum}</span>` : ''}<span class="arr">▾</span></button>` : '';
+      const head = G.length > 1 ? `<button type="button" class="gh" data-sh="${gi}" aria-expanded="${!g.shut}"><span>${esc(g.name)}</span>${g.shut && sum ? `<span class="sum blink">${sum}</span>` : ''}<span class="arr">▾</span></button>` : '';
       return `<section class="grp ${g.shut ? 'shut' : ''}">${head}<div class="items">${body}</div></section>`;
     }).join('');
     const box = $('groups'), top = $('menu').scrollTop;

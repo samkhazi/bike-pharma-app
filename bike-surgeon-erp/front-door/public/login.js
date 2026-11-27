@@ -9,7 +9,7 @@
   const W = 1440, H = 1080, F = { x: 702, y: 716 };   // photo size; the middle of the gate (the camera looks at it)
   const D = 950;                                       // camera distance in photo pixels: how strong the 3D is
   const $ = id => document.getElementById(id);
-  const stage = $('stage'), world = $('world'), shade = $('shade'), card = $('card');
+  const stage = $('stage'), world = $('world'), shade = $('shade'), side = document.querySelector('.side'), card = $('card');
   const layers = [...world.querySelectorAll('.L')].map(el => ({ el, z: Number(el.dataset.z) || 0, cls: el.classList[1] }));
   const still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const ease = { io: p => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2, out: p => 1 - Math.pow(1 - p, 3) };
@@ -35,9 +35,9 @@
     }
     stage.style.perspective = (D * k).toFixed(1) + 'px';
     // sky above the roof (the same colour as the photo's top row, so a phone never shows a line there when the photo moves down),
-    // dark below the photo; it shows only at the edges while the camera moves
-    const roof = Sy + (398 - F.y) * k, ground = Sy + (H - F.y) * k;
-    stage.style.background = `linear-gradient(180deg,#99abc9 0px,#99abc9 ${Math.max(0, roof - 40).toFixed(0)}px,#c6d9ee ${roof.toFixed(0)}px,#2b2a29 ${(roof + 2).toFixed(0)}px,#1b1917 ${ground.toFixed(0)}px,#0d0d10 ${(ground + 160).toFixed(0)}px)`;
+    // then smoothly white, so the photo's bottom edge fades into the white page and nothing hard shows while the camera moves
+    const roof = Sy + (398 - F.y) * k, white = Sy + (990 - F.y) * k;
+    stage.style.background = `linear-gradient(180deg,#99abc9 0px,#99abc9 ${Math.max(0, roof - 40).toFixed(0)}px,#c6d9ee ${roof.toFixed(0)}px,#ffffff ${white.toFixed(0)}px)`;
     for (const l of layers) {
       // every layer is made bigger by how far back it is, so from the starting point they line up as the one photo
       l.el.style.transformOrigin = `${F.x}px ${F.y}px`;
@@ -83,6 +83,7 @@
         : l.cls === 'hall' ? 1 - clamp((z - 1150) / 90) : l.cls === 'sky' ? 1 - clamp((z - 500) / 300) : 1;
       l.el.style.opacity = o.toFixed(3);
     }
+    side.style.opacity = (1 - clamp(u / 0.35)).toFixed(3);   // the white on the card's side goes with the card, so the gate is seen whole
     $('flash').style.opacity = (0.4 * Math.max(0, 1 - Math.abs(z - 880) / 160)).toFixed(3);
     $('fade').style.opacity = clamp((u - 0.8) / 0.2).toFixed(3);
     if (u >= 1 && !fly.gone) { fly.gone = true; location.href = '/'; }
@@ -100,13 +101,13 @@
     t0 = performance.now(); raf = requestAnimationFrame(frame);
   });
   if (!still) {
-    // gold dust, like the old page
+    // gold dust, like the old page (two golds, so it shows on the white and on the dark shop front)
     const box = $('dust');
-    for (let i = 0; i < 26; i++) {
-      const d = document.createElement('i'), sz = Math.random() < 0.25 ? 3 : Math.random() < 0.5 ? 2 : 1, gold = Math.random() > 0.4;
+    for (let i = 0; i < 22; i++) {
+      const d = document.createElement('i'), sz = Math.random() < 0.25 ? 3 : Math.random() < 0.5 ? 2 : 1, deep = Math.random() > 0.5;
       Object.assign(d.style, { width: sz + 'px', height: sz + 'px', left: (Math.random() * 100).toFixed(1) + '%',
-        background: gold ? `rgba(248,192,24,${(0.45 + Math.random() * 0.4).toFixed(2)})` : `rgba(255,255,255,${(0.15 + Math.random() * 0.25).toFixed(2)})`,
-        boxShadow: gold ? `0 0 ${sz * 4}px rgba(248,192,24,.6)` : 'none', animationDuration: (12 + Math.random() * 18).toFixed(1) + 's',
+        background: deep ? `rgba(214,150,0,${(0.45 + Math.random() * 0.35).toFixed(2)})` : `rgba(248,192,24,${(0.55 + Math.random() * 0.35).toFixed(2)})`,
+        boxShadow: `0 0 ${sz * 4}px rgba(248,192,24,.55)`, animationDuration: (12 + Math.random() * 18).toFixed(1) + 's',
         animationDelay: (-Math.random() * 28).toFixed(1) + 's' });
       box.appendChild(d);
     }

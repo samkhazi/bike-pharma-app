@@ -6,6 +6,9 @@
 #               bash /root/bs-erp-update.sh old-off    (older role-email staff logins off, once everyone uses their own)
 #               bash /root/bs-erp-update.sh undo       (logins back as before the last update; again = one more back)
 #               bash /root/bs-erp-update.sh names      (the name-wise logins again from the attendance app; passwords + PINs kept)
+# 27 Nov update 3 (Sam: "direct connect database only, I need instant"): the Moto Lab panel reads the Moto Lab billing's
+# database itself (read only, the admin panel's database lines are copied into its .env), a checksum check every 3 seconds;
+# a new bill shows on the open screens within seconds. If it cannot read the database, it keeps the admin panel's feed.
 # 27 Nov update 2 (Sam: "all data live, Moto Lab connected"): Mehek's Moto Lab panel shows the real items, bills and
 # customers of the Moto Lab billing site (themotolab), read by the admin panel every minute (worked out exactly like the
 # billing). Bills, returns and stock in are still made in the billing site; orders with advance, warranty claims, the
@@ -132,7 +135,7 @@ STAMP=$(date +%Y%m%d-%H%M%S)
 BK=/root/bikesurgeon-backup-names-$STAMP; [ $RUN_NAMES = 1 ] || BK=/root/bikesurgeon-backup-code-$STAMP
 mkdir -p "$BK" && chmod 700 "$BK"
 
-echo "== 3. The Moto Lab panel on real data (the Moto Lab billing, read by the admin panel)"
+echo "== 3. The Moto Lab panel on real data (straight from the Moto Lab billing database, every 3 seconds)"
 # .env lines: setenv keeps the file (owner, rights); getenv gives the value without quotes; nothing is printed
 setenv() { local f=$1; { grep -v "^$2=" "$f" || true; echo "$2=$3"; } > "$T/env" && cat "$T/env" > "$f"; rm -f "$T/env"; }
 getenv() { [ -f "$1" ] && grep "^$2=" "$1" | tail -1 | cut -d= -f2- | tr -d '"'"'"' \r' || true; }
@@ -147,10 +150,24 @@ mlfeed() { curl -s -m 30 -H @"$T/hdr" http://127.0.0.1:3040/api/feed/motolab | "
 mlive() { "$B/node" --disable-warning=ExperimentalWarning -e 'try{const d=new (require("node:sqlite").DatabaseSync)(process.argv[1],{readOnly:true});
   const s=d.prepare("SELECT value FROM settings WHERE key=?").get("live"),n=d.prepare("SELECT count(*) n FROM records WHERE collection=?").get("bills").n;
   console.log(s&&s.value==="on"?"on "+n:"off");d.close()}catch{console.log("off")}' "$MLDB"; }
+# how the Moto Lab panel read the billing last (its new code keeps it): "<ms> <db|admin> <ok|err> <bills>" or "none";
+# mlerr: the database's answer when it could not be read (nothing secret: no password is in it)
+mlink() { "$B/node" --disable-warning=ExperimentalWarning -e 'try{const d=new (require("node:sqlite").DatabaseSync)(process.argv[1],{readOnly:true});
+  const s=d.prepare("SELECT value FROM settings WHERE key=?").get("link_last");d.close();const l=JSON.parse(s.value);
+  console.log(Date.parse(l.at)+" "+l.mode+" "+(l.ok?"ok":"err")+" "+(l.bills||0))}catch{console.log("none")}' "$MLDB"; }
+mlerr() { "$B/node" --disable-warning=ExperimentalWarning -e 'try{const d=new (require("node:sqlite").DatabaseSync)(process.argv[1],{readOnly:true});
+  const l=JSON.parse(d.prepare("SELECT value FROM settings WHERE key=?").get("link_last").value);console.log(String(l.dbError||l.error||"").slice(0,160))}catch{}' "$MLDB"; }
+# the database lines of the admin panel's .env, copied as they are (the password is never printed); CH=1 when one changed
+DBK="OLD_DB_HOST OLD_DB_PORT OLD_DB_USER OLD_DB_PASS OLD_DB_ML OLD_ML_USER OLD_ML_PASS OLD_DB_PUBKEY MYSQL_BIN"
+cpenv() { local k l; for k in $DBK; do l=$(grep "^$k=" "$ADM/.env" | tail -1)
+  if [ -n "$l" ]; then grep -qxF -- "$l" "$MLD/.env" && [ "$(grep -c "^$k=" "$MLD/.env")" = 1 ] && continue
+    { grep -v "^$k=" "$MLD/.env" || true; printf '%s\n' "$l"; } > "$T/env" && cat "$T/env" > "$MLD/.env"; CH=1
+  elif grep -q "^$k=" "$MLD/.env"; then { grep -v "^$k=" "$MLD/.env" || true; } > "$T/env"; cat "$T/env" > "$MLD/.env"; CH=1; fi
+  rm -f "$T/env"; done; }
 ML=1   # 0 = the Moto Lab panel is on real data
 ADM=$(dirof 3040 "$PANEL"); MLD=$(dirof 3031 "$PANEL/portals/11-moto-lab")
 PF="01-admin-panel/server/oldbill.js 01-admin-panel/server/routes.js 11-moto-lab/server/oldlink.js 11-moto-lab/server/motolab.js
-  11-moto-lab/server/routes.js 11-moto-lab/server/links.js 11-moto-lab/server/index.js 11-moto-lab/public/app.js"
+  11-moto-lab/server/routes.js 11-moto-lab/server/links.js 11-moto-lab/server/index.js 11-moto-lab/public/app.js 11-moto-lab/server/mldb.js"
 dst() { case "$1" in 01-admin-panel/*) echo "$ADM/${1#01-admin-panel/}";; *) echo "$MLD/${1#11-moto-lab/}";; esac; }
 put() { local f d; for f in $PF; do case "$f" in "$1"/*) d=$(dst "$f")
   install -m 644 -o "$(stat -c %U "$(dirname "$d")")" -g "$(stat -c %G "$(dirname "$d")")" "$CODE/portals/$f" "$d" || return 1;; esac; done; }
@@ -164,11 +181,12 @@ else
   for f in $PF; do d=$(dst "$f")
     [ -f "$d" ] && [ "$(sha "$d")" = "$(sha "$CODE/portals/$f")" ] && continue
     case "$f" in 01-*) NEWA=1;; *) NEWM=1;; esac
-    [ ! -f "$d" ] || grep -qxF "$(sha "$d")  $f" "$CODE/portals/base-26nov.sha256" || BAD="$BAD $f"
+    # a file there must be one of ours: as on 26 Nov (before the Moto Lab went live) or 27 Nov (live through the admin panel)
+    [ ! -f "$d" ] || grep -qxF "$(sha "$d")  $f" "$CODE"/portals/base-*.sha256 || BAD="$BAD $f"
   done
   AK=$(getenv "$ADM/.env" ALERT_KEY)
   if [ -n "$BAD" ]; then
-    echo "STOP    changed on this server after 26 Nov:$BAD"
+    echo "STOP    changed on this server by hand:$BAD"
     echo "        The admin and Moto Lab panels are not changed. Send me a screenshot of this."
   elif [ -z "$AK" ]; then
     echo "FAILED  the admin panel has no ALERT_KEY in its .env: not changed"
@@ -186,21 +204,30 @@ else
       else echo "OK      admin panel: new code, it gives ${GOT% *} Moto Lab items and ${GOT#* } bills"; fi
     elif [ "$NEWA" = 0 ]; then GOT=$(mlfeed)
       [ "$GOT" = no ] && echo "OK      admin panel code already new (its Moto Lab feed is not ready yet)" || echo "OK      admin panel code already new (it gives ${GOT% *} Moto Lab items and ${GOT#* } bills)"; fi
-    if [ "$NEWA" != x ]; then   # then the Moto Lab panel: the admin panel's address and key, the new code, the first real read
-      [ "$(getenv "$MLD/.env" ADMIN_URL)" = http://127.0.0.1:3040 ] || setenv "$MLD/.env" ADMIN_URL http://127.0.0.1:3040
-      [ "$(getenv "$MLD/.env" ALERT_KEY)" = "$AK" ] || setenv "$MLD/.env" ALERT_KEY "$AK"
-      grep -q '^MOTOLAB_LIVE=0' "$MLD/.env" && setenv "$MLD/.env" MOTOLAB_LIVE 1
-      L=$(mlive)
-      if [ "$NEWM" = 1 ] || [ "$L" = off ]; then
-        OLDPID=$(pidof_port 3031); L=off; put 11-moto-lab && restart "$MLD" 3031 || echo "FAILED  copy or restart of the Moto Lab panel"
+    if [ "$NEWA" != x ]; then   # then the Moto Lab panel: the database lines and the admin panel's address and key, the new code
+      CH=0
+      [ "$(getenv "$MLD/.env" ADMIN_URL)" = http://127.0.0.1:3040 ] || { setenv "$MLD/.env" ADMIN_URL http://127.0.0.1:3040; CH=1; }
+      [ "$(getenv "$MLD/.env" ALERT_KEY)" = "$AK" ] || { setenv "$MLD/.env" ALERT_KEY "$AK"; CH=1; }
+      grep -q '^MOTOLAB_LIVE=0' "$MLD/.env" && { setenv "$MLD/.env" MOTOLAB_LIVE 1; CH=1; }
+      cpenv; [ "$(stat -c %U "$MLD/.env")" = "$PU" ] && chmod 600 "$MLD/.env"   # it holds the database password now
+      L=$(mlive); K=$(mlink)
+      if [ "$NEWM" = 1 ] || [ "$CH" = 1 ] || [ "$L" = off ] || [ "$K" = none ]; then
+        OLDPID=$(pidof_port 3031); L=off; K=none; T0=$(date +%s%3N)
+        put 11-moto-lab && restart "$MLD" 3031 || echo "FAILED  copy or restart of the Moto Lab panel"
         echo "        waiting for the Moto Lab panel to read the billing (up to 3 minutes)"
-        for i in $(seq 1 36); do sleep 5; NEWPID=$(pidof_port 3031); [ -n "$NEWPID" ] && [ "$NEWPID" != "$OLDPID" ] && L=$(mlive) && [ "$L" != off ] && break; done
+        for i in $(seq 1 36); do sleep 5; NEWPID=$(pidof_port 3031); [ -n "$NEWPID" ] && [ "$NEWPID" != "$OLDPID" ] || continue
+          L=$(mlive); K=$(mlink); [ "$L" != off ] && [ "$K" != none ] && [ "${K%% *}" -ge "$T0" ] && break; K=none; done
       fi
-      if [ "$L" != off ] && [ -n "$(pidof_port 3031)" ]; then
-        ML=0; echo "OK      Moto Lab panel on real data (${L#on } bills of the billing site)"
+      if [ "$L" != off ] && [ "$K" != none ] && [ -n "$(pidof_port 3031)" ]; then
+        ML=0; read -r _ KM KS KB <<<"$K"
+        if [ "$KM $KS" = "db ok" ]; then echo "OK      Moto Lab panel straight on the billing database, every 3 seconds ($KB bills)"
+        else echo "OK      Moto Lab panel on real data through the admin panel, every minute ($KB bills)"
+          echo "WARN    it could not read the billing database itself: $(mlerr)"; echo "        Send me a screenshot of this."; fi
       else
-        echo "FAILED  the Moto Lab panel did not read the billing: its old code is put back (it stays out of the menu)"
-        tar -C "$MLD" -xzf "$BK/motolab-code.tgz"; rm -f "$MLD/server/oldlink.js"; restart "$MLD" 3031
+        echo "FAILED  the Moto Lab panel did not read the billing: its code before this update is put back"
+        for f in $PF; do case "$f" in 11-moto-lab/*) tar -tzf "$BK/motolab-code.tgz" "${f#11-moto-lab/}" >/dev/null 2>&1 || rm -f "$(dst "$f")";; esac; done
+        tar -C "$MLD" -xzf "$BK/motolab-code.tgz"; restart "$MLD" 3031
+        [ "$(mlive)" = off ] || ML=0   # live before this update: it stays in the menu with its old code
       fi
     fi
     rm -f "$T/hdr"

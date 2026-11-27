@@ -99,7 +99,7 @@ router.post('/logout', (req, res) => {
 
 // ---- data ----------------------------------------------------------------
 router.get('/me', wrap(req => ({ me: actor(req), clock: clock() })));
-router.get('/state', wrap(req => { const me = actor(req); if (me.via) throw httpError(403, 'Other portals use the feed routes.'); return { me, clock: clock(), rules: rules(), demo: demo(), live: oldlink.live(), billing: oldlink.BILLING_URL(), state: stateFor(me), ...extra(), rev: store.revision() }; }));
+router.get('/state', wrap(req => { const me = actor(req); if (me.via) throw httpError(403, 'Other portals use the feed routes.'); return { me, clock: clock(), rules: rules(), demo: demo(), live: oldlink.live(), liveSec: oldlink.speed(), billing: oldlink.BILLING_URL(), state: stateFor(me), ...extra(), rev: store.revision() }; }));
 router.get('/rev', wrap(req => { actor(req); return { rev: store.revision(), today: clock().today }; }));
 router.post('/me/pin', wrap(req => {
   const me = actor(req); if (!me.id) throw httpError(400, 'Only a signed-in person can change a PIN.');

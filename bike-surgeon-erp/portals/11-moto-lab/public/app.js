@@ -51,8 +51,10 @@ Object.assign(I,{
 // ---------- data from the server (GET /api/state)
 let RAW=BOOT.state,REV=BOOT.rev,TOT=BOOT.totals,MON=BOOT.month,COM=BOOT.committed;
 const CLK=BOOT.clock,RULES=BOOT.rules,DEMO=!!BOOT.demo,ME_=BOOT.me,ME=ME_.name;
-// real data (Sam 27 Nov): bills, returns, stock in and prices are made in the Moto Lab billing site and show here every minute
-const LIVE=!!BOOT.live,BILLING=BOOT.billing||'https://themotolab.bikesurgeon.online';
+// real data (Sam 27 Nov): bills, returns, stock in and prices are made in the Moto Lab billing site and show here within
+// seconds (the server checks the billing's database every LIVE_SEC seconds, this screen asks the server as often)
+const LIVE=!!BOOT.live,BILLING=BOOT.billing||'https://themotolab.bikesurgeon.online',LIVE_SEC=Number(BOOT.liveSec)||60;
+const liveEvery=()=>LIVE_SEC<60?`every ${LIVE_SEC} seconds`:'every minute';
 const billLink=(cls='btn',txt='Open billing')=>`<a class="${cls}" href="${esc(BILLING)}" target="_blank" rel="noopener" style="text-decoration:none">${ic('receipt')} ${txt}</a>`;
 const OWNER=ME_.role==='owner', STAFF=ME_.role==='manager'||OWNER; // the accountant only reads
 const TODAY=CLK.today, TODAY_L=CLK.short;
@@ -101,7 +103,7 @@ const cReady=c=>['Replaced','Repaired','Rejected'].includes(c.st);
 const cSince=c=>c.steps[c.steps.length-1][1];
 const cLate=c=>c.st==='Sent to brand'&&daysAgo(cSince(c))>14;
 async function reloadState(){try{const r=await fetch('/api/state');if(r.status===401){location.reload();return;}const d=await r.json();if(d.clock&&d.clock.today!==TODAY){location.reload();return;}setState(d);render();}catch(e){}}
-setInterval(async()=>{if(BUSY||OV||document.hidden)return;try{const r=await fetch('/api/rev');if(r.status===401){location.reload();return;}const d=await r.json();if(d.today&&d.today!==TODAY){location.reload();return;}if(d.rev!==REV)reloadState();}catch(e){}},15000);
+setInterval(async()=>{if(BUSY||OV||document.hidden)return;try{const r=await fetch('/api/rev');if(r.status===401){location.reload();return;}const d=await r.json();if(d.today&&d.today!==TODAY){location.reload();return;}if(d.rev!==REV)reloadState();}catch(e){}},LIVE?Math.min(15,LIVE_SEC)*1000:15000);
 async function api(method,path,body){if(BUSY)return null;BUSY=true;
  try{const r=await fetch('/api'+path,{method,headers:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});
   const d=await r.json().catch(()=>({}));
@@ -212,7 +214,7 @@ function pCustomers(){const q=(UI.cq||'').toLowerCase();const k=tabOf('cz','all'
 function pStock(){const f=tabOf('sd','all');const q=(UI.sq2||'').toLowerCase();const cat=UI.scat||'';
  const F={all:()=>true,low:it=>!!lowLevel(it),dead:isDead}[f];const L=S.items.filter(F).filter(it=>(!cat||it.cat===cat)&&(!q||(it.name+it.sku+it.brand+it.bar).toLowerCase().includes(q))).sort(f==='low'?(a,b)=>b.s30-a.s30||a.stock-b.stock:(a,b)=>a.cat.localeCompare(b.cat)||a.name.localeCompare(b.name));
  const val=sum(S.items,it=>it.stock*it.sp);
- return topbar('Stock',LIVE?'Stock, prices and racks of the Moto Lab billing site, every minute':'Accessories in the store',LIVE?(STAFF?billLink('btn','Stock in, new item'):''):STAFF?`<button class="btn" data-act="stockin">${ic('truck')} Stock in</button><button class="btn pri" data-act="newitem">${ic('plus')} New item</button>`:'')+
+ return topbar('Stock',LIVE?`Stock, prices and racks of the Moto Lab billing site, ${liveEvery()}`:'Accessories in the store',LIVE?(STAFF?billLink('btn','Stock in, new item'):''):STAFF?`<button class="btn" data-act="stockin">${ic('truck')} Stock in</button><button class="btn pri" data-act="newitem">${ic('plus')} New item</button>`:'')+
  `<div class="kpis">${kpi('Items',S.items.length,`${sum(S.items,i=>i.stock)} pieces · ${inr(val)} at selling price`)}${kpi('Low stock',S.items.filter(lowLevel).length,'Sorted by what sells most')}${kpi('No sale 90 days',S.items.filter(isDead).length,`${inr(sum(S.items.filter(isDead),i=>i.stock*i.sp))} stuck`)}</div>
  <div class="between">${tabs('sd',[['all','All'],['low','Low stock',S.items.filter(lowLevel).length],['dead','No sale 90 days',S.items.filter(isDead).length]],'all')}<span class="row" style="flex-wrap:wrap"><select class="sel" id="scat"><option value="">All categories</option>${CATS.map(c=>`<option ${c===cat?'selected':''}>${c}</option>`).join('')}</select><input class="inp" id="sq2" value="${esc(UI.sq2||'')}" placeholder="Item, SKU or barcode" style="width:240px;max-width:100%"></span></div>`+
  card(f==='dead'?'No sale in 90 days':f==='low'?'Order these first':'All items',table(['Item','Category','Fits','Rack','Stock','Price','Sold 30 days','Last sale',''],L.map(it=>`<tr class="click" data-act="item" data-id="${it.id}"><td><span class="cell2"><b>${esc(nameOf(it))}</b><small class="mono">${it.sku}</small></span></td><td>${it.cat}</td><td style="max-width:220px">${esc(fitsTxt(it))}</td><td class="mono">${it.rack}</td>${R(it.stock)}${R(inr(it.sp))}${R(it.s30)}<td>${dshort(it.last)}</td><td>${lowLevel(it)?pill(lowLevel(it),it.stock===0||lowLevel(it)==='Order now'?'red':'orange'):isDead(it)?pill('Dead stock','gray'):''}</td></tr>`),980,'No items.'),'',f==='dead'?'try an offer or return to the vendor':'')+
@@ -314,7 +316,7 @@ const root=document.getElementById('root');let toastT;
 function toast(m){let t=document.querySelector('.toast');if(!t){t=document.createElement('div');t.className='toast';document.body.appendChild(t);}t.textContent=m;clearTimeout(toastT);toastT=setTimeout(()=>t.remove(),3200);}
 function render(){const P={today:pToday,newbill:pNewbill,bills:pBills,orders:pOrders,warranty:pWarranty,customers:pCustomers,stock:pStock,purchases:pPurchases,closing:pClosing,reports:pReports}[UI.page]||pToday;
  const fid=document.activeElement&&document.activeElement.id;
- root.innerHTML=`<div class="mobilebar">${logo('#FFFFFF','logo')}<div class="row"><button data-act="search" aria-label="Search">${ic('search')}</button><button data-act="menu" aria-label="Menu">${ic('menu')}</button></div></div><div class="app">${sidebar()}<main class="main">${LIVE?`<div class="demo between"><span>Live: bills, stock and prices come from the Moto Lab billing site every minute. Bills, returns and stock in are made there.</span>${billLink('link')}</div>`:''}${DEMO?`<div class="demo between"><span>Sample day: the clock is frozen at ${CLK.long}, ${CLK.now}.</span>${OWNER||ME_.role==='manager'?'<button class="link" data-act="reset">Reset sample data</button>':''}</div>`:''}${P()}</main></div>${overlay()}`;
+ root.innerHTML=`<div class="mobilebar">${logo('#FFFFFF','logo')}<div class="row"><button data-act="search" aria-label="Search">${ic('search')}</button><button data-act="menu" aria-label="Menu">${ic('menu')}</button></div></div><div class="app">${sidebar()}<main class="main">${LIVE?`<div class="demo between"><span>Live: bills, stock and prices come straight from the Moto Lab billing, ${liveEvery()}. Bills, returns and stock in are made there.</span>${billLink('link')}</div>`:''}${DEMO?`<div class="demo between"><span>Sample day: the clock is frozen at ${CLK.long}, ${CLK.now}.</span>${OWNER||ME_.role==='manager'?'<button class="link" data-act="reset">Reset sample data</button>':''}</div>`:''}${P()}</main></div>${overlay()}`;
  if(fid){const el=document.getElementById(fid);if(el){el.focus();const v=el.value||'';try{el.setSelectionRange(v.length,v.length);}catch(e){}}}}
 function go(p){UI.page=NAV.some(n=>n[0]===p)?p:'today';UI.nav=false;UI.nf=false;OV=null;if(location.hash.slice(1)!==UI.page)history.replaceState(null,'','#'+UI.page);render();window.scrollTo(0,0);}
 const val=id=>(document.getElementById(id)||{}).value||'';

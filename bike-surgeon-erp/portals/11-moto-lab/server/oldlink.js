@@ -1,7 +1,8 @@
 // Real data (Sam, 27 Nov 2026: "all data live, Moto Lab connected"). Bills are still MADE in the Moto Lab billing site
-// (themotolab.bikesurgeon.online). The admin panel reads its database every minute (01-admin-panel/server/oldbill.js, worked
-// out exactly like the billing); this panel asks the admin panel for the items and bills every minute:
-// GET ADMIN_URL/api/feed/motolab with X-Alert-Key: ALERT_KEY.
+// (themotolab.bikesurgeon.online). This panel reads the billing's database itself, read only (mldb.js: a tiny checksum
+// check every LIVE_SECONDS = 3, the items and bills again only when something changed; Sam: "direct connect database only,
+// I need instant"). Without the database settings in .env, or while the database cannot be read, it asks the admin panel
+// for the same items and bills once a minute: GET ADMIN_URL/api/feed/motolab with X-Alert-Key: ALERT_KEY.
 // While the link is on, bills, returns, stock in, new items and prices are made in the billing site (read-only here, so
 // nothing is made twice). Customer orders with advance, warranty claims, the purchase budget, rack counts, customer sizes
 // and the day closing are made here, against the real bills.
@@ -11,16 +12,22 @@ const db = require('./db');
 const C = require('./clock');
 const store = require('./store');
 const M = require('./motolab');
+const mldb = require('./mldb');
 
 const base = () => String(process.env.ADMIN_URL || '').replace(/\/$/, '');
-const wanted = () => process.env.MOTOLAB_LIVE !== '0' && !!base() && !!process.env.ALERT_KEY;
+const feedOn = () => !!base() && !!process.env.ALERT_KEY;
+const wanted = () => process.env.MOTOLAB_LIVE !== '0' && (mldb.on() || feedOn());
+// seconds between two checks: straight from the database 3 (at least 2), through the admin panel 60 (at least 20)
+const every = () => mldb.on() ? Math.max(2, Number(process.env.LIVE_SECONDS) || 3) : Math.max(20, Number(process.env.LIVE_SECONDS) || 60);
 const live = () => db.setting('live', '') === 'on';
 // nothing goes to the other portals while the first real read has not cleared the sample rows yet (links.js)
 const waiting = () => wanted() && !live();
 const BILLING_URL = () => String(process.env.BILLING_URL || 'https://themotolab.bikesurgeon.online');
 // bills kept here: a year and a bit, so warranty claims find the bill
 const DAYS = () => Math.max(40, Number(process.env.ML_DAYS) || 400);
-const status = { at: '', ok: false, error: '' };
+const status = { at: '', ok: false, error: '', mode: '' };
+// how fresh the screen is: the seconds of the way that read the billing last (the screens ask that often for news)
+const speed = () => status.mode === 'admin' || !mldb.on() ? 60 : every();
 
 const r2 = n => Math.round(Number(n || 0) * 100) / 100;
 const key = d => String(d || '').split('-').reverse().join('-');   // dd-mm-yyyy -> yyyy-mm-dd, for sorting
@@ -139,28 +146,66 @@ function apply(d) {
   return { bills: keep.length, items: Array.isArray(d.items) ? d.items.length : null, changed };
 }
 
-async function pull() {
-  if (!wanted()) return null;
-  status.at = C.stamp(C.now());
+// One check. Straight from the database: the checksums first; the items and bills are read again only when they changed
+// (or force, or 10 minutes after the last full read). If the database cannot be read, it is asked again a minute later and
+// the admin panel's feed is used meanwhile (at most once a minute). The last result is kept in the settings (link_last)
+// for update.sh: mode db or admin, and dbError while the database cannot be read.
+let running = false, lastStamp = '', lastFull = 0, lastFeed = 0, lastSaid = '', dbRetryAt = 0;
+const FULL_MS = 10 * 60 * 1000;
+const keep = x => db.setSetting('link_last', JSON.stringify({ at: new Date().toISOString(), ...x, ...(status.dbError ? { dbError: status.dbError } : {}) }));
+function done(mode, out) {
+  if (mode === 'db') status.dbError = '';
+  Object.assign(status, { at: C.stamp(C.now()), ok: true, error: '', mode, bills: out.bills, items: out.items });
+  keep({ ok: true, mode, bills: out.bills, items: out.items });
+  lastSaid = '';
+  return out;
+}
+function failed(mode, e) {
+  const error = String(e.message || e).slice(0, 200);
+  if (mode === 'db') status.dbError = error;
+  Object.assign(status, { at: C.stamp(C.now()), ok: false, error, mode });
+  if (lastSaid === mode + error) return;      // said once, not at every check
+  lastSaid = mode + error;
+  console.error(`Moto Lab billing link (${mode === 'db' ? 'database' : 'admin panel'}):`, error);
+  keep({ ok: false, mode, error });
+}
+async function pull(force = false) {
+  if (!wanted() || running) return null;
+  running = true;
   try {
+    if (mldb.on() && (force || Date.now() >= dbRetryAt)) {
+      try {
+        const st = await mldb.stamp();
+        dbRetryAt = 0;
+        if (!force && st === lastStamp && Date.now() - lastFull < FULL_MS) { status.checked = C.stamp(C.now()); return { same: true }; }
+        const out = apply(await mldb.read());
+        lastStamp = st; lastFull = Date.now();
+        return done('db', out);
+      } catch (e) {
+        failed('db', e);
+        lastStamp = ''; dbRetryAt = Date.now() + 60000;   // asked again in a minute; then everything is read again
+      }
+    }
+    // the admin panel's feed: without the database settings, or while the database cannot be read (once a minute)
+    if (!feedOn() || (mldb.on() && Date.now() - lastFeed < 60000)) return null;
+    lastFeed = Date.now();
     const r = await fetch(base() + '/api/feed/motolab', { headers: { 'X-Alert-Key': process.env.ALERT_KEY }, signal: AbortSignal.timeout(30000) });
     if (!r.ok) throw new Error(`admin panel answered ${r.status}`);
     const d = await r.json();
     if (!d.live) throw new Error('the admin panel has not read the Moto Lab billing yet');
-    const out = apply(d);
-    Object.assign(status, { ok: true, error: '', ...out });
-    return out;
+    return done('admin', apply(d));
   } catch (e) {
-    Object.assign(status, { ok: false, error: String(e.message || e).slice(0, 200) });
-    console.error('Moto Lab billing link:', status.error);
+    failed('admin', e);
     return null;
+  } finally {
+    running = false;
   }
 }
 
 function start() {
   if (!wanted()) return;
-  pull();
-  setInterval(() => { pull(); }, Math.max(20, Number(process.env.LIVE_SECONDS) || 60) * 1000).unref();
+  pull(true);
+  setInterval(() => { pull(); }, every() * 1000).unref();
 }
 
-module.exports = { live, waiting, pull, start, status, apply, catOf, billOf, itemsOf, custOf, BILLING_URL };
+module.exports = { live, waiting, pull, start, status, speed, apply, catOf, billOf, itemsOf, custOf, BILLING_URL };

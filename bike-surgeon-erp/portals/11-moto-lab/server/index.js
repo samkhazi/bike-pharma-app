@@ -60,7 +60,7 @@ function start(port = Number(process.env.PORT || 3000)) {
   // WhatsApp messages and rows for the accountant and admin panels that could not go out are tried again every minute
   setInterval(() => { notify.flush().catch(() => {}); require('./links').flush().catch(() => {}); }, 60000).unref();
   backupTick(); setInterval(backupTick, 5 * 60 * 1000).unref();
-  // real items and bills of the Moto Lab billing, through the admin panel, every minute (oldlink.js)
+  // real items and bills of the Moto Lab billing: straight from its database every 3 seconds, else through the admin panel every minute (oldlink.js)
   require('./oldlink').start();
   return createApp().listen(port, () => console.log(`The Moto Lab portal on http://localhost:${port}`));
 }

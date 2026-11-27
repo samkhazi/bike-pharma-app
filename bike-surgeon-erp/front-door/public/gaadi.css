@@ -1,0 +1,84 @@
+/* Vehicle number page (VR Garage): the same colours as the panels and the other front door pages. */
+:root{--bg:#FFFFFF;--card:#fff;--soft:#F6F5F2;--fg:#1F1F1F;--muted:#6B6B6B;--line:#E7E7E4;--yel:#F8C018;--onYel:#1F1F1F;
+  --greenT:#15803D;--greenB:#E8F5EC;--orangeT:#B45309;--orangeB:#FFF3DC;--redT:#B42318;--redB:#FDECEA;--greyB:#F1F0EC;
+  --display:"Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#121212;--card:#1C1C1C;--soft:#242422;--fg:#F2F2EF;--muted:#A3A39E;--line:#2E2E2C;
+  --greenT:#86EFAC;--greenB:#173323;--orangeT:#FDBA74;--orangeB:#3A2A12;--redT:#FCA5A5;--redB:#3B1A17;--greyB:#2A2A28;color-scheme:dark}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--display);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--yel);outline-offset:2px}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.wrap{max-width:1080px;margin:0 auto;padding:24px 20px 40px;display:grid;gap:16px}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+h1{font-size:24px;line-height:1.2;margin:0;font-weight:800}
+h2{font-size:16px;margin:0;font-weight:800}
+.sub{margin:4px 0 0;color:var(--muted);max-width:640px}
+.stat{font-size:12.5px;color:var(--muted);background:var(--soft);border-radius:999px;padding:6px 12px}
+.muted{color:var(--muted)}
+.search{display:flex;gap:10px;align-items:stretch}
+.search input{flex:1;min-width:0;font-family:var(--mono);font-size:22px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  padding:12px 16px;border:2px solid var(--fg);border-radius:14px;background:var(--card)}
+.search input::placeholder{color:#B5B5B0;letter-spacing:.06em}
+.btn{font-weight:700;padding:10px 16px;border-radius:12px;border:1px solid var(--line);background:var(--card);cursor:pointer;white-space:nowrap}
+.btn.pri{background:var(--yel);border-color:var(--yel);color:var(--onYel)}
+.btn.big{padding:12px 22px;font-size:15px}
+.btn.sm{padding:6px 10px;font-size:12.5px;border-radius:9px}
+.btn:disabled{opacity:.55;cursor:default}
+.note{margin:0;padding:12px 14px;border-radius:12px;background:var(--orangeB);color:var(--fg)}
+.note code{font-family:var(--mono);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:12.5px;word-break:break-all}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;display:grid;gap:14px;min-width:0}
+.card-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.plate{display:inline-block;font-family:var(--mono);font-weight:800;letter-spacing:.05em;border:2px solid var(--fg);border-radius:8px;padding:2px 8px;
+  background:#fff;color:#111;white-space:nowrap}
+.plate.lg{font-size:22px;padding:4px 12px;border-radius:10px}
+.head{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.head .what{display:grid;gap:2px;min-width:0}
+.head .what b{font-size:20px;line-height:1.25}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--greyB);color:var(--fg);white-space:nowrap}
+.pill.g{background:var(--greenB);color:var(--greenT)}
+.pill.o{background:var(--orangeB);color:var(--orangeT)}
+.pill.r{background:var(--redB);color:var(--redT)}
+.edit{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end}
+.edit label{display:grid;gap:6px;font-weight:600;font-size:13px;min-width:0}
+.edit input{padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);width:100%}
+.hint{font-size:12px;color:var(--muted);font-weight:500}
+/* lines between the boxes are each box's own right and bottom line (the outer border hides the ones at the edge), so a short
+   last row ends in white, not in a grey block */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.f{padding:10px 12px;display:grid;gap:2px;align-content:start;min-width:0;box-shadow:1px 0 0 var(--line),0 1px 0 var(--line)}
+.f small{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+.f span{font-weight:600;overflow-wrap:anywhere}
+.f .mono{font-family:var(--mono);font-size:14.5px;letter-spacing:.02em}
+.f .cp{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.src{font-size:12.5px;color:var(--muted)}
+.list{display:grid;gap:0}
+.li{display:grid;grid-template-columns:minmax(150px,1fr) minmax(140px,1fr) minmax(220px,1.6fr);gap:10px 16px;align-items:center;padding:12px 4px;border-top:1px solid var(--line)}
+.li:first-child{border-top:0}
+.li .c{display:grid;gap:2px;min-width:0}
+.li .c small{color:var(--muted);font-size:12.5px;overflow-wrap:anywhere}
+.li .c b{overflow-wrap:anywhere}
+button.li{width:100%;background:none;border:0;border-top:1px solid var(--line);text-align:left;cursor:pointer;border-radius:0}
+button.li:first-child{border-top:0}
+button.li:hover{background:var(--soft)}
+.vr{display:grid;gap:2px;min-width:0}
+.vr .mono{font-family:var(--mono);font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.hist .li{grid-template-columns:minmax(110px,.8fr) minmax(140px,1.2fr) minmax(160px,1.2fr)}
+.wait{display:flex;gap:10px;align-items:center;color:var(--muted)}
+.spin{width:18px;height:18px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--fg);animation:sp .8s linear infinite;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+.err{color:var(--redT);font-weight:600}
+.okt{color:var(--greenT);font-weight:600}
+@media (max-width:700px){
+  .wrap{padding:16px 16px 32px;gap:14px}
+  h1{font-size:21px}
+  .stat{border-radius:12px}
+  .search{flex-direction:column}
+  .search input{font-size:20px}
+  .edit{grid-template-columns:1fr}
+  .li,.hist .li{grid-template-columns:1fr;gap:4px}
+  .grid{grid-template-columns:1fr 1fr}
+}
+@media (max-width:380px){.grid{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}

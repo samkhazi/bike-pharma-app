@@ -32,3 +32,16 @@ passwords and PINs only to /root/bikesurgeon-staff-logins.txt, and keeps the old
 person) until `bash /root/bs-erp-update.sh old-off`. `bash /root/bs-erp-update.sh undo` puts the logins back, one update
 at a time. A staff member's own PIN is the one a screen asks for (the cashier's evening closing takes the cashier's and
 the accountant's own PINs).
+
+## Vehicle number page (Sam, 27 Nov 2026: "VR Garage in job card + billing counter")
+`/__gate/gaadi` (public/gaadi.html + gaadi.js, server/vehicles.js) is at the top of every login's menu in the one screen. A
+registration number gives the chassis, model, engine number and owner from VR Garage; staff can change the customer name and
+the model. Each number is asked ONLY ONCE: VR Garage's answer is kept in `data/front.db` (table vehicles, every search in
+vr_calls) for ever. The front door reads the billing's `job_card` table (read only, the admin panel's OLD_DB_* lines copied
+into .env by update.sh) every 5 seconds: a number shows its job cards at once, and the vehicle of every job card made after
+the first read is asked by itself, once (last 3 days only). The Cashier shows the model, chassis and engine under a ready
+vehicle (`/__gate/api/vehicle/many`, saved data only, never a new search).
+- .env: VRGARAGE_EMAIL + VRGARAGE_PASS64 (typed on the server: `bash /root/bs-erp-update.sh vrgarage`, the login is tried
+  first), VRGARAGE_URL, VR_MAX_DAY (300 searches a day), VR_MAX_PERSON_DAY (60), GAADI_SECONDS (5), GAADI_LIVE=0 (no billing read).
+- API (any signed-in login): GET /__gate/api/vehicle?no=…[&look=1], POST /__gate/api/vehicle {no, name, model},
+  GET /__gate/api/vehicle/recent, GET /__gate/api/vehicle/many?nos=…; owner: POST /__gate/api/vehicle/again {no}.

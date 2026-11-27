@@ -32,6 +32,14 @@ Object.assign(I,{
  tag:'<path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z"/><circle cx="7.5" cy="7.5" r="1.5"/>'});
 const ic=(n,cls='i')=>`<svg class="${cls}" viewBox="0 0 24 24">${I[n]||I.doc}</svg>`;
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// Vehicle number (VR Garage, the front door's page; Sam 27 Nov): the model, chassis and engine kept for a job card's vehicle
+const VRC={},VRT={};let vrBusy=false;const vrNo=p=>String(p||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+function vrLine(p){const v=VRC[vrNo(p)];if(!v)return'';const t=[v.model,v.chassis&&'Chassis '+v.chassis,v.engine&&'Engine '+v.engine].filter(Boolean).join(' · ');
+ return t?`<button type="button" class="link" data-act="gaadi" data-plate="${esc(vrNo(p))}" style="display:block;padding:0;margin-top:2px;text-align:left;font-size:12px;font-weight:600">${esc(t)}</button>`:'';}
+async function vrFill(){if(vrBusy||typeof S==='undefined'||!S.ready)return;const now=Date.now();
+ const want=[...new Set(S.ready.map(r=>vrNo(r.plate)).filter(p=>p&&!(VRT[p]>now-60000)))].slice(0,80);if(!want.length)return;vrBusy=true;want.forEach(p=>{VRT[p]=now;});
+ try{const r=await fetch('/__gate/api/vehicle/many?nos='+encodeURIComponent(want.join(',')));if(!r.ok)return;const d=await r.json();let ch=false;
+  for(const[k,v]of Object.entries(d.list||{}))if(JSON.stringify(VRC[k])!==JSON.stringify(v)){VRC[k]=v;ch=true;}if(ch)render();}catch(e){}finally{vrBusy=false;}}
 const inr=n=>(n<0?'−':'')+'₹'+Math.abs(Math.round(Number(n||0))).toLocaleString('en-IN');
 const pill=(t,c)=>`<span class="pill p-${c}">${esc(t)}</span>`;
 const initials=n=>{const w=String(n).trim().split(/\s+/);return ((w[0]||'')[0]+(w[1]?w[1][0]:(w[0]||'')[1]||'')).toUpperCase();};
@@ -156,7 +164,7 @@ const R=x=>`<td class="mono" style="text-align:right">${x}</td>`;
 // ---------- pages
 function pToday(){const t=totals();const rq=sum(S.ready,toCollect);const back=S.vinv.filter(v=>v.st==='back');const held=S.advs.filter(a=>a.st==='open');
  const todo=[];
- canBill().forEach(r=>todo.push(`<div class="row arow"><span class="avatar p-green" style="border-radius:10px">${ic('cash')}</span><div class="cell2" style="flex:1"><b><span class="plate">${r.plate}</span> · ${esc(r.model)}</b><small>${r.jc} · ${esc(r.cust)} · ready ${r.readyAt}${r.here?' · customer is here':''}</small></div>${LIVE?billBtn():`<b class="mono">${inr(toCollect(r))}</b><button class="btn pri" data-go="pay/${r.jc}">Collect</button>`}</div>`));
+ canBill().forEach(r=>todo.push(`<div class="row arow"><span class="avatar p-green" style="border-radius:10px">${ic('cash')}</span><div class="cell2" style="flex:1"><b><span class="plate">${r.plate}</span> · ${esc(r.model)}</b><small>${r.jc} · ${esc(r.cust)} · ready ${r.readyAt}${r.here?' · customer is here':''}</small>${vrLine(r.plate)}</div>${LIVE?billBtn():`<b class="mono">${inr(toCollect(r))}</b><button class="btn pri" data-go="pay/${r.jc}">Collect</button>`}</div>`));
  if(LIVE)unpaidBills().forEach(b=>todo.push(`<div class="row arow"><span class="avatar p-orange" style="border-radius:10px">${ic('clock')}</span><div class="cell2" style="flex:1"><b>Not paid · ${esc(b.no)} · <span class="plate">${esc(b.plate)}</span></b><small>${esc(b.cust)} · ${dshort(b.date)} ${esc(b.at)}. Take the payment in the billing software.</small></div><b class="mono">${inr(b.amount)}</b><button class="btn" data-act="bill" data-no="${esc(b.no)}">Open</button></div>`));
  pendBills().forEach(b=>todo.push(`<div class="row arow"><span class="avatar p-orange" style="border-radius:10px">${ic('clock')}</span><div class="cell2" style="flex:1"><b>UPI pending · ${b.no} · <span class="plate">${b.plate}</span></b><small>${esc(b.cust)} · ref ${b.upiPend.ref} · since ${b.upiPend.at}. Check Paytm.</small></div><b class="mono">${inr(upiOf(b))}</b><button class="btn" data-act="gotupi" data-no="${b.no}" ${CASHIER?'':'hidden'}>Got in Paytm</button></div>`));
  S.fixes.filter(f=>f.st==='ok').forEach(f=>todo.push(`<div class="row arow"><span class="avatar p-violet" style="border-radius:10px">${ic('tag')}</span><div class="cell2" style="flex:1"><b>Bill correction ${f.no} · <span class="plate">${f.plate}</span></b><small>${f.bill} · ${esc(f.why)} · OK by ${esc(f.okBy)}</small></div><b class="mono">${f.diff>0?'Collect ':'Return '}${inr(Math.abs(f.diff))}</b><button class="btn pri" data-act="fix" data-no="${f.no}">${f.diff>0?'Collect':'Return'}</button></div>`));
@@ -175,7 +183,7 @@ function pToday(){const t=totals();const rq=sum(S.ready,toCollect);const back=S.
 function pCollectLive(){const R2=canBill(),U=unpaidBills();
  return topbar('Ready vehicles','Work done, no bill yet. Make the bill in the billing software; it shows here within seconds.',billBtn('Open billing'))+
  `<div class="kpis">${kpi('Ready, no bill',String(R2.length),'Make the bill in the billing software')}${kpi('Not paid bills',String(U.length),inr(sum(U,b=>b.amount)))}${kpi('Collected today',inr(totals().got),`${S.bills.length} bills`)}</div>`+
- card('Ready, no bill yet',table(['Vehicle','Customer','Advisor','Mechanic','Done',''],R2.map(r=>`<tr><td><div class="cell2"><span class="plate">${esc(r.plate)}</span><small>${esc(r.jc)} · ${esc(r.model)}</small></div></td><td><div class="cell2"><b>${esc(r.cust)}</b><small>${fmtPh(r.ph)}</small></div></td><td>${esc(r.adv)}</td><td>${esc(r.mech)}</td><td>${esc(r.readyAt)}</td><td>${billBtn()}</td></tr>`),760,'Every finished vehicle has its bill.'))+
+ card('Ready, no bill yet',table(['Vehicle','Customer','Advisor','Mechanic','Done',''],R2.map(r=>`<tr><td><div class="cell2"><span class="plate">${esc(r.plate)}</span><small>${esc(r.jc)} · ${esc(r.model)}</small>${vrLine(r.plate)}</div></td><td><div class="cell2"><b>${esc(r.cust)}</b><small>${fmtPh(r.ph)}</small></div></td><td>${esc(r.adv)}</td><td>${esc(r.mech)}</td><td>${esc(r.readyAt)}</td><td>${billBtn()}</td></tr>`),760,'Every finished vehicle has its bill.'))+
  card('Bills not paid yet',table(['Bill','Vehicle','Customer','Amount',''],U.map(b=>`<tr class="click" data-act="bill" data-no="${esc(b.no)}"><td><div class="cell2"><b class="mono">${esc(b.no)}</b><small>${dshort(b.date)} · ${esc(b.at)}</small></div></td><td><div class="cell2"><span class="plate">${esc(b.plate)}</span><small>${esc(b.jc)} · ${esc(b.model)}</small></div></td><td><div class="cell2"><b>${esc(b.cust)}</b><small>${fmtPh(b.ph)}</small></div></td>${R('<b>'+inr(b.amount)+'</b>')}<td>${pill('Not paid','orange')}</td></tr>`),700,'No bill is waiting for payment.'),'','take the payment in the billing software');}
 function pCollect(){if(LIVE)return pCollectLive();const f=tabOf('col','ready');
  return topbar('Collect payment','Vehicles that passed QC. Open one, take the money, and the bill goes on WhatsApp.')+
@@ -336,7 +344,7 @@ const PAGES={requests:pRequests,today:pToday,collect:pCollect,pay:pPay,bills:pBi
 function render(){const P=PAGES[UI.page]||pToday;
  const fid=document.activeElement&&document.activeElement.id;
  root.innerHTML=`<div class="mobilebar">${logo('#FFFFFF','logo')}<div class="row"><button data-act="search" aria-label="Search">${ic('search')}</button><button data-act="menu" aria-label="Menu">${ic('menu')}</button></div></div><div class="app">${sidebar()}<main class="main">${LIVE&&['today','collect','pay','bills'].includes(UI.page)?`<div class="demo" style="margin-bottom:12px">Live: bills and job cards come from the billing software within seconds. Make bills there; petty cash and the counter closing are done here.</div>`:''}${P()}</main></div>${overlay()}`;
- if(fid){const el=document.getElementById(fid);if(el){el.focus();const v=el.value||'';try{el.setSelectionRange(v.length,v.length);}catch(e){}}}}
+ if(fid){const el=document.getElementById(fid);if(el){el.focus();const v=el.value||'';try{el.setSelectionRange(v.length,v.length);}catch(e){}}}vrFill();}
 function go(p){if(p.startsWith('pay/')){UI.page='pay';UI.jc=decodeURIComponent(p.slice(4));}else UI.page=PAGES[p]?p:(CASHIER?'today':'requests');UI.nav=false;UI.nf=false;OV=null;if(location.hash.slice(1)!==p)history.replaceState(null,'','#'+p);render();window.scrollTo(0,0);}
 const val=id=>(document.getElementById(id)||{}).value||'';
 const J=encodeURIComponent;
@@ -353,6 +361,7 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-act],[dat
  if(a==='search'){OV={t:'search'};UI.q='';render();document.getElementById('sq')?.focus();return;}
  if(a==='menu'){UI.nav=!UI.nav;render();return;}
  if(a==='nf'){UI.nf=!UI.nf;render();return;}
+ if(a==='gaadi'){const p=el.dataset.plate||'';if(window.top===window){window.open('/__gate/gaadi#'+p,'_blank');return;}try{window.top.postMessage({bsGaadi:p},location.origin);}catch(x){}return;}
  if(a==='logout'){fetch('/api/logout',{method:'POST'}).finally(()=>{location.hash='';location.reload();});return;}
  if(a==='reset'){if(confirm('Load the sample data again? Everything typed will be lost.'))run('POST','/reset',{},()=>{UI.cnt=null;UI.vf=null;UI.pay={};go(CASHIER?'today':'requests');});return;}
  if(a==='print'){window.print();return;}

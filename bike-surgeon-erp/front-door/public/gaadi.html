@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vehicle number · Bike Surgeon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="/__gate/gaadi.css">
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <div>
+      <h1>Vehicle number</h1>
+      <p class="sub">Type the number: the chassis, model, engine number and owner come from VR Garage. Each vehicle is asked only once and kept here.</p>
+    </div>
+    <span class="stat" id="stat" hidden></span>
+  </header>
+  <form class="search" id="f" autocomplete="off">
+    <label for="no" class="vh">Vehicle number</label>
+    <input id="no" name="no" placeholder="KA17AB1234" autocapitalize="characters" autocorrect="off" spellcheck="false" maxlength="16" enterkeyhint="search">
+    <button type="submit" class="btn pri big" id="go">Search</button>
+  </form>
+  <p class="note" id="vrnote" hidden></p>
+  <section id="out" aria-live="polite"></section>
+  <section class="card" id="recent">
+    <div class="card-h"><h2>Latest job cards</h2><small class="muted" id="rnote">From the billing, within seconds</small></div>
+    <div class="list" id="rlist"><p class="muted">Loading…</p></div>
+  </section>
+</main>
+<script src="/__gate/gaadi.js"></script>
+</body>
+</html>

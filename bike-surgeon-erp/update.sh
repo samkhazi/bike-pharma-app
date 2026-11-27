@@ -6,6 +6,14 @@
 #               bash /root/bs-erp-update.sh old-off    (older role-email staff logins off, once everyone uses their own)
 #               bash /root/bs-erp-update.sh undo       (logins back as before the last update; again = one more back)
 #               bash /root/bs-erp-update.sh names      (the name-wise logins again from the attendance app; passwords + PINs kept)
+#               bash /root/bs-erp-update.sh vrgarage   (the VR Garage email + password for the Vehicle number page, typed here once)
+# 28 Nov update 7 (Sam: "VR Garage in job card + billing counter"): a new page "Vehicle number" at the top of every login's
+# menu. A number gives the chassis, model, engine number and owner from VR Garage; staff can change the customer name and
+# the model. Each vehicle is asked ONLY ONCE (the answer is kept in the front door's database for ever). The front door reads
+# the job cards of the Bike Surgeon billing (read only, the admin panel's database lines are copied into its .env) every
+# 5 seconds: a number shows its old job cards at once, and the vehicle of every NEW job card is asked by itself, once. The
+# Cashier shows the model, chassis and engine under a ready vehicle. VR Garage's login is typed on this server only:
+#   bash /root/bs-erp-update.sh vrgarage   (it tries the login first and saves it only when VR Garage accepts it)
 # 27 Nov update 6 (Sam: "old inventory and new inventory numbers mismatch"): Inventory 2.0 reads the parts table of the
 # Bike Surgeon billing and of the Moto Lab billing straight from their databases (read only: the admin panel's database
 # lines are copied into its .env), a checksum check every 3 seconds. Every part number, name, MRP, cost, GST, discount,
@@ -53,7 +61,7 @@ PU=bikesurgeon-panel
 MODE=${1:-}
 
 [ "$(id -u)" = 0 ] || { echo "Run this as root (type su - first, then this line). Nothing changed."; exit 1; }
-case "$MODE" in ""|undo|old-off|names) ;; *) echo "Unknown word: $MODE (use nothing, names, undo or old-off). Nothing changed."; exit 1;; esac
+case "$MODE" in ""|undo|old-off|names|vrgarage) ;; *) echo "Unknown word: $MODE (use nothing, names, undo, old-off or vrgarage). Nothing changed."; exit 1;; esac
 
 # ---- 0. the newest code from GitHub; a newer copy of this script takes over --------------------------------------------
 if [ "${BS_ERP_FRESH:-}" != 1 ]; then
@@ -104,6 +112,31 @@ if [ "$MODE" = undo ]; then
     [ -n "$(backups)" ] && echo "(An older update has a backup too: undo again goes one more update back.)"
   else echo "Something failed: send me a screenshot of this."; fi
   exit $U
+fi
+
+if [ "$MODE" = vrgarage ]; then
+  # the VR Garage login of the Vehicle number page: typed here (never in a chat), tried with VR Garage first (a login only,
+  # no search, nothing is paid), then kept only in the front door's .env (the password as base64, so any sign works)
+  [ -f "$FD/server/vehicles.js" ] || { echo "Run the update first:  bash $ME   Nothing changed."; exit 1; }
+  echo "VR Garage login for the Vehicle number page. It is kept only on this server ($FD/.env)."
+  read -r -p "VR Garage email: " VE; read -r -s -p "VR Garage password (it does not show while you type): " VP; echo
+  VE=$(printf '%s' "$VE" | tr -d ' \r')
+  case "$VE" in *@*.*) ;; *) echo "That email does not look right. Nothing changed."; exit 1;; esac
+  [ -n "$VP" ] || { echo "No password typed. Nothing changed."; exit 1; }
+  echo "== Trying the login with VR Garage (no search: nothing is paid)"
+  R=$(cd "$FD" && VRG_E="$VE" VRG_P="$VP" "$B/node" --env-file-if-exists=.env --disable-warning=ExperimentalWarning -e '
+    require("./server/vehicles").loginTest(process.env.VRG_E, process.env.VRG_P).then(t => console.log(t), e => console.log("could not try the login: " + e.message))' 2>&1 | tail -1)
+  if [ "$R" != ok ]; then echo "FAILED  $R"; echo "        Nothing saved. Send me a screenshot of this (it shows no password)."; unset VP; exit 1; fi
+  echo "OK      VR Garage accepted the login"
+  VT=$(mktemp); chmod 600 "$VT"; P64=$(printf '%s' "$VP" | base64 -w0); unset VP
+  { grep -vE '^(VRGARAGE_EMAIL|VRGARAGE_PASS64|VRGARAGE_PASSWORD)=' "$FD/.env" || true; echo "VRGARAGE_EMAIL=$VE"; echo "VRGARAGE_PASS64=$P64"; } > "$VT" && cat "$VT" > "$FD/.env"
+  rm -f "$VT"; unset P64
+  [ "$(stat -c %U "$FD/.env")" = "$PU" ] && chmod 600 "$FD/.env"
+  su - "$PU" -c "$NODE; cd $PANEL && npx pm2 restart front-door >/dev/null" || echo "FAILED  restart of the front door"
+  UP=0; for i in $(seq 1 30); do sleep 1; curl -s -m 3 http://127.0.0.1:3022/__gate/login | grep -q 'Mobile number or email' && { UP=1; break; }; done
+  if [ $UP = 1 ]; then echo "OK      VR Garage connected. The vehicle of every new job card is asked by itself (once); any number on the Vehicle number page too."; echo "All done."
+  else echo "FAILED  the front door did not start again. Send me a screenshot of this."; exit 1; fi
+  exit 0
 fi
 
 [ -f "$CODE/front-door/tools/name-logins.js" ] && [ -f "$CODE/front-door/server/index.js" ] || { echo "The front door code is not in the download. Nothing changed."; exit 1; }
@@ -421,10 +454,21 @@ else
   fi
 fi
 
-echo "== 4. Front door: the new code (sign-in page, one screen)"
+echo "== 4. Front door: the new code (sign-in page, one screen, Vehicle number page)"
 tar -C "$FD" --exclude=./data --exclude=./node_modules -czf "$BK/front-door-code.tgz" . && chmod 600 "$BK/front-door-code.tgz" \
   || { echo "The front door code could not be copied to $BK. Nothing changed."; exit 1; }
-OLDPID=$(pidof_port 3022)
+# the Vehicle number page reads the billing's job cards: the admin panel's database lines of the Bike Surgeon billing (read
+# only login), copied as they are (the password is never printed)
+GA=1; FDBK="OLD_DB_HOST OLD_DB_PORT OLD_DB_USER OLD_DB_PASS OLD_DB_BS OLD_DB_PUBKEY MYSQL_BIN"
+if [ -n "$ADM" ] && [ -f "$ADM/.env" ] && [ -n "$(getenv "$ADM/.env" OLD_DB_BS)" ]; then
+  for k in $FDBK; do l=$(grep "^$k=" "$ADM/.env" | tail -1)
+    if [ -n "$l" ]; then grep -qxF -- "$l" "$FD/.env" && [ "$(grep -c "^$k=" "$FD/.env")" = 1 ] && continue
+      { grep -v "^$k=" "$FD/.env" || true; printf '%s\n' "$l"; } > "$T/env" && cat "$T/env" > "$FD/.env"
+    elif grep -q "^$k=" "$FD/.env"; then { grep -v "^$k=" "$FD/.env" || true; } > "$T/env"; cat "$T/env" > "$FD/.env"; fi
+    rm -f "$T/env"; done
+  [ "$(stat -c %U "$FD/.env")" = "$PU" ] && chmod 600 "$FD/.env"   # it holds the database password now
+else echo "WARN    the admin panel has no billing database lines: the Vehicle number page cannot read the job cards"; fi
+OLDPID=$(pidof_port 3022); T0=$(date +%s%3N)
 cp -r "$CODE/front-door/." "$FD/" && chown -R "$PU:" "$FD/server" "$FD/public" "$FD/tools" "$FD/tests" "$FD/package.json" "$FD/README.md"
 su - "$PU" -c "$NODE; cd $PANEL && npx pm2 restart front-door >/dev/null" || echo "FAILED  restart of the front door"
 UP=0; for i in $(seq 1 30); do NEWPID=$(pidof_port 3022)
@@ -436,6 +480,22 @@ if [ $UP != 1 ]; then
   echo "Send me a screenshot of this."; exit 1
 fi
 echo "OK      front door restarted with the new code"
+# the Vehicle number page: its first read of the billing's job cards (front door database, kv gaadi_last)
+FDB=$(getenv "$FD/.env" DB_FILE); case "$FDB" in "") FDB=$FD/data/front.db;; /*) ;; *) FDB=$FD/$FDB;; esac
+glast() { "$B/node" --disable-warning=ExperimentalWarning -e 'try{const d=new (require("node:sqlite").DatabaseSync)(process.argv[1],{readOnly:true});
+  const r=d.prepare("SELECT v FROM kv WHERE k=?").get("gaadi_last");d.close();const l=JSON.parse(r.v);
+  console.log((l.at||0)+" "+(l.on?1:0)+" "+(l.ok?"ok":"err")+" "+(l.cards||0)+" "+(l.plates||0)+" "+(l.vr?1:0))}catch{console.log("none")}' "$FDB"; }
+gerr() { "$B/node" --disable-warning=ExperimentalWarning -e 'try{const d=new (require("node:sqlite").DatabaseSync)(process.argv[1],{readOnly:true});
+  console.log(String(JSON.parse(d.prepare("SELECT v FROM kv WHERE k=?").get("gaadi_last").v).err||"").slice(0,160))}catch{}' "$FDB"; }
+G=none; for i in $(seq 1 30); do G=$(glast); read -r GT _ <<<"$G"; [ "$G" != none ] && [ "$GT" -ge "$T0" ] && break; G=none; sleep 2; done
+read -r _ GO GS GC GP GV <<<"$G"
+if [ "$G" = none ]; then echo "FAILED  Vehicle number page: it did not read the billing's job cards in a minute. Send me a screenshot of this."
+elif [ "$GO" != 1 ]; then echo "FAILED  Vehicle number page: no billing database lines in the front door's .env. Send me a screenshot of this."
+elif [ "$GS" != ok ]; then echo "FAILED  Vehicle number page: the billing's job cards could not be read: $(gerr)"; echo "        Send me a screenshot of this."
+else GA=0; echo "OK      Vehicle number page: $GC job cards of the billing read ($GP vehicles), new ones within 5 seconds"
+  if [ "$GV" = 1 ]; then echo "OK      VR Garage is connected"
+  else echo "NEXT    VR Garage is not connected yet. Once, to type its email and password:  bash $ME vrgarage"; fi
+fi
 
 N=0
 if [ $RUN_NAMES = 1 ]; then
@@ -460,4 +520,4 @@ if [ $RUN_NAMES = 1 ]; then
 else
   echo "Logins not changed: everyone keeps their password and PIN. Front door code backup: $BK"
 fi
-[ $N = 0 ] && [ $C = 0 ] && [ $MISS = 0 ] && [ $ML = 0 ] && [ $CS = 0 ] && [ $IV = 0 ] && echo "All done." || echo "Something failed: send me a screenshot of this (it shows no passwords)."
+[ $N = 0 ] && [ $C = 0 ] && [ $MISS = 0 ] && [ $ML = 0 ] && [ $CS = 0 ] && [ $IV = 0 ] && [ $GA = 0 ] && echo "All done." || echo "Something failed: send me a screenshot of this (it shows no passwords)."

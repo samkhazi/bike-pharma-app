@@ -20,7 +20,9 @@
   const byKey = k => G.find(g => g.key === k);
   const LAST = 'bs-last-' + me.email;
   let last = null; try { last = JSON.parse(localStorage.getItem(LAST) || 'null'); } catch { /* private window */ }
-  let cur = (last && byKey(last.key) ? last.key : G[0] && G[0].key) || '';
+  // the Vehicle number page (VR Garage, Sam 27 Nov) is the front door's own page, at the top of every login's menu
+  const TOOL = { key: 'gaadi', name: 'Vehicle number', frame: null };
+  let cur = (last && (last.key === TOOL.key || byKey(last.key)) ? last.key : G[0] && G[0].key) || '';
   if (G.length > 3) G.forEach(g => { g.shut = g.key !== cur; });
 
   $('who').textContent = me.owner ? 'Owner · everything in one place' : 'Your pages';
@@ -83,14 +85,27 @@
     closeMenu();
     setTimeout(() => read(g), 60);
   }
-  function show(key) {
+  function toolFrame(no) {
+    if (!TOOL.frame) {
+      const f = document.createElement('iframe');
+      f.title = TOOL.name; f.src = '/__gate/gaadi' + (no ? '#' + encodeURIComponent(no) : '');
+      TOOL.frame = f; $('frames').append(f);
+    } else if (no) { try { TOOL.frame.contentWindow.location.hash = no; } catch { TOOL.frame.src = '/__gate/gaadi#' + encodeURIComponent(no); } }
+    return TOOL.frame;
+  }
+  function show(key, no) {
     cur = key;
+    if (key === TOOL.key) toolFrame(no);
+    if (TOOL.frame) TOOL.frame.classList.toggle('show', key === TOOL.key);
     G.forEach(g => { if (g.key === key) makeFrame(g); if (g.frame) g.frame.classList.toggle('show', g.key === key); });
     draw();
   }
   // A panel asks for a popup while it is not the one on screen (Inventory: new stock waiting for the manager's price).
   // The popup shows here, over everything; Open shows that panel on the asked page.
   addEventListener('message', e => {
+    if (e.origin === location.origin && e.data && typeof e.data.bsGaadi === 'string') {
+      const no = e.data.bsGaadi.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16); show(TOOL.key, no); return;
+    }
     if (e.origin !== location.origin || !e.data || !e.data.bsNag) return;
     const g = G.find(x => x.frame && x.frame.contentWindow === e.source); if (!g || g.key === cur) return;
     const n = e.data.bsNag, old = document.getElementById('bsnag'); if (old) old.remove();
@@ -126,14 +141,17 @@
       const head = G.length > 1 ? `<button type="button" class="gh" data-sh="${gi}" aria-expanded="${!g.shut}"><span>${esc(g.name)}</span>${g.shut && sum ? `<span class="sum blink">${sum}</span>` : ''}<span class="arr">▾</span></button>` : '';
       return `<section class="grp ${g.shut ? 'shut' : ''}">${head}<div class="items">${body}</div></section>`;
     }).join('');
+    const tOn = cur === TOOL.key;
+    const tool = `<section class="grp tool"><div class="items"><button type="button" class="it ${tOn ? 'on' : ''}" data-tool="${TOOL.key}" ${tOn ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6.5" width="19" height="11" rx="2.5"/><path d="M6.5 12h2.5M11 12h2M15 12h2.5"/></svg><span>${TOOL.name}</span></button></div></section>`;
     const box = $('groups'), top = $('menu').scrollTop;
-    box.innerHTML = html; $('menu').scrollTop = top;
+    box.innerHTML = tool + html; $('menu').scrollTop = top;
     const g = byKey(cur), on = g && g.items.find(x => x.on);
-    $('mtitle').textContent = on ? on.label : g ? g.name : 'Bike Surgeon';
-    document.title = (on ? on.label + ' · ' : '') + 'Bike Surgeon';
+    $('mtitle').textContent = tOn ? TOOL.name : on ? on.label : g ? g.name : 'Bike Surgeon';
+    document.title = (tOn ? TOOL.name + ' · ' : on ? on.label + ' · ' : '') + 'Bike Surgeon';
   }
   $('groups').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.tool) { show(TOOL.key); try { localStorage.setItem(LAST, JSON.stringify({ key: TOOL.key, label: TOOL.name })); } catch { /* private window */ } closeMenu(); return; }
     if (b.dataset.sh != null) { const g = G[+b.dataset.sh]; g.shut = !g.shut; makeFrame(g); draw(); return; }
     if (b.dataset.re != null) { const g = G[+b.dataset.re]; g.state = 'wait'; g.items = []; g.sig = ''; if (g.frame) g.frame.src = `/p/${g.key}/`; draw(); return; }
     if (b.dataset.g != null) { const g = G[+b.dataset.g]; open(g, g.items[+b.dataset.i]); }
@@ -164,6 +182,7 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) still(); });
 
   // start: the last page first, the other panels a moment later (their menus fill in as they load)
+  if (cur === TOOL.key) show(TOOL.key);
   draw();
   const first = byKey(cur);
   if (first) {

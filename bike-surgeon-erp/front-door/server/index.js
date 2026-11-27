@@ -12,6 +12,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { DatabaseSync } = require('node:sqlite');
 const { PORTALS, OWNER_AS, KEYS } = require('./portals');
+const vehicles = require('./vehicles');   // Vehicle number page (VR Garage, the billing's job cards): vehicles.js
 
 const COOKIE = 'bs_gate';
 const DAYS = 14;
@@ -36,6 +37,7 @@ function open(file = env('DB_FILE') || path.join(__dirname, '..', 'data', 'front
     CREATE TABLE IF NOT EXISTS people (portal TEXT NOT NULL, phone TEXT NOT NULL, name TEXT NOT NULL, sample TEXT NOT NULL DEFAULT '',
       PRIMARY KEY (portal, phone));`);
   migrate();
+  vehicles.init(db);
   return db;
 }
 // people: the real staff inside each panel (name, their own number), written by tools/name-logins.js; sample = the demo
@@ -314,12 +316,13 @@ async function gateRoute(req, res, u) {
   const p = u.pathname, m = req.method;
   if (m !== 'GET' && req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) throw err(403, 'Cross-site request blocked.');
   if (m === 'GET' && p === '/__gate/login') return session(req) ? redirect(res, '/') : page(res, 'login.html');
-  if (m === 'GET' && /^\/__gate\/(login\.js|login\.css|building\.jpg|logo-white\.svg|bar\.js|logins\.js|gate\.css|logo\.svg|shell\.js|shell\.css|inshell\.js|inshell\.css|out\.js)$/.test(p)) return page(res, p.slice(8), 200, {}, undefined, /^v=[0-9a-f]{10}$/.test(u.search.slice(1)) && u.search.slice(3) === gv(p.slice(8)));
+  if (m === 'GET' && /^\/__gate\/(login\.js|login\.css|building\.jpg|logo-white\.svg|bar\.js|logins\.js|gate\.css|logo\.svg|shell\.js|shell\.css|inshell\.js|inshell\.css|out\.js|gaadi\.js|gaadi\.css)$/.test(p)) return page(res, p.slice(8), 200, {}, undefined, /^v=[0-9a-f]{10}$/.test(u.search.slice(1)) && u.search.slice(3) === gv(p.slice(8)));
   if (m === 'POST' && p === '/__gate/login') {
     const b = await body(req); const raw = signIn(b.login ?? b.email, b.password);
     setCookie(res, raw, DAYS * 86400); preLogin(raw); return json(res, 200, { ok: true });
   }
   const s = session(req);
+  if (!s && m === 'GET' && p === '/__gate/gaadi') return req.headers['sec-fetch-dest'] === 'iframe' ? page(res, 'out.html', 200, {}, OUT_CSP) : redirect(res, '/__gate/login');
   if (!s) return m === 'GET' && p === '/__gate/logins' ? redirect(res, '/__gate/login') : json(res, 401, { error: 'Please sign in again.' });
   if (m === 'POST' && p === '/__gate/logout') { run('DELETE FROM sessions WHERE token = ?', s.token); setCookie(res, '', 0); return json(res, 200, { ok: true }); }
   if (m === 'GET' && p === '/__gate/me') return json(res, 200, meOf(s));
@@ -336,6 +339,9 @@ async function gateRoute(req, res, u) {
     run('DELETE FROM sessions WHERE login_id = ? AND token <> ?', l.id, s.token); audit(idOf(l), 'changed own password');
     return json(res, 200, { ok: true });
   }
+  // every login: the Vehicle number page (it opens in the one screen's menu) and its API
+  if (m === 'GET' && p === '/__gate/gaadi') return page(res, 'gaadi.html', 200, {}, GAADI_CSP);
+  if (p.startsWith('/__gate/api/vehicle')) return await vehicles.api(req, res, u, s, { json, body, err });
   // owner only: the logins
   if (!s.owner) throw err(403, 'Only the owner can change logins.');
   if (m === 'GET' && p === '/__gate/logins') return page(res, 'logins.html');
@@ -405,6 +411,7 @@ function route(req, u) {
 const SHELL_CSP = "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; script-src 'self'; frame-src 'self'; frame-ancestors 'none'";
 const PROBLEM_CSP = "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; frame-ancestors 'self'";
 const OUT_CSP = "default-src 'self'; script-src 'self'; frame-ancestors 'self'";
+const GAADI_CSP = "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; script-src 'self'; connect-src 'self'; frame-ancestors 'self'";
 function redirect(res, to) { res.writeHead(302, { location: to, 'cache-control': 'no-store' }); res.end(); }
 
 async function handle(req, res) {
@@ -440,6 +447,7 @@ function start(port = Number(env('PORT') || 3022)) {
   if (first) console.log(`First run: owner login ${first.email}, password ${first.pass} (change it after signing in: Logins > your name).`);
   const server = http.createServer(handle);
   server.listen(port, () => console.log(`Bike Surgeon front door on http://localhost:${port}`));
+  vehicles.start();
   return server;
 }
 

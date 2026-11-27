@@ -1,0 +1,14 @@
+{
+  "name": "bike-surgeon-front-door",
+  "version": "1.0.0",
+  "private": true,
+  "description": "One link and one email + password sign-in for every Bike Surgeon panel; the login decides which panel opens.",
+  "main": "server/index.js",
+  "engines": {
+    "node": ">=22.9"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning server/index.js",
+    "test": "node --disable-warning=ExperimentalWarning --test tests/front-door.test.js"
+  }
+}

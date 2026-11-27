@@ -2,6 +2,7 @@ name: Bike Surgeon app checks
 on:
   push:
     branches: ["claude/project-thread-vczbd1"]
+    paths-ignore: ["bike-surgeon-erp/**"]   # the ERP panels are tested on their own, not by the app CI
   workflow_dispatch:
 permissions:
   contents: write

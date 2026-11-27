@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bike Surgeon · Logins</title>
+<link rel="icon" href="/__gate/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="/__gate/gate.css">
+</head>
+<body>
+<main class="page">
+  <div class="top"><div><h1>Logins</h1><small class="muted">Who signs in with which mobile number or email. All the panels of a login show together in one menu after sign in.</small></div>
+    <div class="row"><a href="/"><button type="button">Back</button></a><button class="pri" type="button" id="add">+ New login</button></div></div>
+  <section class="card"><table><thead><tr><th>Name</th><th>Mobile / Email</th><th>Panels (person in that panel)</th><th>Status</th><th></th></tr></thead><tbody id="list"></tbody></table></section>
+  <form class="card" id="form" hidden>
+    <h2 id="ftitle" style="margin:0;font-size:17px">New login</h2>
+    <div class="row">
+      <label>Name<input id="name" required></label>
+      <label>Mobile number<input id="phone" inputmode="numeric" maxlength="14" autocomplete="off"></label>
+      <label>Email <small class="muted">(if any)</small><input id="email" type="email"></label>
+      <label>Password <small class="muted" id="pwhint">(at least 8)</small><input id="password" type="text" autocomplete="new-password"></label>
+    </div>
+    <div class="row"><label style="flex:0 0 auto;display:flex;gap:8px;align-items:center"><input id="owner" type="checkbox" style="width:auto"> Owner (can change logins)</label>
+      <label style="flex:0 0 auto;display:flex;gap:8px;align-items:center"><input id="active" type="checkbox" style="width:auto" checked> Can sign in</label></div>
+    <div><b>Panels</b> <small class="muted">The person is who this login is inside that panel. PIN: leave empty to keep it (or the starting PIN for a new one).</small></div>
+    <div id="panels" style="display:grid;gap:8px"></div>
+    <div class="row"><button type="button" id="addp">+ Add a panel</button></div>
+    <div class="err" id="err" role="alert"></div>
+    <div class="row"><button class="pri" type="submit">Save login</button><button type="button" id="cancel">Cancel</button></div>
+  </form>
+</main>
+<script src="/__gate/logins.js"></script>
+<script src="/__gate/bar.js"></script>
+</body>
+</html>

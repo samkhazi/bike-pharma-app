@@ -1,0 +1,3 @@
+/* A panel shown inside the one screen (shell.html): the shell draws the menu, so the panel's own sidebar and phone bar hide. */
+html.in-shell .side,html.in-shell .mobilebar{display:none!important}
+html.in-shell .app{grid-template-columns:minmax(0,1fr)!important}

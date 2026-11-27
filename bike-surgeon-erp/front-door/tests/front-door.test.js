@@ -209,7 +209,20 @@ test('cross-site posts are refused; 5 wrong passwords lock the email for 10 minu
   assert.equal((await c.post('/__gate/login', { email: 'owner@shop.in', password: 'owner-pass-1' }, { origin: 'https://evil.example' })).status, 403);
   for (let i = 0; i < 5; i++) await c.post('/__gate/login', { email: 'sultan@shop.in', password: 'wrong' });
   const r = await c.post('/__gate/login', { email: 'sultan@shop.in', password: 'sultan-pass' });
-  assert.equal(r.status, 429);
+  assert.equal(r.status, 429); assert.match(r.body.error, /Try again in 10 minutes, or ask the owner to set a new password in Logins/);
+  // the owner sees the lock in Logins; a new password opens it at once (the old lock is not kept)
+  const o = client();
+  await o.post('/__gate/login', { email: 'owner@shop.in', password: 'owner-pass-1' });
+  const l = (await o('/__gate/api/logins')).body.logins.find(x => x.email === 'sultan@shop.in');
+  assert.equal(l.locked, 10);
+  assert.equal((await o('/__gate/api/logins')).body.logins.find(x => x.owner).locked, 0);
+  assert.equal((await o.patch(`/__gate/api/logins/${l.id}`, { password: 'sultan-new-1' })).status, 200);
+  assert.equal((await o('/__gate/api/logins')).body.logins.find(x => x.id === l.id).locked, 0);
+  assert.equal((await client().post('/__gate/login', { email: 'sultan@shop.in', password: 'sultan-pass' })).status, 401);
+  // a space copied at the end of the password still signs in; a space inside does not
+  assert.equal((await client().post('/__gate/login', { email: 'sultan@shop.in', password: 'sultan-new-1 ' })).status, 200);
+  assert.equal((await client().post('/__gate/login', { email: 'sultan@shop.in', password: 'sultan new-1' })).status, 401);
+  assert.equal((await client().post('/__gate/login', { email: ' Sultan@Shop.in ', password: 'sultan-new-1' })).status, 200);
 });
 
 test('own password change', async () => {

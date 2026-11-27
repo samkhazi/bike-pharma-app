@@ -92,8 +92,11 @@ function firstRun() {
 }
 
 // ---------------- sessions --------------------------------------------------------------------------------------------
-const fails = new Map();
-const locked = k => { const f = fails.get(k); return f && f.n >= 5 && Date.now() - f.at < 10 * 60 * 1000; };
+// 5 wrong passwords on one mobile number or email: that login waits 10 minutes (kept in memory, a restart clears it).
+// The owner setting a new password (or switching the login on) in Logins opens it at once.
+const fails = new Map(), LOCK_MS = 10 * 60 * 1000;
+const lockLeft = k => { const f = k && fails.get(k); return f && f.n >= 5 ? Math.max(0, LOCK_MS - (Date.now() - f.at)) : 0; };
+const lockMin = l => Math.ceil(Math.max(lockLeft(l.phone), lockLeft(l.email)) / 60000);
 function cookieOf(req) { const m = (req.headers.cookie || '').split(/;\s*/).find(c => c.startsWith(COOKIE + '=')); return m ? m.slice(COOKIE.length + 1) : ''; }
 const setCookie = (res, v, age) => res.setHeader('Set-Cookie', `${COOKIE}=${v}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${env('COOKIE_SECURE') === '1' ? '; Secure' : ''}`);
 function session(req) {
@@ -108,10 +111,12 @@ const panelsOf = id => all('SELECT * FROM panels WHERE login_id = ? ORDER BY pos
 
 function signIn(id, pass) {
   const k = loginKey(id);
-  if (locked(k)) throw err(429, 'Too many wrong passwords. Try again in 10 minutes.');
+  const left = Math.ceil(lockLeft(k) / 60000);
+  if (left) throw err(429, `Too many wrong passwords. Try again in ${left} minute${left === 1 ? '' : 's'}, or ask the owner to set a new password in Logins.`);
+  const typed = String(pass || ''), trimmed = typed.trim();   // a space copied at the end (e.g. from WhatsApp) does not count
   const l = k.includes('@') ? one('SELECT * FROM logins WHERE email = ? AND active = 1', k)
     : k.length === 10 ? one('SELECT * FROM logins WHERE phone = ? AND active = 1', k) : null;
-  if (!l || !passOk(pass || '', l.pass)) { const f = fails.get(k) || { n: 0 }; fails.set(k, { n: f.n + 1, at: Date.now() }); throw err(401, 'Wrong mobile number, email or password.'); }
+  if (!l || !(passOk(typed, l.pass) || (trimmed !== typed && passOk(trimmed, l.pass)))) { const f = fails.get(k) || { n: 0 }; fails.set(k, { n: f.n + 1, at: Date.now() }); throw err(401, 'Wrong mobile number, email or password.'); }
   fails.delete(k);
   const first = panelsOf(l.id)[0];
   if (!first) throw err(403, 'This login has no panel yet. Ask the owner.');
@@ -281,7 +286,7 @@ function peopleOf(portal) {
   const gone = new Set(real.flatMap(r => [r.phone, r.sample]));
   return [...real.map(r => [r.name, r.phone]), ...PORTALS[portal].people.filter(p => !gone.has(p[1]))];
 }
-const viewLogin = l => ({ id: l.id, name: l.name, email: l.email || '', phone: l.phone || '', staff: !!l.person, owner: !!l.owner, active: !!l.active,
+const viewLogin = l => ({ id: l.id, name: l.name, email: l.email || '', phone: l.phone || '', staff: !!l.person, owner: !!l.owner, active: !!l.active, locked: lockMin(l),
   panels: panelsOf(l.id).map(p => ({ portal: p.portal, phone: p.phone, who: whoIn(p.portal, p.phone) })) });
 
 function savePanels(id, panels, keepOld) {
@@ -366,6 +371,7 @@ async function gateRoute(req, res, u) {
       if (!active) run('DELETE FROM sessions WHERE login_id = ?', id);
       db.exec('COMMIT');
     } catch (e) { db.exec('ROLLBACK'); throw e; }
+    if (b.password || (active && !l.active)) for (const k of [l.phone, l.email, phone, email]) if (k) fails.delete(loginKey(k));   // a new password opens a locked login
     audit(idOf(s), `changed login ${email || phone}`); return json(res, 200, { ok: true });
   }
   throw err(404, 'Not found.');

@@ -12,7 +12,7 @@ async function load() {
   D = await r.json();
   $('list').innerHTML = D.logins.map(l => `<tr><td><b>${esc(l.name)}</b>${l.owner ? ' <span class="pill">Owner</span>' : ''}${l.staff ? ' <span class="pill">Staff</span>' : ''}</td><td>${ids(l)}</td>
     <td>${l.panels.map((p, i) => `${i ? '' : '<b>'}${esc(pName(p.portal))}${i ? '' : '</b>'} <span class="muted">(${esc(who(p.portal, p.phone, p.who))})</span>`).join('<br>')}</td>
-    <td>${l.active ? '<span class="ok">Can sign in</span>' : '<span class="err">Off</span>'}</td><td><button type="button" data-edit="${l.id}">Change</button></td></tr>`).join('')
+    <td>${!l.active ? '<span class="err">Off</span>' : l.locked ? `<span class="err">Locked ${l.locked} min</span><br><span class="muted">Too many wrong passwords. A new password opens it now.</span>` : '<span class="ok">Can sign in</span>'}</td><td><button type="button" data-edit="${l.id}">Change</button></td></tr>`).join('')
     || '<tr><td colspan="5" class="muted">No logins yet.</td></tr>';
 }
 

@@ -70,7 +70,7 @@ try {
   ok(pic.equals(webp('cylhead-activa')), 'the diagram read out of the .bin is the WebP picture');
   const xv = n => d.vmod[d.vars[byPn(n)[0][11][0]]];
   ok(xv('08P70-K0P-D00') === 'Accessories & merchandise' && /Fits: ACTIVA, DIO/.test(byPn('08P70-K0P-D00')[0][8]) && d.mrp['08P70-K0P-D00'] === 950, 'accessories from the Excel, with what they fit and MRP');
-  ok(xv('01210-K0L-D00') === 'Service kits' && /Kit has: 12191-KWK-900/.test(byPn('01210-K0L-D00')[0][8]), 'service kits with what is inside');
+  { const h = byPn('01210-K0L-D00').find(r => r[4] === 'Kit'); ok(xv('01210-K0L-D00') === 'Service kits' && h && /fits /.test(h[8]) && byPn('12191-KWK-900').some(r => r[2] === h[2] && r[4] !== 'Kit'), 'service kits are kit sections with what is inside (24s)'); }
   ok(xv('06430-KRF-B80') === 'Other parts (site search)' && byPn('00P10-KNP-700')[0][9] === 1 && byPn('12200-K0P-D00').length === 2, 'site-only parts added once (a model part not twice), N.S. marked');
   ok(!d.d.some(r => / .* .* /.test(r[5]) || r[5] === 'CAP ACTIVA 3G'), 'a name in the part number column is no part');
   const hd = await (await get('/cat/honda.json')).json();
@@ -112,7 +112,7 @@ try {
   ok(nf >= 0 && yg.f[nf] === 'pf:catalogues/hero-sync/honda/img/abc.jpg:0:' + jpg.length && yb('NEW11-K0P-000')[0][2] === 'E-30', "sync: a new assembly with the sync's own diagram");
   ok(YV('SCV110V9') >= 0 && yd.vmod[yd.vars[YV('SCV110V9')]] === 'Activa 125' && yb('12200-K0P-D00').some(r => r[11].includes(YV('SCV110V9'))), 'sync: a new model code becomes an edition of its bike');
   ok(/Old no\. 12200-K0P-C00/.test(yb('12200-K0P-D00')[0][8]) && /New no\. 12200-K0P-D00/.test(yb('12200-K0P-C00')[0][8]), 'sync: old numbers both ways');
-  ok(yd.vmod[yd.vars[yb('NEWP1-K0P-000')[0][11][0]]] === 'Other parts (site search)' && /Kit has: 08P99-K0P-D01/.test(yb('08P99-K0P-D00')[0][8]) && yd.mrp['08P99-K0P-D00'] === 999, 'sync: new part numbers and accessories (with kit contents) findable');
+  ok(yd.vmod[yd.vars[yb('NEWP1-K0P-000')[0][11][0]]] === 'Other parts (site search)' && yb('08P99-K0P-D00').some(r => r[4] === 'Kit' && yb('08P99-K0P-D01').some(q => q[2] === r[2])) && yd.mrp['08P99-K0P-D00'] === 999, 'sync: new part numbers and accessories (with kit contents) findable');
   // 16d: Honda added a part to an uploaded assembly -> its diagram becomes the sync's picture
   const st = JSON.parse(fs.readFileSync(SH + '/state.json', 'utf8')); st.crawled.SCV110T.asms[0][4] = 'abc'; fs.writeFileSync(SH + '/state.json', JSON.stringify(st));
   const Y2 = buildHonda(H, 'catalogues/honda', { sync: SY, syncRel: 'catalogues/hero-sync' }), f2 = Y2.dg.p[String(YV('SCV110T'))]['E-3'];

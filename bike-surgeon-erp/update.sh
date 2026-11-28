@@ -7,6 +7,14 @@
 #               bash /root/bs-erp-update.sh undo       (logins back as before the last update; again = one more back)
 #               bash /root/bs-erp-update.sh names      (the name-wise logins again from the attendance app; passwords + PINs kept)
 #               bash /root/bs-erp-update.sh vrgarage   (the VR Garage login + password for the Vehicle number page, typed here once)
+# 28 Nov update 8 (Sam: "the job card people get their portal, everything clearly, exactly right"): the Service floor panel
+# becomes the service advisors' job card portal (Sharath, Syed Shahid, Yaseen Raza; also Sultan and the owners), straight on
+# the Bike Surgeon billing (read only: the admin panel's database lines are copied into its .env), a checksum check every
+# 3 seconds. It shows today's job cards, pending approval, ongoing (the mechanic, the time left), completed, not approved,
+# each job card (labour, parts, the parts request, the bill, the quality check), the online bookings, the service reminders
+# and the mechanics, counted the service app's own way. New job cards, approvals and bookings are still made in the service
+# app (its buttons open it). The panel's files are copied to the backup folder first; if it cannot read the billing, its
+# old code goes back. It goes into the menu once it shows the billing's job cards.
 # 28 Nov update 7 (Sam: "VR Garage in job card + billing counter"): a new page "Vehicle number" at the top of every login's
 # menu. A number gives the chassis, model, engine number and owner from VR Garage; staff can change the customer name and
 # the model. Each vehicle is asked ONLY ONCE (the answer is kept in the front door's database for ever). The front door reads
@@ -455,6 +463,90 @@ else
   fi
 fi
 
+echo "== 3d. Service floor: the advisors' job cards straight from the billing"
+FL=1   # 0 = the Service floor shows the billing's job cards (or already did)
+FLD=$(dirof 3026 "$PANEL/portals/06-floor-manager"); FC=$CODE/portals/06-floor-manager; FLM=0
+FFL=$( [ -d "$FC/server" ] && cd "$FC" && find server public -type f | sort )
+# how the Service floor read the billing last (its new code keeps it): "<ms> <ok|err> <fast 1|0> <job cards> <bookings>" or
+# "none"; ferr: why not; fwarn: a part it could not read (the database's answer, nothing secret)
+fq() { "$B/node" --disable-warning=ExperimentalWarning -e 'let l=null;try{const d=new (require("node:sqlite").DatabaseSync)(process.argv[1],{readOnly:true});
+  l=JSON.parse(d.prepare("SELECT value FROM settings WHERE key=?").get("billing_last").value);d.close()}catch{}const w=process.argv[2];
+  if(w==="last")console.log(l?(Date.parse(l.at)||0)+" "+(l.ok?"ok":"err")+" "+(l.fast?1:0)+" "+(l.cards||0)+" "+(l.bookings||0):"none");
+  else if(l)console.log(String((w==="err"?l.err||l.sumErr:l.warn)||"").slice(0,200))' "$FLDB" "$1"; }
+fput() { local f d; for f in $FFL; do d=$FLD/$f
+  install -m 644 -o "$(stat -c %U "$(dirname "$d")")" -g "$(stat -c %G "$(dirname "$d")")" "$FC/$f" "$d" || return 1; done; }
+# the admin panel's database lines of the Bike Surgeon billing (read only login), copied as they are (the password is never
+# printed); CH=1 when one changed
+FLK="OLD_DB_HOST OLD_DB_PORT OLD_DB_USER OLD_DB_PASS OLD_DB_BS OLD_DB_PUBKEY MYSQL_BIN"
+fenv() { local k l; for k in $FLK; do l=$(grep "^$k=" "$ADM/.env" | tail -1)
+  if [ -n "$l" ]; then grep -qxF -- "$l" "$FLD/.env" && [ "$(grep -c "^$k=" "$FLD/.env")" = 1 ] && continue
+    [ "${1:-}" = check ] && { CH=1; continue; }
+    { grep -v "^$k=" "$FLD/.env" || true; printf '%s\n' "$l"; } > "$T/env" && cat "$T/env" > "$FLD/.env"; CH=1
+  elif grep -q "^$k=" "$FLD/.env"; then CH=1; [ "${1:-}" = check ] && continue
+    { grep -v "^$k=" "$FLD/.env" || true; } > "$T/env"; cat "$T/env" > "$FLD/.env"; fi
+  rm -f "$T/env"; done; }
+if [ -z "$FLD" ] || [ ! -f "$FLD/server/routes.js" ] || [ ! -f "$FLD/.env" ]; then
+  echo "FAILED  Service floor folder not found: not changed"
+elif [ -z "$FFL" ] || [ ! -f "$CODE/portals/base-28nov-floor.sha256" ]; then
+  echo "FAILED  the Service floor code is not in the download: not changed"
+elif [ -z "$ADM" ] || [ -z "$(getenv "$ADM/.env" OLD_DB_BS)" ] || [ -z "$(getenv "$ADM/.env" OLD_DB_USER)" ]; then
+  echo "FAILED  the admin panel has no billing database lines in its .env: the Service floor is not changed"
+elif [ "$(getenv "$FLD/.env" FLOOR_LIVE)" = 0 ]; then
+  FL=0; echo "OK      Service floor: FLOOR_LIVE=0 in its .env, so it stays as it is (not changed)"
+else
+  FLDB=$(getenv "$FLD/.env" DB_FILE); case "$FLDB" in "") FLDB=$FLD/data/portal.db;; /*) ;; *) FLDB=$FLD/$FLDB;; esac
+  NEWF=0; BAD=""
+  for f in $FFL; do d=$FLD/$f
+    [ -f "$d" ] && [ "$(sha "$d")" = "$(sha "$FC/$f")" ] && continue
+    # a file there must be the one of the first install (29 Oct); the other files are new
+    NEWF=1; [ ! -f "$d" ] || grep -qxF "$(sha "$d")  06-floor-manager/$f" "$CODE"/portals/base-*.sha256 || BAD="$BAD $f"
+  done
+  CH=0; fenv check; [ -n "$(getenv "$FLD/.env" DEMO_CLOCK)" ] && CH=1; K=$(fq last)
+  if [ -n "$BAD" ]; then
+    echo "STOP    changed on this server by hand:$BAD"
+    echo "        The Service floor is not changed. Send me a screenshot of this."
+  elif [ "$NEWF" = 0 ] && [ "$CH" = 0 ] && [ "$K" != none ]; then
+    read -r _ KS _ KC KB <<<"$K"
+    [ "$KS" = ok ] || for i in $(seq 1 10); do sleep 3; K=$(fq last); read -r _ KS _ KC KB <<<"$K"; [ "$KS" = ok ] && break; done
+    if [ "$KS" = ok ]; then FL=0; FLM=1; echo "OK      Service floor code already new: straight on the billing ($KC job cards, $KB online bookings)"
+    else echo "WARN    Service floor code already new, but its last read of the billing did not work: $(fq err)"; echo "        Send me a screenshot of this."; fi
+  elif ! { tar -C "$FLD" -czf "$BK/floor-code.tgz" server public .env && chmod 600 "$BK/floor-code.tgz" \
+      && "$B/node" --disable-warning=ExperimentalWarning -e 'new (require("node:sqlite").DatabaseSync)(process.argv[1],{readOnly:true}).exec("VACUUM INTO \x27"+process.argv[2].replace(/\x27/g,"\x27\x27")+"\x27")' "$FLDB" "$BK/floor-portal.db" \
+      && chmod 600 "$BK/floor-portal.db"; }; then
+    echo "FAILED  backup of the Service floor in $BK: not changed"
+  else   # its .env: the billing's database lines and the real clock (a demo clock would make "today" another day), then the new code
+    fenv; [ -n "$(getenv "$FLD/.env" DEMO_CLOCK)" ] && setenv "$FLD/.env" DEMO_CLOCK ""
+    [ "$(stat -c %U "$FLD/.env")" = "$PU" ] && chmod 600 "$FLD/.env"   # it holds the database password now
+    OLDPID=$(pidof_port 3026); T0=$(date +%s%3N); K=none
+    fput && restart "$FLD" 3026 || echo "FAILED  copy or restart of the Service floor"
+    echo "        waiting for the Service floor to read the billing (up to 3 minutes)"
+    for i in $(seq 1 36); do sleep 5; NEWPID=$(pidof_port 3026); [ -n "$NEWPID" ] && [ "$NEWPID" != "$OLDPID" ] || continue
+      K=$(fq last); read -r KT KS _ <<<"$K"; [ "$K" != none ] && [ "$KT" -ge "$T0" ] && [ "$KS" = ok ] && break; done
+    read -r KT KS KF KC KB <<<"$K"
+    if [ "$K" != none ] && [ "$KT" -ge "$T0" ] && [ "$KS" = ok ] && [ -n "$(pidof_port 3026)" ] && curl -s -m 5 http://127.0.0.1:3026/ | grep -q 'src="live.js"'; then
+      FL=0; FLM=1
+      if [ "$KF" = 1 ]; then echo "OK      Service floor straight on the billing: $KC job cards, $KB online bookings, checked every 3 seconds"
+      else echo "OK      Service floor on the billing, read every minute ($KC job cards, $KB online bookings)"
+        echo "WARN    the quick check did not work: $(fq err)"; echo "        Send me a screenshot of this."; fi
+    else
+      [ "$K" = none ] || [ "$KT" -lt "$T0" ] && W="it did not read the billing in 3 minutes" || W="it could not read the billing: $(fq err)"
+      [ "$K" != none ] && [ "$KT" -ge "$T0" ] && [ "$KS" = ok ] && W="its new page did not open"
+      echo "FAILED  Service floor: $W. Its code before this update is put back"
+      for f in $FFL; do tar -tzf "$BK/floor-code.tgz" "$f" >/dev/null 2>&1 || rm -f "$FLD/$f"; done
+      tar -C "$FLD" -xzf "$BK/floor-code.tgz"; restart "$FLD" 3026
+    fi
+  fi
+  if [ $FLM = 1 ]; then
+    W=$(fq warn); [ -n "$W" ] && { echo "WARN    the Service floor could not read a part of the billing (the job cards still show): $W"; echo "        Send me a screenshot of this."; }
+  fi
+fi
+# in the menu once it is on the billing (PANELS_OFF in the front door .env; the code's list hides it)
+if [ $FLM = 1 ]; then
+  if grep -q '^PANELS_OFF=' "$FD/.env"; then OFFL=$(getenv "$FD/.env" PANELS_OFF | tr ',' '\n' | grep -vx floor | grep -v '^$' | paste -sd, -)
+  else OFFL=maintainer,desk,accounts,counter,spares,supervisor,motolab; fi
+  [ "$(getenv "$FD/.env" PANELS_OFF)" = "$OFFL" ] && grep -q '^PANELS_OFF=' "$FD/.env" || { setenv "$FD/.env" PANELS_OFF "$OFFL"; echo "OK      The Service floor goes into the menu (Sharath, Syed Shahid, Yaseen Raza, Sultan, the owners)"; }
+fi
+
 echo "== 4. Front door: the new code (sign-in page, one screen, Vehicle number page)"
 tar -C "$FD" --exclude=./data --exclude=./node_modules -czf "$BK/front-door-code.tgz" . && chmod 600 "$BK/front-door-code.tgz" \
   || { echo "The front door code could not be copied to $BK. Nothing changed."; exit 1; }
@@ -521,4 +613,4 @@ if [ $RUN_NAMES = 1 ]; then
 else
   echo "Logins not changed: everyone keeps their password and PIN. Front door code backup: $BK"
 fi
-[ $N = 0 ] && [ $C = 0 ] && [ $MISS = 0 ] && [ $ML = 0 ] && [ $CS = 0 ] && [ $IV = 0 ] && [ $GA = 0 ] && echo "All done." || echo "Something failed: send me a screenshot of this (it shows no passwords)."
+[ $N = 0 ] && [ $C = 0 ] && [ $MISS = 0 ] && [ $ML = 0 ] && [ $CS = 0 ] && [ $IV = 0 ] && [ $FL = 0 ] && [ $GA = 0 ] && echo "All done." || echo "Something failed: send me a screenshot of this (it shows no passwords)."

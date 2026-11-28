@@ -3443,12 +3443,18 @@ function catAsk(e){if(!CAT_EXT.includes(e))CAT_EXT.push(e);if(e.st===0)catGet(e)
 function catSplitQ(e,key,body){const s=e.sq.get(key);if(s)return s;e.sq.set(key,1);e.sv++;let done;(e.spr||(e.spr=new Map())).set(key,new Promise(r=>{done=r;}));
  const fail=x=>{e.sq.set(key,3);e.sv++;e.serr=String(x&&x.message||x||'');catRefresh();};
  if(!srvStaff()){fail('staff only');return 3;}
+ let renew=0;
  fetch('/api/cat/rows',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({b:e.url.replace(/^cat\/|\.json$/g,''),...body})})
   .then(x=>x.ok?x.json():x.json().catch(()=>({})).then(j=>{throw Error(j.error||('HTTP '+x.status));}))
-  .then(j=>{const keep=[];j.g.forEach((g,i)=>{if(!e.have.has(g)){e.have.add(g);keep.push(j.d[i]);}});['mrp','phf','ph'].forEach(k=>{if(j[k])e.d[k]=Object.assign(e.d[k]||{},j[k]);});delete e.d._mk;if(j.more)e.smore=(e.smore||new Set()).add(key);
+  .then(j=>{if(j.v&&e.d&&e.d.v&&j.v!==e.d.v){renew=1;return null;}   /* 24x: the catalogue was built again on the server while this page was open: its lines would not match the head held here (a part showed another part's name), so the head is fetched again */
+   const keep=[];j.g.forEach((g,i)=>{if(!e.have.has(g)){e.have.add(g);keep.push(j.d[i]);}});['mrp','phf','ph'].forEach(k=>{if(j[k])e.d[k]=Object.assign(e.d[k]||{},j[k]);});delete e.d._mk;if(j.more)e.smore=(e.smore||new Set()).add(key);
    return keep.length?catMk(e,{...e.d,d:keep}).then(rows=>{e.pre=e.pre.concat(rows);e.rows=0;CAT_VOCAB=null;CAT_PKV=null;}):null;})
-  .then(()=>{e.sq.set(key,2);e.sv++;catRefresh();},fail).then(()=>done());
+  .then(()=>{if(renew){done();catRenew(e);return;}e.sq.set(key,2);e.sv++;catRefresh();},fail).then(()=>done());
  return 1;}
+/* 24x: a split brand whose server file changed: drop what this page holds of it and load its head again (the screens wait for it as on first load) */
+function catRenew(e){if(e.st!==2)return;e.st=0;e.pre=null;e.d=null;e.split=0;e.sq=null;e.have=null;e.spr=null;e.smore=null;e.rows=0;e.hw=null;
+ CAT_VARS=CAT_VARS.filter(x=>x[0]!==e.vb);CAT_ROWS=null;CAT_VOCAB=null;CAT_PKV=null;KIT_I=null;catGet(e);
+ const t=setInterval(()=>{if(e.st===2){clearInterval(t);catRefresh();}else if(e.st!==1)clearInterval(t);},400);}
 /* the same, waited for (the photo scan): every split brand in, its lines with these scan keys */
 const catSplitWait=(key,body)=>Promise.all(catSplitE('Any').map(e=>{catSplitQ(e,key,body);return e.spr&&e.spr.get(key);}));
 const catSplitE=vb=>CAT_ALL.filter(e=>e.split&&e.st===2&&(vb==='Any'||e.vb===vb));

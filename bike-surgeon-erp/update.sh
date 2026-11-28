@@ -8,6 +8,12 @@
 #               bash /root/bs-erp-update.sh names      (the name-wise logins again from the attendance app; passwords + PINs kept)
 #               bash /root/bs-erp-update.sh vrgarage   (the VR Garage login + password for the Vehicle number page, typed here once)
 #               bash /root/bs-erp-update.sh catalogue  (all Bike Pharma catalogues in the menu: the key both servers share, once)
+# 28 Nov update 12 (Sam: "data load hone me bahut time, fetch lag", "sidebar pura white, black icons, overall white"):
+# the one screen keeps every panel of a login open, and each one asked the server every 3-4 s and loaded its data again
+# after every billing change, also when it was not on screen (owner: 11 panels = 110 asks in 30 s). Now a panel that is
+# not on screen rests (once in 30 s) and catches up the moment it is opened: about 20 asks in 30 s. The open page loads
+# first, the others after it. The menu is white with black icons, the open page a black pill; the dark top cards of the
+# panels are white; everything stays light also on a phone or computer set to dark mode. Front door files only.
 # 28 Nov update 11 (Sam: "can u add all catalogues from bikepharma"): a new page "Catalogue" in every login's menu. It is
 # Bike Pharma's own Find Part (every brand's catalogue, diagrams, part numbers, MRPs, chassis and vehicle number search),
 # opened from bikepharma.com through this server with Bike Surgeon's key, so nothing is copied and a catalogue added on

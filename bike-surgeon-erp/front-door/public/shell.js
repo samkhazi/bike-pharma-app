@@ -34,7 +34,6 @@
   if (me.owner) $('logins').hidden = false;
 
   // ---- the panels in frames ------------------------------------------------------------------------------------------
-  let logoDone = false;
   const docOf = g => { try { return g.frame && g.frame.contentDocument; } catch { return null; } };
   function makeFrame(g) {
     if (g.frame) return;
@@ -69,7 +68,7 @@
       });
     });
     // the panels draw the logo in white for the dark menu: use the same one here
-    if (!logoDone) { const svg = d.querySelector('aside.side .brand svg'); if (svg) { logoDone = true; ['lg1', 'lg2'].forEach(id => { $(id).innerHTML = svg.outerHTML; }); $('lg2').firstChild.removeAttribute('class'); } }
+    // the menu keeps its own dark logo (/__gate/logo.svg): the panels' logos are drawn for their dark sidebars (28 Nov: white menu)
     const sig = JSON.stringify(items);
     if (items.length) g.state = 'ok';
     if (sig !== g.sig) { g.sig = sig; g.items = items; draw(); }
@@ -220,12 +219,14 @@
       setTimeout(go, 300);
     }, { once: true });
   }
-  // the other panels one after another, each when the one before has loaded (or after 2.5 s), so they do not slow the open page
+  // the other panels one after another, each when the one before has loaded (or after 10 s), so they do not slow the open page;
+  // the open page gets a head start of 1.5 s for its own data (28 Nov, Sam: "data load hone me bahut time"). Once loaded, a
+  // panel that is not on screen rests (inshell.js): it asks the server once in 30 s instead of every 3-4 s.
   const queue = G.filter(g => g !== first);
   const next = () => { const g = queue.shift(); if (!g) return; if (g.frame) return next();
     makeFrame(g); let done = false; const go = () => { if (!done) { done = true; next(); } };
-    g.frame.addEventListener('load', () => setTimeout(go, 150), { once: true }); setTimeout(go, 2500); };
+    g.frame.addEventListener('load', () => setTimeout(go, 300), { once: true }); setTimeout(go, 10000); };
   if (first && first.frame) { let started = false; const begin = () => { if (!started) { started = true; next(); } };
-    first.frame.addEventListener('load', () => setTimeout(begin, 300), { once: true }); setTimeout(begin, 3000); }
+    first.frame.addEventListener('load', () => setTimeout(begin, 1500), { once: true }); setTimeout(begin, 8000); }
   else next();
 })();

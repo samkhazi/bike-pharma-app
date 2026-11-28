@@ -1,3 +1,13 @@
 /* A panel shown inside the one screen (shell.html): the shell draws the menu, so the panel's own sidebar and phone bar hide. */
 html.in-shell .side,html.in-shell .mobilebar{display:none!important}
 html.in-shell .app{grid-template-columns:minmax(0,1fr)!important}
+/* 28 Nov (Sam: "black nahi dikhana, overall white, white and black"): the dark top card of a panel's first page is white too:
+   a thin line around it, black numbers, grey small labels, a readable dark yellow for the yellow amount. Selected chips stay
+   black (the same as the open page in the menu). */
+html.in-shell .hero{background:var(--card,#FFFFFF)!important;color:var(--fg,#1F1F1F)!important;border:1px solid var(--line,#E7E7E4);box-shadow:0 4px 16px rgba(20,20,20,.06)!important}
+html.in-shell.p-motolab .hero{border-bottom:4px solid #D92E35}
+html.in-shell .hero .lab,html.in-shell .hero .soft{color:var(--muted,#6B6B6B)!important}
+html.in-shell .hero .sep{background:var(--line,#E7E7E4)!important}
+html.in-shell .hero [style*="color:var(--yel)"]{color:var(--link,#8A6500)!important}
+html.in-shell .track{background:#ECEBE6!important}
+html.in-shell .track .mark{background:var(--fg,#1F1F1F)!important}

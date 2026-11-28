@@ -2,8 +2,7 @@
 :root{--bg:#FFFFFF;--card:#fff;--soft:#F6F5F2;--fg:#1F1F1F;--muted:#6B6B6B;--line:#E7E7E4;--yel:#F8C018;--onYel:#1F1F1F;
   --greenT:#15803D;--greenB:#E8F5EC;--orangeT:#B45309;--orangeB:#FFF3DC;--redT:#B42318;--redB:#FDECEA;--greyB:#F1F0EC;
   --display:"Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-@media (prefers-color-scheme:dark){:root{--bg:#121212;--card:#1C1C1C;--soft:#242422;--fg:#F2F2EF;--muted:#A3A39E;--line:#2E2E2C;
-  --greenT:#86EFAC;--greenB:#173323;--orangeT:#FDBA74;--orangeB:#3A2A12;--redT:#FCA5A5;--redB:#3B1A17;--greyB:#2A2A28;color-scheme:dark}}
+/* always light, also when the phone or computer is set to dark (Sam 28 Nov "overall white") */
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--display);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}

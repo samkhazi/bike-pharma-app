@@ -1,7 +1,7 @@
 /* Front door pages: same colours as the panels (yellow from the logo on charcoal, white cards). */
 :root{--bg:#F6F5F2;--card:#fff;--fg:#1F1F1F;--muted:#6B6B6B;--line:#E7E7E4;--yel:#F8C018;--side:#262626;--orangeT:#C2410C;--greenT:#15803D;
   --display:"Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif}
-@media (prefers-color-scheme:dark){:root{--bg:#121212;--card:#1C1C1C;--fg:#F2F2EF;--muted:#A3A39E;--line:#2E2E2C;--orangeT:#FDBA74;--greenT:#86EFAC;color-scheme:dark}}
+/* always light, also when the phone or computer is set to dark (Sam 28 Nov "overall white") */
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--display);font-size:14px;-webkit-font-smoothing:antialiased}
 .wrap{min-height:100vh;display:grid;place-items:center;padding:16px}

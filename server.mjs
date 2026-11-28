@@ -237,7 +237,30 @@ function setSession(req, res, token, clear) {
   if (isHttps(req)) parts.push('Secure');
   res.setHeader('Set-Cookie', parts.join('; '));
 }
+// 24z (Sam 28 Nov "can u add all catalogues from bikepharma", in the Bike Surgeon ERP): Bike Surgeon's server opens Find Part for
+// its own staff with the key BS_CAT_KEY (server .env; the same key is in the Bike Surgeon front door's .env). Such a request is the
+// login 'catalogue': Find Part and the catalogue files only, no shop data (lib/merge.mjs CAT_KEYS: no stock, prices, products,
+// bills, customers or logins), nothing written. No key in .env = off.
+const CAT_USER = Object.freeze({ id: 'bs-catalogue', name: 'Bike Surgeon', label: 'Bike Surgeon catalogue', role: 'catalogue', status: 'active' });
+function catKey(req) {
+  const k = String(env.BS_CAT_KEY || '').trim(), h = String(req.headers['x-bs-cat'] || '');
+  if (k.length < 32 || h.length !== k.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(h), Buffer.from(k));
+}
+// what the catalogue login may ask: reads only (the catalogue lines come by a POST that changes nothing); of the project files only
+// the catalogues folder (the top folder's list shows it alone, /api/files/list)
+const CAT_API = new Set(['/api/boot', '/api/sync', '/api/pnlook', '/api/fpname', '/api/vinlook', '/api/fit', '/api/dghot', '/api/same', '/api/files/list', '/api/files/read']);
+function catDenied(url, m) {
+  const p = url.pathname;
+  if (!p.startsWith('/api/')) return (m !== 'GET' && m !== 'HEAD') || !(p === '/app.html' || /^\/(cat|figs|vendor|bj|ph|phh)\//.test(p));   // the app, its catalogue files and pictures
+  if (p === '/api/cat/rows') return m !== 'POST';
+  if (!CAT_API.has(p) || m !== 'GET') return true;
+  if (p.startsWith('/api/files/')) { const rel = path.posix.normalize('/' + (url.searchParams.get('path') || '')).replace(/^\/+/, '');
+    if (rel.split('/').includes('..')) return true; return !(rel === 'catalogues' || rel.startsWith('catalogues/') || (rel === '' && p === '/api/files/list')); }
+  return false;
+}
 function userOf(req) {
+  if (catKey(req)) return { ...CAT_USER };
   const t = cookies(req).bp_s; if (!t || !/^[a-f0-9]{48}$/.test(t)) return null;
   const s = store.kvGet('sess', t); if (!s) return null;
   if (Date.now() - s.t > SESSION_DAYS * 86400e3) { store.kvDel('sess', t); return null; }
@@ -378,7 +401,7 @@ async function api(req, res, url, user) {
   }
   if (p === '/api/same') {
     if (roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: user ? 'Staff login needed' : 'Please log in again' });
-    if (m === 'GET') return json(res, 200, { list: store.kvAll('samepart').map(([, v]) => v), wrong: store.kvAll('samewrong').map(([k]) => k) });
+    if (m === 'GET') return json(res, 200, { list: store.kvAll('samepart').map(([, v]) => user.role === 'catalogue' ? { a: v.a, b: v.b } : v), wrong: store.kvAll('samewrong').map(([k]) => k) });   // 24z: Bike Surgeon gets the numbers, not who marked them
     if (m !== 'POST') return json(res, 405, { error: 'Not allowed' });
     const pkk = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, ''), txt = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f<>]/g, ' ').trim().slice(0, n);
     const side = x => x && typeof x === 'object' ? { pn: txt(x.pn, 40), vb: txt(x.vb, 40), name: txt(x.name, 120), ms: (Array.isArray(x.ms) ? x.ms : []).slice(0, 8).map(v => txt(v, 60)).filter(Boolean) } : null;
@@ -600,7 +623,7 @@ async function api(req, res, url, user) {
         if (e.isFile()) { try { o.size = fs.statSync(path.join(abs, e.name)).size; } catch (x) {} }
         return o;
       });
-      return json(res, 200, { entries, cursor: null });
+      return json(res, 200, { entries: user.role === 'catalogue' && !rel ? entries.filter(e => e.isDirectory && e.path === 'catalogues') : entries, cursor: null });   // 24z
     }
     if (!st.isFile()) return json(res, 404, { error: 'not_found' });
     { const e = CATG.check(user); if (e) return json(res, 429, { error: e }); }
@@ -1059,6 +1082,7 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://x');
     MON.probe(ipOf(req), url.pathname + url.search, req.method);   // 11w: requests only hacking tools send
     const user = userOf(req);
+    if (user && user.role === 'catalogue' && catDenied(url, req.method)) { req.resume(); return json(res, 403, { error: 'Bike Surgeon catalogue: Find Part only' }); }   // 24z
     if (url.pathname.startsWith('/api/')) return await api(req, res, url, user);
     const sp = SYNC_PAGE.exec(url.pathname); if (sp) return syncPage(req, res, sp);
     if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'Method not allowed' });

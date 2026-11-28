@@ -9,6 +9,9 @@ const { router } = require('./routes');
 const auth = require('./auth');
 // LIVE (28 Nov 2026, Sam: the service advisors' job card portal on the real data): the billing's job cards, read only
 const live = require('./billing');
+// 28 Nov 2026 (Sam: "new job card ... naya portal, naye steps"): the job card is made here and saved in the billing like the
+// service app's own steps (server/newjc.js); it has a login of its own that may change only the job card tables
+const newjc = require('./newjc');
 
 function createApp() {
   const app = express();
@@ -20,6 +23,7 @@ function createApp() {
     res.setHeader('Content-Security-Policy', "default-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; img-src 'self' data:; script-src 'self'");
     next();
   });
+  app.use('/api/newjc', express.json({ limit: '4mb' }));   // a photo of the new job card (one per request, about 100 kB)
   app.use(express.json({ limit: '50kb' }));
   // Writes must come from our own page (blocks cross-site form posts)
   app.use('/api', (req, res, next) => {
@@ -28,7 +32,7 @@ function createApp() {
     if (origin && new URL(origin).host !== req.headers.host) return res.status(403).json({ error: 'Cross-site request blocked.' });
     next();
   });
-  app.get('/healthz', (req, res) => res.json({ ok: true }));
+  app.get('/healthz', (req, res) => res.json({ ok: true, newjc: newjc.on() }));   // newjc: New job card is switched on (update.sh asks)
   if (live.on()) {
     // the pages read the billing (server/billing.js); the design's sample floor (its own tables) is never shown or sent
     const wrapA = fn => (req, res, next) => Promise.resolve().then(() => fn(req, res)).then(v => { if (!res.headersSent) res.json(v); }, next);
@@ -39,9 +43,10 @@ function createApp() {
       return live.list({ tab, q: String(q.q || ''), mine: q.mine === '1', age, before: Number(q.before) || 0, n: Number(q.n) || 100 }, req.user);
     }));
     app.get('/api/live/jc/:id', auth.requireUser, wrapA(req => live.card(req.params.id)));
-    app.get('/api/state', auth.requireUser, (req, res) => res.json({ live: true, me: req.user }));
-    // read only until switch day: job cards, bookings and mechanics are changed in the service app (the billing). Sign in,
-    // sign out, a PIN change and the other panels' feeds still work.
+    app.get('/api/state', auth.requireUser, (req, res) => res.json({ live: true, me: req.user, newjc: newjc.on() }));
+    if (newjc.on()) newjc.routes(app, auth.requireUser);
+    // read only until switch day: approvals, bookings and mechanics are changed in the service app (the billing); a new job
+    // card is made above (/api/newjc). Sign in, sign out, a PIN change and the other panels' feeds still work.
     app.use('/api', (req, res, next) => {
       if (req.method === 'GET' || req.method === 'HEAD' || /^\/auth\/(login|logout)$/.test(req.path) || /^\/users\/\d+\/pin$/.test(req.path) || /^\/import\//.test(req.path)) return next();
       res.status(403).json({ error: 'Read only: job cards are changed in the service app until switch day.' });

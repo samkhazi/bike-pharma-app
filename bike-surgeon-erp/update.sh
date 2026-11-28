@@ -8,6 +8,17 @@
 #               bash /root/bs-erp-update.sh names      (the name-wise logins again from the attendance app; passwords + PINs kept)
 #               bash /root/bs-erp-update.sh vrgarage   (the VR Garage login + password for the Vehicle number page, typed here once)
 #               bash /root/bs-erp-update.sh catalogue  (all Bike Pharma catalogues in the menu: the key both servers share, once)
+#               bash /root/bs-erp-update.sh jobcard    (New job card in the Service floor: the billing's job card login, the photo
+#                                                       folder, WhatsApp + SMS with the service app's keys, once)
+# 28 Nov update 13 (Sam: "new job card service.bikesurgeon.online pe nahi jana chahiye ... naye steps, nayi UI ... WhatsApp
+# automation same, SmartPing same"): New job card inside the Service floor (in its menu and its top bar), phone first, in 3
+# steps: (1) the vehicle number fills in what VR Garage and the billing know (the last customer, make, model and CC); (2) the
+# CC, labour at the rate card's price, the general service checklist, the 23-point bike check, the customer's issues and the
+# delivery time; (3) the odometer, the fuel and the 5 photos, then the customer's WhatsApp (SmartPing, the same two campaigns)
+# and SMS go by themselves. It is saved in the billing exactly like the service app's own pages (the same tables, names and
+# free-service rule), so the mechanic portal (mechanic and bay), the cashier and the panels see it at once. Switched on once:
+#   bash /root/bs-erp-update.sh jobcard
+# Until then its button opens the service app as before. A job card that stopped before its photos has "Continue job card".
 # 28 Nov update 12 (Sam: "data load hone me bahut time, fetch lag", "sidebar pura white, black icons, overall white"):
 # the one screen keeps every panel of a login open, and each one asked the server every 3-4 s and loaded its data again
 # after every billing change, also when it was not on screen (owner: 11 panels = 110 asks in 30 s). Now a panel that is
@@ -94,7 +105,7 @@ PU=bikesurgeon-panel
 MODE=${1:-}
 
 [ "$(id -u)" = 0 ] || { echo "Run this as root (type su - first, then this line). Nothing changed."; exit 1; }
-case "$MODE" in ""|undo|old-off|names|vrgarage|catalogue) ;; *) echo "Unknown word: $MODE (use nothing, names, undo, old-off, vrgarage or catalogue). Nothing changed."; exit 1;; esac
+case "$MODE" in ""|undo|old-off|names|vrgarage|catalogue|jobcard) ;; *) echo "Unknown word: $MODE (use nothing, names, undo, old-off, vrgarage, catalogue or jobcard). Nothing changed."; exit 1;; esac
 
 # ---- 0. the newest code from GitHub; a newer copy of this script takes over --------------------------------------------
 if [ "${BS_ERP_FRESH:-}" != 1 ]; then
@@ -211,6 +222,159 @@ T=$(mktemp -d); chmod 700 "$T"; trap 'rm -rf "$T"' EXIT
 pidof_port() { ss -ltnpH "sport = :$1" 2>/dev/null | grep -o 'pid=[0-9]*' | head -1 | cut -d= -f2; }
 dirof() { local pid d; pid=$(pidof_port "$1"); [ -n "$pid" ] && d=$(readlink -f "/proc/$pid/cwd" 2>/dev/null) && [ -f "$d/server/index.js" ] && { echo "$d"; return; }
   [ -f "$2/server/index.js" ] && echo "$2"; }
+# .env lines: setenv keeps the file (owner, rights); getenv gives the value without quotes; nothing is printed
+setenv() { local f=$1; { grep -v "^$2=" "$f" || true; echo "$2=$3"; } > "$T/env" && cat "$T/env" > "$f"; rm -f "$T/env"; }
+getenv() { [ -f "$1" ] && grep "^$2=" "$1" | tail -1 | cut -d= -f2- | tr -d '"'"'"' \r' || true; }
+sha() { sha256sum < "$1" | cut -d' ' -f1; }
+# restart the pm2 app that runs a folder (found by its folder, or by the process on its port)
+restart() { local pid n; pid=$(pidof_port "$2")
+  n=$(su - "$PU" -c "$NODE; cd $PANEL && npx pm2 jlist 2>/dev/null" | "$B/node" "$CODE/front-door/tools/pm2-name.js" "$1" "${pid:-0}")
+  [ -n "$n" ] && su - "$PU" -c "$NODE; cd $PANEL && npx pm2 restart '$n' >/dev/null"; }
+if [ "$MODE" = jobcard ]; then
+  # New job card in the Service floor (update 13), once (again any time: what works is kept):
+  # 1 the job card login of the Bike Surgeon billing (bs_jobcard, at the same hosts as the panels' read login): it reads like
+  #   the read login and may only add or change job cards, their labour lines and issue lists, customers and customers' bikes,
+  #   and log a WhatsApp (no bill, stock, payment or staff table); its password is made here and kept only in the floor's .env
+  # 2 the service app's photo folder (app/uploads/jc): the panel may write there (an ACL entry on that folder only; the folders
+  #   above it only let it pass through)
+  # 3 WhatsApp (SmartPing) and SMS (Fast2SMS) with the service app's own keys and campaigns, read from its files on this server
+  #   when the owner says yes here. Nothing secret is printed.
+  FLD=$(dirof 3026 "$PANEL/portals/06-floor-manager")
+  [ -n "$FLD" ] && [ -f "$FLD/server/newjc.js" ] && [ -f "$FLD/.env" ] || { echo "Run the update first:  bash $ME   Nothing changed."; exit 1; }
+  DBN=$(getenv "$FLD/.env" OLD_DB_BS); RU=$(getenv "$FLD/.env" OLD_DB_USER); DH=$(getenv "$FLD/.env" OLD_DB_HOST); DP=$(getenv "$FLD/.env" OLD_DB_PORT)
+  MYSQL=$(getenv "$FLD/.env" MYSQL_BIN); [ -n "$MYSQL" ] || MYSQL=mysql; [ -n "$DH" ] || DH=127.0.0.1; [ -n "$DP" ] || DP=3306
+  PKA=(); [ "$(getenv "$FLD/.env" OLD_DB_PUBKEY)" = 0 ] || PKA=(--get-server-public-key)
+  [ -n "$DBN" ] && [ -n "$RU" ] || { echo "The Service floor is not on the billing yet: run the update first ( bash $ME ). Nothing changed."; exit 1; }
+  [[ "$DBN" =~ ^[A-Za-z0-9_$-]+$ && "$RU" =~ ^[A-Za-z0-9_.@-]+$ ]] || { echo "Unusual database name or login in the Service floor's .env. Nothing changed. Send me a screenshot of this."; exit 1; }
+  command -v setfacl >/dev/null || { echo "setfacl is not on this server. Type this once, then this line again:  apt install -y acl   Nothing changed."; exit 1; }
+  # the photo folder of the service app's job card page (service-book-process4.php saves into uploads/jc next to itself)
+  JCD=$(getenv "$FLD/.env" JC_PHOTO_DIR)
+  [ -n "$JCD" ] && [ -d "$JCD" ] || JCD=$(ls -d /home/*/htdocs/service.bikesurgeon.online/app/uploads/jc 2>/dev/null | head -1)
+  if [ -z "$JCD" ]; then F=$(ls /home/*/htdocs/*/app/service-book-process4.php 2>/dev/null | head -1); [ -n "$F" ] && [ -d "$(dirname "$F")/uploads/jc" ] && JCD=$(dirname "$F")/uploads/jc; fi
+  [ -n "$JCD" ] && [ -d "$JCD" ] || { echo "The service app's photo folder (app/uploads/jc) was not found in /home/*/htdocs. Nothing changed. Send me a screenshot of this."; exit 1; }
+  JCD=$(readlink -f "$JCD"); APPD=$(dirname "$(dirname "$JCD")")
+  [[ "$JCD" =~ ^/home/[A-Za-z0-9._/-]+/uploads/jc$ ]] || { echo "Unusual photo folder: $JCD. Nothing changed. Send me a screenshot of this."; exit 1; }
+  echo "OK      the service app's photo folder: $JCD"
+
+  echo "== 1. The job card login of the billing"
+  # the database's root: through its socket (or /root/.my.cnf), else CloudPanel's master login (never printed)
+  cat > "$T/mc.js" <<'JS'
+const fs = require('fs');
+const t = fs.readFileSync(process.argv[2], 'utf8').replace(/\x1b\[[0-9;]*m/g, ''), L = t.split(/\r?\n/), o = {};
+const rows = L.filter(l => /^\s*\|.*\|\s*$/.test(l)).map(l => l.trim().slice(1, -1).split('|').map(c => c.trim()));
+if (rows.length >= 2) rows[0].forEach((h, i) => { o[h.toLowerCase()] = rows[1][i] || ''; });
+for (const l of L) { const m = /^\s*([A-Za-z][A-Za-z ]*?)\s*:\s*(\S.*?)\s*$/.exec(l); if (m && !(m[1].toLowerCase() in o)) o[m[1].toLowerCase()] = m[2]; }
+const pick = re => { const k = Object.keys(o).find(x => re.test(x)); return k ? o[k] : ''; };
+const host = pick(/host/) || '127.0.0.1', port = pick(/port/) || '3306', user = pick(/user/), pass = pick(/pass/);
+if (!user || !pass || /\s/.test(host + port + user)) process.exit(1);
+fs.writeFileSync(process.argv[3], pass, { mode: 0o600 });
+console.log(host + ' ' + port + ' ' + user);
+JS
+  RPW=""; RA=()
+  if env -u MYSQL_PWD "$MYSQL" -u root --batch --skip-column-names -e 'SELECT 1' </dev/null >/dev/null 2>&1; then RA=(-u root)
+  elif command -v clpctl >/dev/null && clpctl db:show:master-credentials > "$T/mc" 2>/dev/null && "$B/node" "$T/mc.js" "$T/mc" "$T/mcp" > "$T/mca" 2>/dev/null; then
+    read -r MH MP MU < "$T/mca"; RPW=$(cat "$T/mcp"); RA=(-h "$MH" -P "$MP" -u "$MU" "${PKA[@]}")
+  fi
+  : > "$T/mc"; : > "$T/mcp"
+  rsql() { if [ -n "$RPW" ]; then MYSQL_PWD="$RPW" "$MYSQL" "${RA[@]}" --batch --raw --skip-column-names "$@"; else env -u MYSQL_PWD "$MYSQL" "${RA[@]}" --batch --raw --skip-column-names "$@"; fi; }
+  if [ ${#RA[@]} = 0 ] || ! rsql -e 'SELECT 1' </dev/null >/dev/null 2>"$T/err"; then
+    echo "FAILED  the database could not be opened as its root (CloudPanel's master login): $(head -c 200 "$T/err" 2>/dev/null)"; echo "        Nothing changed. Send me a screenshot of this."; exit 1; fi
+  VER=$(rsql -e 'SELECT VERSION();' </dev/null 2>/dev/null)
+  HOSTS=$(rsql -e "SELECT Host FROM mysql.user WHERE User = '$RU';" </dev/null 2>/dev/null)
+  PLUG=$(rsql -e "SELECT plugin FROM mysql.user WHERE User = '$RU' LIMIT 1;" </dev/null 2>/dev/null)
+  TBL=$(rsql -e "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = '$DBN';" </dev/null 2>/dev/null)
+  [ -n "$HOSTS" ] || { echo "FAILED  the panels' read login of the billing ($RU) is not in the database. Nothing changed. Send me a screenshot of this."; exit 1; }
+  for t in job_card user a_bikes job_labour_items job_card_checklist; do
+    grep -qx "$t" <<<"$TBL" || { echo "FAILED  the billing has no table $t. Nothing changed. Send me a screenshot of this."; exit 1; }; done
+  JU=bs_jobcard; JP=$(getenv "$FLD/.env" JC_DB_PASS); NEWP=1
+  jsql() { MYSQL_PWD="$JP" "$MYSQL" -h "$DH" -P "$DP" -u "$JU" "${PKA[@]}" --batch --raw --skip-column-names "$DBN" -e "$1" </dev/null 2>"$T/err"; }
+  [ -n "$JP" ] && [ "$(getenv "$FLD/.env" JC_DB_USER)" = "$JU" ] && jsql 'SELECT 1' >/dev/null && NEWP=0
+  [ $NEWP = 1 ] && JP="$("$B/node" -e 'process.stdout.write(require("node:crypto").randomBytes(24).toString("base64url"))')Jc9-"
+  [[ "$JP" =~ ^[A-Za-z0-9_-]{20,}$ ]] || { echo "FAILED  the new login's password could not be made. Nothing changed."; exit 1; }
+  case "$VER" in *MariaDB*) IDW="IDENTIFIED BY";; *) case "$PLUG" in mysql_native_password|caching_sha2_password) IDW="IDENTIFIED WITH $PLUG BY";; *) IDW="IDENTIFIED BY";; esac;; esac
+  ( umask 077; : > "$T/sql" )
+  while read -r h; do [[ "$h" =~ ^[A-Za-z0-9_.%:-]+$ ]] || continue; A="'$JU'@'$h'"
+    { echo "CREATE USER IF NOT EXISTS $A $IDW '$JP';"; [ $NEWP = 1 ] && echo "ALTER USER $A $IDW '$JP';"
+      echo "GRANT SELECT ON \`$DBN\`.* TO $A;"
+      echo "GRANT INSERT, UPDATE ON \`$DBN\`.\`job_card\` TO $A;"
+      echo "GRANT INSERT, UPDATE ON \`$DBN\`.\`user\` TO $A;"
+      echo "GRANT INSERT ON \`$DBN\`.\`a_bikes\` TO $A;"
+      echo "GRANT INSERT, DELETE ON \`$DBN\`.\`job_labour_items\` TO $A;"
+      echo "GRANT INSERT, DELETE ON \`$DBN\`.\`job_card_checklist\` TO $A;"
+      if grep -qx whatsapp_send_log <<<"$TBL"; then echo "GRANT INSERT ON \`$DBN\`.\`whatsapp_send_log\` TO $A;"; fi; } >> "$T/sql"
+  done <<<"$HOSTS"
+  if ! rsql < "$T/sql" >/dev/null 2>"$T/err"; then : > "$T/sql"
+    echo "FAILED  the job card login could not be made: $(head -c 200 "$T/err" | sed "s/$JP/***/g")"; echo "        Nothing changed in the panel. Send me a screenshot of this."; exit 1; fi
+  : > "$T/sql"
+  # the login as the panel uses it: it reads the job cards and may change one (nothing is changed: WHERE 1 = 0, then ROLLBACK)
+  if ! jsql 'SELECT COUNT(*) FROM job_card; START TRANSACTION; UPDATE job_card SET name = name WHERE 1 = 0; UPDATE `user` SET username = username WHERE 1 = 0; ROLLBACK;' >/dev/null; then
+    echo "FAILED  the job card login does not work: $(head -c 200 "$T/err" | sed "s/$JP/***/g")"; echo "        Nothing changed in the panel. Send me a screenshot of this."; exit 1; fi
+  if [ $NEWP = 1 ]; then echo "OK      job card login $JU made (it may only add or change job cards and customers; its password is kept only in the Service floor's .env)"
+  else echo "OK      job card login $JU works (kept as it is)"; fi
+
+  echo "== 2. The photo folder"
+  d=$(dirname "$JCD"); while [ "$d" != / ] && [ "$d" != /home ]; do setfacl -m "u:$PU:x" "$d" || break; d=$(dirname "$d"); done
+  setfacl -m "u:$PU:rwx" "$JCD" || { echo "FAILED  the Service floor could not be allowed into $JCD. Send me a screenshot of this."; exit 1; }
+  TF=bs-erp-test-$$.jpg; TP="${JCD:?}/${TF:?}"
+  su - "$PU" -c "printf 'test' > '$TP'" >/dev/null 2>&1 && [ -f "$TP" ] || { [ -f "$TP" ] && unlink "$TP"; echo "FAILED  the Service floor cannot save a photo in $JCD. Send me a screenshot of this."; exit 1; }
+  echo "OK      the Service floor saves the photos in the service app's folder (same names, same links)"
+
+  echo "== 3. WhatsApp + SMS"
+  BASE=""; ( umask 077; : > "$T/keys.env" )
+  PHP="$(command -v php || ls /usr/bin/php8* /usr/bin/php7* 2>/dev/null | sort -V | tail -1)"
+  read -r -p "Send the customer's WhatsApp + SMS with the service app's own SmartPing and Fast2SMS keys (read from its files here, not shown)? [Y/n] " ANS
+  case "$ANS" in
+  n|N|no|No|NO) echo "OK      WhatsApp + SMS of the new job card stay off (again any time:  bash $ME jobcard)";;
+  *) if [ -z "$PHP" ] || [ ! -f "$APPD/whatsapp-config.php" ]; then echo "WARN    the service app's whatsapp-config.php (or php) was not found: WhatsApp stays off"
+     else
+      cat > "$T/keys.php" <<'PHP'
+<?php
+error_reporting(0);
+include getenv('WAC');
+$c = function ($n) { return defined($n) ? (string)constant($n) : ''; };
+$wa = function_exists('smartping_key') ? (string)smartping_key() : $c('SMARTPING_API_KEY');
+$s = @file_get_contents(getenv('SMSH')); $sms = '';
+if ($s && preg_match('/\$api_key\s*=\s*["\']([^"\']+)["\']/', $s, $m)) $sms = $m[1];
+echo json_encode(['wa' => $wa, 'url' => $c('SMARTPING_API_URL'), 'det' => $c('WA_CAMPAIGN_JOBCARD_DETAILS'), 'pho' => $c('WA_CAMPAIGN_JOBCARD_PHOTO'),
+  'base' => $c('JC_WA_PUBLIC_BASE'), 'sms' => $sms]);
+PHP
+      cat > "$T/keys.js" <<'JS'
+const fs = require('fs'), j = JSON.parse(fs.readFileSync(process.argv[2], 'utf8') || '{}'), out = [], said = [];
+const ok = v => typeof v === 'string' && v.trim().length > 0 && v.length < 4000 && !/[\r\n"\\$`]/.test(v);
+const put = (k, v) => out.push(`${k}="${v.trim()}"`);
+if (ok(j.wa) && !/PASTE_/i.test(j.wa) && j.wa.trim().length >= 16) { put('SMARTPING_API_KEY', j.wa); said.push('wa'); }
+if (ok(j.url) && /^https:\/\/\S+$/.test(j.url.trim())) put('SMARTPING_API_URL', j.url);
+if (ok(j.det)) put('WA_CAMPAIGN_JOBCARD_DETAILS', j.det);
+if (ok(j.pho)) put('WA_CAMPAIGN_JOBCARD_PHOTO', j.pho);
+const base = ok(j.base) && /^https:\/\/\S+$/.test(j.base.trim()) ? j.base.trim().replace(/\/+$/, '') : '';
+if (base) { put('JC_PHOTO_BASE', base); said.push('base=' + base); }
+if (ok(j.sms) && /^[A-Za-z0-9]{20,}$/.test(j.sms.trim())) { put('FAST2SMS_KEY', j.sms); said.push('sms'); }
+fs.writeFileSync(process.argv[3], out.length ? out.join('\n') + '\n' : '', { mode: 0o600 });
+console.log(said.join(' '));
+JS
+      ( umask 077; WAC="$APPD/whatsapp-config.php" SMSH="$APPD/sms_helper.php" "$PHP" "$T/keys.php" > "$T/wa.json" 2>/dev/null )
+      R=$("$B/node" "$T/keys.js" "$T/wa.json" "$T/keys.env" 2>/dev/null); : > "$T/wa.json"
+      case " $R " in *" wa "*) echo "OK      WhatsApp: the service app's SmartPing key and its two campaigns (the details, then each photo)";; *) echo "WARN    the service app's SmartPing key was not found: WhatsApp stays off";; esac
+      case " $R " in *" sms "*) echo "OK      SMS: the service app's Fast2SMS key";; *) echo "WARN    the service app's Fast2SMS key was not found: no SMS";; esac
+      BASE=$(tr ' ' '\n' <<<"$R" | grep '^base=' | cut -d= -f2-)
+     fi;;
+  esac
+  [ -n "$BASE" ] || BASE=https://service.bikesurgeon.online/app/uploads/jc
+  HC=$(curl -s -o /dev/null -w '%{http_code}' -m 15 "$BASE/$TF" 2>/dev/null); unlink "$TP"
+  if [ "$HC" = 200 ]; then echo "OK      a photo saved by the Service floor opens on the web ($BASE/...), so the WhatsApp photos reach the customer"
+  else echo "WARN    a test photo did not open at $BASE/... (answer $HC): the job card is saved, but the WhatsApp photos may not show. Send me a screenshot of this."; fi
+
+  echo "== 4. Switching it on"
+  VT=$(mktemp); chmod 600 "$VT"
+  { grep -vE '^(JC_WRITE|JC_DB_USER|JC_DB_PASS|JC_PHOTO_DIR|JC_PHOTO_BASE|SMARTPING_API_KEY|SMARTPING_API_URL|WA_CAMPAIGN_JOBCARD_DETAILS|WA_CAMPAIGN_JOBCARD_PHOTO|FAST2SMS_KEY)=' "$FLD/.env" || true
+    echo "JC_DB_USER=$JU"; echo "JC_DB_PASS=$JP"; echo "JC_PHOTO_DIR=$JCD"; cat "$T/keys.env"; } > "$VT" && cat "$VT" > "$FLD/.env"
+  : > "$VT"; unlink "$VT"; : > "$T/keys.env"; unset JP RPW
+  [ "$(stat -c %U "$FLD/.env")" = "$PU" ] && chmod 600 "$FLD/.env"
+  restart "$FLD" 3026 || echo "FAILED  restart of the Service floor"
+  NJ=0; for i in $(seq 1 40); do sleep 2; curl -s -m 3 http://127.0.0.1:3026/healthz | grep -q '"newjc":true' && { NJ=1; break; }; done
+  if [ $NJ = 1 ]; then echo "OK      New job card is on: Service floor > New job card (reload the page once)"; echo "All done."; exit 0; fi
+  echo "FAILED  the Service floor did not switch New job card on. Send me a screenshot of this."; exit 1
+fi
 
 # the name-wise logins run only the first time (no name-wise login yet) or when asked (names); else the logins stay as they are
 NAMED=$(cd "$FD" && "$B/node" --env-file=.env --disable-warning=ExperimentalWarning -e '
@@ -250,14 +414,6 @@ BK=/root/bikesurgeon-backup-names-$STAMP; [ $RUN_NAMES = 1 ] || BK=/root/bikesur
 mkdir -p "$BK" && chmod 700 "$BK"
 
 echo "== 3. Admin panel and Moto Lab panel: the billing within seconds"
-# .env lines: setenv keeps the file (owner, rights); getenv gives the value without quotes; nothing is printed
-setenv() { local f=$1; { grep -v "^$2=" "$f" || true; echo "$2=$3"; } > "$T/env" && cat "$T/env" > "$f"; rm -f "$T/env"; }
-getenv() { [ -f "$1" ] && grep "^$2=" "$1" | tail -1 | cut -d= -f2- | tr -d '"'"'"' \r' || true; }
-sha() { sha256sum < "$1" | cut -d' ' -f1; }
-# restart the pm2 app that runs a folder (found by its folder, or by the process on its port)
-restart() { local pid n; pid=$(pidof_port "$2")
-  n=$(su - "$PU" -c "$NODE; cd $PANEL && npx pm2 jlist 2>/dev/null" | "$B/node" "$CODE/front-door/tools/pm2-name.js" "$1" "${pid:-0}")
-  [ -n "$n" ] && su - "$PU" -c "$NODE; cd $PANEL && npx pm2 restart '$n' >/dev/null"; }
 # the Moto Lab items and bills the admin panel gives ("<items> <bills>" or "no")
 mlfeed() { curl -s -m 30 -H @"$T/hdr" http://127.0.0.1:3040/api/feed/motolab | "$B/node" -e 'let t="";process.stdin.on("data",c=>t+=c).on("end",()=>{let o="no";try{const d=JSON.parse(t);if(d.live&&Array.isArray(d.items)&&d.items.length&&d.bills.length)o=d.items.length+" "+d.bills.length}catch{}console.log(o)})'; }
 # is the Moto Lab panel on the real bills? ("on <bills>" or "off")
@@ -579,7 +735,7 @@ else
     for i in $(seq 1 36); do sleep 5; NEWPID=$(pidof_port 3026); [ -n "$NEWPID" ] && [ "$NEWPID" != "$OLDPID" ] || continue
       K=$(fq last); read -r KT KS _ <<<"$K"; [ "$K" != none ] && [ "$KT" -ge "$T0" ] && [ "$KS" = ok ] && break; done
     read -r KT KS KF KC KB <<<"$K"
-    if [ "$K" != none ] && [ "$KT" -ge "$T0" ] && [ "$KS" = ok ] && [ -n "$(pidof_port 3026)" ] && curl -s -m 5 http://127.0.0.1:3026/ | grep -q 'src="live.js"'; then
+    if [ "$K" != none ] && [ "$KT" -ge "$T0" ] && [ "$KS" = ok ] && [ -n "$(pidof_port 3026)" ] && curl -s -m 5 http://127.0.0.1:3026/ | grep -q 'src="live.js'; then
       FL=0; FLM=1
       if [ "$KF" = 1 ]; then echo "OK      Service floor straight on the billing: $KC job cards, $KB online bookings, checked every 3 seconds"
       else echo "OK      Service floor on the billing, read every minute ($KC job cards, $KB online bookings)"
@@ -601,6 +757,12 @@ if [ $FLM = 1 ]; then
   if grep -q '^PANELS_OFF=' "$FD/.env"; then OFFL=$(getenv "$FD/.env" PANELS_OFF | tr ',' '\n' | grep -vx floor | grep -v '^$' | paste -sd, -)
   else OFFL=maintainer,desk,accounts,counter,spares,supervisor,motolab; fi
   [ "$(getenv "$FD/.env" PANELS_OFF)" = "$OFFL" ] && grep -q '^PANELS_OFF=' "$FD/.env" || { setenv "$FD/.env" PANELS_OFF "$OFFL"; echo "OK      The Service floor goes into the menu (Sharath, Syed Shahid, Yaseen Raza, Sultan, the owners)"; }
+fi
+# New job card (update 13): on once the billing's job card login is there (bash $ME jobcard)
+if [ $FLM = 1 ]; then
+  if [ -z "$(getenv "$FLD/.env" JC_DB_USER)" ]; then echo "NEXT    New job card in the Service floor (saved in the billing like the service app, the same WhatsApp + SMS): once,  bash $ME jobcard"
+  else NJ=0; for i in $(seq 1 30); do curl -s -m 3 http://127.0.0.1:3026/healthz | grep -q '"newjc":true' && { NJ=1; break; }; sleep 2; done
+    if [ $NJ = 1 ]; then echo "OK      New job card is on in the Service floor"; else echo "WARN    New job card is not on: once more,  bash $ME jobcard"; fi; fi
 fi
 
 echo "== 4. Front door: the new code (sign-in page, one screen, Vehicle number page)"

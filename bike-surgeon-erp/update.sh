@@ -6,7 +6,7 @@
 #               bash /root/bs-erp-update.sh old-off    (older role-email staff logins off, once everyone uses their own)
 #               bash /root/bs-erp-update.sh undo       (logins back as before the last update; again = one more back)
 #               bash /root/bs-erp-update.sh names      (the name-wise logins again from the attendance app; passwords + PINs kept)
-#               bash /root/bs-erp-update.sh vrgarage   (the VR Garage email + password for the Vehicle number page, typed here once)
+#               bash /root/bs-erp-update.sh vrgarage   (the VR Garage login + password for the Vehicle number page, typed here once)
 # 28 Nov update 7 (Sam: "VR Garage in job card + billing counter"): a new page "Vehicle number" at the top of every login's
 # menu. A number gives the chassis, model, engine number and owner from VR Garage; staff can change the customer name and
 # the model. Each vehicle is asked ONLY ONCE (the answer is kept in the front door's database for ever). The front door reads
@@ -116,12 +116,13 @@ fi
 
 if [ "$MODE" = vrgarage ]; then
   # the VR Garage login of the Vehicle number page: typed here (never in a chat), tried with VR Garage first (a login only,
-  # no search, nothing is paid), then kept only in the front door's .env (the password as base64, so any sign works)
+  # no search, nothing is paid), then kept only in the front door's .env (the password as base64, so any sign works).
+  # The login is what goes in VR Garage's email box: a mobile number (Sam's, 28 Nov) or an email.
   [ -f "$FD/server/vehicles.js" ] || { echo "Run the update first:  bash $ME   Nothing changed."; exit 1; }
   echo "VR Garage login for the Vehicle number page. It is kept only on this server ($FD/.env)."
-  read -r -p "VR Garage email: " VE; read -r -s -p "VR Garage password (it does not show while you type): " VP; echo
+  read -r -p "VR Garage login (the mobile number or email you sign in with): " VE; read -r -s -p "VR Garage password (it does not show while you type): " VP; echo
   VE=$(printf '%s' "$VE" | tr -d ' \r')
-  case "$VE" in *@*.*) ;; *) echo "That email does not look right. Nothing changed."; exit 1;; esac
+  [[ "$VE" =~ ^[^@]+@[^@]+\.[^@]+$ || "$VE" =~ ^\+?[0-9]{10,13}$ ]] || { echo "That is not a mobile number or an email. Nothing changed."; exit 1; }
   [ -n "$VP" ] || { echo "No password typed. Nothing changed."; exit 1; }
   echo "== Trying the login with VR Garage (no search: nothing is paid)"
   R=$(cd "$FD" && VRG_E="$VE" VRG_P="$VP" "$B/node" --env-file-if-exists=.env --disable-warning=ExperimentalWarning -e '
@@ -494,7 +495,7 @@ elif [ "$GO" != 1 ]; then echo "FAILED  Vehicle number page: no billing database
 elif [ "$GS" != ok ]; then echo "FAILED  Vehicle number page: the billing's job cards could not be read: $(gerr)"; echo "        Send me a screenshot of this."
 else GA=0; echo "OK      Vehicle number page: $GC job cards of the billing read ($GP vehicles), new ones within 5 seconds"
   if [ "$GV" = 1 ]; then echo "OK      VR Garage is connected"
-  else echo "NEXT    VR Garage is not connected yet. Once, to type its email and password:  bash $ME vrgarage"; fi
+  else echo "NEXT    VR Garage is not connected yet. Once, to type its login (mobile number) and password:  bash $ME vrgarage"; fi
 fi
 
 N=0

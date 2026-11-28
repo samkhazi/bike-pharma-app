@@ -25,7 +25,7 @@
   // ---- the note at the top: VR Garage not connected, not answering, the billing not read ------------------------------
   function notes() {
     const n = [];
-    if (vr && !vr.on) n.push(me.owner ? 'VR Garage is not connected yet. Once, on the server as root: <code>bash /root/bs-erp-update.sh vrgarage</code> (it asks the VR Garage email and password there; never send them in a chat). The job cards of each vehicle show already.'
+    if (vr && !vr.on) n.push(me.owner ? 'VR Garage is not connected yet. Once, on the server as root: <code>bash /root/bs-erp-update.sh vrgarage</code> (it asks the VR Garage login and password there; never send them in a chat). The job cards of each vehicle show already.'
       : 'VR Garage is not connected yet: the job cards of each vehicle show already. The owner connects VR Garage.');
     else if (vr && vr.err) n.push(me.owner ? `VR Garage: ${esc(vr.err)}` : 'VR Garage is not answering just now. Try again in a minute.');
     if (link && link.on && !link.ok && link.at) n.push(me.owner ? `The billing's job cards could not be read just now: ${esc(link.err)}` : 'The job cards could not be read just now.');

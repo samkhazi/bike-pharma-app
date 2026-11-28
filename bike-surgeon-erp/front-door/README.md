@@ -41,7 +41,7 @@ vr_calls) for ever. The front door reads the billing's `job_card` table (read on
 into .env by update.sh) every 5 seconds: a number shows its job cards at once, and the vehicle of every job card made after
 the first read is asked by itself, once (last 3 days only). The Cashier shows the model, chassis and engine under a ready
 vehicle (`/__gate/api/vehicle/many`, saved data only, never a new search).
-- .env: VRGARAGE_EMAIL + VRGARAGE_PASS64 (typed on the server: `bash /root/bs-erp-update.sh vrgarage`, the login is tried
-  first), VRGARAGE_URL, VR_MAX_DAY (300 searches a day), VR_MAX_PERSON_DAY (60), GAADI_SECONDS (5), GAADI_LIVE=0 (no billing read).
+- .env: VRGARAGE_EMAIL (the login: a mobile number or an email, sent as VR Garage's web app sends it) + VRGARAGE_PASS64 (typed
+  on the server: `bash /root/bs-erp-update.sh vrgarage`, the login is tried first), VRGARAGE_URL, VR_MAX_DAY (300 searches a day), VR_MAX_PERSON_DAY (60), GAADI_SECONDS (5), GAADI_LIVE=0 (no billing read).
 - API (any signed-in login): GET /__gate/api/vehicle?no=…[&look=1], POST /__gate/api/vehicle {no, name, model},
   GET /__gate/api/vehicle/recent, GET /__gate/api/vehicle/many?nos=…; owner: POST /__gate/api/vehicle/again {no}.

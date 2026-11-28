@@ -99,12 +99,13 @@ async function vrLogin(email = env('VRGARAGE_EMAIL'), pass = vrPass()) {
   const { r, j } = await post(u, { email, password: pass, deviceToken: 'bikesurgeon', deviceId: 'bikesurgeon-erp', deviceName: 'web', ipAddress: '0.0.0.0', device: 'web' });
   return { tok: j ? pick(j, ['token', 'accessToken', 'access_token']) : '', status: r.status, code: j && j.responseCode, msg: j && j.message ? String(j.message).slice(0, 120) : '' };
 }
-// update.sh vrgarage: is this email + password right? (a login only, no search: nothing is paid) -> 'ok' or why not
+// update.sh vrgarage: is this login (the mobile number or email of VR Garage's email box) + password right? (a login only,
+// no search: nothing is paid) -> 'ok' or why not
 async function loginTest(email, pass) {
   try {
     const x = await vrLogin(String(email || '').trim(), String(pass || ''));
     if (x.tok) return 'ok';
-    return `VR Garage did not accept this email and password (answer ${x.status}${x.code != null ? ', code ' + x.code : ''}${x.msg ? ': ' + x.msg : ''})`;
+    return `VR Garage did not accept this login and password (answer ${x.status}${x.code != null ? ', code ' + x.code : ''}${x.msg ? ': ' + x.msg : ''})`;
   } catch (e) { return reach(e); }
 }
 // one search (it costs money): {state: found | notfound | unread | error, d, raw, msg}

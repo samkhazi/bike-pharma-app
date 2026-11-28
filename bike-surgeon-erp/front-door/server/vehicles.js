@@ -364,6 +364,23 @@ async function api(req, res, u, s, h) {
   throw h.err(404, 'Not found.');
 }
 
+// ---------------- the Catalogue page's vehicle number box (catalogue.js) ------------------------------------------------------
+// Bike Pharma's Find Part asks /api/rclook; in Bike Surgeon this answers it: the same rules as the page above (asked once, the
+// saved answer after that, the same daily caps), in the shape Find Part reads. The model the staff typed wins over VR Garage's.
+async function rcFor(raw, who) {
+  const reg = clean(raw);
+  if (!isReg(reg)) return { found: false, error: 'Type the full vehicle number, like KA17AB1234' };
+  if (!asked(reg)) {
+    const look = await lookup(reg, who, 'manual');
+    if (look.state === 'off') return { found: false, error: 'The VR Garage login is not set on the Bike Surgeon server yet (owner: bash /root/bs-erp-update.sh vrgarage)' };
+    if (look.state === 'cap' || look.state === 'error') return { found: false, error: look.msg || 'VR Garage did not answer, try again in a minute' };
+  }
+  const v = savedView(reg, false);
+  if (v && v.found === 1) { const d = v.d || {}; return { found: true, ...d, model: v.model || d.model || '', reg, saved: v.at || '' }; }
+  if (v && v.found === 2) return { found: false, error: "VR Garage's answer for this number could not be read. The owner can ask again on the Vehicle number page" };
+  return { found: false };
+}
+
 // ---------------- start -----------------------------------------------------------------------------------------------------
 function init(database) {
   db = database;
@@ -392,4 +409,4 @@ function start() {
 }
 function stop() { timers.forEach(t => clearTimeout(t)); timers = []; }
 
-module.exports = { init, start, stop, api, loginTest, rcMap, clean, isReg, _: { L, VR, queue, readCards, work, wantNew, lookup } };
+module.exports = { init, start, stop, api, loginTest, rcMap, clean, isReg, rcFor, mysql, _: { L, VR, queue, readCards, work, wantNew, lookup } };

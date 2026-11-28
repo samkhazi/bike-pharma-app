@@ -13,6 +13,7 @@ const crypto = require('node:crypto');
 const { DatabaseSync } = require('node:sqlite');
 const { PORTALS, OWNER_AS, KEYS } = require('./portals');
 const vehicles = require('./vehicles');   // Vehicle number page (VR Garage, the billing's job cards): vehicles.js
+const catalogue = require('./catalogue');   // Catalogue page: Bike Pharma's Find Part with Bike Surgeon's stock (catalogue.js)
 
 const COOKIE = 'bs_gate';
 const DAYS = 14;
@@ -64,6 +65,7 @@ const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
 const run = (sql, ...a) => db.prepare(sql).run(...a);
 const audit = (who, what) => run('INSERT INTO audit (at, who, what) VALUES (?,?,?)', now(), who, what);
+catalogue.init({ all, now });
 
 // ---------------- passwords and PINs ----------------------------------------------------------------------------------
 const hashPass = p => { const salt = crypto.randomBytes(16).toString('hex'); return `scrypt$${salt}$${crypto.scryptSync(String(p), salt, 32).toString('hex')}`; };
@@ -276,7 +278,7 @@ function body(req, limit = 100000) {
 
 // ---------------- the front door's own pages and API ------------------------------------------------------------------
 const meOf = s => ({ name: s.name, email: idOf(s), owner: !!s.owner, portal: s.portal, portalName: PORTALS[s.portal] && PORTALS[s.portal].name,
-  panels: panelsOf(s.login_id).map(p => ({ key: p.portal, name: PORTALS[p.portal].name })) });
+  panels: panelsOf(s.login_id).map(p => ({ key: p.portal, name: PORTALS[p.portal].name })), cat: catalogue.on() });
 // who a phone is inside a panel: a real staff member (people) or a person of the sample data
 function whoIn(portal, phone) {
   const r = one('SELECT name FROM people WHERE portal = ? AND phone = ?', portal, phone); if (r) return r.name;
@@ -342,6 +344,8 @@ async function gateRoute(req, res, u) {
   // every login: the Vehicle number page (it opens in the one screen's menu) and its API
   if (m === 'GET' && p === '/__gate/gaadi') return page(res, 'gaadi.html', 200, {}, GAADI_CSP);
   if (p.startsWith('/__gate/api/vehicle')) return await vehicles.api(req, res, u, s, { json, body, err });
+  // every login: the Catalogue page (its address carries a ticket of this sign in; catalogue.js)
+  if (m === 'GET' && p === '/__gate/cat-open') return json(res, 200, catalogue.open(s));
   // owner only: the logins
   if (!s.owner) throw err(403, 'Only the owner can change logins.');
   if (m === 'GET' && p === '/__gate/logins') return page(res, 'logins.html');
@@ -418,6 +422,7 @@ async function handle(req, res) {
   const u = new URL(req.url, 'http://x');
   try {
     if (u.pathname === '/healthz') return json(res, 200, { ok: true });
+    if (u.pathname.startsWith('/__gate/cat/t/')) return await catalogue.handle(req, res, u);   // the Catalogue page: its ticket, no cookie (sealed off)
     if (u.pathname.startsWith('/__gate/')) return await gateRoute(req, res, u);
     const s = session(req);
     const r = route(req, u);

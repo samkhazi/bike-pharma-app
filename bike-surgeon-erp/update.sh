@@ -7,6 +7,15 @@
 #               bash /root/bs-erp-update.sh undo       (logins back as before the last update; again = one more back)
 #               bash /root/bs-erp-update.sh names      (the name-wise logins again from the attendance app; passwords + PINs kept)
 #               bash /root/bs-erp-update.sh vrgarage   (the VR Garage login + password for the Vehicle number page, typed here once)
+#               bash /root/bs-erp-update.sh catalogue  (all Bike Pharma catalogues in the menu: the key both servers share, once)
+# 28 Nov update 11 (Sam: "can u add all catalogues from bikepharma"): a new page "Catalogue" in every login's menu. It is
+# Bike Pharma's own Find Part (every brand's catalogue, diagrams, part numbers, MRPs, chassis and vehicle number search),
+# opened from bikepharma.com through this server with Bike Surgeon's key, so nothing is copied and a catalogue added on
+# Bike Pharma shows here at once. Next to each part: Bike Surgeon's own stock and rack (the billing's parts, read only,
+# every 2 minutes). A vehicle number in it is answered by the Vehicle number page's saved VR Garage details (asked only
+# once, the same limits); the Vehicle number page gets a button "Parts of this bike (Catalogue)". Bike Pharma's server
+# gives this key Find Part only: none of its bills, customers, prices or stock, and nothing is saved there. The page runs
+# sealed off from the panels (no cookies, no way into the billing pages). Once:  bash /root/bs-erp-update.sh catalogue
 # 28 Nov update 10 (Sam's Bike Pharma RC code, "why does Bike Pharma find it and Bike Surgeon not?"): the REAL cause of the
 # "VR Garage answered 500". The front door cut VR Garage's login token to 160 letters (the RC fields' length limit); the
 # token is a JWT of about 350 letters, so every search went with a broken token and VR Garage answered 500. Bike Pharma
@@ -79,7 +88,7 @@ PU=bikesurgeon-panel
 MODE=${1:-}
 
 [ "$(id -u)" = 0 ] || { echo "Run this as root (type su - first, then this line). Nothing changed."; exit 1; }
-case "$MODE" in ""|undo|old-off|names|vrgarage) ;; *) echo "Unknown word: $MODE (use nothing, names, undo, old-off or vrgarage). Nothing changed."; exit 1;; esac
+case "$MODE" in ""|undo|old-off|names|vrgarage|catalogue) ;; *) echo "Unknown word: $MODE (use nothing, names, undo, old-off, vrgarage or catalogue). Nothing changed."; exit 1;; esac
 
 # ---- 0. the newest code from GitHub; a newer copy of this script takes over --------------------------------------------
 if [ "${BS_ERP_FRESH:-}" != 1 ]; then
@@ -155,6 +164,37 @@ if [ "$MODE" = vrgarage ]; then
   UP=0; for i in $(seq 1 30); do sleep 1; curl -s -m 3 http://127.0.0.1:3022/__gate/login | grep -q 'Mobile number or email' && { UP=1; break; }; done
   if [ $UP = 1 ]; then echo "OK      VR Garage connected. The vehicle of every new job card is asked by itself (once); any number on the Vehicle number page too."; echo "All done."
   else echo "FAILED  the front door did not start again. Send me a screenshot of this."; exit 1; fi
+  exit 0
+fi
+
+# the Catalogue page: the probe asks bikepharma.com one staff question with the key (no catalogue is read)
+catprobe() { (cd "$FD" && "$B/node" --env-file=.env --disable-warning=ExperimentalWarning -e '
+  require("./server/catalogue")._.probe().then(p => console.log(p.ok ? "ok" : p.msg), e => console.log("could not ask: " + e.message))' 2>&1 | tail -1); }
+if [ "$MODE" = catalogue ]; then
+  # Bike Pharma's catalogues in the menu (Catalogue page): one key, made here once and kept in the front door's .env
+  # (BP_CAT_KEY); the same key goes into bikepharma.com's .env (BS_CAT_KEY) with the one line printed below.
+  [ -f "$FD/server/catalogue.js" ] || { echo "Run the update first:  bash $ME   Nothing changed."; exit 1; }
+  K=$(grep '^BP_CAT_KEY=' "$FD/.env" | tail -1 | cut -d= -f2- | tr -d '"'"'"' \r')
+  if [ ${#K} -lt 32 ]; then
+    K=$("$B/node" -e 'console.log(require("node:crypto").randomBytes(32).toString("hex"))')
+    KT=$(mktemp); chmod 600 "$KT"
+    { grep -v '^BP_CAT_KEY=' "$FD/.env" || true; echo "BP_CAT_KEY=$K"; } > "$KT" && cat "$KT" > "$FD/.env"; rm -f "$KT"
+    [ "$(stat -c %U "$FD/.env")" = "$PU" ] && chmod 600 "$FD/.env"
+    su - "$PU" -c "$NODE; cd $PANEL && npx pm2 restart front-door >/dev/null" || echo "FAILED  restart of the front door"
+    for i in $(seq 1 30); do sleep 1; curl -s -m 3 http://127.0.0.1:3022/__gate/login | grep -q 'Mobile number or email' && break; done
+    echo "OK      Bike Surgeon's catalogue key made (kept only in $FD/.env)"
+  fi
+  echo "== Asking bikepharma.com with the key"
+  R=$(catprobe)
+  if [ "$R" = ok ]; then echo "OK      bikepharma.com takes the key: Catalogue is in every login's menu (reload the page once)."; echo "All done."; exit 0; fi
+  echo "WAITING $R"
+  echo
+  echo "Once, on the BIKE PHARMA server as root: copy this ONE line with the mouse and run it there (it adds the key and runs the Bike Pharma update):"
+  echo
+  echo "cd /home/bikepharma/htdocs/bikepharma.com && (umask 077; { grep -v '^BS_CAT_KEY=' .env; echo 'BS_CAT_KEY=$K'; } > .env.k) && cat .env.k > .env && rm -f .env.k && bash update.sh"
+  echo
+  echo "That line holds a password: never send a screenshot or a photo of it, and type  clear  here after copying it."
+  echo "Then here once more:  bash $ME catalogue   (it only checks; the key is not shown again when it works)"
   exit 0
 fi
 
@@ -583,6 +623,8 @@ if [ $UP != 1 ]; then
   echo "Send me a screenshot of this."; exit 1
 fi
 echo "OK      front door restarted with the new code"
+if [ -z "$(getenv "$FD/.env" BP_CAT_KEY)" ]; then echo "NEXT    Catalogue (all Bike Pharma catalogues in the menu, with Bike Surgeon's stock): once,  bash $ME catalogue"
+else CR=$(catprobe); if [ "$CR" = ok ]; then echo "OK      Catalogue: bikepharma.com takes Bike Surgeon's key (all its catalogues are in the menu)"; else echo "NEXT    Catalogue: $CR"; fi; fi
 # the Vehicle number page: its first read of the billing's job cards (front door database, kv gaadi_last)
 FDB=$(getenv "$FD/.env" DB_FILE); case "$FDB" in "") FDB=$FD/data/front.db;; /*) ;; *) FDB=$FD/$FDB;; esac
 glast() { "$B/node" --disable-warning=ExperimentalWarning -e 'try{const d=new (require("node:sqlite").DatabaseSync)(process.argv[1],{readOnly:true});

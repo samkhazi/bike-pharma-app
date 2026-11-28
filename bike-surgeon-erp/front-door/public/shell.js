@@ -20,9 +20,12 @@
   const byKey = k => G.find(g => g.key === k);
   const LAST = 'bs-last-' + me.email;
   let last = null; try { last = JSON.parse(localStorage.getItem(LAST) || 'null'); } catch { /* private window */ }
-  // the Vehicle number page (VR Garage, Sam 27 Nov) is the front door's own page, at the top of every login's menu
-  const TOOL = { key: 'gaadi', name: 'Vehicle number', frame: null };
-  let cur = (last && (last.key === TOOL.key || byKey(last.key)) ? last.key : G[0] && G[0].key) || '';
+  // the front door's own pages, at the top of every login's menu: Vehicle number (VR Garage, Sam 27 Nov) and Catalogue (Bike
+  // Pharma's Find Part with Bike Surgeon's stock, Sam 28 Nov; only once its key is set)
+  const TOOLS = [{ key: 'gaadi', name: 'Vehicle number', frame: null, svg: '<rect x="2.5" y="6.5" width="19" height="11" rx="2.5"/><path d="M6.5 12h2.5M11 12h2M15 12h2.5"/>' }];
+  if (me.cat) TOOLS.push({ key: 'cat', name: 'Catalogue', frame: null, svg: '<path d="M3.5 5.5c2.6-1 5.4-1 8.5.8v13c-3.1-1.8-5.9-1.8-8.5-.8z"/><path d="M20.5 5.5c-2.6-1-5.4-1-8.5.8v13c3.1-1.8 5.9-1.8 8.5-.8z"/>' });
+  const toolOf = k => TOOLS.find(t => t.key === k);
+  let cur = (last && (toolOf(last.key) || byKey(last.key)) ? last.key : G[0] && G[0].key) || '';
   if (G.length > 3) G.forEach(g => { g.shut = g.key !== cur; });
 
   $('who').textContent = me.owner ? 'Owner · everything in one place' : 'Your pages';
@@ -85,18 +88,36 @@
     closeMenu();
     setTimeout(() => read(g), 60);
   }
-  function toolFrame(no) {
-    if (!TOOL.frame) {
+  // no: a vehicle number for Vehicle number; "reg=..." / "vin=..." for the Catalogue
+  function toolFrame(t, no) {
+    if (t.key === 'cat') return catFrame(t, no);
+    if (!t.frame) {
       const f = document.createElement('iframe');
-      f.title = TOOL.name; f.src = '/__gate/gaadi' + (no ? '#' + encodeURIComponent(no) : '');
-      TOOL.frame = f; $('frames').append(f);
-    } else if (no) { try { TOOL.frame.contentWindow.location.hash = no; } catch { TOOL.frame.src = '/__gate/gaadi#' + encodeURIComponent(no); } }
-    return TOOL.frame;
+      f.title = t.name; f.src = '/__gate/gaadi' + (no ? '#' + encodeURIComponent(no) : '');
+      t.frame = f; $('frames').append(f);
+    } else if (no) { try { t.frame.contentWindow.location.hash = no; } catch { t.frame.src = '/__gate/gaadi#' + encodeURIComponent(no); } }
+    return t.frame;
+  }
+  // the Catalogue is sealed off (its own origin: no cookies, no reach into this screen or the panels); its address has a ticket
+  // of this sign in, asked once
+  function catFrame(t, go) {
+    if (t.frame && t.bad) { t.frame.remove(); t.frame = null; t.bad = false; }   // it did not open last time: once more
+    if (!t.frame) {
+      const f = document.createElement('iframe');
+      f.title = t.name;
+      f.setAttribute('sandbox', 'allow-scripts allow-popups allow-popups-to-escape-sandbox allow-downloads allow-modals allow-forms');
+      f.setAttribute('allow', 'clipboard-write'); f.setAttribute('referrerpolicy', 'no-referrer');
+      t.frame = f; $('frames').append(f); if (cur === t.key) f.classList.add('show');
+      fetch('/__gate/cat-open', { cache: 'no-store' }).then(r => { if (r.status === 401) { toLogin(); return {}; } return r.json(); })
+        .then(d => { if (d.url) f.src = d.url + (go ? '#' + go : ''); else f.srcdoc = '<p style="font:16px system-ui,sans-serif;padding:24px">The Catalogue is not switched on yet.</p>'; })
+        .catch(() => { f.srcdoc = '<p style="font:16px system-ui,sans-serif;padding:24px">Cannot reach the server. Check the internet and open Catalogue again.</p>'; t.bad = true; });
+    } else if (go) { try { t.frame.contentWindow.postMessage({ bsCat: go }, '*'); } catch { /* frame gone */ } }
+    return t.frame;
   }
   function show(key, no) {
     cur = key;
-    if (key === TOOL.key) toolFrame(no);
-    if (TOOL.frame) TOOL.frame.classList.toggle('show', key === TOOL.key);
+    const t = toolOf(key); if (t) toolFrame(t, no);
+    TOOLS.forEach(x => { if (x.frame) x.frame.classList.toggle('show', x.key === key); });
     G.forEach(g => { if (g.key === key) makeFrame(g); if (g.frame) g.frame.classList.toggle('show', g.key === key); });
     draw();
   }
@@ -104,7 +125,13 @@
   // The popup shows here, over everything; Open shows that panel on the asked page.
   addEventListener('message', e => {
     if (e.origin === location.origin && e.data && typeof e.data.bsGaadi === 'string') {
-      const no = e.data.bsGaadi.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16); show(TOOL.key, no); return;
+      const no = e.data.bsGaadi.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16); show('gaadi', no); return;
+    }
+    // the Vehicle number page opens that bike's parts in the Catalogue (only this screen's own pages may ask)
+    if (e.origin === location.origin && e.data && typeof e.data.bsCat === 'string' && toolOf('cat')) {
+      const [k, v] = e.data.bsCat.split('='), val = String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 30);
+      if ((k === 'reg' || k === 'vin') && val.length >= 4) show('cat', k + '=' + val);
+      return;
     }
     if (e.origin !== location.origin || !e.data || !e.data.bsNag) return;
     const g = G.find(x => x.frame && x.frame.contentWindow === e.source); if (!g || g.key === cur) return;
@@ -141,17 +168,17 @@
       const head = G.length > 1 ? `<button type="button" class="gh" data-sh="${gi}" aria-expanded="${!g.shut}"><span>${esc(g.name)}</span>${g.shut && sum ? `<span class="sum blink">${sum}</span>` : ''}<span class="arr">▾</span></button>` : '';
       return `<section class="grp ${g.shut ? 'shut' : ''}">${head}<div class="items">${body}</div></section>`;
     }).join('');
-    const tOn = cur === TOOL.key;
-    const tool = `<section class="grp tool"><div class="items"><button type="button" class="it ${tOn ? 'on' : ''}" data-tool="${TOOL.key}" ${tOn ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6.5" width="19" height="11" rx="2.5"/><path d="M6.5 12h2.5M11 12h2M15 12h2.5"/></svg><span>${TOOL.name}</span></button></div></section>`;
+    const tOn = toolOf(cur);
+    const tool = `<section class="grp tool"><div class="items">${TOOLS.map(t => `<button type="button" class="it ${cur === t.key ? 'on' : ''}" data-tool="${t.key}" ${cur === t.key ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" aria-hidden="true">${t.svg}</svg><span>${t.name}</span></button>`).join('')}</div></section>`;
     const box = $('groups'), top = $('menu').scrollTop;
     box.innerHTML = tool + html; $('menu').scrollTop = top;
     const g = byKey(cur), on = g && g.items.find(x => x.on);
-    $('mtitle').textContent = tOn ? TOOL.name : on ? on.label : g ? g.name : 'Bike Surgeon';
-    document.title = (tOn ? TOOL.name + ' · ' : on ? on.label + ' · ' : '') + 'Bike Surgeon';
+    $('mtitle').textContent = tOn ? tOn.name : on ? on.label : g ? g.name : 'Bike Surgeon';
+    document.title = (tOn ? tOn.name + ' · ' : on ? on.label + ' · ' : '') + 'Bike Surgeon';
   }
   $('groups').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
-    if (b.dataset.tool) { show(TOOL.key); try { localStorage.setItem(LAST, JSON.stringify({ key: TOOL.key, label: TOOL.name })); } catch { /* private window */ } closeMenu(); return; }
+    if (b.dataset.tool) { const t = toolOf(b.dataset.tool); if (!t) return; show(t.key); try { localStorage.setItem(LAST, JSON.stringify({ key: t.key, label: t.name })); } catch { /* private window */ } closeMenu(); return; }
     if (b.dataset.sh != null) { const g = G[+b.dataset.sh]; g.shut = !g.shut; makeFrame(g); draw(); return; }
     if (b.dataset.re != null) { const g = G[+b.dataset.re]; g.state = 'wait'; g.items = []; g.sig = ''; if (g.frame) g.frame.src = `/p/${g.key}/`; draw(); return; }
     if (b.dataset.g != null) { const g = G[+b.dataset.g]; open(g, g.items[+b.dataset.i]); }
@@ -182,7 +209,7 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) still(); });
 
   // start: the last page first, the other panels a moment later (their menus fill in as they load)
-  if (cur === TOOL.key) show(TOOL.key);
+  if (toolOf(cur)) show(cur);
   draw();
   const first = byKey(cur);
   if (first) {

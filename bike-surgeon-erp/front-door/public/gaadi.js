@@ -50,6 +50,8 @@
     else if (!v.vr.on) src = `<span class="pill">VR Garage not connected</span><span class="src">${me.owner ? 'Connect it once on the server (see above).' : 'The owner connects VR Garage.'}</span>`;
     else src = `<span class="pill">Not asked yet</span><button type="button" class="btn sm pri" data-ask="${esc(v.no)}">Ask VR Garage</button><span class="src">one search for this vehicle, then it is kept</span>`;
     const again = me.owner && s && (s.found === 0 || s.found === 2) ? `<button type="button" class="btn sm" data-again="${esc(v.no)}">Ask VR Garage again</button>` : '';
+    // Sam 28 Nov: this bike's parts in the Catalogue (Bike Pharma's Find Part); only with VR Garage's details, so it is no new search
+    const cat = me.cat && found && window.parent !== window ? `<button type="button" class="btn sm pri" data-cat="${esc(v.no)}">Parts of this bike (Catalogue)</button>` : '';
     const hint = (a, b, what) => (a && b && a.toUpperCase() !== b.toUpperCase() ? `<span class="hint">${what}: ${esc(b)}</span>` : '');
     const ins = [d.insurer, d.insUpto && 'up to ' + d.insUpto].filter(Boolean).join(', ');
     const grid = [F('Maker', d.maker), F('Chassis no.', d.chassis, true, true), F('Engine no.', d.engine, true, true), F('Year', d.year || d.mfg), F('Registered on', d.regDate),
@@ -59,7 +61,7 @@
       : '<p class="muted">No job card of this vehicle in the billing yet.</p>';
     return `<section class="card">
       <div class="head"><span class="plate lg">${esc(v.show)}</span><div class="what"><b>${esc(model || 'Model not known yet')}</b><span class="muted">${esc(name || '')}</span></div></div>
-      <div class="head" style="gap:8px">${src}${again}</div>
+      <div class="head" style="gap:8px">${src}${again}${cat}</div>
       <form class="edit" id="ed" data-no="${esc(v.no)}">
         <label>Model<input id="emodel" maxlength="80" value="${esc(model)}" placeholder="e.g. Honda CB Shine">${hint(model, vrModel, 'VR Garage')}${hint(model, jcModel, 'Last job card')}</label>
         <label>Customer name<input id="ename" maxlength="80" value="${esc(name)}" placeholder="Name">${hint(name, d.owner, 'RC owner')}${hint(name, last && last.cust, 'Last job card')}</label>
@@ -118,6 +120,8 @@
   $('f').addEventListener('submit', e => { e.preventDefault(); open($('no').value, true); });
   $('rlist').addEventListener('click', e => { const b = e.target.closest('button[data-no]'); if (b && b.dataset.no) { $('no').value = show(b.dataset.no); open(b.dataset.no, false); window.scrollTo({ top: 0, behavior: 'smooth' }); } });
   $('out').addEventListener('click', async e => {
+    const ct = e.target.closest('[data-cat]');
+    if (ct) { try { window.parent.postMessage({ bsCat: 'reg=' + ct.dataset.cat }, location.origin); } catch { /* not in the one screen */ } return; }
     const c = e.target.closest('[data-copy]');
     if (c) {
       const t = c.dataset.copy;

@@ -7,6 +7,10 @@
 #               bash /root/bs-erp-update.sh undo       (logins back as before the last update; again = one more back)
 #               bash /root/bs-erp-update.sh names      (the name-wise logins again from the attendance app; passwords + PINs kept)
 #               bash /root/bs-erp-update.sh vrgarage   (the VR Garage login + password for the Vehicle number page, typed here once)
+# 28 Nov update 10 (Sam's Bike Pharma RC code, "why does Bike Pharma find it and Bike Surgeon not?"): the REAL cause of the
+# "VR Garage answered 500". The front door cut VR Garage's login token to 160 letters (the RC fields' length limit); the
+# token is a JWT of about 350 letters, so every search went with a broken token and VR Garage answered 500. Bike Pharma
+# sends the token whole, which is why it works. Now the whole token is sent, exactly like Bike Pharma's lib/rclook.mjs.
 # 28 Nov update 9 (Sam: "Error is coming. Why?"): the Vehicle number page said only "VR Garage answered 500". VR Garage's
 # own words now show instead. Checked on this server on 28 Nov: our login and request are right (a number VR Garage already
 # had came at once, without a credit); new numbers failed because the government RC server behind VR Garage (M-Parivahan)

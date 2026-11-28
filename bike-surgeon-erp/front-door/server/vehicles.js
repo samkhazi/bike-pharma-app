@@ -106,7 +106,18 @@ const reach = e => (e && e.name === 'AbortError' ? 'VR Garage did not answer in 
 async function vrLogin(email = env('VRGARAGE_EMAIL'), pass = vrPass()) {
   const u = new URL('garageLogin', vrUrl().replace(/[^/]*$/, ''));
   const { r, j } = await post(u, { email, password: pass, deviceToken: 'bikesurgeon', deviceId: 'bikesurgeon-erp', deviceName: 'web', ipAddress: '0.0.0.0', device: 'web' });
-  return { tok: j ? pick(j, ['token', 'accessToken', 'access_token']) : '', status: r.status, code: j && j.responseCode, msg: j && j.message ? String(j.message).slice(0, 120) : '' };
+  return { tok: j ? tokOf(j) : '', status: r.status, code: j && j.responseCode, msg: j && j.message ? String(j.message).slice(0, 120) : '' };
+}
+// the login's token, WHOLE. 28 Nov: pick() cuts every value to 160 letters (for the RC card), VR Garage's token is a JWT of
+// about 350 letters, and the cut token made every search answer 500. Bike Pharma's lib/rclook.mjs sends j.token as it is.
+function tokOf(j) {
+  const seen = new Set(), st = [j];
+  while (st.length) {
+    const x = st.shift(); if (!x || typeof x !== 'object' || seen.has(x)) continue; seen.add(x);
+    for (const [k, v] of Object.entries(x)) if (/^(token|accesstoken|access_token)$/i.test(k) && typeof v === 'string' && v.trim()) return v.trim();
+    for (const v of Object.values(x)) if (v && typeof v === 'object') st.push(v);
+  }
+  return '';
 }
 // update.sh vrgarage: is this login (the mobile number or email of VR Garage's email box) + password right? (a login only,
 // no search: nothing is paid) -> 'ok' or why not

@@ -90,9 +90,18 @@ async function post(url, body, headers = {}, ms = 20000) {
     const r = await fetch(url, { method: 'POST', signal: ac.signal, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Custom-Header': 'foobar', ...headers },
       body: JSON.stringify(body) });
     const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch { /* not JSON */ }
-    return { r, j };
+    return { r, j, t };
   } finally { clearTimeout(to); }
 }
+// VR Garage's own words about a failure (28 Nov: a bare "500" told nobody why): one short line, no HTML, nothing that
+// looks like a token
+const says = (j, t) => String((j && (j.message || j.error || j.msg)) || (j ? '' : t || '')).replace(/<[^>]*>/g, ' ')
+  .replace(/[A-Za-z0-9_-]{20,}(\.[A-Za-z0-9_-]{8,}){0,2}/g, '...').replace(/\s+/g, ' ').trim().slice(0, 120);
+// VR Garage reads a NEW number from the government RC server (M-Parivahan): while that is down only the numbers VR Garage
+// already has come (28 Nov 12:29 IST: "M-Parivahan server is temporarily down. Please try again shortly.")
+const govDown = m => /parivahan|temporarily down/i.test(m);
+const failMsg = (st, m) => (govDown(m) ? 'The government RC server (M-Parivahan) is down: new numbers come once it is back'
+  : `VR Garage answered ${st}${m ? ': ' + m : ''}`);
 const reach = e => (e && e.name === 'AbortError' ? 'VR Garage did not answer in 20 seconds' : `VR Garage could not be reached from this server (${(e && e.cause && (e.cause.code || e.cause.message)) || (e && e.message) || 'network'})`);
 async function vrLogin(email = env('VRGARAGE_EMAIL'), pass = vrPass()) {
   const u = new URL('garageLogin', vrUrl().replace(/[^/]*$/, ''));
@@ -111,29 +120,36 @@ async function loginTest(email, pass) {
 // one search (it costs money): {state: found | notfound | unread | error, d, raw, msg}
 async function ask(reg) {
   const askWith = async tok => {
-    const { r, j } = await post(vrUrl(), { vehicleNumber: reg }, { Authorization: 'Bearer ' + String(tok).replace(/^Bearer\s+/i, '') });
-    return { r, j, no: r.status === 401 || r.status === 403 || (j && [401, 403].includes(+j.responseCode)) };
+    const { r, j, t } = await post(vrUrl(), { vehicleNumber: reg }, { Authorization: 'Bearer ' + String(tok).replace(/^Bearer\s+/i, '') });
+    return { r, j, t, no: r.status === 401 || r.status === 403 || (j && [401, 403].includes(+j.responseCode)) };
   };
   if (!VR.tok) VR.tok = (await vrLogin()).tok;
   if (!VR.tok) return { state: 'error', msg: 'VR Garage did not accept the login: type it again on the server (bash /root/bs-erp-update.sh vrgarage)' };
   let x = await askWith(VR.tok);
-  if (x.no) { VR.tok = (await vrLogin()).tok; if (VR.tok) x = await askWith(VR.tok); }
+  // refused, or a server error (an old login can answer 500): a new login and one more try (a login is free)
+  if (x.no || x.r.status >= 500) { const t2 = (await vrLogin()).tok; if (t2) { VR.tok = t2; x = await askWith(t2); } }
   if (x.no) { VR.tok = ''; return { state: 'error', msg: 'VR Garage did not let us in: check the login (bash /root/bs-erp-update.sh vrgarage) or the credits' }; }
-  const { r, j } = x;
+  const { r, j, t } = x;
   if (r.ok && j && j.responseCode != null && +j.responseCode !== 200) {
-    const m = String(j.message || '').slice(0, 120);
+    const m = says(j, t);
+    if (govDown(m)) return { state: 'error', msg: failMsg(r.status, m) };
     return /not ?found|no record|invalid|does not exist/i.test(m) ? { state: 'notfound', raw: j } : { state: 'error', msg: 'VR Garage: ' + (m || 'no data, try again later') };
   }
   if (r.status === 404 || r.status === 422) return { state: 'notfound', raw: j };
-  if (!r.ok) return { state: 'error', msg: 'VR Garage answered ' + r.status };
+  if (!r.ok) return { state: 'error', msg: failMsg(r.status, says(j, t)) };
   const d = rcMap(j || {});
-  if (readable(d)) return { state: 'found', d, raw: j };
-  return values(j && j.result !== undefined ? j.result : j) ? { state: 'unread', raw: j } : { state: 'notfound', raw: j };
+  // the search log says whether VR Garage took a credit (it answers from its own cache for free)
+  const note = j && j.debit != null ? (j.debit === true || j.debit === 'true' ? 'credit used' : 'no credit (VR Garage had it)') : '';
+  if (readable(d)) return { state: 'found', d, raw: j, note };
+  return values(j && j.result !== undefined ? j.result : j) ? { state: 'unread', raw: j, note } : { state: 'notfound', raw: j, note };
 }
 const PAID = "result IN ('found', 'notfound', 'unread')";
 const dayFrom = () => new Date(Date.parse(istDay() + 'T00:00:00Z') - IST).toISOString();
 const monthFrom = () => new Date(Date.parse(istDay().slice(0, 8) + '01T00:00:00Z') - IST).toISOString();
-const usedToday = who => one(`SELECT count(*) n FROM vr_calls WHERE at >= ?${who ? " AND who = ? AND kind = 'manual'" : ''}`, dayFrom(), ...(who ? [who] : [])).n;
+// the shop's daily cap counts the searches VR Garage answered (a failure costs nothing: M-Parivahan down must not use it up);
+// a person's cap counts every search they asked
+const usedToday = who => (who ? one("SELECT count(*) n FROM vr_calls WHERE at >= ? AND who = ? AND kind = 'manual'", dayFrom(), who).n
+  : one(`SELECT count(*) n FROM vr_calls WHERE at >= ? AND ${PAID}`, dayFrom()).n);
 const MAXDAY = () => Number(env('VR_MAX_DAY')) || 300, MAXPERSON = () => Number(env('VR_MAX_PERSON_DAY')) || 60;
 function save(reg, res, who) {
   const d = JSON.stringify(res.d || {}), raw = res.raw ? JSON.stringify(res.raw).slice(0, 30000) : null;
@@ -150,7 +166,7 @@ function lookup(reg, who, kind) {
     if (kind === 'manual' && usedToday(who) >= MAXPERSON()) return { state: 'cap', msg: `You asked VR Garage ${MAXPERSON()} times today. Ask the owner, or try tomorrow.` };
     const t0 = Date.now(); let res;
     try { res = await ask(reg); } catch (e) { res = { state: 'error', msg: reach(e) }; }
-    run('INSERT INTO vr_calls (at, reg, who, kind, result, ms, note) VALUES (?,?,?,?,?,?,?)', now(), reg, String(who).slice(0, 80), kind, res.state, Date.now() - t0, String(res.msg || '').slice(0, 200));
+    run('INSERT INTO vr_calls (at, reg, who, kind, result, ms, note) VALUES (?,?,?,?,?,?,?)', now(), reg, String(who).slice(0, 80), kind, res.state, Date.now() - t0, String(res.msg || res.note || '').slice(0, 200));
     if (res.state === 'error') { VR.err = res.msg; VR.errAt = Date.now(); console.log('vehicle number:', res.msg); }
     else { VR.err = ''; save(reg, res, String(who).slice(0, 80)); }
     return res;
@@ -168,7 +184,7 @@ function remap() {
 }
 
 // ---------------- the billing's job cards (read only) -------------------------------------------------------------------
-const L = { on: false, ok: false, at: 0, err: '', cards: new Map(), byReg: new Map(), maxId: 0, fullAt: 0, busy: false, saved: 0, jcFrom: null };
+const L = { on: false, ok: false, at: 0, err: '', cards: new Map(), byReg: new Map(), maxId: 0, fullAt: 0, busy: false, saved: 0, jcFrom: null, wantAt: 0 };
 const linkOn = () => env('GAADI_LIVE') !== '0' && !!env('OLD_DB_BS') && !!env('OLD_DB_USER');
 function mysql(sql) {
   const args = ['-h', env('OLD_DB_HOST') || '127.0.0.1', '-P', env('OLD_DB_PORT') || '3306', '-u', env('OLD_DB_USER'), '--batch', '--raw',
@@ -220,7 +236,8 @@ async function readCards(full) {
     if (L.jcFrom == null) {   // the first good read: only job cards after this one are asked by themselves
       const was = kvGet('jc_from'); L.jcFrom = was != null ? Number(was) : L.maxId; if (was == null) kvSet('jc_from', L.jcFrom);
     }
-    if (first || n) wantNew();
+    // new job cards at once; every 5 minutes again, so a vehicle VR Garage could not read is asked again later by itself
+    if (first || n || Date.now() - L.wantAt > 5 * 60000) wantNew();
     status(first || n > 0);
   } catch (e) {
     const first = L.ok || !L.err; L.ok = false; L.err = e.message; L.at = Date.now();
@@ -238,13 +255,14 @@ function status(force) {
 // ---------------- the vehicle of every new job card, asked by itself ------------------------------------------------------
 const queue = [];   // [reg, job card id]
 const WINDOW_DAYS = 3;
-function tried(reg) {   // an error a short while ago, or 3 tries today: wait
+function tried(reg) {   // an error in the last 30 minutes, or 8 tries today: wait (M-Parivahan can be down for hours)
   const r = one("SELECT count(*) n, max(at) last FROM vr_calls WHERE reg = ? AND result = 'error' AND at >= ?", reg, dayFrom());
-  return r.n >= 3 || (r.last && Date.now() - Date.parse(r.last) < 30 * 60000);
+  return r.n >= 8 || (r.last && Date.now() - Date.parse(r.last) < 30 * 60000);
 }
 const asked = reg => { const v = one('SELECT found FROM vehicles WHERE reg = ?', reg); return !!v && v.found != null; };
 function wantNew() {
   if (L.jcFrom == null) return;
+  L.wantAt = Date.now();
   const since = istDay(Date.now() - WINDOW_DAYS * 864e5);
   for (const j of L.cards.values()) {
     if (j.id <= L.jcFrom || (j.day && j.day < since)) continue;

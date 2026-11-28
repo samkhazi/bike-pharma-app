@@ -7,6 +7,12 @@
 #               bash /root/bs-erp-update.sh undo       (logins back as before the last update; again = one more back)
 #               bash /root/bs-erp-update.sh names      (the name-wise logins again from the attendance app; passwords + PINs kept)
 #               bash /root/bs-erp-update.sh vrgarage   (the VR Garage login + password for the Vehicle number page, typed here once)
+# 28 Nov update 9 (Sam: "Error is coming. Why?"): the Vehicle number page said only "VR Garage answered 500". VR Garage's
+# own words now show instead. Checked on this server on 28 Nov: our login and request are right (a number VR Garage already
+# had came at once, without a credit); new numbers failed because the government RC server behind VR Garage (M-Parivahan)
+# was down. The page now says so, and the vehicle of a new job card is asked again by itself every 30 minutes (at most 8
+# times a day) until it comes. A server error makes the front door log in to VR Garage again once (an old login can
+# answer 500). Failed searches no longer use up the shop's 300 searches a day; the search log says when a credit was used.
 # 28 Nov update 8 (Sam: "the job card people get their portal, everything clearly, exactly right"): the Service floor panel
 # becomes the service advisors' job card portal (Sharath, Syed Shahid, Yaseen Raza; also Sultan and the owners), straight on
 # the Bike Surgeon billing (read only: the admin panel's database lines are copied into its .env), a checksum check every

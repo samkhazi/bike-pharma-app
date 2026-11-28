@@ -12,7 +12,7 @@ LOG=/home/bikepharma/htdocs/bikepharma.com/data/project-files/catalogues/hero-sy
 
 # m  h  dom mon dow   command
 # Hero DMS (prices)
-30 18 * * 6 cd $BS && .venv/bin/python sync.py hero_dms >> $LOG 2>&1
+# OFF (Sam 2026-11-28, turn on when he says): 30 18 * * 6 cd $BS && .venv/bin/python sync.py hero_dms >> $LOG 2>&1
 # Rolon: fresh data (rolon_fetch.py), then the catalogue PDF (Sam's own script in the site user's home; own log in ~/rolon_dump/logs)
 30 18 * * 6 ROLON_FETCH=$BS/rolon_fetch.py /bin/bash /home/bikepharma/rolon_dump/rolon_weekly.sh
 # Hero

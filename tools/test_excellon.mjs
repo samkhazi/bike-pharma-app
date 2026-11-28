@@ -31,5 +31,14 @@ const info = bajajDms(dir), A = JSON.parse(fs.readFileSync(path.join(dir, 'bajaj
 ok(info && info.excellon === 60002 && A.mrp['31201027'] === 749 && A.mrp['24101696'] === 3574.5 && A.nm['24101696'] === 'CONVERTER & CAT', 'the Bajaj build takes the Excellon MRP and names');
 ok(A.mrp.OLD1 === 5 && A.nm.OLD1 === 'OLD PART', 'parts only the older list has stay');
 ok(bajajDms(dir) === null, 'the same list is not merged twice');
+// 24z: a price still to come waits; a part with only a coming price keeps it
+{ const P = pickNewest([{ code: 'A1', mrp: 100, from: '2026-01-01' }, { code: 'A1', mrp: 120, from: '2026-12-15' }, { code: 'N1', mrp: 50, from: '2026-12-20' }], '2026-11-28');
+  ok(P.find(r => r.code === 'A1').mrp === 100 && P.find(r => r.code === 'N1').mrp === 50, 'a price dated after today waits (A1 stays 100); a new part with only a coming price is kept'); }
+// 24z: an MRP drop of more than 80 % is held, until mrp_ok.txt names the part
+{ const X2 = JSON.parse(fs.readFileSync(path.join(dir, 'excellon_parts.json'), 'utf8')); X2.rows.find(r => r[0] === '24101696')[2] = 35.7; fs.writeFileSync(path.join(dir, 'excellon_parts.json'), JSON.stringify(X2));
+  const i2 = bajajDms(dir), A2 = JSON.parse(fs.readFileSync(path.join(dir, 'bajaj_alt.json'), 'utf8'));
+  ok(i2.mrpHeld === 1 && A2.mrp['24101696'] === 3574.5 && A2.mrpHold['24101696'].new === 35.7, 'Rs 3574.5 -> 35.7 is held: the old MRP stays and the part is listed');
+  fs.writeFileSync(path.join(dir, 'mrp_ok.txt'), '24101696\n'); bajajDms(dir); const A3 = JSON.parse(fs.readFileSync(path.join(dir, 'bajaj_alt.json'), 'utf8'));
+  ok(A3.mrp['24101696'] === 35.7 && !A3.mrpHold['24101696'], 'once mrp_ok.txt names it, the new MRP is taken'); }
 fs.rmSync(dir, { recursive: true, force: true });
 console.log(fails ? fails + ' FAILED' : 'all passed'); process.exit(fails ? 1 : 0);

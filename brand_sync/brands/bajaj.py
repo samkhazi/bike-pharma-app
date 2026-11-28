@@ -57,8 +57,12 @@ class Bajaj:
             r.raise_for_status()
             j = r.json()
             total = j['meta']['total_count']
-            out += j['objects']
-            off += page
+            objs = j['objects']
+            out += objs
+            # 24z: step by what came back: a server that caps the page size (asked 200, sent 100) would otherwise skip the rest
+            if not objs:
+                break
+            off += len(objs)
         return out
 
     def count(self, resource, params=''):

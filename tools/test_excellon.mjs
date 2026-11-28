@@ -8,7 +8,7 @@ const row = (c, n, m, d) => `<CustomEntity352 diffgr:id="x" msdata:rowOrder="0">
 let N = 3;
 const fake = async (url, o) => { const op = /EntityService\/(\w+)"/.exec(o.headers.SOAPAction)[1], b = o.body; seen.push([op, b]);
   if (op === 'LogIn') return { status: 200, text: async () => /<d:Password>right<\/d:Password>/.test(b) ? okResp('LogIn', '<b:AuthenticationToken>TOK</b:AuthenticationToken><b:DefaultCompanyID>11744</b:DefaultCompanyID>') : okResp('LogIn').replace('<b:IsRequestSuccessful>true', '<b:IsRequestSuccessful>false').replace('</b:IsRequestSuccessful>', '</b:IsRequestSuccessful><b:LastErrorMessage>Invalid user</b:LastErrorMessage>') };
-  if (op === 'Entity') return { status: 200, text: async () => okResp('Entity', '<b:ManagerKey>MK</b:ManagerKey>') };
+  if (op === 'Entity') return { status: 200, text: async () => okResp('Entity', '<b:EntityKey>EK-1</b:EntityKey><b:ManagerKey>MK</b:ManagerKey>') };
   if (op === 'EntityAction' && /StoreAction/.test(b)) { let rs = row('31201027', 'BATTERY', 812, '2020-07-01') + row('31201027', 'BATTERY', 749, '2025-09-22') + row('24101696', 'CONVERTER &amp; CAT', 3574.5, '2025-09-22'); for (let i = 0; i < N; i++) rs += row('X' + i, 'P' + i, 10, '2024-01-01'); return { status: 200, text: async () => okResp('EntityAction', rs) }; }
   return { status: 200, text: async () => okResp(op) }; };
 { const X = excellon({ user: 'u', password: 'wrong', fetchFn: fake }); let e = ''; try { await X.logIn(); } catch (x) { e = x.message; } ok(/Invalid user/.test(e), 'a wrong login says why: ' + e); }
@@ -17,7 +17,7 @@ const X = excellon({ user: 'u', password: 'right', fetchFn: fake }); const s = a
 ok(s.company === 11744, 'login gives the company');
 ok(seen.map(x => x[0]).join(',') === 'LogIn,Entity,EntityAction,EntityAction,LogOff', 'calls: LogIn, Entity, SetProperty, StoreAction, LogOff: ' + seen.map(x => x[0]).join(','));
 ok(/<d:AuthenticationToken>TOK</.test(seen[1][1]) && /CustomEntity350/.test(seen[1][1]) && /<d:EntityViewID>6771</.test(seen[1][1]), 'Entity asks for the price report with the session');
-ok(/<d:ManagerKey>MK</.test(seen[3][1]) && /<e:ActionID>29921</.test(seen[3][1]) && /PropertyName>CompanyID</.test(seen[2][1]) && />11744</.test(seen[2][1]), 'company set, then Generate (29921) on that report');
+ok(/<d:ManagerKey>MK</.test(seen[3][1]) && /<e:ActionID>29921</.test(seen[3][1]) && /<e:Guid>EK-1</.test(seen[3][1]) && /<e:Guid>EK-1</.test(seen[2][1]) && /PropertyName>CompanyID</.test(seen[2][1]) && />11744</.test(seen[2][1]), 'company set, then Generate (29921) on that report');
 ok(!seen.some(([op, b]) => op !== 'LogIn' && /Password/.test(b)), 'the password goes only in LogIn');
 ok(rows.length === 3 + N && rows.find(r => r.code === '24101696').name === 'CONVERTER & CAT' && rows.find(r => r.code === '24101696').mrp === 3574.5, 'rows read, names unescaped');
 ok(pickNewest(rows).find(r => r.code === '31201027').mrp === 749, 'a part listed twice keeps its newest price');
@@ -31,5 +31,14 @@ const info = bajajDms(dir), A = JSON.parse(fs.readFileSync(path.join(dir, 'bajaj
 ok(info && info.excellon === 60002 && A.mrp['31201027'] === 749 && A.mrp['24101696'] === 3574.5 && A.nm['24101696'] === 'CONVERTER & CAT', 'the Bajaj build takes the Excellon MRP and names');
 ok(A.mrp.OLD1 === 5 && A.nm.OLD1 === 'OLD PART', 'parts only the older list has stay');
 ok(bajajDms(dir) === null, 'the same list is not merged twice');
+// 24z: a price still to come waits; a part with only a coming price keeps it
+{ const P = pickNewest([{ code: 'A1', mrp: 100, from: '2026-01-01' }, { code: 'A1', mrp: 120, from: '2026-12-15' }, { code: 'N1', mrp: 50, from: '2026-12-20' }], '2026-11-28');
+  ok(P.find(r => r.code === 'A1').mrp === 100 && P.find(r => r.code === 'N1').mrp === 50, 'a price dated after today waits (A1 stays 100); a new part with only a coming price is kept'); }
+// 24z: an MRP drop of more than 80 % is held, until mrp_ok.txt names the part
+{ const X2 = JSON.parse(fs.readFileSync(path.join(dir, 'excellon_parts.json'), 'utf8')); X2.rows.find(r => r[0] === '24101696')[2] = 35.7; fs.writeFileSync(path.join(dir, 'excellon_parts.json'), JSON.stringify(X2));
+  const i2 = bajajDms(dir), A2 = JSON.parse(fs.readFileSync(path.join(dir, 'bajaj_alt.json'), 'utf8'));
+  ok(i2.mrpHeld === 1 && A2.mrp['24101696'] === 3574.5 && A2.mrpHold['24101696'].new === 35.7, 'Rs 3574.5 -> 35.7 is held: the old MRP stays and the part is listed');
+  fs.writeFileSync(path.join(dir, 'mrp_ok.txt'), '24101696\n'); bajajDms(dir); const A3 = JSON.parse(fs.readFileSync(path.join(dir, 'bajaj_alt.json'), 'utf8'));
+  ok(A3.mrp['24101696'] === 35.7 && !A3.mrpHold['24101696'], 'once mrp_ok.txt names it, the new MRP is taken'); }
 fs.rmSync(dir, { recursive: true, force: true });
 console.log(fails ? fails + ' FAILED' : 'all passed'); process.exit(fails ? 1 : 0);

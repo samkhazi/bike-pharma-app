@@ -721,7 +721,7 @@ const SEED_BILLS=[];
 function seed(){return{orders:[],wl:[],cl:[],minv:[],pos:[],tasks:[],seedOT:1,sorders:[],omech:{},approvals:[],audit:[],bills:[],stock:{},accounts:{},moves:[],grns:[],warranties:[],bins:{},notifs:0,seed10:1,noSeed:1,cwlFix:1};}
 let DB;
 function load(){DB=window.BOOT_DB||seed();window.BOOT_DB=null;{const sd=seed();for(const k in sd)if(!(k in DB))DB[k]=sd[k];}if(!DB.accounts)DB.accounts={};DB.bills.forEach(b=>{if(!b.items)b.items=[];if(!b.iso)b.iso=isoToday();});(DB.newProducts||[]).forEach(p=>{if(!PX(p.id))PRODUCTS.push(p);});PRODUCTS.forEach(x=>{if(x._base){Object.assign(x,x._base);delete x._base;}});Object.entries(DB.prices||{}).forEach(([id,v])=>{const x=PX(id);if(x)Object.assign(x,v);});try{offApply();}catch(e){}}
-function save(){if(typeof OFF!=='undefined'&&OFF.on)OFF.q++;srvSchedule();}
+function save(){if(CATM())return;if(typeof OFF!=='undefined'&&OFF.on)OFF.q++;srvSchedule();}
 function audit(a,e,o,n){const now=new Date();DB.audit.unshift({who:S.user.sid||S.user.label,a,e,o,n,t:now.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+' · '+now.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})});}
 const walletEarned=()=>DB.wl.reduce((a,x)=>a+(x.cr||0),0);
 const walletUsed=()=>DB.wl.reduce((a,x)=>a+(x.dr||0),0);
@@ -780,6 +780,11 @@ const NAVS={
  inventory:[['ihome','Home','home'],['grn','Stock in','down'],['stocklist','Stock','package'],['usearch','Search','search'],['saccount','Account','user']],
  admin:[['ahome','Overview','chart'],['users','Users','users'],['afinance','Finance','rupee'],['audit','Audit','shield'],['more','More','menu']]};
 const HOME={customer:'home',mechanic:'mhome',billing:'bhome',sales:'snew',manager:'mghome',inventory:'ihome',admin:'ahome'};
+/* 24z (Sam 28 Nov "can u add all catalogues from bikepharma"): the login 'catalogue' is Bike Surgeon's staff, opening Find Part
+   through the Bike Surgeon server (its key, server .env BS_CAT_KEY). Find Part only, nothing is saved here, and each part shows
+   Bike Surgeon's own stock (its server answers /api/bsstock and /api/rclook itself; Bike Pharma's shop data is never sent). */
+HOME.catalogue='findpart';NAVS.catalogue=[['findpart','Find Part','pin']];
+function CATM(){try{return !!(S.user&&S.user.role==='catalogue');}catch(e){return false;}}
 function cur(){return S.stack[S.stack.length-1];}
 function go(s,p={}){S.stack.push({s,p});navSave(true);render('push');}
 function back(){if(S.stack.length>1){if(NAVH&&NAVH.on&&NAVH.i>0&&HIST.state&&HIST.state.bpnav){HIST.back();return;}S.stack.pop();render('back');}}
@@ -834,7 +839,7 @@ const ACCESS={
  manager:['findpart','tyrebat','mgstaff','mgsummary','mgexp','dayclose','creturn','batches','ccount','partorders','partorder','ourmech','mechbuy','mechpay','mechprofile','mgcards','mgcard','mgtarget','mgver','mgmech','mgmechd','mgnew','mgstock','mgpo','mgorders','mginact','mgsales','mgmargin','bills','mgdues','custview','billview','mghome','approvals','aporeq','team','usearch','saccount','masterprice','stocklist','rbac','racks','warreg','scanfind'],
  inventory:['phmiss','findpart','invpaste','invwait','batches','ccount','sreturn','labels','partorders','partorder','mgpo','grnedit','grnview','invlist','ihome','grn','stocklist','usearch','saccount','addproduct','stockmove','racks','warreg','scanfind'],
  admin:['altno','supbills','supdue','ainv','invpaste','invwait','grn','grnedit','grnview','stockmove','batches','ccount','sreturn','labels','findpart','catup','tyrebat','mgstaff','mgsummary','mgexp','abranch','asupp','ascheme','agst','aexport','mgtarget','mgver','mgcards','mgmech','mgnew','mginact','mgstock','mgpo','mgorders','partorders','partorder','approvals','aporeq','team','mgsales','acampaign','asales','apurch','astock','aorders','areturns','asecurity','asettings','mgmargin','ourmech','mechbuy','mechpay','mechprofile','mgcard','mgmechd','mgdues','atargets','custview','billview','masterprice','invlist','ahome','users','mfin','afinance','audit','more','usearch','rbac','newstaff','saccount','addproduct','stocklist','racks','warreg','scanfind']};
-const DENY={};
+const DENY={};ACCESS.catalogue=['findpart'];   /* 24z */
 ACCESS.manager=ACCESS.manager.filter(s=>!['mgmargin','mgexp'].includes(s)).concat(['grn','grnedit','grnview','addproduct','invwait']);
 ACCESS.inventory=ACCESS.inventory.filter(s=>s!=='invpaste');ACCESS.admin.push('staff','staffopts','sameparts');
 ['billing','manager','admin'].forEach(r=>ACCESS[r].push('wclaim'));
@@ -3443,12 +3448,18 @@ function catAsk(e){if(!CAT_EXT.includes(e))CAT_EXT.push(e);if(e.st===0)catGet(e)
 function catSplitQ(e,key,body){const s=e.sq.get(key);if(s)return s;e.sq.set(key,1);e.sv++;let done;(e.spr||(e.spr=new Map())).set(key,new Promise(r=>{done=r;}));
  const fail=x=>{e.sq.set(key,3);e.sv++;e.serr=String(x&&x.message||x||'');catRefresh();};
  if(!srvStaff()){fail('staff only');return 3;}
+ let renew=0;
  fetch('/api/cat/rows',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({b:e.url.replace(/^cat\/|\.json$/g,''),...body})})
   .then(x=>x.ok?x.json():x.json().catch(()=>({})).then(j=>{throw Error(j.error||('HTTP '+x.status));}))
-  .then(j=>{const keep=[];j.g.forEach((g,i)=>{if(!e.have.has(g)){e.have.add(g);keep.push(j.d[i]);}});['mrp','phf','ph'].forEach(k=>{if(j[k])e.d[k]=Object.assign(e.d[k]||{},j[k]);});delete e.d._mk;if(j.more)e.smore=(e.smore||new Set()).add(key);
+  .then(j=>{if(j.v&&e.d&&e.d.v&&j.v!==e.d.v){renew=1;return null;}   /* 24x: the catalogue was built again on the server while this page was open: its lines would not match the head held here (a part showed another part's name), so the head is fetched again */
+   const keep=[];j.g.forEach((g,i)=>{if(!e.have.has(g)){e.have.add(g);keep.push(j.d[i]);}});['mrp','phf','ph'].forEach(k=>{if(j[k])e.d[k]=Object.assign(e.d[k]||{},j[k]);});delete e.d._mk;if(j.more)e.smore=(e.smore||new Set()).add(key);
    return keep.length?catMk(e,{...e.d,d:keep}).then(rows=>{e.pre=e.pre.concat(rows);e.rows=0;CAT_VOCAB=null;CAT_PKV=null;}):null;})
-  .then(()=>{e.sq.set(key,2);e.sv++;catRefresh();},fail).then(()=>done());
+  .then(()=>{if(renew){done();catRenew(e);return;}e.sq.set(key,2);e.sv++;catRefresh();},fail).then(()=>done());
  return 1;}
+/* 24x: a split brand whose server file changed: drop what this page holds of it and load its head again (the screens wait for it as on first load) */
+function catRenew(e){if(e.st!==2)return;e.st=0;e.pre=null;e.d=null;e.split=0;e.sq=null;e.have=null;e.spr=null;e.smore=null;e.rows=0;e.hw=null;
+ CAT_VARS=CAT_VARS.filter(x=>x[0]!==e.vb);CAT_ROWS=null;CAT_VOCAB=null;CAT_PKV=null;KIT_I=null;catGet(e);
+ const t=setInterval(()=>{if(e.st===2){clearInterval(t);catRefresh();}else if(e.st!==1)clearInterval(t);},400);}
 /* the same, waited for (the photo scan): every split brand in, its lines with these scan keys */
 const catSplitWait=(key,body)=>Promise.all(catSplitE('Any').map(e=>{catSplitQ(e,key,body);return e.spr&&e.spr.get(key);}));
 const catSplitE=vb=>CAT_ALL.filter(e=>e.split&&e.st===2&&(vb==='Any'||e.vb===vb));
@@ -4795,7 +4806,7 @@ const m2FitL=r=>{const fv=r.xl?[]:r.kind==='d'&&r.pk&&!r.xl?catPkVv(r.vb,r.pk):(
 function m2FitTxt(r,p){const L=m2FitL(r);const pick=p&&p.vm&&p.vm!=='Any'?p.vm:((L[0]||r.vm||'').replace(/ \(.*$/,''));const cc=MODEL_CC[pick];
  const hit=L.find(x=>x===pick||x.startsWith(pick+' ('))||'';const yr=p&&p.yr&&p.yr!=='Any'?String(p.yr):hit.includes('(')&&/^\d/.test(hit.slice(hit.indexOf('(')+1))?hit.slice(hit.indexOf('(')+1,-1):'';
  return [r.vb+' '+pick,cc?cc+'cc':'',yr].filter(Boolean).join(' · ')+(L.length>1?' · +'+(L.length-1)+' more':'');}
-const m2Shop=r=>r.pk?PRODUCTS.find(p=>catPk(p.pn)===r.pk)||(r.vb==='Yamaha'&&r.pk.length===10?PRODUCTS.find(p=>catPk(p.pn)===r.pk+'00'):null)||null:null;   /* 19x: stock kept under the Yamaha number with its last 00 */
+const m2Shop=r=>CATM()?null:r.pk?PRODUCTS.find(p=>catPk(p.pn)===r.pk)||(r.vb==='Yamaha'&&r.pk.length===10?PRODUCTS.find(p=>catPk(p.pn)===r.pk+'00'):null)||null:null;   /* 19x: stock kept under the Yamaha number with its last 00 */
 const m2Price=r=>{const x=m2Shop(r);const v=r.mrp||(x&&x.mrp)||0;return v?`<span class="micro muted">MRP</span> <b class="num">${inr(v)}</b> <span class="micro muted">incl. GST</span>`:`<span class="cap">Price on request</span>`;};
 function m2Card(r,p){const x=m2Shop(r),n=x?DB.stock[x.id]:0;
  return `<button class="m2-c" onclick="m2Part(${r.i})"><div>${m2Thumb(r)}</div><div class="m2-cb"><div class="h3">${esc(catNice(r.desc))}</div><div class="cap">${esc([r.fig,catNice(r.asm||'')].filter(Boolean).join(' · '))}</div><div class="m2-pn num">${r.part?esc(r.part):'No part number'}</div><div class="m2-pr">${m2Price(r)}</div><div class="cap">${esc(m2FitTxt(r,p))}</div>${kitUnder(r)}${r.qty>1?`<div class="cap">Qty per bike: ${esc(r.qty)}</div>`:''}${n>0?`<span class="pill g">${n} in stock · ${esc(binOf(x.id))}</span>`:x?`<span class="pill r">Out of stock</span>`:''}${(o=>o.length?`<span class="pill a">Same no. in ${esc(o.map(x=>x[0]).join(', '))}</span>`:(z=>z.length?`<span class="pill">Same size in ${esc(z.join(', '))}</span>`:'')([...new Set(xrSize(r).flatMap(g=>g[2].map(x=>x[0])))].slice(0,4)))(XR?xrOther(r):[])}</div>${ic('chevR','s18')}</button>`;}
@@ -4906,6 +4917,11 @@ async function vinAsk(c){const s=S.ui.vin;let vb=vinSite(c);s.look={busy:1,vb};r
  /* 12v: Bajaj's site gives the SKU code ("PULSAR 220 SF-NO COLOR (00DK04ZZ)"); our editions end with the same code, so the code finds the model */
  if(r.found){const sku=String(r.name||'').toUpperCase().match(/\b(00[A-Z0-9]{6})\b/);const e=sku&&CAT_ALL.find(x=>x.vb===vb);
   if(e){try{const h=e.d||await fetch(e.url,{credentials:'same-origin'}).then(x=>x.json());const v=(h.vars||[]).find(x=>String(x).toUpperCase().endsWith(' · '+sku[1]));const vm=v&&String(v).split(' · ')[0];
+   if(S.ui.vin!==s||s.c!==c)return;if(vm&&(BRANDS_V[vb]||[]).includes(vm))return vinOpen(c,vb,vm,r.name);}catch(_){}}}
+ /* 24y (Sam 2026-11-28, ME1RG67HAP0011494: Yamaha's site said R15M 2024 (BPDP) and the old R15 2014 opened, because "R15M" contains "R15"):
+    the model code the site gives (YPEC) is an edition of ours ("R15 V4 · BPDP YZF155D-A R15M (2024)"): that edition's bike opens */
+ if(r.found&&r.mcode&&/^[A-Z0-9]{3,6}$/.test(r.mcode)){const e=CAT_ALL.find(x=>x.vb===vb);
+  if(e){try{const h=e.d||await fetch(e.url,{credentials:'same-origin'}).then(x=>x.json());const v=(h.vars||[]).find(x=>String(x).includes(' · '+r.mcode+' '));const vm=v&&(h.vmod&&h.vmod[v]||String(v).split(' · ')[0]);
    if(S.ui.vin!==s||s.c!==c)return;if(vm&&(BRANDS_V[vb]||[]).includes(vm))return vinOpen(c,vb,vm,r.name);}catch(_){}}}
  if(r.found){const ms=vinMatch(vb,r.model);s.look.ms=ms;if(ms.length===1)return vinOpen(c,vb,ms[0],r.name);const pk=vinPick(vb,r,ms,vinYear(c));if(pk)return vinOpen(c,vb,pk,r.name);}
  s.pick=true;s.vb=vb;s.mf='';refresh();}
@@ -5189,7 +5205,18 @@ function fpNos(r){let rem=r.rem||'';const pk=r.pk||catPk(r.part||'');
  for(const x of (typeof altListOf==='function'?altListOf(r.part||''):[]))pushU(x.dir==='new'?a:x.dir==='old'?o:al,x.pn);
  return {a,o,al,stop:/No replacement \(Hero: NLS\)/.test(rem)};}
 const fpNoM=(vb,n)=>{const m=typeof catNoMrp==='function'?catNoMrp(vb,n):0;return m?' MRP '+inr(m):'';};
-function fpStock(r){const x=m2Shop(r),n=x?DB.stock[x.id]||0:0;return {x,n,h:x?(n>0?`<span class="pill g">${n} in stock · ${esc(binOf(x.id))}</span>`:`<span class="pill r">Out of stock</span>`):''};}
+function fpStock(r){if(CATM())return {x:null,n:0,h:bsPill(bsStk(r.pk||catPk(r.part||'')))};const x=m2Shop(r),n=x?DB.stock[x.id]||0:0;return {x,n,h:x?(n>0?`<span class="pill g">${n} in stock · ${esc(binOf(x.id))}</span>`:`<span class="pill r">Out of stock</span>`):''};}
+/* 24z: Bike Surgeon's stock of a part (its server answers; up to 300 numbers in one ask). undefined = not known yet, null = not in its list */
+const BSST={m:new Map(),want:new Set(),t:0,busy:0,fail:0};
+function bsStk(pk){if(!pk)return null;if(BSST.m.has(pk))return BSST.m.get(pk);if(!BSST.want.has(pk)){BSST.want.add(pk);if(!BSST.busy){clearTimeout(BSST.t);BSST.t=setTimeout(bsAsk,60);}}return undefined;}
+function bsAsk(){if(BSST.busy)return;const L=[...BSST.want].filter(k=>!BSST.m.has(k)).slice(0,300);if(!L.length)return;BSST.busy=1;let ok=0;
+ fetch('/api/bsstock?pk='+encodeURIComponent(L.join(',')),{credentials:'same-origin',cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject(r.status)).then(j=>{const s=(j&&j.stock)||{};L.forEach(k=>{BSST.m.set(k,s[k]||null);BSST.want.delete(k);});ok=1;BSST.fail=0;refresh();})
+ .catch(()=>{BSST.fail++;}).finally(()=>{BSST.busy=0;if(BSST.want.size&&BSST.fail<5){clearTimeout(BSST.t);BSST.t=setTimeout(bsAsk,ok?60:3000*BSST.fail);}});}
+const bsPill=s=>s===undefined?'':!s?'<span class="pill">Not in Bike Surgeon stock list</span>':s.n>0?`<span class="pill g">Bike Surgeon: ${esc(s.n)} in stock${s.rack?' · Rack '+esc(s.rack):''}</span>`:'<span class="pill r">Bike Surgeon: out of stock</span>';
+/* 24z: Bike Surgeon's Vehicle number page opens a bike here: #reg=KA17HC3942 (or #vin=<chassis>) */
+function catDeep(){if(!CATM())return;let h='';try{h=decodeURIComponent(location.hash.slice(1));}catch(e){}const m=/^(reg|vin)=([A-Za-z0-9 -]{4,30})$/.exec(h);if(!m)return;
+ try{history.replaceState(history.state,'',location.pathname+location.search);}catch(e){}
+ const q=m[2].toUpperCase().replace(/[^A-Z0-9]/g,'');closeSheet();S.stack=[{s:'findpart',p:{}}];S.ui.vin={q};go('findpart',{v:'vin'});setTimeout(()=>{try{const x=document.getElementById('vin-q');if(x)x.value=q;vinFind();}catch(e){console.error(e);}},60);}
 function fpAddB(r,big){const s=fpStock(r);return s.n>0?fpBillB(s.x.id,big?2:1):big?fpSubs(r):'';}
 /* 24q (Sam 24 Nov "find part me se direct part ko invoice pe add"): the part goes on the open bill and Find Part stays; the strip on top shows the
    bill. Billing, Manager, Admin: the invoice; Sales: their New bill. The same stock rules as the invoice. */
@@ -6492,7 +6519,7 @@ function srvApply(ch,sent){if(!ch)return;let n=0;
   else{if(SRV.snap[k]===j&&now===j)continue;DB[k]=v;SRV.snap[k]=j;n++;}
   if(k==='newProducts')invSyncP();if(k==='offers'||k==='newProducts'||k==='stock')try{offApply();}catch(e){}}
  if(n&&S.user&&!(document.activeElement&&document.activeElement.matches('input,textarea,select'))&&!document.querySelector('#vp .scrim'))try{refresh();}catch(e){}}
-function srvPush(){if(!S.user&&!SRV.out)return;if(SRV.rl)return;const g=SRV.gen;if(SRV.busy){SRV.again=true;return;}const P0=SRV.pend;const ch=P0?P0.ch:srvDiff();const keys=Object.keys(ch);if(!keys.length)return;SRV.busy=true;SRV.pushN=(SRV.pushN||0)+1;
+function srvPush(){if(CATM())return;if(!S.user&&!SRV.out)return;if(SRV.rl)return;const g=SRV.gen;if(SRV.busy){SRV.again=true;return;}const P0=SRV.pend;const ch=P0?P0.ch:srvDiff();const keys=Object.keys(ch);if(!keys.length)return;SRV.busy=true;SRV.pushN=(SRV.pushN||0)+1;
  /* 13f: a push whose answer was lost is sent again exactly (same id), and the server answers it once */
  const pid=P0?P0.pid:Date.now().toString(36)+Math.random().toString(36).slice(2,8);const body=P0?P0.body:'{"base":'+SRV.rev+(SRV.ep?',"ep":"'+SRV.ep+'"':'')+',"pid":"'+pid+'","changes":{'+keys.map(k=>JSON.stringify(k)+':'+ch[k]).join(',')+'}}';SRV.pend={pid,ch,body};
  fetch('/api/sync',{method:'POST',headers:{'Content-Type':'application/json'},body,credentials:'same-origin',keepalive:body.length<60000}).then(async r=>{if(r.status===401){const pp=SRV.pend;SRV.pend=null;srvExpired(pp);return;}if(!r.ok){if(r.status<500)SRV.pend=null;throw new Error('sync '+r.status);}const j=await r.json();if(g!==SRV.gen)return;if(j.reload){srvReload(ch);return;}SRV.pend=null;if(P0)SRV.again=true;keys.forEach(k=>SRV.snap[k]=ch[k]);SRV.rev=j.rev;if(j.renum&&j.renum.length)srvRenumLocal(j.renum,ch,j.changed);srvApply(j.changed,ch);if(P0&&SRV.lostAfter){const L=SRV.lostAfter;SRV.lostAfter=null;if(j.renum&&j.renum.length)j.renum.forEach(([a,z])=>{try{const lb=JSON.parse(L.ch.bills||'[]')||[],sa=lb.find(b=>b&&String(b.id)===a),cz=lb.find(b=>b&&String(b.id)===z&&(!sa||b.u!==sa.u)),m=cz&&/^(.*?)(\d+)$/.exec(z);if(m){const ids=[...lb,...(DB.bills||[]),...((j.changed&&j.changed.bills)||[])].map(b=>b&&String(b.id)).filter(Boolean);const nid=m[1]+String(Math.max(0,...ids.map(x=>x.startsWith(m[1])&&/^\d+$/.test(x.slice(m[1].length))?+x.slice(m[1].length):0))+1).padStart(m[2].length,'0');srvRe(L.ch,z,nid,1);toast('Bill '+z+' is now '+nid+' (another counter used the number)');}}catch(e){}srvRe(L.ch,a,z,1);});   /* 14r: a waiting bill already on the new number moves first */   /* 14q: the waiting changes follow the server's new bill numbers */srvLostMerge(L,L.pend.ch);}if(j.renum&&j.renum.length)toast(j.renum.map(([a,z])=>'Bill '+a+' is now '+z).join(' · ')+' (another counter used the number)');if(j.why){closeSheet();sheet(`<h3 class="h2">Not saved</h3><p class="cap">${srvStaff()?`The server refused this: ${esc(j.why)}. Ask Manager if it is needed.`:`This was not saved: ${esc(j.why)}. Please check your cart or order and try again.`}</p><button class="btn" onclick="closeSheet();refresh()">OK</button>`);}if(SRV.fail>=3)toast('Saved to the server ✓');SRV.fail=0;})
@@ -6512,7 +6539,7 @@ function srvLostMerge(L,over){let n=0;
   loc.filter(b=>b&&!inB.has(String(b.id))&&V.has(String(b.id))&&V.get(String(b.id)).u!==b.u).forEach(b=>{const z=String(b.id),m=/^(.*?)(\d+)$/.exec(z);if(!m)return;const ids=[...loc.map(x=>x&&String(x.id)),...V.keys()].filter(Boolean);const nid=m[1]+String(Math.max(0,...ids.map(x=>x.startsWith(m[1])&&/^\d+$/.test(x.slice(m[1].length))?+x.slice(m[1].length):0))+1).padStart(m[2].length,'0');srvRe(L.ch,z,nid,1);loc.forEach(x=>{if(x&&String(x.id)===z)x.id=nid;});toast('Bill '+z+' is now '+nid+' (another counter used the number)');});}catch(e){}}
 for(const k of Object.keys(L.ch)){try{const loc=JSON.parse(L.ch[k]),b0=k in over?over[k]:L.base[k];if(b0===L.ch[k])continue;DB[k]=b0===undefined||DB[k]===undefined?loc:srvMg(k)(JSON.parse(b0),DB[k],loc);n++;}catch(e){}}if(n){try{invSyncP();offApply();}catch(e){}srvSchedule();}}
 function srvExpired(pp){if(!S.user)return;try{const ch=srvDiff();if(Object.keys(ch).length||pp)SRV.lost={uid:S.uid,ch,base:{...SRV.snap},pend:pp||null};}catch(e){}   /* 14b: changes not sent yet wait for the same login */bpIn(0);S.user=null;S.uid=null;S.ui={};S.stack=[{s:'login',p:{}}];render('fade');toast('Your login expired · please log in again');api('GET','/api/boot').then(b=>{if(b&&b.db)srvSetDb(b.db,b.rev,b.ep);}).catch(()=>{});}
-const srvStaff=()=>!!S.user&&['billing','sales','manager','inventory','accountant','admin'].includes(S.user.role);
+const srvStaff=()=>!!S.user&&['billing','sales','manager','inventory','accountant','admin','catalogue'].includes(S.user.role);   /* 24z: + Bike Surgeon's catalogue login (catalogue files and lines) */
 /* catalogue brands = the files present in public/cat (the server lists them); none -> Find Part says so instead of failing */
 function catManifest(list){if(!Array.isArray(list))return;const have=new Set(list);[CAT_ALL,typeof CAT_EXT!=='undefined'?CAT_EXT:[],typeof CAT_NEED!=='undefined'?CAT_NEED:[]].forEach(arr=>{for(let i=arr.length-1;i>=0;i--){const u=(arr[i].url||'').split('/').pop();if(!have.has(u))arr.splice(i,1);}});window.CAT_OFF=CAT_ALL.length===0;}
 const _fpScreen=SCREENS.findpart;SCREENS.findpart=(...a)=>{if(window.CAT_OFF)return catOffScreen();let h=_fpScreen(...a);const b=fpBillBar(),c=fpMine(h);if(c){const m=/<div class="pad\b[^>]*>/.exec(h);if(m){const j=m.index+m[0].length;h=h.slice(0,j)+c+h.slice(j);}}return b?h+b:h;};
@@ -8273,7 +8300,7 @@ function coNeed(x,rows,pick){const seen=new Set([x.pk]),out=[],tx=n=>`Sold toget
 /* 20b: the phone's bottom card for the chosen part, and the sheets' state: '' only the diagram, 'c' the card, 'l' the parts list, 'd' the full details */
 function m3Card(x,o){const L=o.rows,j0=L.findIndex(q=>q.i===x.i),sh=m2Shop(x),n=sh?DB.stock[sh.id]||0:0,v=x.mrp||(sh&&sh.mrp)||0;
  return `<div class="m3-bcc"><div class="row" style="gap:10px;align-items:flex-start"><span class="m2-num">${esc(x.ref||'·')}</span><div class="grow" style="min-width:0"><b class="m3-bcn">${esc(catNice(x.desc).replace(/^\.+\s*/,''))}</b><div class="cap"><span class="num">${esc(x.part||'No part number')}</span>${x.qty>1?' · ×'+esc(x.qty):''}${x.ns?' · N.S.':''}</div></div><button class="m3-sx" onclick="m3Ph('')" aria-label="Close, show only the diagram">${ic('x','s18')}</button></div>
- <div class="row" style="gap:6px;align-items:center"><b class="num m3-bcp">${v?inr(v):'On request'}</b>${v?'<span class="cap">MRP</span>':''}${sh?(n>0?`<span class="pill g">${n} in stock</span>`:`<span class="pill r">Out of stock</span>`):''}<span class="grow"></span><button class="m3-nb" onclick="m3Step(-1)" aria-label="Previous number"${j0>0?'':' disabled'}>${ic('chevL','s18')}</button><span class="cap m3-bcs">${j0+1}/${L.length}</span><button class="m3-nb" onclick="m3Step(1)" aria-label="Next number"${j0>=0&&j0<L.length-1?'':' disabled'}>${ic('chevR','s18')}</button><button class="btn line sm m3-bd" onclick="m3Ph('d')">Details</button></div>
+ <div class="row" style="gap:6px;align-items:center"><b class="num m3-bcp">${v?inr(v):'On request'}</b>${v?'<span class="cap">MRP</span>':''}${CATM()?bsPill(bsStk(x.pk||catPk(x.part||''))):''}${sh?(n>0?`<span class="pill g">${n} in stock</span>`:`<span class="pill r">Out of stock</span>`):''}<span class="grow"></span><button class="m3-nb" onclick="m3Step(-1)" aria-label="Previous number"${j0>0?'':' disabled'}>${ic('chevL','s18')}</button><span class="cap m3-bcs">${j0+1}/${L.length}</span><button class="m3-nb" onclick="m3Step(1)" aria-label="Next number"${j0>=0&&j0<L.length-1?'':' disabled'}>${ic('chevR','s18')}</button><button class="btn line sm m3-bd" onclick="m3Ph('d')">Details</button></div>
  ${sh&&n>0?fpBillB(sh.id):fpSubs(x)}</div>
  <button class="m3-bh" onclick="m3Ph('l')">${ic('chevD','s18')}<span class="grow"><b>Parts in this diagram</b> · ${L.length}</span><span class="cap">Tap a number</span></button>`;}
 function m3Ph(st){const el=document.querySelector('#vp .m3');if(!el)return;const p=cur().p||{};el.dataset.ph=st;if(st===''||st==='c')p.m3c=st?1:0;
@@ -8587,7 +8614,7 @@ function invWaitDel2(id){const L=DB.waitParts||[],w=L.find(x=>x.id===id);if(!w){
  audit('Waiting part removed',w.pn,w.q+' pcs','Not received');save();S.ui.iw=null;closeSheet();toast(w.pn+' removed');refresh();}
 
 /* ---------- Find Part: a part not in the list yet ---------- */
-function invFpAdd(r){if(!allowed('addproduct'))return `<div class="cap">Not in our stock list yet. Inventory can add it with this part number.</div>`;
+function invFpAdd(r){if(CATM())return bsPill(bsStk(r.pk||catPk(r.part||'')));if(!allowed('addproduct'))return `<div class="cap">Not in our stock list yet. Inventory can add it with this part number.</div>`;
  const w=invWaitOf(r.pk);if(w)return `<div class="inv-note a">${ic('clock','s18')}<div class="grow"><b>Waiting for photos</b><div class="cap">Came on bill ${esc(w.inv||w.grn||'')}. It goes into stock once its photo is taken.</div></div></div><button class="btn line" onclick="S.ui.iw='${w.id}';go('invwait')">${ic('camera','s18')} Take its photos</button>`;
  return `<div class="inv-note a">${ic('alert','s18')}<div class="grow"><b>Not in your stock list yet</b><div class="cap">Add to stock opens Add product with name, brand, MRP and the bikes filled from the ${esc(r.vb)} catalogue. You only take its photos (1 to 4) and type qty and rack.</div></div></div><button class="btn" onclick="invFromRow('${esc(m2Q(r.vb))}','${esc(m2Q(r.pk))}','${esc(m2Q(r.part))}')">${ic('plus','s18')} Add to stock</button>`;}
 /* by brand + number, not the row index (the row list grows as more catalogue files load) */
@@ -8598,6 +8625,7 @@ async function start(){SCREENS.boot=()=>'<div class="scroll"></div>';S.stack=[{s
  SRV.cfg=b.cfg||{};catManifest(SRV.cfg.cat);srvSetDb(b.db,b.rev,b.ep);applyTheme();S.ui.lgLang=LANG;
  if(b.user){S.uid=b.user.id;S.user=ACC()[S.uid]||b.user;S.stack=[{s:HOME[S.user.role]||'login',p:{}}];}else{S.uid=null;S.user=null;S.stack=[{s:'login',p:{}}];}
  bpIn(!!b.user);
+ if(CATM()){document.documentElement.classList.add('catm');document.head.insertAdjacentHTML('beforeend','<style>html.catm .wv-side,html.catm .wv-ibtn,html.catm .nav{display:none!important}</style>');addEventListener('hashchange',catDeep);setTimeout(catDeep,0);}   /* 24z */
  /* 18y (Sam 10 Nov 'refresh karne ke baad wahi page'): a reload keeps the page: the browser still holds this tab's screens (history.state),
     taken back when they are the same login's and every screen is one this login may open; a screen that cannot draw falls back to home */
  let nav0=0;

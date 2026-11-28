@@ -1,5 +1,5 @@
 // VR Garage check (28 Nov, the "VR Garage answered 500" on the Vehicle number page). Run as root on the server:
-//   cd /home/bikesurgeon-panel/htdocs/panel.bikesurgeon.online/front-door && <node> --env-file=.env tools/vr-check.js <vehicle number>
+//   cd /home/bikesurgeon-panel/htdocs/panel.bikesurgeon.online/front-door && <node> --env-file=.env tools/vr-check.js <vehicle number | last>
 // It logs in with the login kept in .env and asks VR Garage for ONE number a few ways, the way VR Garage's own website asks
 // (seen in Sam's DevTools video), and stops at the first way that works. Use a number VR Garage already has (one searched on
 // its website): VR Garage then answers from its cache and takes no credit ("credit used: no").
@@ -14,7 +14,17 @@ const URL_ = env('VRGARAGE_URL') || 'https://vr-api.vecrep.com/fetch-vehicle';
 const LOGIN_URL = new URL('garageLogin', URL_.replace(/[^/]*$/, '')).toString();
 const EMAIL = env('VRGARAGE_EMAIL');
 const PASS = env('VRGARAGE_PASS64') ? Buffer.from(env('VRGARAGE_PASS64'), 'base64').toString('utf8') : String(process.env.VRGARAGE_PASSWORD || '');
-const REG = String(process.argv[2] || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+let REG = String(process.argv[2] || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+const mask = g => (g.length > 6 ? g.slice(0, 4) + '..' + g.slice(-2) : g);
+// "last" = the newest number whose search failed on this server (a NEW number: if it works now, VR Garage takes 1 credit)
+function lastFailed() {
+  try {
+    const { DatabaseSync } = require('node:sqlite');
+    const D = new DatabaseSync(path.resolve(process.cwd(), process.env.DB_FILE || 'data/front.db'), { readOnly: true });
+    const r = D.prepare("SELECT reg FROM vr_calls WHERE result = 'error' ORDER BY id DESC LIMIT 1").get(); D.close();
+    return r ? String(r.reg) : '';
+  } catch { return ''; }
+}
 const SITE = { Origin: 'https://app.vrgarage.co', Referer: 'https://app.vrgarage.co/', Accept: 'application/json, text/plain, */*',
   'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36' };
 
@@ -87,7 +97,7 @@ function lastCalls() {
     console.log(`Last ${rows.length} searches on this server (newest first):`);
     for (const r of rows) {
       const t = new Date(Date.parse(r.at) + 5.5 * 3600e3).toISOString().slice(5, 16).replace('T', ' ');
-      const g = String(r.reg || ''); const m = g.length > 6 ? g.slice(0, 4) + '..' + g.slice(-2) : g;
+      const m = mask(String(r.reg || ''));
       console.log(`   ${t} IST  ${m.padEnd(10)} ${String(r.kind).padEnd(6)} ${String(r.result).padEnd(8)} ${r.ms == null ? '' : r.ms + ' ms'}  ${tidy(r.note)}`);
     }
   } catch (e) { console.log('Last searches: could not be read (' + tidy(e.message) + ')'); }
@@ -96,6 +106,11 @@ function lastCalls() {
 (async () => {
   console.log('VR Garage check: no login, password, token or vehicle data is shown. Nothing is changed.');
   if (!EMAIL || !PASS) { console.log('STOP  the VR Garage login is not in .env (run: bash /root/bs-erp-update.sh vrgarage)'); process.exit(1); }
+  if (REG === 'LAST') {
+    REG = lastFailed();
+    if (!REG) { console.log('STOP  no failed search on this server'); process.exit(1); }
+    console.log(`Number: ${mask(REG)} (the newest one that failed here; if it works now, VR Garage takes 1 credit)`);
+  }
   if (!/^[A-Z]{2}\d{1,2}[A-Z]{0,3}\d{1,4}$/.test(REG) && !/^\d{2}BH\d{4}[A-Z]{1,2}$/.test(REG)) {
     console.log('STOP  give a vehicle number after the command, one VR Garage already has (searched on its website)'); process.exit(1);
   }

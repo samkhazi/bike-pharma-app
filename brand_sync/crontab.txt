@@ -28,6 +28,6 @@ LOG=/home/bikepharma/htdocs/bikepharma.com/data/project-files/catalogues/hero-sy
 # KTM
 30 18 * * 6 cd $BS && .venv/bin/python sync.py ktm >> $LOG 2>&1
 # TVS (dealer login; OTP: link comes by email)
-30 18 * * 6 cd $BS && .venv/bin/python sync.py tvs >> $LOG 2>&1
+30 6 * * 6 cd $BS && .venv/bin/python sync.py tvs >> $LOG 2>&1   # TVS Saturday 12:00 noon IST so the OTP can be entered (Sam 2026-11-28)
 # Yamaha (Pymidol: MRP, old/new numbers, books)
 30 18 * * 6 cd $BS && .venv/bin/python sync.py yamaha >> $LOG 2>&1

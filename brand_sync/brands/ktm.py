@@ -92,6 +92,10 @@ window.kPlate = async u => {
 0;
 """
 
+class Forbidden(Exception):
+    """the portal answered 403 for one plate page, also after a wait"""
+
+
 PN_RE = re.compile(r'^[0-9A-Z]{6,12}$')
 
 
@@ -159,7 +163,7 @@ class KTM:
         self.img_dir = data_dir('ktm', 'img')
         self.state_path = os.path.join(self.dir, 'state.json')
         self.state = load_json(self.state_path, {'editions': {}, 'masters': {}, 'circulars': {}, 'pdfs': {}})
-        self.delay = float(env('KTM_DELAY', '1.0'))
+        self.delay = float(env('KTM_DELAY', '2.0'))   # 24m: slower, gentler on the portal (was 1.0)
 
     # ---------- login ----------
     def shot(self, page, name):
@@ -168,13 +172,15 @@ class KTM:
         except Exception: pass
         return p
 
-    def logged_in(self, page):
+    def logged_in(self, page, stop403=True):
         try:
             page.evaluate(JS.replace('%DELAY%', str(int(self.delay * 1000))))
             page.evaluate("() => kGet('/partmaster')")
             return True
         except Exception as e:
             if '403' in str(e):
+                # 24m (Sam 2026-11-22: run stopped at the first page): an old saved session can get 403; then log in fresh once, stop only if the fresh login is refused too
+                if not stop403: return False
                 raise SystemExit(f'KTM: portal ne is server ko 403 diya (Azure gateway). Server ka IP portal pe allowed nahi hai; '
                                  f'Bajaj/KTM se server IP allow karwana hoga. ({self.shot(page, "403")})')
             return False
@@ -183,8 +189,13 @@ class KTM:
         r = page.goto(BASE + '/index', wait_until='load')
         if r is not None and r.status == 403:
             raise SystemExit(f'KTM: portal ne is server ko 403 diya (Azure gateway). Server ka IP portal pe allowed nahi hai. ({self.shot(page, "403")})')
-        if page.url.startswith(BASE) and self.logged_in(page):
+        if page.url.startswith(BASE) and self.logged_in(page, stop403=False):
             log.info('KTM: still logged in (saved browser profile)'); return
+        if page.url.startswith(BASE) and not page.locator('input[type=password]:visible').count():
+            log.warning('KTM: saved session not accepted, clearing cookies and logging in fresh')   # 24m
+            try: page.context.clear_cookies()
+            except Exception: pass
+            page.goto(BASE + '/', wait_until='load')
         pw = page.locator('input[type=password]:visible')
         if not pw.count():
             page.goto(BASE + '/', wait_until='load')
@@ -239,10 +250,24 @@ class KTM:
 
     # ---------- one model year ----------
     def read_edition(self, page, key, e):
-        plates = page.evaluate('([m, y]) => kPlates(m, y)', [e['m'], e['y']])
+        try: plates = page.evaluate('([m, y]) => kPlates(m, y)', [e['m'], e['y']])
+        except Exception as ex:
+            if 'HTTP 403' not in str(ex): raise
+            raise Forbidden(f"/search/{e['m']}/{e['y']}") from None   # 24l
         out, kinds = [], {}
         for pl in plates:
-            d = page.evaluate('u => kPlate(u)', pl['href'])
+            try: d = page.evaluate('u => kPlate(u)', pl['href'])
+            except Exception as ex:
+                # 24l (Sam 2026-11-22, two weekly runs stopped at "HTTP 403" after 80-150 plates): the portal's gateway refuses a page now and then.
+                # Wait once and ask again, slowly; if it still refuses, this model year is left for the next run (Forbidden), the run goes on.
+                if 'HTTP 403' not in str(ex): raise
+                wait = int(float(env('KTM_403_WAIT', '90')))
+                log.warning('KTM %s %s: 403 on %s, waiting %d s and trying once more', e['model'], e['my'], pl['href'], wait)
+                page.wait_for_timeout(wait * 1000)
+                try: d = page.evaluate('u => kPlate(u)', pl['href'])
+                except Exception as ex2:
+                    if 'HTTP 403' not in str(ex2): raise
+                    raise Forbidden(pl['href']) from None
             head = d['head']
             ci = {'ref': col(head, r'^ref', r'^sr', r'^s\.?\s*no', r'^no\.?$', r'^#$'), 'pn': col(head, r'part\s*(no|num|#|code)', skip=(r'old', r'alt')),
                   'desc': col(head, r'desc', r'name'), 'qty': col(head, r'qty', r'quan'), 'rem': col(head, r'remark')}
@@ -309,7 +334,7 @@ class KTM:
                 for k in sorted(set(st['editions']) - set(eds)):
                     o = st['editions'][k]; rep.add('Menu se hata', f"{o.get('model')} {o.get('my')} (data rakha hai)")
                 have = {k for k, _ in todo}
-                turn = sorted((v.get('read', ''), k) for k, v in st['editions'].items() if k in eds and k not in have)
+                turn = sorted((max(v.get('read', ''), v.get('tried', '')), k) for k, v in st['editions'].items() if k in eds and k not in have)
                 todo += [(k, 'turn') for _, k in turn[:int(env('KTM_RECHECK', '8'))]]
                 log.info('KTM: reading %d model-years (%s)', len(todo), ', '.join(f'{k}:{w}' for k, w in todo[:40]))
                 def fresh(pg):                                 # 17z4: a whole new browser (memory grows over many plates; Chromium can crash or close)
@@ -317,12 +342,24 @@ class KTM:
                     try: ctx.close()
                     except Exception: pass
                     ctx, pg = launch(); self.login(pg); return pg
+                n403 = 0
                 for i, (k, why) in enumerate(todo):
                     e = eds[k]
                     if i and i % int(env('KTM_TAB_EVERY', '5')) == 0:
                         page = fresh(page)
                     try:
                         plates = self.read_edition(page, k, e)
+                    except Forbidden as ex:
+                        # 24l: old data of this model year stays; 'tried' moves it behind the others in the weekly turn so one refused page cannot block the rest
+                        n403 += 1
+                        if k in st['editions']: st['editions'][k]['tried'] = today(); save_json(self.state_path, st)
+                        rep.add('Agli baar', f"{e['model']} {e['my']}: portal ne ek diagram page pe 403 diya ({ex}); purana data rakha, agli baar phir padhega")
+                        log.warning('KTM %s %s: 403 again on %s, model year left for the next run', e['model'], e['my'], ex)
+                        if n403 >= 2:
+                            rep.add('Agli baar', f'Portal ne do model-year pe 403 diya: is baar aage nahi padha ({len(todo) - i - 1} model-year baaki)')
+                            break
+                        page.wait_for_timeout(int(float(env('KTM_403_WAIT', '90'))) * 1000)
+                        continue
                     except Exception as ex:
                         if not re.search(r'crash|closed|Target|disconnect', str(ex), re.I): raise
                         log.warning('KTM %s %s: browser tab crashed (%s), new tab, trying once more', e['model'], e['my'], str(ex)[:80])
@@ -337,7 +374,7 @@ class KTM:
                     log.info('KTM %d/%d %s %s: %d plates', i + 1, len(todo), e['model'], e['my'], len(plates))
                 for k, e in eds.items():                      # menu names can change; keep the newest
                     st['editions'].setdefault(k, {}).update({x: e[x] for x in ('model', 'my') if e[x]})
-                self.pdfs_new(page, rep, eds, first)
+                if n403 < 2: self.pdfs_new(page, rep, eds, first)
             finally:
                 ctx.close()
         st['last_run'] = today()

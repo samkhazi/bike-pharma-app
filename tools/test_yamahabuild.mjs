@@ -60,7 +60,7 @@ try {
   ok((await get('/api/catup?path=' + encodeURIComponent('catalogues/yamaha/' + OLD) + '&size=10')).status === 200 && (await get('/api/catup?path=' + encodeURIComponent('catalogues/yamaha/' + NEW) + '&size=10')).status === 200,
     "book names with – and ' in them can be uploaded (Sam's Yamaha books)");
   const mf = JSON.parse(fs.readFileSync('public/cat/more-files.json', 'utf8')).sets.find(s => s.dir === 'catalogues/yamaha');
-  ok(mf && mf.pick === 'Downloads > Yamaha Catalogue' && mf.files[0][0] === 'yamaha_build.json' && mf.files.slice(1).every(f => /\.pdf$/i.test(f[0])) && mf.files.length > 400 && new Set(mf.files.map(f => f[0])).size === mf.files.length, 'upload card: yamaha_build.json + the parts books, every file once');
+  ok(mf && mf.pick === 'Downloads > Yamaha Catalogue' && mf.files[0][0] === 'yamaha_build.json' && mf.files.slice(1).every(f => /\.pdf$/i.test(f[0]) || /^yamaha_extra_/.test(f[0])) && mf.files.length > 400 && new Set(mf.files.map(f => f[0])).size === mf.files.length, 'upload card: yamaha_build.json + the parts books, every file once');
   // 16h: the weekly pymidol sync (brand_sync on this server): its MRP wins, new old/new pairs and kits join, parts only in its list are findable
   const SY = T + '/pf/catalogues/hero-sync'; fs.mkdirSync(SY + '/yamaha', { recursive: true });
   fs.writeFileSync(SY + '/yamaha/state.json', JSON.stringify({ last_run: '2026-11-01',

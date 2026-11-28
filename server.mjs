@@ -4,6 +4,7 @@
 // files from data/project-files for staff.
 import http from 'node:http';
 import fs from 'node:fs';
+import { billClaims } from './lib/billclaim.mjs';
 import { rolonAmFile } from './lib/rolonam.mjs';
 import path from 'node:path';
 import zlib from 'node:zlib';
@@ -31,7 +32,7 @@ import { spawn } from 'node:child_process';
 import { HERO_RAW, HERO_OPT, HERO_XL } from './lib/herobuild.mjs';
 import { HONDA_RAW } from './lib/hondabuild.mjs';
 import { BAJAJ_RAW, BAJAJ_ALT, isBajajDms, bajajDmsFiles } from './lib/bajajbuild.mjs';
-import { YAMAHA_RAW } from './lib/yamahabuild.mjs';
+import { YAMAHA_RAW, isYamahaExtra, extraFiles, isYamahaExtraDg, extraDgFiles } from './lib/yamahabuild.mjs';
 import { RE_RAW } from './lib/rebuild.mjs';
 import { TVS_RAW, TVS_ZIP, TVS_MORE } from './lib/tvsbuild.mjs';
 import { KTM_RAW, KTM_MRP } from './lib/ktmbuild.mjs';
@@ -112,7 +113,7 @@ function bajajBuild(why) {
 }
 function yamahaBuild(why) {
   if (!YAMAHA_RAW.every(f => fs.existsSync(path.join(YAMAHA_DIR, f)))) return false;
-  const src = [...YAMAHA_RAW.map(f => path.join(YAMAHA_DIR, f)), path.join(PUBLIC_DIR, 'app.html'), path.join(ROOT, 'lib', 'yamahabuild.mjs'), path.join(ROOT, 'lib', 'herobuild.mjs'), path.join(HERO_SYNC_DIR, 'yamaha', 'state.json'), path.join(HERO_SYNC_DIR, 'yamaha', 'ypec', 'done.json')];   // 19l: + YPEC's number places
+  const src = [...[...YAMAHA_RAW, ...extraFiles(YAMAHA_DIR), ...extraDgFiles(YAMAHA_DIR)].map(f => path.join(YAMAHA_DIR, f)), path.join(PUBLIC_DIR, 'app.html'), path.join(ROOT, 'lib', 'yamahabuild.mjs'), path.join(ROOT, 'lib', 'herobuild.mjs'), path.join(HERO_SYNC_DIR, 'yamaha', 'state.json'), path.join(HERO_SYNC_DIR, 'yamaha', 'ypec', 'done.json')];   // 19l: + YPEC's number places
   if (why === 'sync' && catQ.some(q => q[0] === 'yamaha')) return false;
   if ((why === 'start' || why === 'sync') && mtime(path.join(HERO_OUT, 'yamaha.json')) > Math.max(...src.map(mtime))) return false;
   catBuild('yamaha', why, [path.join(ROOT, 'lib', 'yamahabuild.mjs'), PUBLIC_DIR, YAMAHA_DIR, HERO_OUT, HERO_SYNC_DIR]);
@@ -164,6 +165,17 @@ setInterval(() => { try {
   const c = spawn(process.execPath, [path.join(ROOT, 'lib', 'ypecsync.mjs'), HERO_SYNC_DIR, YAMAHA_DIR], { stdio: ['ignore', 'inherit', 'inherit'] });
   c.on('exit', code => console.log(new Date().toISOString(), 'YPEC sync ended', code));
 } catch (e) { console.log('YPEC sync check:', e.message); } }, 3600e3).unref();
+// 24t: Bajaj's dealer system (Excellon) once a week at night (IST 2-4), as its own process (lib/excellonsync.mjs), when .env has the dealer login;
+// its list (excellon_parts.json in the Bajaj folder) makes the Bajaj catalogue build again (bajajDmsFiles)
+let exRun = 0;
+setInterval(() => { try {
+  if (!env.EXCELLON_USER || !env.EXCELLON_PASSWORD || Date.now() - exRun < 6 * 3600e3) return;
+  const h = new Date(Date.now() + 5.5 * 3600e3).getUTCHours(); if (h < 2 || h > 4) return;
+  if (Date.now() - mtime(path.join(BAJAJ_DIR, 'excellon_parts.json')) < 6.5 * 86400e3) return;
+  exRun = Date.now();
+  const c = spawn(process.execPath, [path.join(ROOT, 'lib', 'excellonsync.mjs'), BAJAJ_DIR], { stdio: ['ignore', 'inherit', 'inherit'] });
+  c.on('exit', code => { console.log(new Date().toISOString(), 'Excellon sync ended', code); if (!code) try { bajajBuild('sync'); } catch (e) { console.log('bajaj build after Excellon:', e.message); } });
+} catch (e) { console.log('Excellon sync check:', e.message); } }, 3600e3).unref();
 function xrefBuild(why) { catBuild('xref', why, [path.join(ROOT, 'lib', 'xrefbuild.mjs'), HERO_OUT, path.join(BAJAJ_DIR, 'bajaj_alt.json'), path.join(FILES_DIR, 'catalogues', 'aftermarket', 'am_build.json')]); }
 heroBuild('start'); hondaBuild('start'); bajajBuild('start'); yamahaBuild('start'); reBuild('start'); tvsBuild('start'); ktmBuild('start'); xrefBuild('start');
 const BACKUP = backups({ store, dataDir: DATA_DIR, env });   // 11u: every night + Admin > More > Backups
@@ -196,6 +208,7 @@ if (!store.kvGet('meta', 'demoRemoved')) {
 const normId = v => { v = String(v || '').trim().toLowerCase(); if (v.includes('@')) return v; const d = v.replace(/\D/g, ''); return d.length > 10 ? d.slice(-10) : d; };
 const today = () => new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 const stateVal = k => { const r = store.stateGet(k); return r ? JSON.parse(r.json) : undefined; };
+const CLAIM = billClaims(k => stateVal(k));   // 24p
 const accounts = () => stateVal('accounts') || {};
 const reader = () => { const c = new Map(); return k => { if (!c.has(k)) c.set(k, stateVal(k)); return c.get(k); }; }; // cached reads for one request
 function setAccount(id, acc) { const a = accounts(); a[id] = acc; store.write({ accounts: JSON.stringify(a) }); }
@@ -355,6 +368,8 @@ async function api(req, res, url, user) {
       res.writeHead(200, { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Length': b.length, 'Content-Disposition': 'attachment; filename="same-parts-' + ({ c: 'catalogue', k: 'to-check', s: 'staff' })[tab] + '.csv"', 'Cache-Control': 'no-store' }); return res.end(b); }
     return json(res, 200, SAMEREP.page(tab === 's' ? 'c' : tab, g('q'), g('bp'), Math.max(0, +g('off') || 0), 50));
   }
+  // 24p: the garages below; first, one bill keeps its pieces
+  if (p === '/api/bill/claim' && m === 'POST') { if (roleClass(user) !== 'staff') return json(res, user ? 403 : 401, { error: 'Staff login needed' }); const [code, out] = CLAIM(body, user); return json(res, code, out); }
   // 22i: the garages a customer may have an order delivered to: the shop's active mechanics, garage name + area + code only (no phone, no dues)
   if (p === '/api/garages' && m === 'GET') {
     if (!user) return json(res, 401, { error: 'Please log in again' });
@@ -368,13 +383,15 @@ async function api(req, res, url, user) {
     const pkk = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, ''), txt = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f<>]/g, ' ').trim().slice(0, n);
     const side = x => x && typeof x === 'object' ? { pn: txt(x.pn, 40), vb: txt(x.vb, 40), name: txt(x.name, 120), ms: (Array.isArray(x.ms) ? x.ms : []).slice(0, 8).map(v => txt(v, 60)).filter(Boolean) } : null;
     const a = side(body && body.a), b = side(body && body.b), ka = a ? pkk(a.pn) : '', kb = b ? pkk(b.pn) : '';
-    if (ka.length < 5 || kb.length < 5 || ka === kb) return json(res, 400, { error: 'Give two different part numbers' });
-    const key = [ka, kb].sort().join('|');
+    // 23y: an aftermarket maker may print the original number as its own; then the two brands must differ and the brands are part of the key
+    const twin = ka === kb, vk = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (ka.length < 5 || kb.length < 5 || (twin && !body.del && (!vk(a.vb) || !vk(b.vb) || vk(a.vb) === vk(b.vb)))) return json(res, 400, { error: 'Give two different part numbers' });
+    const key = [ka, kb].sort().join('|') + (twin && vk(a.vb) && vk(b.vb) ? '|' + [vk(a.vb), vk(b.vb)].sort().join('|') : '');
     if (body.wrong != null) {   // 21n: Admin says two numbers of the "to check" list are NOT the same part (or takes that back)
       if (user.role !== 'admin') return json(res, 403, { error: 'Only Admin' });
       if (body.wrong) store.kvSet('samewrong', key, { a, b, by: txt(user.name || user.id, 60), at: new Date().toISOString() }); else store.kvDel('samewrong', key);
       console.log(new Date().toISOString(), 'same part', body.wrong ? 'marked wrong' : 'wrong mark removed', a.pn, b.pn, 'by', user.id); return json(res, 200, { ok: true }); }
-    if (body.del) { store.kvDel('samepart', key); console.log(new Date().toISOString(), 'same part removed', a.pn, b.pn, 'by', user.id); return json(res, 200, { ok: true }); }
+    if (body.del) { store.kvDel('samepart', key); if (twin && key === ka + '|' + kb) store.kvAll('samepart').forEach(([k]) => { if (k.startsWith(key + '|')) store.kvDel('samepart', k); }); console.log(new Date().toISOString(), 'same part removed', a.pn, b.pn, 'by', user.id); return json(res, 200, { ok: true }); }
     if (store.kvAll('samepart').length >= 20000) return json(res, 400, { error: 'Too many links' });
     store.kvSet('samepart', key, { a, b, by: txt(user.name || user.id, 60), byId: txt(user.id, 60), at: new Date().toISOString() }); store.kvDel('samewrong', key);
     console.log(new Date().toISOString(), 'same part saved', a.pn, '=', b.pn, 'by', user.id);
@@ -683,7 +700,7 @@ async function catUpload(req, res, url, user) {
   catBusy.delete(abs);
   let have = sizeOf(part);
   if (have !== off + len) { try { fs.truncateSync(part, off); } catch (x) {} return json(res, 400, { error: 'The piece did not arrive whole, sending it again', have: off }); }
-  if (have === size) { fs.renameSync(part, abs); console.log(new Date().toISOString(), 'catalogue file uploaded', rel, size, 'by', user.id); if (abs.startsWith(HERO_RAW_DIR + path.sep) || abs.startsWith(HERO_XL_DIR + path.sep) || abs === path.join(HERO_PDF_DIR, 'hero_pdf_index.json')) heroBuild('upload'); if (path.dirname(abs) === HONDA_DIR && HONDA_RAW.includes(path.basename(abs))) hondaBuild('upload'); if (path.dirname(abs) === BAJAJ_DIR && [...BAJAJ_RAW, BAJAJ_ALT].includes(path.basename(abs))) bajajBuild('upload'); if (path.dirname(abs) === BAJAJ_DIR && path.basename(abs) === BAJAJ_ALT) ktmBuild('upload'); if (path.dirname(abs) === BAJAJ_DIR && isBajajDms(path.basename(abs))) { bajajBuild('upload'); ktmBuild('upload'); xrefBuild('upload'); } if (path.dirname(abs) === YAMAHA_DIR && YAMAHA_RAW.includes(path.basename(abs))) yamahaBuild('upload'); if (path.dirname(abs) === RE_DIR && RE_RAW.includes(path.basename(abs))) reBuild('upload'); if (path.dirname(abs) === TVS_DIR && [...TVS_RAW, TVS_ZIP, ...TVS_MORE].includes(path.basename(abs))) tvsBuild('upload'); if (path.dirname(abs) === KTM_DIR && [...KTM_RAW, KTM_MRP].includes(path.basename(abs))) ktmBuild('upload'); return json(res, 200, { have, done: true }); }
+  if (have === size) { fs.renameSync(part, abs); console.log(new Date().toISOString(), 'catalogue file uploaded', rel, size, 'by', user.id); if (abs.startsWith(HERO_RAW_DIR + path.sep) || abs.startsWith(HERO_XL_DIR + path.sep) || abs === path.join(HERO_PDF_DIR, 'hero_pdf_index.json')) heroBuild('upload'); if (path.dirname(abs) === HONDA_DIR && HONDA_RAW.includes(path.basename(abs))) hondaBuild('upload'); if (path.dirname(abs) === BAJAJ_DIR && [...BAJAJ_RAW, BAJAJ_ALT].includes(path.basename(abs))) bajajBuild('upload'); if (path.dirname(abs) === BAJAJ_DIR && path.basename(abs) === BAJAJ_ALT) ktmBuild('upload'); if (path.dirname(abs) === BAJAJ_DIR && isBajajDms(path.basename(abs))) { bajajBuild('upload'); ktmBuild('upload'); xrefBuild('upload'); } if (path.dirname(abs) === YAMAHA_DIR && (YAMAHA_RAW.includes(path.basename(abs)) || isYamahaExtra(path.basename(abs)) || isYamahaExtraDg(path.basename(abs)))) yamahaBuild('upload'); if (path.dirname(abs) === RE_DIR && RE_RAW.includes(path.basename(abs))) reBuild('upload'); if (path.dirname(abs) === TVS_DIR && [...TVS_RAW, TVS_ZIP, ...TVS_MORE].includes(path.basename(abs))) tvsBuild('upload'); if (path.dirname(abs) === KTM_DIR && [...KTM_RAW, KTM_MRP].includes(path.basename(abs))) ktmBuild('upload'); return json(res, 200, { have, done: true }); }
   return json(res, 200, { have, done: false });
 }
 
@@ -782,7 +799,18 @@ function hotYpec(u) {
   return c[2].filter(p => Array.isArray(p) && /^[A-Z0-9-]{1,8}$/i.test(String(p[0])) && p.slice(1, 5).every(v => typeof v === 'number'))
     .map(([t, x0, y0, x1, y1]) => [String(t).toUpperCase(), q(x0 / w), q(y0 / h), q(x1 / w), q(y1 / h), 1]);
 }
+// 23u: a Yamaha book read from its PDF's own text carries the checked place of every number on its diagrams (the Yamaha build keeps them in
+// cat/yamaha-hot.json {diagram: [[number, x0, y0, x1, y1]]}, fractions of the diagram)
+let HOT_YB = { m: -1, d: {} };
+function hotYamahaBook(u) {
+  const f = path.join(HERO_OUT, 'yamaha-hot.json'); let t = 0; try { t = fs.statSync(f).mtimeMs; } catch (e) { return null; }
+  if (t !== HOT_YB.m) { try { HOT_YB = { m: t, d: JSON.parse(fs.readFileSync(f, 'utf8')) || {} }; } catch (e) { HOT_YB = { m: t, d: {} }; } }
+  const c = HOT_YB.d[u]; if (!Array.isArray(c) || !c.length) return null;
+  const q = v => Math.round(Math.min(1, Math.max(0, v)) * 1e4) / 1e4;
+  return c.filter(p => Array.isArray(p) && p.length >= 5 && /^[A-Z0-9-]{1,8}$/i.test(String(p[0])) && p.slice(1, 5).every(v => typeof v === 'number' && v >= 0 && v <= 1)).map(([t, x0, y0, x1, y1]) => [String(t).toUpperCase(), q(x0), q(y0), q(x1), q(y1), 1]);
+}
 function hotSite(u) {
+  if (u.startsWith('pdf:catalogues/yamaha/') || u.startsWith('pf:catalogues/yamaha/yamaha_extra')) return hotYamahaBook(u);
   if (/^pf:catalogues\/hero-sync\/yamaha\/ypec\/img\//.test(u)) return hotYpec(u);
   if (!/^pf:catalogues\/hero-sync\/bajaj\/img\//.test(u)) return hotHonda(u);
   const m = /^pf:catalogues\/hero-sync\/bajaj\/img\/([^/:]+):\d+:\d+$/.exec(u); if (!m) return null;
@@ -975,7 +1003,7 @@ function serveStatic(req, res, url, user) {
   // 13a: the aftermarket parts list, made on Sam's Mac from All Catalogues > After Market Brands and uploaded in Admin > More > Catalogue files
   if (rel === 'cat/am.json' && fs.existsSync(path.join(FILES_DIR, 'catalogues', 'aftermarket', 'am_build.json'))) file = path.join(FILES_DIR, 'catalogues', 'aftermarket', 'am_build.json');
   // 19s: Rolon's own weekly list (~/rolon_dump) joins the aftermarket list; on any trouble the list is served as before
-  if (rel === 'cat/am.json') { try { const rf = rolonAmFile({ baseFile: fs.existsSync(file) ? file : null, outFile: path.join(DATA_DIR, 'am-rolon.json'), xrefFile: path.join(HERO_OUT, 'xref.json'), supFiles: ['suprajit', 'sparkminda', 'varroc', 'king', 'endurance', 'mkauto', 'sandhar'].map(n => [path.join(FILES_DIR, 'catalogues', 'aftermarket', n + '.json'), path.join(DATA_DIR, n + '.json')].find(f => fs.existsSync(f))).filter(Boolean) }); if (rf) file = rf; } catch (e) { console.error('rolon am:', e.message); } }
+  if (rel === 'cat/am.json') { try { const rf = rolonAmFile({ baseFile: fs.existsSync(file) ? file : null, outFile: path.join(DATA_DIR, 'am-rolon.json'), xrefFile: path.join(HERO_OUT, 'xref.json'), supFiles: ['suprajit', 'sparkminda', 'varroc', 'king', 'endurance', 'mkauto', 'sandhar', 'rex', 'gabriel', 'motherson', 'pricol', 'unominda', 'diamond', 'ask', 'makino', 'fcc', 'goetze', 'ar', 'lumax', 'spaco', 'aaa', 'ucal', 'lucastvs', 'bosch', 'ce', 'ntk', 'ngk'].map(n => [path.join(FILES_DIR, 'catalogues', 'aftermarket', n + '.json'), path.join(DATA_DIR, n + '.json')].find(f => fs.existsSync(f))).filter(Boolean) }); if (rf) file = rf; } catch (e) { console.error('rolon am:', e.message); } }
   let st; try { st = fs.statSync(file); } catch (e) { return json(res, 404, { error: 'Not found' }); }
   if (st.isDirectory()) return json(res, 404, { error: 'Not found' });
   const ext = path.extname(file).toLowerCase(); const type = MIME[ext] || 'application/octet-stream';

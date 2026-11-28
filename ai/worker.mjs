@@ -43,6 +43,7 @@ const QUALITY = 95;          // 4:4:4 colour, no visible loss
 const AN = 768;              // which pixels are the part is worked out on a copy this big; the edge itself comes from the AI's mask
 const KS = AN / 1024;        // sizes below were first set on a 1024 copy
 const FILL = 0.8;            // the clean copy: the part takes 4/5 of the square
+const W_SIDE = 2048;         // 24q: the -w copy's longest side
 const MAX_SIDE = 5000;       // the copies keep the photo's full size up to 5000 px (12-16 MP phone photos stay as they are); bigger
                              // photos (50-200 MP modes) are made 5000 px so the AI never runs out of memory. The photo as taken is never changed.
 const SHADOW = { op: 0.2, blur: 0.02, dy: 0.012 };   // soft shadow under the part (strength, blur and drop as parts of the square's side)
@@ -529,9 +530,13 @@ async function shadowOf(A, W, H, x0, y0, s) {
   const data = await sharp(sq, { raw: { width: t, height: t, channels: 1 } }).blur(Math.max(0.5, SHADOW.blur * t)).extractChannel(0).raw().toBuffer();
   return { data, t };
 }
-async function save(buf, W, H, file) {
+async function save(buf, W, H, file, small = false) {
   const tmp = file + '.' + process.pid + '.tmp';
-  await sharp(buf, { raw: { width: W, height: H, channels: 3 } }).jpeg({ quality: QUALITY, chromaSubsampling: '4:4:4' }).toFile(tmp);
+  let im = sharp(buf, { raw: { width: W, height: H, channels: 3 } });
+  // 24q: the -w copy is 2048 px at most (it was 3 MB each, 20 GB in all); the photo as taken stays full size
+  if (small) im = im.resize({ width: W_SIDE, height: W_SIDE, fit: 'inside', withoutEnlargement: true, kernel: 'lanczos3' }).jpeg({ quality: 82 });
+  else im = im.jpeg({ quality: QUALITY, chromaSubsampling: '4:4:4' });
+  await im.toFile(tmp);
   fs.renameSync(tmp, file);
 }
 // one photo: learn = { kind: { way: [wins, losses] } } (lib/photoai.mjs keeps it), avoid = ways staff said were wrong for this photo,
@@ -592,7 +597,7 @@ export async function cleanPhoto(src, outC, outW, { learn = {}, avoid = [], way 
   lap('extra');
   const cC = composeC(rgbC, A, W, H, x, y, s, LC, sh, Math.round(SHADOW.dy * s), g), cW = composeW(rgb, A, W, H, LW);
   lap('draw');
-  await Promise.all([save(cC, s, s, outC), save(cW, W, H, outW)]);
+  await Promise.all([save(cC, s, s, outC), save(cW, W, H, outW, true)]);
   lap('save');
   const why = best.j.why;
   return { ms: Date.now() - t, green, width: s, height: s, part: pm ? 'found' : 'not found', hand: !!(pm && pm.hand), way: best.way, kind, tried, why, steps, wb: [g.r, g.g, g.b].map(v => Math.round(v * 100) / 100), ...(pm ? pm.st : {}) };

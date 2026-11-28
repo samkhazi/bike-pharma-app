@@ -1,0 +1,9 @@
+{
+  "name": "bike-pharma-rc-lookup",
+  "version": "1.0.0",
+  "description": "Bike number to RC details through VR Garage, as in Bike Pharma's Find Part",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=18" },
+  "scripts": { "start": "node server.mjs" }
+}

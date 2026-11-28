@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bike Pharma RC Lookup</title>
+<style>
+  :root { --y: #ffd400; --ink: #111; --ink2: #555; --line: #e5e5e5; --bg: #fff; --red: #b42318; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  main { max-width: 560px; margin: 0 auto; padding: 24px 16px 40px; display: grid; gap: 16px; }
+  h1 { margin: 0; font-size: 22px; }
+  .hint { margin: 0; color: var(--ink2); font-size: 13px; }
+  form { display: flex; gap: 8px; }
+  input { flex: 1; min-width: 0; height: 48px; padding: 0 14px; border: 2px solid var(--ink); border-radius: 12px; font: 600 17px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .5px; text-transform: uppercase; }
+  button { height: 48px; padding: 0 18px; border: 2px solid var(--ink); border-radius: 12px; background: var(--y); color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; }
+  button:disabled { opacity: .6; cursor: wait; }
+  .card { border: 2px solid var(--y); border-radius: 14px; padding: 14px; display: grid; gap: 8px; }
+  .pill { justify-self: start; background: var(--y); border-radius: 999px; padding: 3px 10px; font: 700 13px/1.4 ui-monospace, Menlo, monospace; }
+  .row { display: grid; grid-template-columns: 110px 1fr; gap: 8px; align-items: baseline; }
+  .row span:first-child { color: var(--ink2); font-size: 13px; }
+  .row span:last-child { font-weight: 600; overflow-wrap: anywhere; }
+  .err { color: var(--red); font-weight: 600; }
+  .muted { color: var(--ink2); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>RC details from the bike number</h1>
+  <p class="hint">Type the bike number from the number plate, like KA17HC3942 (BH numbers like 22BH1234AA work too).</p>
+  <form id="f">
+    <input id="q" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="14" placeholder="KA17HC3942" aria-label="Bike number">
+    <button id="go" type="submit">Search</button>
+  </form>
+  <div id="out"></div>
+</main>
+<script>
+/* same checks and labels as Bike Pharma's app (public/app.html: rcClean, rcIsReg, RC_ROWS) */
+const rcClean = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+const rcIsReg = s => /^[A-Z]{2}\d{1,2}[A-Z]{0,3}\d{1,4}$/.test(s) || /^\d{2}BH\d{4}[A-Z]{1,2}$/.test(s);
+const RC_ROWS = [['owner','Owner'],['maker','Maker'],['model','Model'],['mfg','Made'],['regDate','Registered'],['fuel','Fuel'],['colour','Colour'],['cc','Engine cc'],['chassis','Chassis no.'],['engine','Engine no.'],['insurer','Insurance'],['insUpto','Insurance till'],['pucUpto','PUC till'],['status','RC status']];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const out = document.getElementById('out'), go = document.getElementById('go'), q = document.getElementById('q');
+
+document.getElementById('f').addEventListener('submit', async e => {
+  e.preventDefault();
+  const reg = rcClean(q.value);
+  if (!rcIsReg(reg)) { out.innerHTML = '<p class="err">This is not a bike number. Type it like KA17HC3942.</p>'; return; }
+  q.value = reg; go.disabled = true;
+  out.innerHTML = `<div class="card"><span class="pill">${esc(reg)}</span><div>Getting the RC details…</div></div>`;
+  let r;
+  try { const x = await fetch('/api/rclook?r=' + encodeURIComponent(reg)); r = await x.json(); if (!x.ok && !r.error) r = { error: 'Search failed (' + x.status + ')' }; }
+  catch (err) { r = { error: 'No internet connection' }; }
+  go.disabled = false;
+  if (!r.found) {
+    const msg = r.off ? 'Search is not switched on: fill VRGARAGE_EMAIL and VRGARAGE_PASSWORD in .env and start the server again.'
+      : r.error ? r.error + '.' : 'The RC service has no record of this number. Check the number.';
+    out.innerHTML = `<div class="card"><span class="pill">${esc(reg)}</span><div class="${r.error || r.off ? 'err' : ''}">${esc(msg)}</div></div>`;
+    return;
+  }
+  const rows = RC_ROWS.filter(([k]) => r[k]).map(([k, l]) => `<div class="row"><span>${l}</span><span>${esc(r[k])}</span></div>`).join('');
+  out.innerHTML = `<div class="card"><span class="pill">${esc(r.reg || reg)}</span>${rows}${r.saved ? `<div class="muted">Saved answer from ${esc(r.saved.slice(0, 10))}: no VR Garage credit used.</div>` : ''}</div>`;
+});
+</script>
+</body>
+</html>

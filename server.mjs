@@ -165,6 +165,17 @@ setInterval(() => { try {
   const c = spawn(process.execPath, [path.join(ROOT, 'lib', 'ypecsync.mjs'), HERO_SYNC_DIR, YAMAHA_DIR], { stdio: ['ignore', 'inherit', 'inherit'] });
   c.on('exit', code => console.log(new Date().toISOString(), 'YPEC sync ended', code));
 } catch (e) { console.log('YPEC sync check:', e.message); } }, 3600e3).unref();
+// 24t: Bajaj's dealer system (Excellon) once a week at night (IST 2-4), as its own process (lib/excellonsync.mjs), when .env has the dealer login;
+// its list (excellon_parts.json in the Bajaj folder) makes the Bajaj catalogue build again (bajajDmsFiles)
+let exRun = 0;
+setInterval(() => { try {
+  if (!env.EXCELLON_USER || !env.EXCELLON_PASSWORD || Date.now() - exRun < 6 * 3600e3) return;
+  const h = new Date(Date.now() + 5.5 * 3600e3).getUTCHours(); if (h < 2 || h > 4) return;
+  if (Date.now() - mtime(path.join(BAJAJ_DIR, 'excellon_parts.json')) < 6.5 * 86400e3) return;
+  exRun = Date.now();
+  const c = spawn(process.execPath, [path.join(ROOT, 'lib', 'excellonsync.mjs'), BAJAJ_DIR], { stdio: ['ignore', 'inherit', 'inherit'] });
+  c.on('exit', code => { console.log(new Date().toISOString(), 'Excellon sync ended', code); if (!code) try { bajajBuild('sync'); } catch (e) { console.log('bajaj build after Excellon:', e.message); } });
+} catch (e) { console.log('Excellon sync check:', e.message); } }, 3600e3).unref();
 function xrefBuild(why) { catBuild('xref', why, [path.join(ROOT, 'lib', 'xrefbuild.mjs'), HERO_OUT, path.join(BAJAJ_DIR, 'bajaj_alt.json'), path.join(FILES_DIR, 'catalogues', 'aftermarket', 'am_build.json')]); }
 heroBuild('start'); hondaBuild('start'); bajajBuild('start'); yamahaBuild('start'); reBuild('start'); tvsBuild('start'); ktmBuild('start'); xrefBuild('start');
 const BACKUP = backups({ store, dataDir: DATA_DIR, env });   // 11u: every night + Admin > More > Backups

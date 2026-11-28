@@ -17,8 +17,6 @@ LOG=/home/bikepharma/htdocs/bikepharma.com/data/project-files/catalogues/hero-sy
 30 18 * * 6 ROLON_FETCH=$BS/rolon_fetch.py /bin/bash /home/bikepharma/rolon_dump/rolon_weekly.sh
 # Hero
 30 18 * * 6 cd $BS && .venv/bin/python sync.py hero >> $LOG 2>&1
-# TVS (guest catalogue)
-30 18 * * 6 cd $BS && TVS_IGNORE_ROBOTS=1 TVS_GUEST_DELAY=3 .venv/bin/python sync.py tvs_guest >> $LOG 2>&1
 # Bajaj
 30 18 * * 6 cd $BS && .venv/bin/python sync.py bajaj >> $LOG 2>&1
 # Honda (login code: link comes by email)
